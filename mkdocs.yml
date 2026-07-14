@@ -1,0 +1,250 @@
+site_name: LeetCode 面试经典 150 题题解
+site_description: 基于 MkDocs Material 的 LeetCode Top Interview 150 题解文档，使用 Go 语言实现
+site_author: SOLO
+theme:
+  name: material
+  language: zh
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: 切换至暗色模式
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: 切换至亮色模式
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.indexes
+    - toc.follow
+    - toc.integrate
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  generator: false
+
+nav:
+  - 首页: index.md
+  - 数组 / 字符串:
+      - 章节概述: 01-array-string/index.md
+      - 1. 合并两个有序数组: 01-array-string/01-merge-sorted-array.md
+      - 2. 移除元素: 01-array-string/02-remove-element.md
+      - 3. 删除有序数组中的重复项: 01-array-string/03-remove-duplicates-from-sorted-array.md
+      - 4. 删除有序数组中的重复项 II: 01-array-string/04-remove-duplicates-from-sorted-array-ii.md
+      - 5. 多数元素: 01-array-string/05-majority-element.md
+      - 6. 轮转数组: 01-array-string/06-rotate-array.md
+      - 7. 买卖股票的最佳时机: 01-array-string/07-best-time-to-buy-and-sell-stock.md
+      - 8. 买卖股票的最佳时机 II: 01-array-string/08-best-time-to-buy-and-sell-stock-ii.md
+      - 9. 跳跃游戏: 01-array-string/09-jump-game.md
+      - 10. 跳跃游戏 II: 01-array-string/10-jump-game-ii.md
+      - 11. H 指数: 01-array-string/11-h-index.md
+      - 12. O(1) 时间插入删除和获取随机元素: 01-array-string/12-insert-delete-getrandom-o1.md
+      - 13. 除自身以外数组的乘积: 01-array-string/13-product-of-array-except-self.md
+      - 14. 加油站: 01-array-string/14-gas-station.md
+      - 15. 分发糖果: 01-array-string/15-candy.md
+      - 16. 接雨水: 01-array-string/16-trapping-rain-water.md
+      - 17. 罗马数字转整数: 01-array-string/17-roman-to-integer.md
+      - 18. 整数转罗马数字: 01-array-string/18-integer-to-roman.md
+      - 19. 最后一个单词的长度: 01-array-string/19-length-of-last-word.md
+      - 20. 最长公共前缀: 01-array-string/20-longest-common-prefix.md
+      - 21. 反转字符串中的单词: 01-array-string/21-reverse-words-in-a-string.md
+      - 22. Z 字形变换: 01-array-string/22-zigzag-conversion.md
+      - 23. 找出字符串中第一个匹配项的下标: 01-array-string/23-find-the-index-of-the-first-occurrence-in-a-string.md
+      - 24. 文本左右对齐: 01-array-string/24-text-justification.md
+  - 双指针:
+      - 章节概述: 02-two-pointers/index.md
+      - 25. 验证回文串: 02-two-pointers/25-valid-palindrome.md
+      - 26. 判断子序列: 02-two-pointers/26-is-subsequence.md
+      - 27. 两数之和 II - 输入有序数组: 02-two-pointers/27-two-sum-ii-input-array-is-sorted.md
+      - 28. 盛最多水的容器: 02-two-pointers/28-container-with-most-water.md
+      - 29. 三数之和: 02-two-pointers/29-3sum.md
+  - 滑动窗口:
+      - 章节概述: 03-sliding-window/index.md
+      - 30. 长度最小的子数组: 03-sliding-window/30-minimum-size-subarray-sum.md
+      - 31. 无重复字符的最长子串: 03-sliding-window/31-longest-substring-without-repeating-characters.md
+      - 32. 串联所有单词的子串: 03-sliding-window/32-substring-with-concatenation-of-all-words.md
+      - 33. 最小覆盖子串: 03-sliding-window/33-minimum-window-substring.md
+  - 矩阵:
+      - 章节概述: 04-matrix/index.md
+      - 34. 有效的数独: 04-matrix/34-valid-sudoku.md
+      - 35. 螺旋矩阵: 04-matrix/35-spiral-matrix.md
+      - 36. 旋转图像: 04-matrix/36-rotate-image.md
+      - 37. 矩阵置零: 04-matrix/37-set-matrix-zeroes.md
+      - 38. 生命游戏: 04-matrix/38-game-of-life.md
+  - 哈希表:
+      - 章节概述: 05-hash-table/index.md
+      - 39. 赎金信: 05-hash-table/39-ransom-note.md
+      - 40. 同构字符串: 05-hash-table/40-isomorphic-strings.md
+      - 41. 单词规律: 05-hash-table/41-word-pattern.md
+      - 42. 有效的字母异位词: 05-hash-table/42-valid-anagram.md
+      - 43. 字母异位词分组: 05-hash-table/43-group-anagrams.md
+      - 44. 两数之和: 05-hash-table/44-two-sum.md
+      - 45. 快乐数: 05-hash-table/45-happy-number.md
+      - 46. 存在重复元素 II: 05-hash-table/46-contains-duplicate-ii.md
+      - 47. 最长连续序列: 05-hash-table/47-longest-consecutive-sequence.md
+  - 区间:
+      - 章节概述: 06-intervals/index.md
+      - 48. 汇总区间: 06-intervals/48-summary-ranges.md
+      - 49. 合并区间: 06-intervals/49-merge-intervals.md
+      - 50. 插入区间: 06-intervals/50-insert-interval.md
+      - 51. 用最少数量的箭引爆气球: 06-intervals/51-minimum-number-of-arrows-to-burst-balloons.md
+  - 栈:
+      - 章节概述: 07-stack/index.md
+      - 52. 有效的括号: 07-stack/52-valid-parentheses.md
+      - 53. 简化路径: 07-stack/53-simplify-path.md
+      - 54. 最小栈: 07-stack/54-min-stack.md
+      - 55. 逆波兰表达式求值: 07-stack/55-evaluate-reverse-polish-notation.md
+      - 56. 基本计算器: 07-stack/56-basic-calculator.md
+  - 链表:
+      - 章节概述: 08-linked-list/index.md
+      - 57. 环形链表: 08-linked-list/57-linked-list-cycle.md
+      - 58. 两数相加: 08-linked-list/58-add-two-numbers.md
+      - 59. 合并两个有序链表: 08-linked-list/59-merge-two-sorted-lists.md
+      - 60. 随机链表的复制: 08-linked-list/60-copy-list-with-random-pointer.md
+      - 61. 反转链表 II: 08-linked-list/61-reverse-linked-list-ii.md
+      - 62. K 个一组翻转链表: 08-linked-list/62-reverse-nodes-in-k-group.md
+      - 63. 删除链表的倒数第 N 个结点: 08-linked-list/63-remove-nth-node-from-end-of-list.md
+      - 64. 删除排序链表中的重复元素 II: 08-linked-list/64-remove-duplicates-from-sorted-list-ii.md
+      - 65. 旋转链表: 08-linked-list/65-rotate-list.md
+      - 66. 分隔链表: 08-linked-list/66-partition-list.md
+      - 67. LRU 缓存: 08-linked-list/67-lru-cache.md
+  - 二叉树:
+      - 章节概述: 09-binary-tree/index.md
+      - 68. 二叉树的最大深度: 09-binary-tree/68-maximum-depth-of-binary-tree.md
+      - 69. 相同的树: 09-binary-tree/69-same-tree.md
+      - 70. 翻转二叉树: 09-binary-tree/70-invert-binary-tree.md
+      - 71. 对称二叉树: 09-binary-tree/71-symmetric-tree.md
+      - 72. 从前序与中序遍历序列构造二叉树: 09-binary-tree/72-construct-binary-tree-from-preorder-and-inorder-traversal.md
+      - 73. 从中序与后序遍历序列构造二叉树: 09-binary-tree/73-construct-binary-tree-from-inorder-and-postorder-traversal.md
+      - 74. 填充每个节点的下一个右侧节点指针 II: 09-binary-tree/74-populating-next-right-pointers-in-each-node-ii.md
+      - 75. 二叉树展开为链表: 09-binary-tree/75-flatten-binary-tree-to-linked-list.md
+      - 76. 路径总和: 09-binary-tree/76-path-sum.md
+      - 77. 求根节点到叶节点数字之和: 09-binary-tree/77-sum-root-to-leaf-numbers.md
+      - 78. 二叉树中的最大路径和: 09-binary-tree/78-binary-tree-maximum-path-sum.md
+      - 79. 二叉搜索树迭代器: 09-binary-tree/79-binary-search-tree-iterator.md
+      - 80. 完全二叉树的节点个数: 09-binary-tree/80-count-complete-tree-nodes.md
+      - 81. 二叉树的最近公共祖先: 09-binary-tree/81-lowest-common-ancestor-of-a-binary-tree.md
+  - 二叉树层次遍历:
+      - 章节概述: 10-binary-tree-bfs/index.md
+      - 82. 二叉树的右视图: 10-binary-tree-bfs/82-binary-tree-right-side-view.md
+      - 83. 二叉树的层平均值: 10-binary-tree-bfs/83-average-of-levels-in-binary-tree.md
+      - 84. 二叉树的层序遍历: 10-binary-tree-bfs/84-binary-tree-level-order-traversal.md
+      - 85. 二叉树的锯齿形层序遍历: 10-binary-tree-bfs/85-binary-tree-zigzag-level-order-traversal.md
+  - 二叉搜索树:
+      - 章节概述: 11-bst/index.md
+      - 86. 二叉搜索树的最小绝对差: 11-bst/86-minimum-absolute-difference-in-bst.md
+      - 87. 二叉搜索树中第 K 小的元素: 11-bst/87-kth-smallest-element-in-a-bst.md
+      - 88. 验证二叉搜索树: 11-bst/88-validate-binary-search-tree.md
+  - 图:
+      - 章节概述: 12-graph/index.md
+      - 89. 岛屿数量: 12-graph/89-number-of-islands.md
+      - 90. 被围绕的区域: 12-graph/90-surrounded-regions.md
+      - 91. 克隆图: 12-graph/91-clone-graph.md
+      - 92. 除法求值: 12-graph/92-evaluate-division.md
+      - 93. 课程表: 12-graph/93-course-schedule.md
+      - 94. 课程表 II: 12-graph/94-course-schedule-ii.md
+  - 图的广度优先搜索:
+      - 章节概述: 13-graph-bfs/index.md
+      - 95. 蛇梯棋: 13-graph-bfs/95-snakes-and-ladders.md
+      - 96. 最小基因变化: 13-graph-bfs/96-minimum-genetic-mutation.md
+      - 97. 单词接龙: 13-graph-bfs/97-word-ladder.md
+  - 字典树:
+      - 章节概述: 14-trie/index.md
+      - 98. 实现 Trie (前缀树): 14-trie/98-implement-trie-prefix-tree.md
+      - 99. 添加与搜索单词 - 数据结构设计: 14-trie/99-design-add-and-search-words-data-structure.md
+      - 100. 单词搜索 II: 14-trie/100-word-search-ii.md
+  - 回溯:
+      - 章节概述: 15-backtracking/index.md
+      - 101. 电话号码的字母组合: 15-backtracking/101-letter-combinations-of-a-phone-number.md
+      - 102. 组合: 15-backtracking/102-combinations.md
+      - 103. 全排列: 15-backtracking/103-permutations.md
+      - 104. 组合总和: 15-backtracking/104-combination-sum.md
+      - 105. N 皇后 II: 15-backtracking/105-n-queens-ii.md
+      - 106. 括号生成: 15-backtracking/106-generate-parentheses.md
+      - 107. 单词搜索: 15-backtracking/107-word-search.md
+  - 分治:
+      - 章节概述: 16-divide-conquer/index.md
+      - 108. 将有序数组转换为二叉搜索树: 16-divide-conquer/108-convert-sorted-array-to-binary-search-tree.md
+      - 109. 排序链表: 16-divide-conquer/109-sort-list.md
+      - 110. 建立四叉树: 16-divide-conquer/110-construct-quad-tree.md
+      - 111. 合并 K 个升序链表: 16-divide-conquer/111-merge-k-sorted-lists.md
+  - Kadane 算法:
+      - 章节概述: 17-kadane/index.md
+      - 112. 最大子数组和: 17-kadane/112-maximum-subarray.md
+      - 113. 环形子数组的最大和: 17-kadane/113-maximum-sum-circular-subarray.md
+  - 二分查找:
+      - 章节概述: 18-binary-search/index.md
+      - 114. 搜索插入位置: 18-binary-search/114-search-insert-position.md
+      - 115. 搜索二维矩阵: 18-binary-search/115-search-a-2d-matrix.md
+      - 116. 寻找峰值: 18-binary-search/116-find-peak-element.md
+      - 117. 搜索旋转排序数组: 18-binary-search/117-search-in-rotated-sorted-array.md
+      - 118. 在排序数组中查找元素的第一个和最后一个位置: 18-binary-search/118-find-first-and-last-position-of-element-in-sorted-array.md
+      - 119. 寻找旋转排序数组中的最小值: 18-binary-search/119-find-minimum-in-rotated-sorted-array.md
+      - 120. 寻找两个正序数组的中位数: 18-binary-search/120-median-of-two-sorted-arrays.md
+  - 堆:
+      - 章节概述: 19-heap/index.md
+      - 121. 数组中的第K个最大元素: 19-heap/121-kth-largest-element-in-an-array.md
+      - 122. IPO: 19-heap/122-ipo.md
+      - 123. 查找和最小的 K 对数字: 19-heap/123-find-k-pairs-with-smallest-sums.md
+      - 124. 数据流的中位数: 19-heap/124-find-median-from-data-stream.md
+  - 位运算:
+      - 章节概述: 20-bit-manipulation/index.md
+      - 125. 二进制求和: 20-bit-manipulation/125-add-binary.md
+      - 126. 颠倒二进制位: 20-bit-manipulation/126-reverse-bits.md
+      - 127. 位1的个数: 20-bit-manipulation/127-number-of-1-bits.md
+      - 128. 只出现一次的数字: 20-bit-manipulation/128-single-number.md
+      - 129. 只出现一次的数字 II: 20-bit-manipulation/129-single-number-ii.md
+      - 130. 数字范围按位与: 20-bit-manipulation/130-bitwise-and-of-numbers-range.md
+  - 数学:
+      - 章节概述: 21-math/index.md
+      - 131. 回文数: 21-math/131-palindrome-number.md
+      - 132. 加一: 21-math/132-plus-one.md
+      - 133. 阶乘后的零: 21-math/133-factorial-trailing-zeroes.md
+      - 134. x 的平方根: 21-math/134-sqrtx.md
+      - 135. Pow(x, n): 21-math/135-powx-n.md
+      - 136. 直线上最多的点数: 21-math/136-max-points-on-a-line.md
+  - 一维动态规划:
+      - 章节概述: 22-1d-dp/index.md
+      - 137. 爬楼梯: 22-1d-dp/137-climbing-stairs.md
+      - 138. 打家劫舍: 22-1d-dp/138-house-robber.md
+      - 139. 单词拆分: 22-1d-dp/139-word-break.md
+      - 140. 零钱兑换: 22-1d-dp/140-coin-change.md
+      - 141. 最长递增子序列: 22-1d-dp/141-longest-increasing-subsequence.md
+  - 多维动态规划:
+      - 章节概述: 23-multi-dp/index.md
+      - 142. 三角形最小路径和: 23-multi-dp/142-triangle.md
+      - 143. 最小路径和: 23-multi-dp/143-minimum-path-sum.md
+      - 144. 不同路径 II: 23-multi-dp/144-unique-paths-ii.md
+      - 145. 最长回文子串: 23-multi-dp/145-longest-palindromic-substring.md
+      - 146. 交错字符串: 23-multi-dp/146-interleaving-string.md
+      - 147. 编辑距离: 23-multi-dp/147-edit-distance.md
+      - 148. 买卖股票的最佳时机 III: 23-multi-dp/148-best-time-to-buy-and-sell-stock-iii.md
+      - 149. 买卖股票的最佳时机 IV: 23-multi-dp/149-best-time-to-buy-and-sell-stock-iv.md
+      - 150. 最大正方形: 23-multi-dp/150-maximal-square.md

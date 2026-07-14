@@ -1,0 +1,15 @@
+/* 确保左侧导航栏可垂直滚动 */
+.md-sidebar__scrollwrap {
+    overflow-y: auto !important;
+    max-height: calc(100vh - 2.4rem);
+}
+
+/* 隐藏顶部 tab 导航栏（彻底禁用） */
+.md-tabs {
+    display: none !important;
+}
+
+/* 给侧边栏更多的层级感 */
+.md-nav__item--section > .md-nav__link {
+    font-weight: 700;
+}
