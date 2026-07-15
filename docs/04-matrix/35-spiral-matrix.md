@@ -33,6 +33,28 @@
 
 **空间复杂度：** O(1)，输出数组不计入额外空间。
 
+### 解题流程
+
+下图直观展示了边界收缩法的执行逻辑——每完成一条边，对应的边界向内收缩一格，循环直至边界交错。
+
+```mermaid
+flowchart TD
+    A["开始：初始化四个边界<br/>top=0, bottom=m-1<br/>left=0,  right=n-1"] --> B{"top ≤ bottom<br/>且 left ≤ right?"}
+    B -- 否 --> Z["返回 result"]
+    B -- 是 --> C["第1步：左→右<br/>沿 top 行遍历<br/>matrix[top][j]<br/>完成后 top++"]
+    C --> D["第2步：上→下<br/>沿 right 列遍历<br/>matrix[i][right]<br/>完成后 right--"]
+    D --> E{"top ≤ bottom?"}
+    E -- 是 --> F["第3步：右→左<br/>沿 bottom 行遍历<br/>matrix[bottom][j]<br/>完成后 bottom--"]
+    E -- 否 --> H{"left ≤ right?"}
+    F --> G{"left ≤ right?"}
+    G -- 是 --> H2["第4步：下→上<br/>沿 left 列遍历<br/>matrix[i][left]<br/>完成后 left++"]
+    G -- 否 --> B
+    H2 --> B
+    H -- 否 --> B
+```
+
+> **说明：** 第 3 步和第 4 步前分别检查 `top ≤ bottom` 和 `left ≤ right`，是为了防止单行或单列矩阵在已完成第 1、2 步后产生重复遍历。
+
 ## Go 代码实现
 
 ```go
