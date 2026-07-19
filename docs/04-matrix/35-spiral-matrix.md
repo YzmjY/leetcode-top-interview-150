@@ -38,7 +38,7 @@
 以 `4×3` 矩阵为例，边界收缩法按顺时针方向逐步收窄。你可以点击下方演示的按钮逐步观察每一步的遍历过程：
 
 <iframe
-  src="../../assets/interactive/spiral-matrix-demo.html"
+  src="../../assets/interactive/35-spiral-matrix-demo.html"
   style="width:100%; height:420px; border:none; border-radius:8px; background:transparent;"
   title="螺旋矩阵遍历交互演示">
 </iframe>
