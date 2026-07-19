@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0; --btn-active: #1565C0;
+    --sub-bg: #f5f5f5;
+    --skip-bg: #f0f0f0; --skip-text: #bbb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd;
+      --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+      --skip-bg: #2a2a38; --skip-text: #555;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 16px 20px;
+  }
+  .container { max-width: 700px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 8px; }
+  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+
+  /* Info bar */
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px;
+    font-size: 14px; flex-wrap: wrap;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 500px; text-align: center; }
+
+  /* Pointer info */
+  .pointer-info {
+    display: flex; justify-content: center; gap: 36px; margin-bottom: 10px;
+    font-size: 13px; color: var(--muted);
+  }
+  .pointer-info .lbl { font-weight: bold; }
+  .pointer-info .val { font-family: monospace; font-size: 15px; }
+  .pin-s .lbl { color: #E91E63; }
+  .pin-t .lbl { color: #FF9800; }
+
+  .section-label { font-size: 12px; font-weight: bold; color: var(--muted); text-align: center; margin-bottom: 3px; }
+
+  /* Row wrapper */
+  .two-rows { margin-bottom: 6px; }
+
+  /* Char grid */
+  .char-grid {
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    flex-wrap: wrap; margin-bottom: 2px;
+  }
+  .char-cell {
+    background: var(--cell-bg);
+    border: 2px solid var(--cell-border);
+    border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: bold; color: var(--text);
+    width: 48px; height: 48px;
+    position: relative;
+    transition: border-color 0.25s, background 0.25s, transform 0.15s, opacity 0.25s;
+  }
+  .char-cell .idx {
+    font-size: 9px; color: var(--muted); line-height: 1; margin-top: 1px;
+  }
+  .char-cell .ch {
+    line-height: 1.2;
+  }
+
+  /* S-row cell states */
+  .char-cell.s-active { border-color: #C2185B; background: #F8BBD0; transform: scale(1.08); z-index: 2; }
+  .char-cell.s-matched { border-color: #4CAF50; background: #E8F5E9; }
+  .char-cell.s-done { border-color: #1976D2; background: #E3F2FD; }
+  .char-cell.s-waiting { border-color: #e0e0e0; background: var(--cell-bg); opacity: 0.6; }
+
+  /* T-row cell states */
+  .char-cell.t-active { border-color: #E65100; background: #FFE0B2; transform: scale(1.08); z-index: 2; }
+  .char-cell.t-skipped { border-color: #ccc; background: var(--skip-bg); color: var(--skip-text); opacity: 0.5; }
+  .char-cell.t-match { border-color: #2E7D32; background: #C8E6C9; transform: scale(1.08); z-index: 2; }
+  .char-cell.t-done { border-color: #4CAF50; background: #E8F5E9; }
+
+  .step-tag {
+    position: absolute; top: -8px; right: -8px;
+    background: #1976D2; color: #fff;
+    font-size: 9px; font-weight: bold; width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(0.5);
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .step-tag.show { opacity: 1; transform: scale(1); }
+
+  /* Arrow row */
+  .arrow-row {
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    margin-bottom: 4px; min-height: 20px; flex-wrap: wrap;
+  }
+  .arrow-slot {
+    width: 48px; text-align: center; font-size: 11px; font-weight: bold;
+    color: var(--muted);
+  }
+  .arrow-s { color: #E91E63; }
+  .arrow-t { color: #FF9800; }
+
+  /* Match connector */
+  .match-line {
+    display: flex; align-items: center; justify-content: center;
+    height: 24px; margin-bottom: 4px; color: #4CAF50; font-size: 20px; font-weight: bold;
+  }
+
+  /* Result bar */
+  .result-row {
+    background: var(--sub-bg); border-radius: 8px; padding: 10px 14px;
+    margin-bottom: 10px; font-size: 13px; text-align: center; color: var(--text);
+  }
+  .result-row .highlight { color: #1976D2; font-weight: bold; font-size: 15px; }
+
+  /* Controls */
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+
+  .legend {
+    display: flex; gap: 18px; justify-content: center; margin-top: 10px;
+    font-size: 12px; color: var(--muted); flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+  @media (max-width: 600px) {
+    .char-cell { width: 38px; height: 38px; font-size: 13px; }
+    .char-cell .idx { font-size: 7px; }
+    .arrow-slot { width: 38px; font-size: 9px; }
+    .char-grid { gap: 2px; }
+    .arrow-row { gap: 2px; }
+    .pointer-info { gap: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>判断子序列 — 逐步交互演示</h2>
+  <div class="sub-title">s = "abc", t = "ahbgdc" → true (s 是 t 的子序列)</div>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
+  </div>
+
+  <div class="pointer-info">
+    <div class="pin-s">
+      <span class="lbl">s_ptr: </span>
+      <span class="val" id="sInfo">--</span>
+    </div>
+    <div class="pin-t">
+      <span class="lbl">t_ptr: </span>
+      <span class="val" id="tInfo">--</span>
+    </div>
+  </div>
+
+  <div class="two-rows">
+    <div class="section-label">s (子序列)</div>
+    <div class="char-grid" id="sGrid"></div>
+    <div class="arrow-row" id="sArrowRow"></div>
+
+    <div class="section-label" style="margin-top:4px;">t (目标串)</div>
+    <div class="char-grid" id="tGrid"></div>
+    <div class="arrow-row" id="tArrowRow"></div>
+  </div>
+
+  <div class="result-row" id="resultBar">
+    <span style="color:var(--muted)">判定: </span><span id="resultText" class="highlight">进行中...</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">⏮ 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">◀ 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 ▶</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">▶ 自动播放</button>
+    <button onclick="goStep(steps.length-1)">⏭ 跳到最后</button>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#E91E63"></div>s_ptr (子序列)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div>t_ptr (扫描)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div>匹配成功</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#bbb"></div>t中已跳过</div>
+  </div>
+</div>
+
+<script>
+const sStr = "abc";
+const tStr = "ahbgdc";
+
+const sChars = [];
+for (let i = 0; i < sStr.length; i++) {
+  sChars.push({ ch: sStr[i], idx: i });
+}
+const tChars = [];
+for (let i = 0; i < tStr.length; i++) {
+  tChars.push({ ch: tStr[i], idx: i });
+}
+
+// Simulate all steps
+const steps = [];
+(function simulate() {
+  let sPtr = 0;
+  let tPtr = 0;
+
+  // Initial state
+  steps.push({
+    sPtr: -1, tPtr: -1,
+    sStates: sChars.map(() => 'default'),
+    tStates: tChars.map(() => 'default'),
+    desc: '初始状态 · 点击「下一步」开始 · 共 ' + (tStr.length) + ' 步',
+    verdict: null,
+    sInfo: '--', tInfo: '--'
+  });
+
+  // Step-by-step through t
+  while (tPtr < tStr.length) {
+    if (sPtr < sStr.length && sStr[sPtr] === tStr[tPtr]) {
+      // Match found
+      const sSt = sChars.map(() => 'default');
+      for (let j = 0; j < sPtr; j++) sSt[j] = 's-matched';
+      sSt[sPtr] = 's-active';
+
+      const tSt = tChars.map(() => 'default');
+      for (let j = 0; j < tPtr; j++) tSt[j] = 't-skipped';
+      tSt[tPtr] = 't-match';
+
+      steps.push({
+        sPtr, tPtr,
+        sStates: sSt, tStates: tSt,
+        desc: `匹配! s[${sPtr}]='${sStr[sPtr]}' == t[${tPtr}]='${tStr[tPtr]}' → s_ptr=${sPtr+1}, t_ptr=${tPtr+1}`,
+        verdict: null,
+        sInfo: `[${sPtr}]='${sStr[sPtr]}' 匹配`, tInfo: `[${tPtr}]='${tStr[tPtr]}' 匹配`
+      });
+      sPtr++;
+      tPtr++;
+    } else {
+      // No match, skip t char
+      const sSt = sChars.map(() => 'default');
+      for (let j = 0; j < sPtr; j++) sSt[j] = 's-matched';
+      if (sPtr < sStr.length) sSt[sPtr] = 's-waiting';
+
+      const tSt = tChars.map(() => 'default');
+      for (let j = 0; j < tPtr; j++) tSt[j] = 't-skipped';
+      tSt[tPtr] = 't-active';
+
+      const sCh = sPtr < sStr.length ? `s[${sPtr}]='${sStr[sPtr]}'` : 's已扫描完毕';
+      steps.push({
+        sPtr, tPtr,
+        sStates: sSt, tStates: tSt,
+        desc: `不匹配: ${sCh} != t[${tPtr}]='${tStr[tPtr]}' → 仅 t_ptr=${tPtr+1}`,
+        verdict: null,
+        sInfo: sPtr < sStr.length ? `[${sPtr}]='${sStr[sPtr]}' 等待中` : '--',
+        tInfo: `[${tPtr}]='${tStr[tPtr]}' 跳过`
+      });
+      tPtr++;
+    }
+  }
+
+  // Final verdict
+  const finalSSt = sChars.map(() => 's-done');
+  const finalTSt = tChars.map(() => 't-done');
+  const success = sPtr === sStr.length;
+  steps.push({
+    sPtr: sPtr, tPtr: tPtr,
+    sStates: finalSSt, tStates: finalTSt,
+    desc: success
+      ? `验证完成! s_ptr=${sPtr} == s.length=${sStr.length} → s 是 t 的子序列 → true`
+      : `验证完成! s_ptr=${sPtr} < s.length=${sStr.length} → s 不是 t 的子序列 → false`,
+    verdict: success,
+    sInfo: '完成', tInfo: '完成'
+  });
+})();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+// Build DOM
+const sGrid = document.getElementById('sGrid');
+const sArrowRow = document.getElementById('sArrowRow');
+const tGrid = document.getElementById('tGrid');
+const tArrowRow = document.getElementById('tArrowRow');
+
+for (let i = 0; i < sChars.length; i++) {
+  const cell = document.createElement('div');
+  cell.className = 'char-cell';
+  cell.id = 'sc' + i;
+  cell.innerHTML = `<span class="ch">${sChars[i].ch}</span><span class="idx">${i}</span><span class="step-tag"></span>`;
+  sGrid.appendChild(cell);
+
+  const arrow = document.createElement('div');
+  arrow.className = 'arrow-slot';
+  arrow.id = 'sa' + i;
+  sArrowRow.appendChild(arrow);
+}
+
+for (let i = 0; i < tChars.length; i++) {
+  const cell = document.createElement('div');
+  cell.className = 'char-cell';
+  cell.id = 'tc' + i;
+  cell.innerHTML = `<span class="ch">${tChars[i].ch}</span><span class="idx">${i}</span><span class="step-tag"></span>`;
+  tGrid.appendChild(cell);
+
+  const arrow = document.createElement('div');
+  arrow.className = 'arrow-slot';
+  arrow.id = 'ta' + i;
+  tArrowRow.appendChild(arrow);
+}
+
+function render() {
+  const s = steps[current];
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = s.desc;
+  document.getElementById('sInfo').textContent = s.sInfo;
+  document.getElementById('tInfo').textContent = s.tInfo;
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+
+  // Result text
+  const rText = document.getElementById('resultText');
+  if (s.verdict === true) {
+    rText.textContent = 'true — s 是 t 的子序列!';
+    rText.style.color = '#4CAF50';
+  } else if (s.verdict === false) {
+    rText.textContent = 'false — s 不是 t 的子序列!';
+    rText.style.color = '#F44336';
+  } else {
+    rText.textContent = '进行中...';
+    rText.style.color = '#1976D2';
+  }
+
+  // Reset s cells
+  for (let i = 0; i < sChars.length; i++) {
+    const cell = document.getElementById('sc' + i);
+    cell.className = 'char-cell ' + (s.sStates[i] || 'default');
+    const tag = cell.querySelector('.step-tag');
+    tag.classList.remove('show');
+    tag.textContent = '';
+    document.getElementById('sa' + i).textContent = '';
+  }
+
+  // Reset t cells
+  for (let i = 0; i < tChars.length; i++) {
+    const cell = document.getElementById('tc' + i);
+    cell.className = 'char-cell ' + (s.tStates[i] || 'default');
+    const tag = cell.querySelector('.step-tag');
+    tag.classList.remove('show');
+    tag.textContent = '';
+    document.getElementById('ta' + i).textContent = '';
+  }
+
+  // Show arrows for current pointers
+  if (s.sPtr >= 0 && s.sPtr < sChars.length) {
+    const a = document.getElementById('sa' + s.sPtr);
+    a.textContent = 's_ptr';
+    a.className = 'arrow-slot arrow-s';
+  }
+  if (s.tPtr >= 0 && s.tPtr < tChars.length) {
+    const a = document.getElementById('ta' + s.tPtr);
+    a.textContent = 't_ptr';
+    a.className = 'arrow-slot arrow-t';
+  }
+
+  // Show step tag on active/match cells
+  if (s.sPtr >= 0 && s.sPtr < sChars.length) {
+    const sState = s.sStates[s.sPtr];
+    if (sState === 's-active') {
+      const tag = document.getElementById('sc' + s.sPtr).querySelector('.step-tag');
+      tag.textContent = current;
+      tag.classList.add('show');
+    }
+  }
+  if (s.tPtr >= 0 && s.tPtr < tChars.length) {
+    const tState = s.tStates[s.tPtr];
+    if (tState === 't-active' || tState === 't-match') {
+      const tag = document.getElementById('tc' + s.tPtr).querySelector('.step-tag');
+      tag.textContent = current;
+      tag.classList.add('show');
+    }
+  }
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer);
+    autoRunning = false;
+    document.getElementById('playBtn').textContent = '▶ 自动播放';
+    document.getElementById('playBtn').style.background = '';
+    document.getElementById('playBtn').style.color = '';
+  } else {
+    autoRunning = true;
+    document.getElementById('playBtn').textContent = '⏸ 暂停';
+    document.getElementById('playBtn').style.background = '#1565C0';
+    document.getElementById('playBtn').style.color = '#fff';
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(() => {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 800);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

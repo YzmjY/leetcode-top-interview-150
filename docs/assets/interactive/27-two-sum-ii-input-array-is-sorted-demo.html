@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --sub-bg: #f5f5f5;
+    --left-blue: #1976D2; --left-bg: #E3F2FD;
+    --right-orange: #FF9800; --right-bg: #FFF3E0;
+    --found-green: #388E3C; --found-bg: #E8F5E9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd;
+      --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+      --left-bg: rgba(25,118,210,0.18);
+      --right-bg: rgba(255,152,0,0.18);
+      --found-bg: rgba(56,142,60,0.22);
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 16px 20px;
+  }
+  .container { max-width: 800px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 8px; }
+  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+
+  /* Info bar */
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 6px;
+    font-size: 14px; flex-wrap: wrap;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
+
+  /* State row */
+  .state-row {
+    display: flex; justify-content: center; gap: 20px;
+    background: var(--sub-bg); border-radius: 8px;
+    padding: 10px 16px; margin-bottom: 10px; font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .state-item { text-align: center; min-width: 68px; }
+  .state-val { font-size: 20px; font-weight: bold; font-family: monospace; }
+  .state-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .sv-left .state-val { color: var(--left-blue); }
+  .sv-right .state-val { color: var(--right-orange); }
+  .sv-sum .state-val { color: #7B1FA2; }
+  .sv-target .state-val { color: #1565C0; }
+
+  .section-label { font-size: 12px; font-weight: bold; color: var(--muted); text-align: center; margin-bottom: 4px; }
+
+  /* Cell grid */
+  .cell-grid {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    flex-wrap: wrap; margin-bottom: 2px;
+  }
+  .cell {
+    background: var(--cell-bg);
+    border: 2px solid var(--cell-border);
+    border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: bold; color: var(--text);
+    width: 64px; height: 58px;
+    position: relative;
+    transition: border-color 0.25s, background 0.25s, transform 0.15s;
+  }
+  .cell .idx {
+    font-size: 10px; color: var(--muted); line-height: 1; margin-top: 2px;
+  }
+
+  .cell.c-left { border-color: var(--left-blue); background: var(--left-bg); transform: scale(1.06); z-index: 2; }
+  .cell.c-right { border-color: var(--right-orange); background: var(--right-bg); transform: scale(1.06); z-index: 2; }
+  .cell.c-found { border-color: var(--found-green); background: var(--found-bg); transform: scale(1.08); z-index: 2; }
+  .cell.c-seen { border-color: #bdbdbd; background: var(--cell-bg); opacity: 0.5; }
+  .cell.c-moving-left { border-color: var(--left-blue); background: var(--left-bg); }
+  .cell.c-moving-right { border-color: var(--right-orange); background: var(--right-bg); }
+  .cell.c-final { border-color: var(--found-green); background: var(--found-bg); }
+
+  .step-tag {
+    position: absolute; top: -8px; right: -8px;
+    background: #1976D2; color: #fff;
+    font-size: 9px; font-weight: bold; width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(0.5);
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .step-tag.show { opacity: 1; transform: scale(1); }
+
+  /* Arrow row */
+  .arrow-row {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    margin-bottom: 8px; min-height: 24px; flex-wrap: wrap;
+  }
+  .arrow-slot {
+    width: 64px; text-align: center; font-size: 11px; font-weight: bold;
+    color: var(--muted);
+  }
+  .arrow-left { color: var(--left-blue); }
+  .arrow-right { color: var(--right-orange); }
+
+  /* Result bar */
+  .result-row {
+    background: var(--sub-bg); border-radius: 8px; padding: 10px 14px;
+    margin-bottom: 10px; font-size: 13px; text-align: center; color: var(--text);
+  }
+  .result-row .highlight { color: #1976D2; font-weight: bold; font-size: 15px; }
+
+  /* Controls */
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+
+  .legend {
+    display: flex; gap: 18px; justify-content: center; margin-top: 10px;
+    font-size: 12px; color: var(--muted); flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+  @media (max-width: 600px) {
+    .cell { width: 48px; height: 48px; font-size: 14px; }
+    .cell .idx { font-size: 8px; }
+    .arrow-slot { width: 48px; font-size: 9px; }
+    .cell-grid, .arrow-row { gap: 3px; }
+    .state-row { gap: 10px; }
+    .state-val { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>两数之和 II (输入有序数组) — 逐步交互演示</h2>
+  <div class="sub-title">numbers = [2, 7, 11, 15], target = 9 → 输出 [1, 2]</div>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
+  </div>
+
+  <div class="state-row">
+    <div class="state-item sv-left">
+      <div class="state-val" id="lVal">--</div>
+      <div class="state-label">left 索引</div>
+    </div>
+    <div class="state-item sv-right">
+      <div class="state-val" id="rVal">--</div>
+      <div class="state-label">right 索引</div>
+    </div>
+    <div class="state-item sv-sum">
+      <div class="state-val" id="sumVal">--</div>
+      <div class="state-label">sum = a + b</div>
+    </div>
+    <div class="state-item sv-target">
+      <div class="state-val" id="targetVal">9</div>
+      <div class="state-label">target</div>
+    </div>
+    <div class="state-item" style="min-width:80px;">
+      <div class="state-val" id="cmpVal" style="color:var(--muted);">--</div>
+      <div class="state-label">判定</div>
+    </div>
+  </div>
+
+  <div class="section-label">有序数组</div>
+  <div class="cell-grid" id="cellGrid"></div>
+  <div class="arrow-row" id="arrowRow"></div>
+
+  <div class="result-row" id="resultBar">
+    <span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight">进行中...</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">&#x23EE; 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
+    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#1976D2"></div>left 指针</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div>right 指针</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#388E3C"></div>找到答案</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#bdbdbd"></div>已跳过</div>
+  </div>
+</div>
+
+<script>
+const numbers = [2, 7, 11, 15];
+const target = 9;
+
+const steps = [];
+(function simulate() {
+  steps.push({
+    leftIdx: -1, rightIdx: -1,
+    cellStates: numbers.map(() => 'default'),
+    desc: '初始状态 · left=0, right=n-1 · 点击「下一步」开始',
+    sum: null, cmp: null, verdict: null,
+    lLabel: '--', rLabel: '--'
+  });
+
+  let left = 0, right = numbers.length - 1;
+  while (left < right) {
+    const sum = numbers[left] + numbers[right];
+    if (sum === target) {
+      const st = numbers.map(() => 'default');
+      st[left] = 'c-found'; st[right] = 'c-found';
+      steps.push({
+        leftIdx: left, rightIdx: right,
+        cellStates: st,
+        desc: `找到! numbers[${left}]=${numbers[left]} + numbers[${right}]=${numbers[right]} = ${sum} == target=${target} → 返回 [${left+1}, ${right+1}]`,
+        sum, cmp: '==', verdict: [left+1, right+1],
+        lLabel: `[${left}]=${numbers[left]}`, rLabel: `[${right}]=${numbers[right]}`
+      });
+      break;
+    } else if (sum < target) {
+      const st = numbers.map(() => 'default');
+      st[left] = 'c-left'; st[right] = 'c-right';
+      steps.push({
+        leftIdx: left, rightIdx: right,
+        cellStates: st,
+        desc: `sum=${numbers[left]}+${numbers[right]}=${sum} < target=${target} → left 右移 (${left}→${left+1})`,
+        sum, cmp: '<', verdict: null,
+        lLabel: `[${left}]=${numbers[left]}`, rLabel: `[${right}]=${numbers[right]}`
+      });
+      // mark old left as seen
+      const st2 = numbers.map(() => 'default');
+      for (let k = 0; k <= left; k++) st2[k] = 'c-seen';
+      if (left + 1 < right) st2[left + 1] = 'c-moving-left';
+      st2[right] = 'c-right';
+      steps.push({
+        leftIdx: left + 1, rightIdx: right,
+        cellStates: st2,
+        desc: `left ${left}→${left+1}, right=${right}`,
+        sum: null, cmp: null, verdict: null,
+        lLabel: `[${left+1}]=${numbers[left+1]}`, rLabel: `[${right}]=${numbers[right]}`
+      });
+      left++;
+    } else {
+      const st = numbers.map(() => 'default');
+      st[left] = 'c-left'; st[right] = 'c-right';
+      steps.push({
+        leftIdx: left, rightIdx: right,
+        cellStates: st,
+        desc: `sum=${numbers[left]}+${numbers[right]}=${sum} > target=${target} → right 左移 (${right}→${right-1})`,
+        sum, cmp: '>', verdict: null,
+        lLabel: `[${left}]=${numbers[left]}`, rLabel: `[${right}]=${numbers[right]}`
+      });
+      const st2 = numbers.map(() => 'default');
+      for (let k = numbers.length - 1; k >= right; k--) st2[k] = 'c-seen';
+      if (right - 1 > left) st2[right - 1] = 'c-moving-right';
+      st2[left] = 'c-left';
+      steps.push({
+        leftIdx: left, rightIdx: right - 1,
+        cellStates: st2,
+        desc: `left=${left}, right ${right}→${right-1}`,
+        sum: null, cmp: null, verdict: null,
+        lLabel: `[${left}]=${numbers[left]}`, rLabel: `[${right-1}]=${numbers[right-1]}`
+      });
+      right--;
+    }
+  }
+
+  // Final
+  const finalSt = numbers.map(() => 'default');
+  for (let k = 0; k < numbers.length; k++) finalSt[k] = 'c-seen';
+  if (steps[steps.length - 1].verdict) {
+    finalSt[steps[steps.length - 1].leftIdx] = 'c-final';
+    finalSt[steps[steps.length - 1].rightIdx] = 'c-final';
+  }
+  steps.push({
+    leftIdx: -1, rightIdx: -1,
+    cellStates: finalSt,
+    desc: '算法完成!',
+    sum: null, cmp: null, verdict: steps[steps.length - 1].verdict,
+    lLabel: '完成', rLabel: '完成'
+  });
+})();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+const cellGrid = document.getElementById('cellGrid');
+const arrowRow = document.getElementById('arrowRow');
+for (let i = 0; i < numbers.length; i++) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  cell.id = 'cc' + i;
+  cell.innerHTML = `<span>${numbers[i]}</span><span class="idx">[${i}]</span><span class="step-tag"></span>`;
+  cellGrid.appendChild(cell);
+
+  const arrow = document.createElement('div');
+  arrow.className = 'arrow-slot';
+  arrow.id = 'ar' + i;
+  arrowRow.appendChild(arrow);
+}
+
+function render() {
+  const s = steps[current];
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = s.desc;
+  document.getElementById('lVal').textContent = s.leftIdx >= 0 ? s.leftIdx : '--';
+  document.getElementById('rVal').textContent = s.rightIdx >= 0 ? s.rightIdx : '--';
+  document.getElementById('sumVal').textContent = s.sum !== null ? s.sum : '--';
+  document.getElementById('targetVal').textContent = target;
+  const cmpEl = document.getElementById('cmpVal');
+  if (s.cmp === '<') { cmpEl.textContent = 'sum < target'; cmpEl.style.color = 'var(--left-blue)'; }
+  else if (s.cmp === '>') { cmpEl.textContent = 'sum > target'; cmpEl.style.color = 'var(--right-orange)'; }
+  else if (s.cmp === '==') { cmpEl.textContent = 'sum == target'; cmpEl.style.color = 'var(--found-green)'; }
+  else { cmpEl.textContent = '--'; cmpEl.style.color = 'var(--muted)'; }
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+
+  const rText = document.getElementById('resultText');
+  if (s.verdict) {
+    rText.textContent = '[' + s.verdict.join(', ') + '] (1-indexed)';
+    rText.style.color = '#388E3C';
+  } else {
+    rText.textContent = '进行中...';
+    rText.style.color = '#1976D2';
+  }
+
+  for (let i = 0; i < numbers.length; i++) {
+    const cell = document.getElementById('cc' + i);
+    cell.className = 'cell ' + (s.cellStates[i] === 'default' ? '' : s.cellStates[i]);
+    const tag = cell.querySelector('.step-tag');
+    tag.classList.remove('show');
+    tag.textContent = '';
+    document.getElementById('ar' + i).textContent = '';
+    document.getElementById('ar' + i).className = 'arrow-slot';
+  }
+
+  if (s.leftIdx >= 0) {
+    document.getElementById('ar' + s.leftIdx).textContent = 'left';
+    document.getElementById('ar' + s.leftIdx).className = 'arrow-slot arrow-left';
+  }
+  if (s.rightIdx >= 0 && s.rightIdx < numbers.length) {
+    document.getElementById('ar' + s.rightIdx).textContent = 'right';
+    document.getElementById('ar' + s.rightIdx).className = 'arrow-slot arrow-right';
+  }
+
+  if (s.leftIdx >= 0) {
+    const tag = document.getElementById('cc' + s.leftIdx).querySelector('.step-tag');
+    tag.textContent = '' + current;
+    tag.classList.add('show');
+  }
+  if (s.rightIdx >= 0 && s.rightIdx < numbers.length && s.rightIdx !== s.leftIdx) {
+    const tag = document.getElementById('cc' + s.rightIdx).querySelector('.step-tag');
+    tag.textContent = '' + current;
+    tag.classList.add('show');
+  }
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer);
+    autoRunning = false;
+    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
+    document.getElementById('playBtn').classList.remove('play-btn');
+    document.getElementById('playBtn').style.background = '';
+    document.getElementById('playBtn').style.color = '';
+  } else {
+    autoRunning = true;
+    document.getElementById('playBtn').textContent = '\u23F8 暂停';
+    document.getElementById('playBtn').classList.add('play-btn');
+    document.getElementById('playBtn').style.background = '#1976D2';
+    document.getElementById('playBtn').style.color = '#fff';
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(() => {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 900);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

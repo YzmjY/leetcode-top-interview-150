@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --sub-bg: #f5f5f5;
+    --bar-gray: #bdbdbd;
+    --bar-active: #1976D2;
+    --water-fill: rgba(25,118,210,0.25);
+    --flash-green: #4CAF50;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd;
+      --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+      --bar-gray: #555;
+      --bar-active: #42A5F5;
+      --water-fill: rgba(66,165,245,0.30);
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 16px 20px;
+  }
+  .container { max-width: 900px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 8px; }
+  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 6px;
+    font-size: 14px; flex-wrap: wrap;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
+
+  .state-row {
+    display: flex; justify-content: center; gap: 16px;
+    background: var(--sub-bg); border-radius: 8px;
+    padding: 10px 16px; margin-bottom: 8px; font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .state-item { text-align: center; min-width: 70px; }
+  .state-val { font-size: 20px; font-weight: bold; font-family: monospace; }
+  .state-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .sv-area .state-val { color: #1976D2; }
+  .sv-max .state-val { color: #388E3C; }
+
+  /* Chart area */
+  .chart-area {
+    display: flex; justify-content: center; align-items: flex-end;
+    gap: 4px; height: 180px; margin-bottom: 4px;
+    padding: 0 4px; position: relative;
+  }
+  .bar-wrap {
+    display: flex; flex-direction: column; align-items: center; flex: 1; max-width: 72px;
+    position: relative;
+  }
+  .bar {
+    width: 100%; border-radius: 6px 6px 0 0;
+    background: var(--bar-gray);
+    transition: background 0.3s, box-shadow 0.3s;
+    position: relative;
+  }
+  .bar.active { background: var(--bar-active); }
+  .bar.flash { background: var(--flash-green); box-shadow: 0 0 12px rgba(76,175,80,0.6); }
+
+  .bar-label { font-size: 12px; font-weight: bold; margin-top: 3px; color: var(--text); text-align: center; }
+  .bar-idx { font-size: 10px; color: var(--muted); text-align: center; }
+
+  /* Water overlay */
+  .water-rect {
+    position: absolute; left: 0; right: 0;
+    background: var(--water-fill);
+    border: 2px solid rgba(25,118,210,0.5);
+    border-top: none;
+    pointer-events: none;
+    transition: left 0.4s, right 0.4s, height 0.4s, bottom 0.4s, background 0.3s;
+    z-index: 1;
+  }
+  .water-rect.flash { background: rgba(76,175,80,0.35); border-color: rgba(76,175,80,0.7); }
+
+  /* Arrow row */
+  .arrow-row {
+    display: flex; justify-content: center; gap: 4px;
+    margin-bottom: 4px; min-height: 24px; flex-wrap: nowrap;
+  }
+  .arrow-slot {
+    flex: 1; max-width: 72px; text-align: center; font-size: 10px; font-weight: bold;
+    color: var(--muted); min-width: 36px;
+  }
+
+  .result-row {
+    background: var(--sub-bg); border-radius: 8px; padding: 10px 14px;
+    margin-bottom: 10px; font-size: 13px; text-align: center; color: var(--text);
+  }
+  .result-row .highlight { color: #1976D2; font-weight: bold; font-size: 15px; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+
+  .legend {
+    display: flex; gap: 18px; justify-content: center; margin-top: 10px;
+    font-size: 12px; color: var(--muted); flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+  @media (max-width: 650px) {
+    .bar-label { font-size: 10px; }
+    .bar-idx { font-size: 8px; }
+    .state-row { gap: 8px; }
+    .state-val { font-size: 16px; }
+    .arrow-slot { font-size: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>盛最多水的容器 — 逐步交互演示</h2>
+  <div class="sub-title">height = [1, 8, 6, 2, 5, 4, 8, 3, 7] → 最大面积 = 49</div>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
+  </div>
+
+  <div class="state-row">
+    <div class="state-item">
+      <div class="state-val" id="leftVal" style="color:#1976D2;">--</div>
+      <div class="state-label">left 索引</div>
+    </div>
+    <div class="state-item">
+      <div class="state-val" id="rightVal" style="color:#FF9800;">--</div>
+      <div class="state-label">right 索引</div>
+    </div>
+    <div class="state-item">
+      <div class="state-val" id="hLeftVal" style="color:#1976D2;">--</div>
+      <div class="state-label">height[left]</div>
+    </div>
+    <div class="state-item">
+      <div class="state-val" id="hRightVal" style="color:#FF9800;">--</div>
+      <div class="state-label">height[right]</div>
+    </div>
+    <div class="state-item sv-area">
+      <div class="state-val" id="areaVal">--</div>
+      <div class="state-label">当前面积</div>
+    </div>
+    <div class="state-item sv-max">
+      <div class="state-val" id="maxVal">0</div>
+      <div class="state-label">最大面积</div>
+    </div>
+  </div>
+
+  <div class="chart-area" id="chartArea">
+    <div class="water-rect" id="waterRect" style="display:none;"></div>
+  </div>
+  <div class="arrow-row" id="arrowRow"></div>
+
+  <div class="result-row" id="resultBar">
+    <span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight">进行中...</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">&#x23EE; 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
+    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#1976D2"></div>参与计算的柱子</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#bdbdbd"></div>普通柱子</div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(25,118,210,0.25)"></div>水量矩形</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div>新最大面积闪烁</div>
+  </div>
+</div>
+
+<script>
+const heights = [1, 8, 6, 2, 5, 4, 8, 3, 7];
+const maxHeight = Math.max(...heights);
+
+const steps = [];
+(function simulate() {
+  steps.push({
+    left: -1, right: -1,
+    desc: '初始状态 · left=0, right=n-1 · 点击「下一步」开始',
+    area: null, maxArea: 0, isNewMax: false,
+    hLeft: null, hRight: null
+  });
+
+  let left = 0, right = heights.length - 1;
+  let maxArea = 0;
+
+  while (left < right) {
+    const hL = heights[left], hR = heights[right];
+    const w = right - left;
+    const h = Math.min(hL, hR);
+    const area = w * h;
+    const isNewMax = area > maxArea;
+    if (isNewMax) maxArea = area;
+
+    steps.push({
+      left, right,
+      desc: `left[${left}]=${hL}, right[${right}]=${hR}, 宽度=${w}, 高度=min(${hL},${hR})=${h}, 面积=${area}${isNewMax ? ' ← 新最大值!' : ''}`,
+      area, maxArea, isNewMax,
+      hLeft: hL, hRight: hR
+    });
+
+    // Move the shorter line
+    if (hL <= hR) left++;
+    else right--;
+
+    steps.push({
+      left: left < right ? left : right, right: left < right ? right : left,
+      desc: hL <= hR
+        ? `height[${left-1}]=${hL} <= height[${right}]=${hR} → 移动较短的一边: left ${left-1}→${left}`
+        : `height[${left}]=${hL} > height[${right+1}]=${hR} → 移动较短的一边: right ${right+1}→${right}`,
+      area: null, maxArea, isNewMax: false,
+      hLeft: null, hRight: null
+    });
+  }
+
+  steps.push({
+    left: -1, right: -1,
+    desc: `算法完成! left >= right → 最大面积 = ${maxArea}`,
+    area: null, maxArea, isNewMax: false,
+    hLeft: null, hRight: null
+  });
+})();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+const chartArea = document.getElementById('chartArea');
+const arrowRow = document.getElementById('arrowRow');
+const waterRect = document.getElementById('waterRect');
+const bars = [];
+
+heights.forEach((h, i) => {
+  const wrap = document.createElement('div');
+  wrap.className = 'bar-wrap';
+  const barH = Math.max(18, (h / maxHeight) * 155);
+  wrap.innerHTML = `
+    <div class="bar" style="height:${barH}px;" id="bar${i}"></div>
+    <span class="bar-label">${h}</span>
+    <span class="bar-idx">[${i}]</span>
+  `;
+  chartArea.appendChild(wrap);
+  bars.push(wrap.querySelector('.bar'));
+
+  const arrow = document.createElement('div');
+  arrow.className = 'arrow-slot';
+  arrow.id = 'ar' + i;
+  arrowRow.appendChild(arrow);
+});
+
+function render() {
+  const s = steps[current];
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = s.desc;
+  document.getElementById('leftVal').textContent = s.left >= 0 ? s.left : '--';
+  document.getElementById('rightVal').textContent = s.right >= 0 && s.right < heights.length ? s.right : '--';
+  document.getElementById('hLeftVal').textContent = s.hLeft !== null ? s.hLeft : '--';
+  document.getElementById('hRightVal').textContent = s.hRight !== null ? s.hRight : '--';
+  document.getElementById('areaVal').textContent = s.area !== null ? s.area : '--';
+  document.getElementById('maxVal').textContent = s.maxArea;
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+
+  const rText = document.getElementById('resultText');
+  if (current >= steps.length - 1) {
+    rText.textContent = '最大面积 = ' + s.maxArea + ' (位置 1 和 8, heights[1]=8, heights[8]=7)';
+    rText.style.color = '#388E3C';
+  } else {
+    rText.textContent = '进行中...';
+    rText.style.color = '#1976D2';
+  }
+
+  // Reset bars
+  bars.forEach(b => { b.classList.remove('active', 'flash'); });
+  waterRect.style.display = 'none';
+  waterRect.classList.remove('flash');
+
+  // Reset arrows
+  for (let i = 0; i < heights.length; i++) {
+    document.getElementById('ar' + i).textContent = '';
+    document.getElementById('ar' + i).className = 'arrow-slot';
+  }
+
+  // Highlight active bars and draw water rect
+  if (s.left >= 0 && s.right >= 0 && s.left < s.right && s.area !== null) {
+    bars[s.left].classList.add('active');
+    bars[s.right].classList.add('active');
+
+    if (s.isNewMax) {
+      bars[s.left].classList.add('flash');
+      bars[s.right].classList.add('flash');
+    }
+
+    // Position water rect
+    const leftWrap = bars[s.left].parentElement;
+    const rightWrap = bars[s.right].parentElement;
+    const areaRect = chartArea.getBoundingClientRect();
+    const leftRect = leftWrap.getBoundingClientRect();
+    const rightRect = rightWrap.getBoundingClientRect();
+    const waterH = (Math.min(s.hLeft, s.hRight) / maxHeight) * 155;
+    const bottomOff = areaRect.bottom;
+
+    waterRect.style.display = 'block';
+    waterRect.style.left = (leftRect.left - areaRect.left) + 'px';
+    waterRect.style.right = (areaRect.right - rightRect.right) + 'px';
+    waterRect.style.bottom = (bottomOff - (bars[s.left].getBoundingClientRect().top + bars[s.left].offsetHeight - waterH)) + 'px';
+    waterRect.style.height = waterH + 'px';
+
+    if (s.isNewMax) waterRect.classList.add('flash');
+  }
+
+  // Show arrows
+  if (s.left >= 0 && s.left < heights.length) {
+    const el = document.getElementById('ar' + s.left);
+    el.textContent = 'left';
+    el.className = 'arrow-slot';
+    el.style.color = '#1976D2';
+    el.style.fontWeight = 'bold';
+  }
+  if (s.right >= 0 && s.right < heights.length && s.right !== s.left) {
+    const el = document.getElementById('ar' + s.right);
+    el.textContent = 'right';
+    el.className = 'arrow-slot';
+    el.style.color = '#FF9800';
+    el.style.fontWeight = 'bold';
+  }
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer);
+    autoRunning = false;
+    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
+    document.getElementById('playBtn').classList.remove('play-btn');
+    document.getElementById('playBtn').style.background = '';
+    document.getElementById('playBtn').style.color = '';
+  } else {
+    autoRunning = true;
+    document.getElementById('playBtn').textContent = '\u23F8 暂停';
+    document.getElementById('playBtn').classList.add('play-btn');
+    document.getElementById('playBtn').style.background = '#1976D2';
+    document.getElementById('playBtn').style.color = '#fff';
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(() => {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 1000);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>
