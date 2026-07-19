@@ -49,6 +49,17 @@ randomizedSet.getRandom(); // 由于 2 是集合中唯一的数字，getRandom �
 
 **空间复杂度：** O(n)，存储所有元素。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/12-insert-delete-getrandom-o1-demo.html"
+  style="width:100%; height:450px; border:none; border-radius:8px; background:transparent;"
+  title="O(1) 时间插入、删除和获取随机元素 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

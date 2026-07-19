@@ -41,6 +41,17 @@
 
 **空间复杂度：** O(1)，原地操作。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/03-remove-duplicates-from-sorted-array-demo.html"
+  style="width:100%; height:450px; border:none; border-radius:8px; background:transparent;"
+  title="删除有序数组中的重复项 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

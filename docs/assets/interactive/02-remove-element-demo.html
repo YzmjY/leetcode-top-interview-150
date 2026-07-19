@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0; --btn-active: #1565C0;
+    --sub-bg: #f5f5f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd;
+      --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 20px;
+  }
+  .container { max-width: 700px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 12px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 16px; font-size: 14px;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 40px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 450px; }
+
+  .section-label { font-size: 12px; font-weight: bold; color: var(--muted); text-align: center; margin-bottom: 4px; }
+  .array-row {
+    display: flex; align-items: flex-end; justify-content: center; gap: 5px; margin-bottom: 4px;
+  }
+  .cell {
+    background: var(--cell-bg);
+    border: 2px solid var(--cell-border);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: bold; color: var(--text);
+    width: 56px; height: 56px;
+    position: relative;
+    transition: border-color 0.25s, background 0.25s, transform 0.15s;
+  }
+  .cell.slow { border-color: #4CAF50; background: #E8F5E9; }
+  .cell.fast { border-color: #1976D2; background: #E3F2FD; }
+  .cell.skip { border-color: #E53935; background: #FFEBEE; }
+  .cell.keep { border-color: #43A047; background: #C8E6C9; }
+  .cell.done { border-color: #9E9E9E; background: #EEEEEE; opacity: 0.5; }
+  .cell.active-fast { transform: scale(1.06); }
+  .cell.active-slow { transform: scale(1.06); }
+
+  .step-tag {
+    position: absolute; top: -8px; right: -8px;
+    background: #1976D2; color: #fff;
+    font-size: 9px; font-weight: bold; width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(0.5);
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .step-tag.show { opacity: 1; transform: scale(1); }
+
+  .ptr-row {
+    display: flex; align-items: center; justify-content: center; gap: 5px; margin-bottom: 14px; min-height: 24px;
+    flex-wrap: wrap;
+  }
+  .ptr-indicator {
+    width: 56px; text-align: center; font-size: 10px; font-weight: bold;
+    transition: opacity 0.2s;
+  }
+  .ptr-indicator.dim { opacity: 0.25; }
+  .ptr-slow { color: #4CAF50; }
+  .ptr-fast { color: #1976D2; }
+
+  .result-row {
+    background: var(--sub-bg); border-radius: 8px; padding: 10px 14px;
+    margin-bottom: 10px; font-family: monospace; font-size: 13px;
+    word-break: break-all; color: var(--text); text-align: center;
+  }
+  .result-row .highlight { color: #1976D2; font-weight: bold; font-size: 14px; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+
+  .legend {
+    display: flex; gap: 18px; justify-content: center; margin-top: 12px;
+    font-size: 12px; color: var(--muted); flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>移除元素 — 逐步交互演示 (val=3)</h2>
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">点击「下一步」开始 · 双指针 slow / fast</span>
+  </div>
+
+  <div class="section-label">nums = [3, 2, 2, 3]</div>
+  <div class="array-row" id="numsRow"></div>
+  <div class="ptr-row" id="ptrRow"></div>
+
+  <div class="result-row" id="resultBar">
+    <span style="color:var(--muted)">有效长度 k = </span><span id="resultText" class="highlight"></span>
+    <span style="color:var(--muted)"> &nbsp;|&nbsp; nums = </span><span id="numsText" style="color: var(--text);"></span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">⏮ 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">◀ 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 ▶</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">▶ 自动播放</button>
+    <button onclick="goStep(steps.length - 1)">⏭ 跳到最后</button>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#1976D2"></div>fast (遍历指针)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div>slow (写入指针)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#E53935"></div>跳过 (==val)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#43A047"></div>保留 (!=val)</div>
+  </div>
+</div>
+
+<script>
+const numsInit = [3,2,2,3];
+const val = 3;
+
+const steps = [];
+(function simulate() {
+  let arr = [...numsInit];
+  let slow = 0;
+  let fast = 0;
+
+  // Step 0: initial
+  steps.push({ arr: [...arr], slow, fast, desc: '初始状态：slow=0, fast=0', action: null, keep: null });
+
+  for (fast = 0; fast < arr.length; fast++) {
+    if (arr[fast] !== val) {
+      arr[slow] = arr[fast];
+      steps.push({
+        arr: [...arr], slow, fast,
+        desc: `fast=${fast}: nums[${fast}]=${arr[fast]} ≠ ${val} → 保留! nums[${slow}]=${arr[fast]}, slow++`,
+        action: 'keep', keep: true
+      });
+      slow++;
+    } else {
+      steps.push({
+        arr: [...arr], slow, fast,
+        desc: `fast=${fast}: nums[${fast}]=${arr[fast]} == ${val} → 跳过, fast++`,
+        action: 'skip', keep: false
+      });
+    }
+  }
+
+  // Final step
+  steps.push({
+    arr: [...arr], slow, fast: arr.length,
+    desc: `完成! fast=${arr.length} 越界, 有效长度 k = slow = ${slow}`,
+    action: null, keep: null, done: true
+  });
+})();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+const numsRow = document.getElementById('numsRow');
+const ptrRow = document.getElementById('ptrRow');
+const N = 4;
+
+for (let i = 0; i < N; i++) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  cell.id = 'nc' + i;
+  cell.innerHTML = `<span class="cell-val">${numsInit[i]}</span><span class="step-tag"></span>`;
+  numsRow.appendChild(cell);
+
+  const ptr = document.createElement('div');
+  ptr.className = 'ptr-indicator dim';
+  ptr.id = 'ptr' + i;
+  ptrRow.appendChild(ptr);
+}
+
+// Track which positions are "reserved" (written by slow)
+const reserved = new Set();
+
+function render() {
+  const s = steps[current];
+  const stepNumEl = document.getElementById('stepNum');
+  const stepDescEl = document.getElementById('stepDesc');
+  const resultText = document.getElementById('resultText');
+  const numsText = document.getElementById('numsText');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+
+  // Clear all
+  for (let i = 0; i < N; i++) {
+    const c = document.getElementById('nc' + i);
+    c.className = 'cell';
+    c.querySelector('.cell-val').textContent = s.arr[i];
+    const tag = c.querySelector('.step-tag');
+    tag.classList.remove('show');
+    tag.textContent = '';
+    document.getElementById('ptr' + i).className = 'ptr-indicator dim';
+    document.getElementById('ptr' + i).textContent = '';
+  }
+
+  if (s.done) {
+    stepNumEl.textContent = current;
+    stepDescEl.textContent = s.desc;
+    for (let i = 0; i < s.slow; i++) {
+      document.getElementById('nc' + i).classList.add('keep');
+      const tag = document.getElementById('nc' + i).querySelector('.step-tag');
+    }
+    for (let i = s.slow; i < N; i++) {
+      document.getElementById('nc' + i).classList.add('done');
+    }
+    resultText.textContent = s.slow;
+    numsText.textContent = '[' + s.arr.map((v,i) => i < s.slow ? v : '_').join(', ') + ']';
+  } else {
+    if (current === 0) {
+      stepNumEl.textContent = '0';
+      stepDescEl.textContent = '初始状态 · 双指针 slow=0, fast=0 · 共 ' + (steps.length - 2) + ' 步操作';
+    } else {
+      stepNumEl.textContent = current;
+      stepDescEl.textContent = '第 ' + current + ' 步 · ' + s.desc;
+
+      // Mark previously written positions
+      for (let i = 0; i < s.slow; i++) {
+        document.getElementById('nc' + i).classList.add('keep');
+      }
+
+      // Mark current fast position
+      if (s.fast < N) {
+        if (s.keep) {
+          document.getElementById('nc' + s.fast).classList.add('keep');
+        } else if (s.keep === false) {
+          document.getElementById('nc' + s.fast).classList.add('skip');
+        }
+        document.getElementById('nc' + s.fast).classList.add('active-fast');
+        document.getElementById('ptr' + s.fast).className = 'ptr-indicator ptr-fast';
+        document.getElementById('ptr' + s.fast).textContent = 'fast';
+        const tag = document.getElementById('nc' + s.fast).querySelector('.step-tag');
+        tag.textContent = current;
+        tag.classList.add('show');
+      }
+
+      // Show slow pointer
+      if (s.slow < N) {
+        document.getElementById('nc' + s.slow).classList.add('slow', 'active-slow');
+        document.getElementById('ptr' + s.slow).className = 'ptr-indicator ptr-slow';
+        document.getElementById('ptr' + s.slow).textContent = 'slow';
+      }
+    }
+
+    // Compute k for current state
+    let effectiveK = s.slow;
+    if (current > 0 && !s.done) {
+      if (s.keep) effectiveK = s.slow + 1;
+    }
+    resultText.textContent = s.done ? s.slow : effectiveK;
+    // Show nums array with blanks for positions >= k
+    const displayArr = s.arr.map((v,i) => i < effectiveK ? v : '_').join(', ');
+    numsText.textContent = '[' + displayArr + ']';
+  }
+
+  prevBtn.disabled = current <= 0;
+  nextBtn.disabled = current >= steps.length - 1;
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer);
+    autoRunning = false;
+    document.getElementById('playBtn').textContent = '▶ 自动播放';
+    document.getElementById('playBtn').classList.remove('play-btn');
+  } else {
+    document.getElementById('playBtn').textContent = '⏸ 暂停';
+    document.getElementById('playBtn').classList.add('play-btn');
+    autoRunning = true;
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(() => {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 700);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --bar-color: #607D8B; --water-color: rgba(25,118,210,0.35);
+    --ptr-left: #F57C00; --ptr-right: #C2185B;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd;
+      --btn-bg: #333; --btn-hover: #444;
+      --bar-color: #546E7A; --water-color: rgba(100,181,246,0.35);
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 20px;
+  }
+  .container { max-width: 820px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 8px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    margin-bottom: 6px; font-size: 13px; flex-wrap: wrap;
+  }
+  .step-num { font-weight: bold; font-size: 22px; color: #1976D2; min-width: 35px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 12px; max-width: 460px; }
+
+  .var-panel {
+    background: #F5F5F5; border-radius: 8px; padding: 6px 14px;
+    margin-bottom: 6px; font-family: monospace; font-size: 12px;
+    color: var(--text); text-align: center; display: flex;
+    justify-content: center; gap: 20px; flex-wrap: wrap;
+  }
+  @media (prefers-color-scheme: dark) { .var-panel { background: #2a2a3e; } }
+  .var-item { display: flex; align-items: center; gap: 4px; }
+  .var-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  .chart-wrap {
+    display: flex; justify-content: center; margin-bottom: 4px;
+    position: relative;
+  }
+  .chart {
+    display: flex; align-items: flex-end; gap: 3px;
+    height: 150px; padding: 0 20px;
+  }
+  .bar-col {
+    display: flex; flex-direction: column; align-items: center;
+    width: 42px; position: relative;
+  }
+  .bar-stack {
+    width: 38px; border-radius: 4px 4px 0 0;
+    position: relative; transition: height 0.3s, background 0.3s;
+  }
+  .bar-solid {
+    background: var(--bar-color);
+    border-radius: 4px 4px 0 0;
+    transition: height 0.3s;
+  }
+  .bar-water {
+    background: var(--water-color);
+    position: absolute; bottom: 0; left: 0; right: 0;
+    border-radius: 4px 4px 0 0;
+    transition: height 0.3s;
+  }
+  .bar-col .h-label {
+    font-size: 11px; font-weight: bold; margin-top: 2px;
+  }
+  .bar-col .idx-label {
+    font-size: 10px; color: var(--muted); margin-top: 1px;
+  }
+  .bar-col .ptr-marker {
+    position: absolute; bottom: -2px;
+    width: 0; height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    transition: opacity 0.2s;
+    opacity: 0;
+  }
+  .ptr-left { border-bottom: 10px solid var(--ptr-left); }
+  .ptr-right { border-bottom: 10px solid var(--ptr-right); }
+  .ptr-on { opacity: 1; }
+
+  .water-count {
+    text-align: center; font-size: 14px; margin-bottom: 8px;
+  }
+  .water-count span { font-weight: bold; color: #1976D2; font-size: 22px; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+
+  .phase-badge {
+    display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px;
+    font-weight: bold;
+  }
+  .phase-init { background: #eee; color: #666; }
+  .phase-left { background: #FFF3E0; color: #E65100; }
+  .phase-right { background: #FCE4EC; color: #C2185B; }
+  .phase-done { background: #E8F5E9; color: #2E7D32; }
+  @media (prefers-color-scheme: dark) {
+    .phase-init { background: #444; color: #ccc; }
+    .phase-left { background: #3e2a1a; color: #FFB74D; }
+    .phase-right { background: #3e1a2a; color: #F48FB1; }
+    .phase-done { background: #1a3e1a; color: #81C784; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>接雨水 — 双指针逐步交互演示</h2>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">/ 11 步 · 点击「下一步」开始</span>
+    <span class="phase-badge phase-init" id="phaseBdg">初始</span>
+  </div>
+
+  <div class="var-panel" id="varPanel">
+    <span class="var-item"><span class="var-dot" style="background:var(--ptr-left)"></span> left=0</span>
+    <span class="var-item"><span class="var-dot" style="background:var(--ptr-right)"></span> right=11</span>
+    <span class="var-item">leftMax=0</span>
+    <span class="var-item">rightMax=0</span>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="chart" id="chart"></div>
+  </div>
+
+  <div class="water-count">
+    总积水量: <span id="totalWater">0</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">自动播放</button>
+    <button onclick="goStep(totalSteps)" id="endBtn">跳到最后</button>
+  </div>
+</div>
+
+<script>
+const heights = [0,1,0,2,1,0,1,3,2,1,2,1];
+const n = heights.length;
+const maxH = Math.max(...heights);
+const unitH = 38; // px per unit
+const totalSteps = 11;
+
+// Simulate two-pointer
+const steps = [];
+let left = 0, right = n - 1, leftMax = 0, rightMax = 0, water = 0;
+const waterAt = new Array(n).fill(0);
+
+steps.push({
+  phase:'init', left, right, leftMax, rightMax, water,
+  waterAt: [...waterAt],
+  desc:'双指针初始化: left=0, right=' + (n-1)
+});
+
+while (left <= right) {
+  let processed = '';
+  if (heights[left] <= heights[right]) {
+    if (heights[left] >= leftMax) {
+      leftMax = heights[left];
+      processed = 'left';
+    } else {
+      const add = leftMax - heights[left];
+      water += add;
+      waterAt[left] = add;
+      processed = 'left+water';
+    }
+    steps.push({
+      phase: 'left', left, right, leftMax, rightMax, water,
+      waterAt: [...waterAt],
+      desc: processed === 'left'
+        ? 'left(' + left + '): h=' + heights[left] + ' >= leftMax=' + (leftMax) + ', 更新 leftMax=' + leftMax
+        : 'left(' + left + '): h=' + heights[left] + ' < leftMax=' + leftMax + ', 积水 ' + (leftMax-heights[left])
+    });
+    left++;
+  } else {
+    if (heights[right] >= rightMax) {
+      rightMax = heights[right];
+      processed = 'right';
+    } else {
+      const add = rightMax - heights[right];
+      water += add;
+      waterAt[right] = add;
+      processed = 'right+water';
+    }
+    steps.push({
+      phase: 'right', left, right, leftMax, rightMax, water,
+      waterAt: [...waterAt],
+      desc: processed === 'right'
+        ? 'right(' + right + '): h=' + heights[right] + ' >= rightMax=' + (rightMax) + ', 更新 rightMax=' + rightMax
+        : 'right(' + right + '): h=' + heights[right] + ' < rightMax=' + rightMax + ', 积水 ' + (rightMax-heights[right])
+    });
+    right--;
+  }
+  if (left > right) break;
+}
+
+// Fix the last step's left/right display (they've been incremented)
+// The final step shows the state right AFTER the last operation
+const lastStep = steps[steps.length - 1];
+lastStep.phase = 'done';
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+// Build chart
+const chart = document.getElementById('chart');
+for (let i = 0; i < n; i++) {
+  const col = document.createElement('div');
+  col.className = 'bar-col';
+  col.style.height = (maxH * unitH + 24) + 'px';
+  col.innerHTML =
+    '<div style="position:relative;width:38px;height:' + (maxH * unitH) + 'px;">' +
+    '<div class="bar-stack bar-water" id="water' + i + '" style="height:0;position:absolute;bottom:' + (heights[i] * unitH) + 'px;"></div>' +
+    '<div class="bar-stack bar-solid" id="bar' + i + '" style="height:' + (heights[i] * unitH) + 'px;position:absolute;bottom:0;"></div>' +
+    '</div>' +
+    '<div class="h-label">' + heights[i] + '</div>' +
+    '<div class="idx-label">[' + i + ']</div>' +
+    '<div class="ptr-marker ptr-left" id="ptrL' + i + '"></div>' +
+    '<div class="ptr-marker ptr-right" id="ptrR' + i + '"></div>';
+  chart.appendChild(col);
+}
+
+function render() {
+  const s = steps[current];
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = current === 0
+    ? '/ ' + totalSteps + ' 步 · 点击「下一步」开始'
+    : '第 ' + current + ' 步 · ' + s.desc;
+  document.getElementById('totalWater').textContent = s.water;
+
+  document.getElementById('varPanel').innerHTML =
+    '<span class="var-item"><span class="var-dot" style="background:var(--ptr-left)"></span> left=' + s.left + '</span>' +
+    '<span class="var-item"><span class="var-dot" style="background:var(--ptr-right)"></span> right=' + s.right + '</span>' +
+    '<span class="var-item">leftMax=' + s.leftMax + '</span>' +
+    '<span class="var-item">rightMax=' + s.rightMax + '</span>';
+
+  const bdg = document.getElementById('phaseBdg');
+  if (s.phase === 'init') { bdg.textContent = '初始'; bdg.className = 'phase-badge phase-init'; }
+  else if (s.phase === 'left') { bdg.textContent = '左侧'; bdg.className = 'phase-badge phase-left'; }
+  else if (s.phase === 'right') { bdg.textContent = '右侧'; bdg.className = 'phase-badge phase-right'; }
+  else { bdg.textContent = '完成'; bdg.className = 'phase-badge phase-done'; }
+
+  // Update bars
+  for (let i = 0; i < n; i++) {
+    const w = document.getElementById('water' + i);
+    const b = document.getElementById('bar' + i);
+    w.style.height = (s.waterAt[i] * unitH) + 'px';
+    w.style.bottom = (heights[i] * unitH) + 'px';
+    b.style.height = (heights[i] * unitH) + 'px';
+
+    const pL = document.getElementById('ptrL' + i);
+    const pR = document.getElementById('ptrR' + i);
+    pL.classList.toggle('ptr-on', i === s.left);
+    pR.classList.toggle('ptr-on', i === s.right);
+  }
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= totalSteps;
+  document.getElementById('endBtn').disabled = current >= totalSteps;
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, totalSteps));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer); autoRunning = false;
+    document.getElementById('playBtn').textContent = '自动播放';
+    document.getElementById('playBtn').style.background = '#1976D2';
+  } else {
+    autoRunning = true;
+    if (current >= totalSteps) goStep(0);
+    autoTimer = setInterval(() => {
+      if (current < totalSteps) goStep(current + 1);
+      else { clearInterval(autoTimer); autoRunning = false;
+        document.getElementById('playBtn').textContent = '自动播放'; }
+    }, 800);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

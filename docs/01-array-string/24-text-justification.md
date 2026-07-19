@@ -78,6 +78,17 @@
 
 **空间复杂度：** O(maxWidth)，存储结果字符串。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/24-text-justification-demo.html"
+  style="width:100%; height:450px; border:none; border-radius:8px; background:transparent;"
+  title="文本左右对齐 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

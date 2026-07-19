@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --arr-blue: #1976D2; --map-green: #388E3C;
+    --active-orange: #FF9800; --removed-red: #EF5350;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd;
+      --btn-bg: #333; --btn-hover: #444;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 20px;
+  }
+  .container { max-width: 660px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 12px; }
+
+  .ds-panels {
+    display: flex; gap: 20px; justify-content: center; margin-bottom: 12px;
+  }
+  .ds-panel {
+    flex: 1; max-width: 300px;
+  }
+  .ds-title {
+    font-size: 13px; font-weight: bold; color: var(--muted);
+    margin-bottom: 6px; text-align: center;
+  }
+  .arr-strip {
+    display: flex; gap: 6px; justify-content: center;
+    min-height: 56px; align-items: center;
+    background: var(--cell-bg); border-radius: 8px;
+    padding: 8px; border: 2px solid var(--cell-border);
+    flex-wrap: wrap;
+  }
+  .arr-cell {
+    width: 50px; height: 40px;
+    background: var(--bg);
+    border: 2px solid var(--cell-border);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; font-weight: bold; color: var(--text);
+    position: relative;
+    transition: border-color 0.3s, background 0.3s, transform 0.2s;
+  }
+  .arr-cell .idx-tag {
+    position: absolute; bottom: -14px; font-size: 9px;
+    color: var(--muted); white-space: nowrap;
+  }
+  .arr-cell .step-tag {
+    position: absolute; top: -7px; right: -7px;
+    background: #1976D2; color: #fff;
+    font-size: 9px; font-weight: bold; width: 18px; height: 18px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(0.5);
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .arr-cell .step-tag.show { opacity: 1; transform: scale(1); }
+  .arr-cell.highlight { border-color: var(--active-orange); transform: scale(1.08); }
+  .arr-cell.inserted { border-color: var(--arr-blue); background: rgba(25,118,210,0.1); }
+  .arr-cell.removed { border-color: var(--removed-red); background: rgba(239,83,80,0.1); opacity: 0.5; }
+
+  .map-table {
+    width: 100%; border-collapse: collapse;
+    border: 2px solid var(--cell-border); border-radius: 8px;
+    overflow: hidden;
+  }
+  .map-table th {
+    background: var(--btn-bg); font-size: 12px; padding: 6px 10px;
+    color: var(--muted); font-weight: normal; text-align: center;
+  }
+  .map-table td {
+    padding: 6px 10px; text-align: center; font-size: 14px;
+    font-weight: bold; color: var(--text);
+    border-top: 1px solid var(--cell-border);
+    transition: background 0.3s;
+  }
+  .map-table tr.highlight td { background: rgba(255,152,0,0.15); }
+  .map-table tr.new td { background: rgba(25,118,210,0.1); color: var(--arr-blue); }
+  .map-table tr.del td { background: rgba(239,83,80,0.1); color: var(--removed-red); text-decoration: line-through; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-bottom: 6px; font-size: 14px;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: var(--arr-blue); min-width: 36px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; }
+  .op-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-weight: bold; font-size: 12px;
+  }
+  .op-badge.insert { background: rgba(25,118,210,0.15); color: var(--arr-blue); }
+  .op-badge.remove { background: rgba(239,83,80,0.15); color: var(--removed-red); }
+  .op-badge.random { background: rgba(56,142,60,0.15); color: var(--map-green); }
+
+  .random-result {
+    text-align: center; margin-bottom: 8px; font-size: 15px;
+    min-height: 24px;
+  }
+  .random-result .val {
+    font-size: 22px; font-weight: bold; color: var(--map-green);
+  }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+
+  .legend {
+    display: flex; gap: 20px; justify-content: center; margin-top: 10px;
+    font-size: 12px; color: var(--muted);
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>O(1) 插入、删除、获取随机元素 — 逐步交互演示</h2>
+
+  <div class="ds-panels">
+    <div class="ds-panel">
+      <div class="ds-title">数组 (values)</div>
+      <div class="arr-strip" id="arrStrip"></div>
+    </div>
+    <div class="ds-panel">
+      <div class="ds-title">哈希表 (val → index)</div>
+      <div style="background:var(--cell-bg); border:2px solid var(--cell-border); border-radius:8px; overflow:hidden;">
+        <table class="map-table" id="mapTable">
+          <thead><tr><th>Key (值)</th><th>Value (索引)</th></tr></thead>
+          <tbody id="mapBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">/ 5 步 · 点击「下一步」开始</span>
+  </div>
+
+  <div class="random-result" id="randomResult"></div>
+
+  <div class="state-row" style="display:flex;justify-content:center;gap:24px;background:rgba(25,118,210,0.06);border-radius:8px;padding:8px 14px;margin-bottom:10px;font-size:13px;">
+    <div class="state-item" style="text-align:center;">
+      <div class="state-val" id="opLabel" style="font-size:16px;font-weight:bold;color:var(--arr-blue);">--</div>
+      <div class="state-label" style="font-size:11px;color:var(--muted);">当前操作</div>
+    </div>
+    <div class="state-item" style="text-align:center;">
+      <div class="state-val" id="arrSizeVal" style="font-size:16px;font-weight:bold;color:var(--arr-blue);">0</div>
+      <div class="state-label" style="font-size:11px;color:var(--muted);">数组大小</div>
+    </div>
+    <div class="state-item" style="text-align:center;">
+      <div class="state-val" id="mapSizeVal" style="font-size:16px;font-weight:bold;color:var(--map-green);">0</div>
+      <div class="state-label" style="font-size:11px;color:var(--muted);">Map 大小</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">⏮ 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">◀ 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 ▶</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">▶ 自动播放</button>
+    <button onclick="goStep(totalSteps)" title="跳到最终状态">⏭ 跳到最后</button>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#1976D2"></div> 新增/插入</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#EF5350"></div> 删除</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#388E3C"></div> 随机获取</div>
+  </div>
+</div>
+
+<script>
+const totalSteps = 5; // 0: init, 1-5: operations
+
+const ops = [
+  { type: 'insert', val: 1, desc: 'insert(1): 值1不在Map中 → 追加到数组末尾, arr=[1], map={1→0}' },
+  { type: 'insert', val: 2, desc: 'insert(2): 值2不在Map中 → 追加到数组末尾, arr=[1,2], map={1→0, 2→1}' },
+  { type: 'remove', val: 2, desc: 'remove(2): 在Map中找到2→索引1 → 与末尾元素1交换 → pop → 更新map[1]=0 → 删除map[2]' },
+  { type: 'insert', val: 3, desc: 'insert(3): 值3不在Map中 → 追加到数组末尾, arr=[1,3], map={1→0, 3→1}' },
+  { type: 'getRandom', val: null, desc: 'getRandom(): 从数组[1,3]中随机选取 → Math.floor(Math.random()*2)' },
+];
+
+// Simulate state at each step
+const states = [];
+{
+  let arr = [], map = new Map();
+  states.push({ arr: [...arr], map: new Map(map), op: null });
+
+  ops.forEach(op => {
+    if (op.type === 'insert') {
+      if (!map.has(op.val)) {
+        map.set(op.val, arr.length);
+        arr.push(op.val);
+      }
+    } else if (op.type === 'remove') {
+      if (map.has(op.val)) {
+        const idx = map.get(op.val);
+        const lastVal = arr[arr.length - 1];
+        arr[idx] = lastVal;
+        map.set(lastVal, idx);
+        arr.pop();
+        map.delete(op.val);
+      }
+    }
+    // getRandom doesn't change state
+    states.push({ arr: [...arr], map: new Map(map), op: op });
+  });
+}
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+// Build array strip
+const arrStrip = document.getElementById('arrStrip');
+const arrCells = [];
+
+function rebuildArrCells() {
+  arrStrip.innerHTML = '';
+  arrCells.length = 0;
+  // We may need up to 3 cells
+  for (let i = 0; i < 3; i++) {
+    const div = document.createElement('div');
+    div.className = 'arr-cell';
+    div.innerHTML = `<span class="val-text"></span><span class="idx-tag">[${i}]</span><span class="step-tag"></span>`;
+    div.style.display = 'none';
+    arrStrip.appendChild(div);
+    arrCells.push(div);
+  }
+}
+rebuildArrCells();
+
+// Build map table
+const mapBody = document.getElementById('mapBody');
+
+function rebuildMapRows() {
+  mapBody.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td></td><td></td>';
+    tr.style.display = 'none';
+    mapBody.appendChild(tr);
+  }
+}
+rebuildMapRows();
+
+function render() {
+  const state = states[current];
+
+  // Reset
+  arrCells.forEach(c => { c.style.display = 'none'; c.classList.remove('highlight', 'inserted', 'removed'); c.querySelector('.step-tag').classList.remove('show'); });
+  const mapRows = mapBody.querySelectorAll('tr');
+  mapRows.forEach(r => { r.style.display = 'none'; r.classList.remove('highlight', 'new', 'del'); });
+
+  // Render array
+  const arr = state.arr;
+  arr.forEach((val, i) => {
+    const cell = arrCells[i];
+    cell.style.display = 'flex';
+    cell.querySelector('.val-text').textContent = val;
+  });
+
+  // Render map
+  const mapEntries = [...state.map.entries()];
+  mapEntries.forEach(([key, val], i) => {
+    const tr = mapRows[i];
+    tr.style.display = '';
+    const tds = tr.querySelectorAll('td');
+    tds[0].textContent = key;
+    tds[1].textContent = val;
+  });
+
+  // Highlight based on operation
+  if (state.op) {
+    if (state.op.type === 'insert') {
+      // Highlight the inserted value - it's at the last position
+      const lastIdx = state.arr.length - 1;
+      if (lastIdx >= 0 && arrCells[lastIdx]) {
+        arrCells[lastIdx].classList.add('inserted');
+        // Add step tag
+        const tag = arrCells[lastIdx].querySelector('.step-tag');
+        tag.textContent = current;
+        tag.classList.add('show');
+      }
+      // Highlight map row
+      const mapIdx = [...state.map.entries()].findIndex(([k]) => k === state.op.val);
+      if (mapIdx >= 0 && mapRows[mapIdx]) {
+        mapRows[mapIdx].classList.add('new');
+      }
+    } else if (state.op.type === 'remove') {
+      // Show removed effect: the array before removal had it
+      // We show the previous state's array
+      const prevArr = states[current - 1].arr;
+      const removedVal = state.op.val;
+      const removedIdx = prevArr.indexOf(removedVal);
+
+      // Re-show previous array for context
+      arrCells.forEach(c => { c.style.display = 'none'; c.classList.remove('highlight', 'inserted', 'removed'); });
+      prevArr.forEach((val, i) => {
+        const cell = arrCells[i];
+        cell.style.display = 'flex';
+        cell.querySelector('.val-text').textContent = val;
+        if (val === removedVal) {
+          cell.classList.add('removed');
+          const tag = cell.querySelector('.step-tag');
+          tag.textContent = current;
+          tag.classList.add('show');
+        }
+      });
+
+      // Show map with deleted entry
+      const prevMap = states[current - 1].map;
+      const prevEntries = [...prevMap.entries()];
+      mapRows.forEach(r => { r.style.display = 'none'; r.classList.remove('highlight', 'new', 'del'); });
+      prevEntries.forEach(([key, val], i) => {
+        const tr = mapRows[i];
+        tr.style.display = '';
+        const tds = tr.querySelectorAll('td');
+        tds[0].textContent = key;
+        tds[1].textContent = val;
+        if (key === removedVal) {
+          tr.classList.add('del');
+        }
+      });
+    } else if (state.op.type === 'getRandom') {
+      // Highlight all array elements as candidates
+      arr.forEach((val, i) => {
+        if (arrCells[i]) {
+          arrCells[i].classList.add('highlight');
+          const tag = arrCells[i].querySelector('.step-tag');
+          tag.textContent = current;
+          tag.classList.add('show');
+        }
+      });
+      // Show random result
+      const randVal = arr[Math.floor(Math.random() * arr.length)];
+      document.getElementById('randomResult').innerHTML =
+        '<span style="color:var(--muted)">随机结果: </span><span class="val">' + randVal + '</span>';
+    } else {
+      document.getElementById('randomResult').innerHTML = '';
+    }
+  } else {
+    document.getElementById('randomResult').innerHTML = '';
+  }
+
+  // Step tags on array cells for processed steps (except remove which has its own display)
+  if (!state.op || state.op.type !== 'remove') {
+    for (let t = 1; t <= current; t++) {
+      const st = states[t];
+      if (st.op && st.op.type === 'insert' && t <= current) {
+        const lastIdx = st.arr.length - 1;
+        if (lastIdx >= 0 && arrCells[lastIdx]) {
+          const tag = arrCells[lastIdx].querySelector('.step-tag');
+          // Only set if the cell still shows this value
+          if (arrCells[lastIdx].querySelector('.val-text').textContent == st.op.val) {
+            tag.textContent = t;
+            tag.classList.add('show');
+          }
+        }
+      }
+    }
+  }
+
+  // Info
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = state.op ? state.op.desc : '初始状态: 空数组, 空Map';
+
+  const opLabel = document.getElementById('opLabel');
+  opLabel.textContent = state.op ? state.op.type + '(' + (state.op.val !== null ? state.op.val : '') + ')' : '--';
+  opLabel.className = 'state-val';
+  if (state.op) {
+    opLabel.innerHTML = '<span class="op-badge ' + state.op.type + '">' + state.op.type + (state.op.val !== null ? '(' + state.op.val + ')' : '') + '</span>';
+  } else {
+    opLabel.innerHTML = '--';
+  }
+
+  document.getElementById('arrSizeVal').textContent = state.arr.length;
+  document.getElementById('mapSizeVal').textContent = state.map.size;
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= totalSteps;
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, totalSteps));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer);
+    autoRunning = false;
+    document.getElementById('playBtn').textContent = '▶ 自动播放';
+    document.getElementById('playBtn').classList.remove('play-btn');
+    document.getElementById('playBtn').style.background = '';
+    document.getElementById('playBtn').style.color = '';
+  } else {
+    document.getElementById('playBtn').textContent = '⏸ 暂停';
+    document.getElementById('playBtn').classList.add('play-btn');
+    document.getElementById('playBtn').style.background = '#1976D2';
+    document.getElementById('playBtn').style.color = '#fff';
+    autoRunning = true;
+    if (current >= totalSteps) goStep(0);
+    autoTimer = setInterval(() => {
+      if (current < totalSteps) goStep(current + 1);
+      else toggleAuto();
+    }, 800);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

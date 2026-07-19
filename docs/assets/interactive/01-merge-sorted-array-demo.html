@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0; --btn-active: #1565C0;
+    --sub-bg: #f5f5f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd;
+      --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 20px;
+  }
+  .container { max-width: 700px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 12px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 8px; font-size: 14px;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 40px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 420px; }
+
+  .section-label { font-size: 12px; font-weight: bold; color: var(--muted); text-align: center; margin-bottom: 4px; }
+
+  .array-row {
+    display: flex; align-items: flex-end; justify-content: center; gap: 5px; margin-bottom: 4px;
+  }
+  .cell {
+    background: var(--cell-bg);
+    border: 2px solid var(--cell-border);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: bold; color: var(--text);
+    width: 52px; height: 52px;
+    position: relative;
+    transition: border-color 0.25s, background 0.25s, transform 0.15s;
+  }
+  .cell.p1 { border-color: #E91E63; background: #FCE4EC; }
+  .cell.p2 { border-color: #FF9800; background: #FFF3E0; }
+  .cell.tail { border-color: #9C27B0; background: #F3E5F5; }
+  .cell.filled { border-color: #4CAF50; background: #E8F5E9; }
+  .cell.active-p1 { border-color: #C2185B; background: #F8BBD0; transform: scale(1.06); }
+  .cell.active-p2 { border-color: #E65100; background: #FFE0B2; transform: scale(1.06); }
+  .cell.active-tail { border-color: #6A1B9A; background: #E1BEE7; transform: scale(1.06); }
+
+  .step-tag {
+    position: absolute; top: -8px; right: -8px;
+    background: #1976D2; color: #fff;
+    font-size: 9px; font-weight: bold; width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(0.5);
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .step-tag.show { opacity: 1; transform: scale(1); }
+
+  .ptr-row {
+    display: flex; align-items: center; justify-content: center; gap: 5px; margin-bottom: 12px; min-height: 24px;
+    flex-wrap: wrap; font-size: 11px; color: var(--muted);
+  }
+  .ptr-indicator {
+    width: 52px; text-align: center; font-size: 10px; font-weight: bold;
+    transition: opacity 0.2s;
+  }
+  .ptr-indicator.dim { opacity: 0.25; }
+  .ptr-p1 { color: #E91E63; }
+  .ptr-p2 { color: #FF9800; }
+  .ptr-tail { color: #9C27B0; }
+
+  .result-row {
+    background: var(--sub-bg); border-radius: 8px; padding: 10px 14px;
+    margin-bottom: 10px; font-family: monospace; font-size: 13px;
+    word-break: break-all; color: var(--text); text-align: center;
+  }
+  .result-row .highlight { color: #1976D2; font-weight: bold; font-size: 14px; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+
+  .legend {
+    display: flex; gap: 18px; justify-content: center; margin-top: 12px;
+    font-size: 12px; color: var(--muted); flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>合并两个有序数组 — 逐步交互演示</h2>
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">点击「下一步」开始 · 共 5 步</span>
+  </div>
+
+  <div class="section-label">nums1 (m=3 有效, n=3 预留)</div>
+  <div class="array-row" id="nums1Row"></div>
+  <div class="ptr-row" id="ptrRow1"></div>
+
+  <div class="section-label">nums2 (n=3)</div>
+  <div class="array-row" id="nums2Row"></div>
+  <div class="ptr-row" id="ptrRow2"></div>
+
+  <div class="result-row" id="resultBar">
+    <span style="color:var(--muted)">nums1 当前 = </span><span id="resultText" class="highlight"></span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">⏮ 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">◀ 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 ▶</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">▶ 自动播放</button>
+    <button onclick="goStep(steps.length)">⏭ 跳到最后</button>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#E91E63"></div>p1 (nums1)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div>p2 (nums2)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#9C27B0"></div>tail (放置位)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div>已就位</div>
+  </div>
+</div>
+
+<script>
+const nums1Init = [1,2,3,0,0,0];
+const nums2     = [2,5,6];
+const m = 3, n = 3;
+
+// Simulate all steps
+const steps = [];
+(function simulate() {
+  let arr = [...nums1Init];
+  let p1 = m - 1;
+  let p2 = n - 1;
+  let tail = m + n - 1;
+
+  steps.push({ arr: [...arr], p1, p2, tail, desc: '初始状态', action: null });
+
+  while (p2 >= 0) {
+    if (p1 >= 0 && arr[p1] > nums2[p2]) {
+      arr[tail] = arr[p1];
+      steps.push({
+        arr: [...arr], p1, p2, tail,
+        desc: `nums1[${p1}]=${arr[p1]} > nums2[${p2}]=${nums2[p2]} → 放置 ${arr[p1]} 到 tail=${tail}，p1--`,
+        action: 'p1', compareVal1: arr[p1], compareVal2: nums2[p2]
+      });
+      p1--;
+    } else {
+      arr[tail] = nums2[p2];
+      steps.push({
+        arr: [...arr], p1, p2, tail,
+        desc: p1 >= 0
+          ? `nums1[${p1}]=${arr[p1]} ≤ nums2[${p2}]=${nums2[p2]} → 放置 ${nums2[p2]} 到 tail=${tail}，p2--`
+          : `nums1 已无元素 → 放置 nums2[${p2}]=${nums2[p2]} 到 tail=${tail}，p2--`,
+        action: 'p2', compareVal1: p1 >= 0 ? arr[p1] : '?', compareVal2: nums2[p2]
+      });
+      p2--;
+    }
+    tail--;
+  }
+  steps.push({ arr: [...arr], p1: -1, p2: -1, tail: -1, desc: '完成！nums1 = [1,2,2,3,5,6]', action: null, done: true });
+})();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+// Build DOM
+const nums1Row = document.getElementById('nums1Row');
+const nums2Row = document.getElementById('nums2Row');
+const ptrRow1 = document.getElementById('ptrRow1');
+const ptrRow2 = document.getElementById('ptrRow2');
+
+for (let i = 0; i < 6; i++) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  cell.id = 'n1c' + i;
+  cell.innerHTML = `<span class="cell-val">${nums1Init[i]}</span><span class="step-tag"></span>`;
+  nums1Row.appendChild(cell);
+
+  const ptr = document.createElement('div');
+  ptr.className = 'ptr-indicator dim';
+  ptr.id = 'ptr1_' + i;
+  ptr.textContent = '';
+  ptrRow1.appendChild(ptr);
+}
+
+for (let i = 0; i < 3; i++) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  cell.id = 'n2c' + i;
+  cell.innerHTML = `<span class="cell-val">${nums2[i]}</span><span class="step-tag"></span>`;
+  nums2Row.appendChild(cell);
+
+  const ptr = document.createElement('div');
+  ptr.className = 'ptr-indicator dim';
+  ptr.id = 'ptr2_' + i;
+  ptrRow2.appendChild(ptr);
+}
+
+function render() {
+  const s = steps[current];
+  const stepNumEl = document.getElementById('stepNum');
+  const stepDescEl = document.getElementById('stepDesc');
+  const resultText = document.getElementById('resultText');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+
+  // Clear all cell states
+  for (let i = 0; i < 6; i++) {
+    const c = document.getElementById('n1c' + i);
+    c.className = 'cell';
+    c.querySelector('.cell-val').textContent = s.arr[i];
+    const tag = c.querySelector('.step-tag');
+    tag.classList.remove('show');
+    tag.textContent = '';
+    document.getElementById('ptr1_' + i).className = 'ptr-indicator dim';
+    document.getElementById('ptr1_' + i).textContent = '';
+  }
+  for (let i = 0; i < 3; i++) {
+    const c = document.getElementById('n2c' + i);
+    c.className = 'cell';
+    c.querySelector('.cell-val').textContent = nums2[i];
+    const tag = c.querySelector('.step-tag');
+    tag.classList.remove('show');
+    tag.textContent = '';
+    document.getElementById('ptr2_' + i).className = 'ptr-indicator dim';
+    document.getElementById('ptr2_' + i).textContent = '';
+  }
+
+  if (s.done) {
+    stepNumEl.textContent = current;
+    stepDescEl.textContent = '完成！nums1 = [1,2,2,3,5,6]';
+    for (let i = 0; i < 6; i++) {
+      document.getElementById('n1c' + i).classList.add('filled');
+      document.getElementById('n1c' + i).querySelector('.cell-val').textContent = s.arr[i];
+    }
+  } else {
+    if (current === 0) {
+      stepNumEl.textContent = '0';
+      stepDescEl.textContent = '初始状态 · 点击「下一步」开始 · 共 ' + (steps.length - 1) + ' 步';
+    } else {
+      stepNumEl.textContent = current;
+      stepDescEl.textContent = '第 ' + current + ' 步 · ' + s.desc;
+      // Mark the cell that was filled in this step
+      if (s.tail >= 0 && current > 0) {
+        const prevStep = steps[current - 1];
+        if (prevStep.arr[s.tail] === 0 && s.arr[s.tail] !== 0) {
+          // Cell was just filled
+          document.getElementById('n1c' + s.tail).classList.add('filled');
+          const tag = document.getElementById('n1c' + s.tail).querySelector('.step-tag');
+          tag.textContent = current;
+          tag.classList.add('show');
+        }
+      }
+    }
+
+    // Highlight pointers
+    if (s.p1 >= 0) {
+      document.getElementById('n1c' + s.p1).classList.add(s.action === 'p1' ? 'active-p1' : 'p1');
+      document.getElementById('ptr1_' + s.p1).className = 'ptr-indicator ptr-p1';
+      document.getElementById('ptr1_' + s.p1).textContent = 'p1';
+    }
+    if (s.p2 >= 0) {
+      document.getElementById('n2c' + s.p2).classList.add(s.action === 'p2' ? 'active-p2' : 'p2');
+      document.getElementById('ptr2_' + s.p2).className = 'ptr-indicator ptr-p2';
+      document.getElementById('ptr2_' + s.p2).textContent = 'p2';
+    }
+    if (s.tail >= 0) {
+      if (!s.done) {
+        document.getElementById('n1c' + s.tail).classList.add(s.action ? 'active-tail' : 'tail');
+        document.getElementById('ptr1_' + s.tail).className = 'ptr-indicator ptr-tail';
+        document.getElementById('ptr1_' + s.tail).textContent = 'tail';
+      }
+    }
+  }
+
+  resultText.textContent = '[' + s.arr.join(', ') + ']';
+
+  prevBtn.disabled = current <= 0;
+  nextBtn.disabled = current >= steps.length - 1;
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer);
+    autoRunning = false;
+    document.getElementById('playBtn').textContent = '▶ 自动播放';
+    document.getElementById('playBtn').classList.remove('play-btn');
+  } else {
+    document.getElementById('playBtn').textContent = '⏸ 暂停';
+    document.getElementById('playBtn').classList.add('play-btn');
+    autoRunning = true;
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(() => {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 800);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

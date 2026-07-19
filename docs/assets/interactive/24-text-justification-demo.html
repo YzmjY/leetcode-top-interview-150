@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>24. 文本左右对齐</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:#f8f9fa;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
+.container{width:100%;max-width:740px;background:#fff;border-radius:16px;box-shadow:0 2px 16px rgba(0,0,0,.08);padding:28px 24px 20px}
+h1{font-size:20px;font-weight:600;text-align:center;margin-bottom:4px;color:#1a1a2e}
+.subtitle{text-align:center;font-size:13px;color:#888;margin-bottom:14px}
+.words-bar{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.word-cell{padding:4px 10px;border-radius:8px;border:1.5px solid #ddd;background:#fff;font-size:14px;color:#333;font-weight:500;transition:all .25s}
+.word-cell.current{background:#dbeafe;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.25);z-index:1}
+.word-cell.selected{background:#bbf7d0;border-color:#22c55e;color:#14532d}
+.word-cell.overflow{border-color:#ef4444;background:#fef2f2;color:#991b1b}
+.word-cell.pending{border-color:#e5e7eb;color:#cbd5e1}
+.result-lines{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;align-items:center}
+.result-line{font-family:"Consolas","Courier New",monospace;font-size:13px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:6px 14px;color:#14532d;min-width:300px;text-align:left;white-space:pre}
+.result-line .spc{display:inline-block;background:#dcfce7;border-radius:3px}
+.width-meter{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px;font-size:13px;color:#64748b}
+.width-bar{width:200px;height:10px;background:#e5e7eb;border-radius:5px;overflow:hidden}
+.width-fill{height:100%;background:#3b82f6;border-radius:5px;transition:width .4s}
+.info-panel{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin-bottom:14px;text-align:center;font-size:14px;color:#475569;min-height:44px;display:flex;align-items:center;justify-content:center}
+.info-panel .step-num{font-weight:600;color:#3b82f6;margin-right:6px}
+.btn-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.btn{padding:8px 16px;border-radius:8px;border:1px solid #d1d5db;background:#fff;cursor:pointer;font-size:13px;font-family:inherit;color:#374151;transition:all .2s;white-space:nowrap}
+.btn:hover{background:#f3f4f6}
+.btn:active{background:#e5e7eb}
+.btn.primary{background:#3b82f6;color:#fff;border-color:#3b82f6}
+.btn.primary:hover{background:#2563eb}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.result-badge{display:inline-block;padding:4px 14px;border-radius:20px;background:#dcfce7;color:#166534;font-weight:600;font-size:13px;margin-left:6px}
+@media(prefers-color-scheme:dark){
+body{background:#0f172a}
+.container{background:#1e293b;box-shadow:0 2px 16px rgba(0,0,0,.4)}
+h1{color:#e2e8f0}
+.subtitle{color:#94a3b8}
+.word-cell{background:#1e293b;border-color:#334155;color:#cbd5e1}
+.word-cell.current{background:rgba(59,130,246,.2);border-color:#3b82f6}
+.word-cell.selected{background:rgba(34,197,94,.2);border-color:#22c55e;color:#86efac}
+.word-cell.overflow{background:rgba(239,68,68,.15);border-color:#ef4444;color:#fca5a5}
+.word-cell.pending{color:#64748b;border-color:#334155}
+.result-line{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.3);color:#86efac}
+.result-line .spc{background:rgba(34,197,94,.15)}
+.width-meter{color:#94a3b8}
+.width-bar{background:#334155}
+.width-fill{background:#3b82f6}
+.info-panel{background:#0f172a;border-color:#334155;color:#cbd5e1}
+.info-panel .step-num{color:#60a5fa}
+.btn{background:#1e293b;border-color:#475569;color:#cbd5e1}
+.btn:hover{background:#334155}
+.btn.primary{background:#3b82f6;color:#fff}
+.result-badge{background:rgba(34,197,94,.2);color:#86efac}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>24. 文本左右对齐</h1>
+<div class="subtitle">words = ["This","is","an","example","of","text","justification."] &nbsp; maxWidth = 16</div>
+<div class="words-bar" id="wordsBar"></div>
+<div class="width-meter">
+<span>当前行宽度:</span>
+<div class="width-bar"><div class="width-fill" id="widthFill" style="width:0%"></div></div>
+<span id="widthText">0 / 16</span>
+</div>
+<div class="result-lines" id="resultLines"></div>
+<div class="info-panel" id="info"><span class="step-num">准备</span>逐行分配单词，确保每行宽度不超过 maxWidth=16</div>
+<div class="btn-row">
+<button class="btn" id="btnReset">↺ 重置</button>
+<button class="btn" id="btnPrev">◀ 上一步</button>
+<button class="btn primary" id="btnNext">下一步 ▶</button>
+<button class="btn" id="btnAuto">▶ 自动播放</button>
+<button class="btn" id="btnLast">⏭ 最后</button>
+</div>
+</div>
+<script>
+const words = ["This","is","an","example","of","text","justification."];
+const maxWidth = 16;
+const wordLens = words.map(w => w.length);
+
+// Pre-compute line breaks
+// Line 0: "This", "is", "an" → len 4+1+2+1+2=10 (or 4+2+2=8 without last space)
+// But we need leading: This(4) + is(2) + an(2) = 8 chars + 2 min spaces = 10
+// Line 1: "example", "of", "text" → 7+2+4=13 + 2 spaces=15
+// Line 2: "justification." → 14 
+const lines = [
+  { words:["This","is","an"], indices:[0,1,2] },
+  { words:["example","of","text"], indices:[3,4,5] },
+  { words:["justification."], indices:[6] }
+];
+const formattedLines = [
+  "This  is  an    ",
+  "example of text ",
+  "justification.  "
+];
+
+// Steps: walk through each word assignment
+const totalSteps = words.length + 3 + 1; // 7 words + 3 line complete + 1 final
+
+let step = 0;
+let autoTimer = null;
+
+const wordsBar = document.getElementById('wordsBar');
+const widthFill = document.getElementById('widthFill');
+const widthText = document.getElementById('widthText');
+const resultLines = document.getElementById('resultLines');
+const info = document.getElementById('info');
+
+function buildGrid() {
+  wordsBar.innerHTML = '';
+  words.forEach((w, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'word-cell pending';
+    cell.textContent = w;
+    cell.dataset.idx = i;
+    wordsBar.appendChild(cell);
+  });
+  resultLines.innerHTML = '';
+}
+
+function render() {
+  const cells = wordsBar.querySelectorAll('.word-cell');
+  cells.forEach(c => { c.className = 'word-cell pending'; });
+  widthFill.style.width = '0%';
+  widthText.textContent = '0 / ' + maxWidth;
+
+  if (step === 0) {
+    info.innerHTML = '<span class="step-num">准备</span>逐行分配单词，maxWidth = 16。单词长度 + 单词间至少1个空格';
+    resultLines.innerHTML = '';
+    updateButtons();
+    return;
+  }
+
+  // Track which words are selected into which line
+  let lineIdx = 0;
+  let curWidth = 0;
+  let curWords = [];
+  const selectedIndices = [];
+
+  for (let i = 0; i < Math.min(step, words.length); i++) {
+    const wLen = wordLens[i];
+    const addWidth = curWords.length === 0 ? wLen : wLen + 1; // +1 for space before
+    if (curWidth + addWidth <= maxWidth) {
+      curWidth += addWidth;
+      curWords.push(i);
+    } else {
+      // Flush current line
+      selectedIndices.push([...curWords]);
+      curWords = [i];
+      curWidth = wLen;
+      lineIdx++;
+    }
+  }
+  if (curWords.length > 0) selectedIndices.push([...curWords]);
+
+  // Highlight words
+  const allSelected = new Set();
+  selectedIndices.forEach(line => line.forEach(idx => allSelected.add(idx)));
+  cells.forEach(c => {
+    const idx = parseInt(c.dataset.idx);
+    if (allSelected.has(idx)) c.classList.add('selected');
+  });
+
+  // Highlight current word
+  if (step > 0 && step <= words.length) {
+    const currentIdx = step - 1;
+    cells.forEach(c => { if (parseInt(c.dataset.idx) === currentIdx) c.classList.add('current'); });
+
+    // Check if current word causes overflow
+    // Calculate current line width
+    const currentLine = selectedIndices[selectedIndices.length - 1];
+    const lastWordIdx = currentLine[currentLine.length - 1];
+
+    if (lastWordIdx === currentIdx && currentLine.length > 1) {
+      // Check if adding this word would have overflowed
+      const prevWidth = currentLine.slice(0, -1).reduce((sum, idx, i) => sum + wordLens[idx] + (i > 0 ? 1 : 0), 0);
+      const wouldAdd = currentLine.length === 1 ? wordLens[currentIdx] : wordLens[currentIdx] + 1;
+      if (prevWidth + wouldAdd > maxWidth && currentLine.length === 1) {
+        // This is a new line
+      }
+    }
+
+    // Show current line width
+    const thisLine = selectedIndices[selectedIndices.length - 1];
+    if (thisLine.length === 1) {
+      curWidth = wordLens[thisLine[0]];
+    } else {
+      curWidth = thisLine.reduce((sum, idx, i) => sum + wordLens[idx] + (i > 0 ? 1 : 0), 0);
+    }
+    widthFill.style.width = Math.min(100, (curWidth / maxWidth) * 100) + '%';
+    widthText.textContent = curWidth + ' / ' + maxWidth;
+    if (curWidth > maxWidth) cells.forEach(c => { if (parseInt(c.dataset.idx) === currentIdx) c.classList.add('overflow'); });
+
+    info.innerHTML = `<span class="step-num">步骤 ${step}</span>尝试放入 "${words[currentIdx]}" (长度${wordLens[currentIdx]})，当前行宽度 ${curWidth}/${maxWidth}`;
+  }
+
+  // Show lines being formed
+  if (step >= 1) {
+    resultLines.innerHTML = '';
+    for (let li = 0; li < selectedIndices.length; li++) {
+      const lineWords = selectedIndices[li].map(i => words[i]);
+      const raw = lineWords.join(' ').length;
+      const div = document.createElement('div');
+      div.className = 'result-line';
+      // Show with _ as placeholder for now
+      const totalChars = lineWords.reduce((s, w) => s + w.length, 0);
+      const totalSpaces = maxWidth - totalChars;
+      const gaps = lineWords.length - 1;
+      if (li < selectedIndices.length - 1 || step > words.length) {
+        if (gaps > 0) {
+          const base = Math.floor(totalSpaces / gaps);
+          const extra = totalSpaces % gaps;
+          let text = '';
+          for (let wi = 0; wi < lineWords.length; wi++) {
+            text += lineWords[wi];
+            if (wi < gaps) {
+              const sp = base + (wi < extra ? 1 : 0);
+              for (let s = 0; s < sp; s++) text += ' ';
+            }
+          }
+          while (text.length < maxWidth) text += ' ';
+          div.textContent = `[${li}] ` + '"' + text + '"';
+        } else {
+          let text = lineWords[0];
+          while (text.length < maxWidth) text += ' ';
+          div.textContent = `[${li}] ` + '"' + text + '"';
+        }
+      } else {
+        div.textContent = `[${li}] ` + '"' + lineWords.join(' ') + '..."';
+      }
+      resultLines.appendChild(div);
+    }
+  }
+
+  if (step === words.length + 1) {
+    // All words placed, show intermediate
+    const allCells = wordsBar.querySelectorAll('.word-cell');
+    allCells.forEach(c => c.className = 'word-cell selected');
+    info.innerHTML = '<span class="step-num">步骤 ' + step + '</span>所有单词已分配完毕，共 ' + selectedIndices.length + ' 行';
+  }
+
+  if (step === words.length + 2) {
+    wordsBar.querySelectorAll('.word-cell').forEach(c => c.className = 'word-cell selected');
+    // Show final formatted result
+    resultLines.innerHTML = '';
+    formattedLines.forEach((line, i) => {
+      const div = document.createElement('div');
+      div.className = 'result-line';
+      div.textContent = `[${i}] ` + '"' + line + '"';
+      resultLines.appendChild(div);
+    });
+    info.innerHTML = '<span class="step-num">步骤 ' + step + '</span>空格均匀分配完成';
+  }
+
+  if (step >= words.length + 3) {
+    wordsBar.querySelectorAll('.word-cell').forEach(c => c.className = 'word-cell selected');
+    resultLines.innerHTML = '';
+    formattedLines.forEach((line, i) => {
+      const div = document.createElement('div');
+      div.className = 'result-line';
+      div.textContent = `[${i}] ` + '"' + line + '"';
+      resultLines.appendChild(div);
+    });
+    info.innerHTML = '<span class="step-num">完成</span>文本左右对齐结果 ' + '共3行';
+  }
+
+  updateButtons();
+}
+
+function updateButtons() {
+  btnPrev.disabled = step <= 0;
+  btnNext.disabled = step >= totalSteps;
+}
+
+function nextStep() { if (step < totalSteps) { step++; render(); } }
+function prevStep() { if (step > 0) { step--; render(); } }
+function resetAll() { stopAuto(); step = 0; render(); }
+function goLast() { stopAuto(); step = totalSteps; render(); }
+
+function stopAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; btnAuto.textContent = '▶ 自动播放'; } }
+function toggleAuto() {
+  if (autoTimer) { stopAuto(); return; }
+  if (step >= totalSteps) step = 0;
+  btnAuto.textContent = '⏸ 暂停';
+  autoTimer = setInterval(() => { nextStep(); if (step >= totalSteps) stopAuto(); }, 800);
+}
+
+const btnReset = document.getElementById('btnReset');
+const btnPrev = document.getElementById('btnPrev');
+const btnNext = document.getElementById('btnNext');
+const btnAuto = document.getElementById('btnAuto');
+const btnLast = document.getElementById('btnLast');
+
+btnReset.onclick = resetAll;
+btnPrev.onclick = prevStep;
+btnNext.onclick = nextStep;
+btnAuto.onclick = toggleAuto;
+btnLast.onclick = goLast;
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') { e.preventDefault(); nextStep(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); prevStep(); }
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+buildGrid();
+render();
+</script>
+</body>
+</html>

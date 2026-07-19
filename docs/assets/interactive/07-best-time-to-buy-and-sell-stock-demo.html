@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --bar-bg: #e0e0e0;
+    --profit-bar: #4CAF50; --loss-bar: #EF5350;
+    --min-buy: #1976D2; --sell-green: #388E3C;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd;
+      --btn-bg: #333; --btn-hover: #444;
+      --bar-bg: #333;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 20px;
+  }
+  .container { max-width: 640px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 10px; }
+
+  .chart-area {
+    display: flex; justify-content: center; align-items: flex-end;
+    gap: 16px; height: 180px; margin-bottom: 12px;
+    padding: 0 8px;
+    border-bottom: 2px solid var(--cell-border);
+    position: relative;
+  }
+  .bar-wrap {
+    display: flex; flex-direction: column; align-items: center;
+    width: 52px;
+  }
+  .bar {
+    width: 36px; border-radius: 6px 6px 0 0;
+    background: var(--bar-bg);
+    transition: background 0.3s, height 0.3s;
+    position: relative;
+  }
+  .bar-label {
+    font-size: 12px; font-weight: bold; margin-top: 4px;
+    color: var(--text);
+  }
+  .bar-day {
+    font-size: 10px; color: var(--muted);
+  }
+  .bar .step-tag {
+    position: absolute; top: -14px; right: 50%; transform: translateX(50%);
+    background: #1976D2; color: #fff;
+    font-size: 9px; font-weight: bold; width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 0.25s, transform 0.25s;
+  }
+  .bar .step-tag.show { opacity: 1; }
+
+  .cell-grid {
+    display: flex; justify-content: center; gap: 6px; margin-bottom: 12px;
+  }
+  .cell {
+    width: 62px; height: 48px;
+    background: var(--cell-bg);
+    border: 2px solid var(--cell-border);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; font-weight: bold; color: var(--text);
+    position: relative;
+    transition: border-color 0.25s, background 0.25s, transform 0.15s;
+  }
+  .cell .step-tag {
+    position: absolute; top: -7px; right: -7px;
+    background: #1976D2; color: #fff;
+    font-size: 9px; font-weight: bold; width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(0.5);
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .cell .step-tag.show { opacity: 1; transform: scale(1); }
+  .cell.min-buy { border-color: var(--min-buy); background: rgba(25,118,210,0.1); }
+  .cell.sell-point { border-color: var(--sell-green); background: rgba(56,142,60,0.1); }
+  .cell.active { transform: scale(1.06); }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-bottom: 8px; font-size: 14px;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; }
+
+  .state-row {
+    display: flex; justify-content: center; gap: 24px;
+    background: rgba(25,118,210,0.06); border-radius: 8px;
+    padding: 8px 14px; margin-bottom: 10px; font-size: 13px;
+  }
+  .state-item { text-align: center; }
+  .state-val { font-size: 18px; font-weight: bold; color: #1976D2; }
+  .state-label { font-size: 11px; color: var(--muted); }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+
+  .legend {
+    display: flex; gap: 20px; justify-content: center; margin-top: 12px;
+    font-size: 12px; color: var(--muted);
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>买卖股票的最佳时机 — 逐步交互演示</h2>
+
+  <div class="chart-area" id="chartArea"></div>
+
+  <div class="cell-grid" id="cellGrid"></div>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">/ 7 步 · 点击「下一步」开始</span>
+  </div>
+
+  <div class="state-row">
+    <div class="state-item">
+      <div class="state-val" id="minPriceVal">--</div>
+      <div class="state-label">当前最低价</div>
+    </div>
+    <div class="state-item">
+      <div class="state-val" id="maxProfitVal">0</div>
+      <div class="state-label">当前最大利润</div>
+    </div>
+    <div class="state-item">
+      <div class="state-val" id="bestBuyVal">--</div>
+      <div class="state-label">最佳买入日</div>
+    </div>
+    <div class="state-item">
+      <div class="state-val" id="bestSellVal">--</div>
+      <div class="state-label">最佳卖出日</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">⏮ 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">◀ 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 ▶</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">▶ 自动播放</button>
+    <button onclick="goStep(totalSteps)" title="跳到最终状态">⏭ 跳到最后</button>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#1976D2"></div> 历史最低买入点</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#388E3C"></div> 当前最佳卖出点</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div> 当前遍历日</div>
+  </div>
+</div>
+
+<script>
+const prices = [7, 1, 5, 3, 6, 4];
+const totalSteps = 7; // 0: init, 1-6: each day
+
+// Step data: { day, price, minPrice, maxProfit, buyDay, sellDay }
+const steps = [];
+{
+  let minPrice = Infinity, maxProfit = 0, buyDay = -1, sellDay = -1;
+  steps.push({ day: -1, price: null, minPrice: Infinity, maxProfit: 0, buyDay: -1, sellDay: -1 });
+  for (let i = 0; i < prices.length; i++) {
+    if (prices[i] < minPrice) {
+      minPrice = prices[i];
+      buyDay = i;
+    }
+    const profit = prices[i] - minPrice;
+    if (profit > maxProfit) {
+      maxProfit = profit;
+      sellDay = i;
+    }
+    steps.push({ day: i, price: prices[i], minPrice, maxProfit, buyDay, sellDay });
+  }
+}
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+// Build chart bars
+const chartArea = document.getElementById('chartArea');
+const bars = [];
+const maxPrice = Math.max(...prices);
+prices.forEach((p, i) => {
+  const wrap = document.createElement('div');
+  wrap.className = 'bar-wrap';
+  wrap.innerHTML = `
+    <div class="bar" style="height:${(p/maxPrice*150)}px">
+      <span class="step-tag"></span>
+    </div>
+    <span class="bar-label">${p}</span>
+    <span class="bar-day">第${i+1}天</span>
+  `;
+  chartArea.appendChild(wrap);
+  bars.push(wrap.querySelector('.bar'));
+});
+
+// Build cell grid
+const cellGrid = document.getElementById('cellGrid');
+const cells = [];
+prices.forEach((p, i) => {
+  const div = document.createElement('div');
+  div.className = 'cell';
+  div.innerHTML = `${p}<span class="step-tag"></span>`;
+  cellGrid.appendChild(div);
+  cells.push(div);
+});
+
+function render() {
+  const s = steps[current];
+  // Update bars
+  bars.forEach((bar, i) => {
+    bar.style.background = 'var(--bar-bg)';
+    bar.style.border = 'none';
+    const tag = bar.querySelector('.step-tag');
+    tag.classList.remove('show');
+  });
+  // Update cells
+  cells.forEach((cell, i) => {
+    cell.classList.remove('min-buy', 'sell-point', 'active');
+    const tag = cell.querySelector('.step-tag');
+    tag.classList.remove('show');
+    tag.textContent = '';
+  });
+
+  if (current > 0 && s.buyDay >= 0) {
+    bars[s.buyDay].style.background = '#1976D2';
+    cells[s.buyDay].classList.add('min-buy');
+  }
+  if (current > 0 && s.sellDay >= 0 && s.sellDay !== s.buyDay) {
+    bars[s.sellDay].style.background = '#388E3C';
+    cells[s.sellDay].classList.add('sell-point');
+  }
+  if (current > 0 && s.day >= 0) {
+    bars[s.day].style.border = '3px solid #FF9800';
+    cells[s.day].classList.add('active');
+  }
+
+  // Step tags on cells for processed days
+  for (let i = 0; i < current; i++) {
+    const tag = cells[i].querySelector('.step-tag');
+    tag.textContent = i + 1;
+    tag.classList.add('show');
+  }
+
+  // Info
+  document.getElementById('stepNum').textContent = current;
+  if (current === 0) {
+    document.getElementById('stepDesc').textContent = '点击「下一步」开始扫描价格数组';
+  } else {
+    const day = s.day;
+    document.getElementById('stepDesc').textContent =
+      `第 ${current} 步 · 第${day+1}天 价格=${s.price} · minPrice=${s.minPrice === Infinity ? '--' : s.minPrice} · maxProfit=${s.maxProfit}`;
+  }
+
+  document.getElementById('minPriceVal').textContent = s.minPrice === Infinity ? '--' : s.minPrice;
+  document.getElementById('maxProfitVal').textContent = s.maxProfit;
+  document.getElementById('bestBuyVal').textContent = s.buyDay >= 0 ? '第'+(s.buyDay+1)+'天' : '--';
+  document.getElementById('bestSellVal').textContent = s.sellDay >= 0 && s.sellDay !== s.buyDay ? '第'+(s.sellDay+1)+'天' : '--';
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= totalSteps;
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, totalSteps));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer);
+    autoRunning = false;
+    document.getElementById('playBtn').textContent = '▶ 自动播放';
+    document.getElementById('playBtn').classList.remove('play-btn');
+    document.getElementById('playBtn').style.background = '';
+    document.getElementById('playBtn').style.color = '';
+  } else {
+    document.getElementById('playBtn').textContent = '⏸ 暂停';
+    document.getElementById('playBtn').classList.add('play-btn');
+    document.getElementById('playBtn').style.background = '#1976D2';
+    document.getElementById('playBtn').style.color = '#fff';
+    autoRunning = true;
+    if (current >= totalSteps) goStep(0);
+    autoTimer = setInterval(() => {
+      if (current < totalSteps) goStep(current + 1);
+      else toggleAuto();
+    }, 700);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

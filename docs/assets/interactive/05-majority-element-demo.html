@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0; --btn-active: #1565C0;
+    --sub-bg: #f5f5f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd;
+      --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 20px;
+  }
+  .container { max-width: 720px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 12px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 10px; font-size: 14px;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 40px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 480px; }
+
+  .vars-bar {
+    display: flex; gap: 24px; justify-content: center; margin-bottom: 14px;
+    font-size: 14px; color: var(--text);
+  }
+  .var-item {
+    background: var(--sub-bg); border-radius: 8px; padding: 8px 18px; text-align: center; min-width: 100px;
+  }
+  .var-item .vl { font-weight: bold; font-size: 22px; color: #1976D2; display: block; margin-top: 2px; }
+  .var-item .lbl { font-size: 11px; color: var(--muted); }
+
+  .section-label { font-size: 12px; font-weight: bold; color: var(--muted); text-align: center; margin-bottom: 4px; }
+  .array-row {
+    display: flex; align-items: flex-end; justify-content: center; gap: 5px; margin-bottom: 4px;
+  }
+  .cell {
+    background: var(--cell-bg);
+    border: 2px solid var(--cell-border);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: bold; color: var(--text);
+    width: 54px; height: 54px;
+    position: relative;
+    transition: border-color 0.25s, background 0.25s, transform 0.15s;
+  }
+  .cell.curr { border-color: #1976D2; background: #E3F2FD; transform: scale(1.07); }
+  .cell.match { border-color: #43A047; background: #C8E6C9; }
+  .cell.mismatch { border-color: #FF9800; background: #FFF3E0; }
+  .cell.reset { border-color: #E53935; background: #FFCDD2; }
+
+  .step-tag {
+    position: absolute; top: -8px; right: -8px;
+    background: #1976D2; color: #fff;
+    font-size: 9px; font-weight: bold; width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(0.5);
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .step-tag.show { opacity: 1; transform: scale(1); }
+
+  .result-row {
+    background: var(--sub-bg); border-radius: 8px; padding: 10px 14px;
+    margin-bottom: 10px; font-size: 13px;
+    word-break: break-all; color: var(--text); text-align: center;
+  }
+  .result-row .highlight { color: #1976D2; font-weight: bold; font-size: 15px; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+
+  .legend {
+    display: flex; gap: 18px; justify-content: center; margin-top: 12px;
+    font-size: 12px; color: var(--muted); flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>多数元素 — Boyer-Moore 投票算法演示</h2>
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">点击「下一步」开始 · 共 7 步</span>
+  </div>
+
+  <div class="vars-bar">
+    <div class="var-item">
+      <span class="lbl">candidate</span>
+      <span class="vl" id="varCand">-</span>
+    </div>
+    <div class="var-item">
+      <span class="lbl">count</span>
+      <span class="vl" id="varCount">-</span>
+    </div>
+  </div>
+
+  <div class="section-label">nums = [2, 2, 1, 1, 1, 2, 2]</div>
+  <div class="array-row" id="numsRow"></div>
+
+  <div class="result-row" id="resultBar">
+    <span style="color:var(--muted)">多数元素 = </span><span id="resultText" class="highlight"></span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">⏮ 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">◀ 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 ▶</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">▶ 自动播放</button>
+    <button onclick="goStep(steps.length - 1)">⏭ 跳到最后</button>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#1976D2"></div>当前元素</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#43A047"></div>count++ (匹配)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div>count-- (不匹配)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#E53935"></div>count=0 → 重置</div>
+  </div>
+</div>
+
+<script>
+const nums = [2,2,1,1,1,2,2];
+const N = 7;
+
+const steps = [];
+(function simulate() {
+  let cand = null;
+  let count = 0;
+
+  steps.push({ idx: null, cand, count, desc: '初始状态：candidate 未设置, count=0', type: 'init' });
+
+  for (let i = 0; i < N; i++) {
+    const val = nums[i];
+    if (count === 0) {
+      cand = val;
+      count = 1;
+      steps.push({
+        idx: i, val, cand, count,
+        desc: `i=${i}: nums[${i}]=${val}, count=0 → candidate=${val}, count=1`,
+        type: 'reset'
+      });
+    } else if (val === cand) {
+      count++;
+      steps.push({
+        idx: i, val, cand, count,
+        desc: `i=${i}: nums[${i}]=${val} == candidate(${cand}) → count++ = ${count}`,
+        type: 'match'
+      });
+    } else {
+      count--;
+      steps.push({
+        idx: i, val, cand, count,
+        desc: `i=${i}: nums[${i}]=${val} ≠ candidate(${cand}) → count-- = ${count}`,
+        type: 'mismatch'
+      });
+    }
+  }
+
+  steps.push({
+    idx: null, cand, count,
+    desc: `完成! 多数元素 = ${cand}`,
+    type: 'done', done: true
+  });
+})();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+const numsRow = document.getElementById('numsRow');
+for (let i = 0; i < N; i++) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  cell.id = 'nc' + i;
+  cell.innerHTML = `<span class="cell-val">${nums[i]}</span><span class="step-tag"></span>`;
+  numsRow.appendChild(cell);
+}
+
+function render() {
+  const s = steps[current];
+  const stepNumEl = document.getElementById('stepNum');
+  const stepDescEl = document.getElementById('stepDesc');
+  const resultText = document.getElementById('resultText');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+
+  for (let i = 0; i < N; i++) {
+    const c = document.getElementById('nc' + i);
+    c.className = 'cell';
+    const tag = c.querySelector('.step-tag');
+    tag.classList.remove('show');
+    tag.textContent = '';
+  }
+
+  document.getElementById('varCand').textContent = s.cand !== null ? s.cand : '-';
+  document.getElementById('varCount').textContent = s.count;
+
+  if (s.done) {
+    stepNumEl.textContent = current;
+    stepDescEl.textContent = s.desc;
+    resultText.innerHTML = '<span class="highlight">' + s.cand + '</span> (已验证)';
+  } else if (s.type === 'init') {
+    stepNumEl.textContent = '0';
+    stepDescEl.textContent = '初始状态 · 候选人和计数器均为空 · 共 ' + (steps.length - 2) + ' 步';
+    resultText.textContent = '?';
+  } else {
+    stepNumEl.textContent = current;
+    stepDescEl.textContent = '第 ' + current + ' 步 · ' + s.desc;
+
+    // Color current cell
+    const cell = document.getElementById('nc' + s.idx);
+    if (s.type === 'match') cell.classList.add('match');
+    else if (s.type === 'mismatch') cell.classList.add('mismatch');
+    else if (s.type === 'reset') cell.classList.add('reset');
+    cell.classList.add('curr');
+    const tag = cell.querySelector('.step-tag');
+    tag.textContent = current;
+    tag.classList.add('show');
+
+    // Mark all previously visited cells
+    for (let i = 0; i < s.idx; i++) {
+      const prev = steps[i + 1]; // step corresponding to index i
+      if (prev && prev.type) {
+        const pc = document.getElementById('nc' + i);
+        if (prev.type === 'reset') pc.classList.add('reset');
+        else if (prev.type === 'match') pc.classList.add('match');
+        else if (prev.type === 'mismatch') pc.classList.add('mismatch');
+      }
+    }
+
+    resultText.textContent = s.cand !== null ? s.cand + ' (候选)' : '?';
+  }
+
+  prevBtn.disabled = current <= 0;
+  nextBtn.disabled = current >= steps.length - 1;
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer);
+    autoRunning = false;
+    document.getElementById('playBtn').textContent = '▶ 自动播放';
+    document.getElementById('playBtn').classList.remove('play-btn');
+  } else {
+    document.getElementById('playBtn').textContent = '⏸ 暂停';
+    document.getElementById('playBtn').classList.add('play-btn');
+    autoRunning = true;
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(() => {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 700);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

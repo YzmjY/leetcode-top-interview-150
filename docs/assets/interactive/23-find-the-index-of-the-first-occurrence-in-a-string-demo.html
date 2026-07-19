@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>23. 找出字符串中第一个匹配项的下标</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:#f8f9fa;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
+.container{width:100%;max-width:740px;background:#fff;border-radius:16px;box-shadow:0 2px 16px rgba(0,0,0,.08);padding:28px 24px 20px}
+h1{font-size:20px;font-weight:600;text-align:center;margin-bottom:4px;color:#1a1a2e}
+.subtitle{text-align:center;font-size:13px;color:#888;margin-bottom:16px}
+.align-section{margin-bottom:14px}
+.align-label{font-size:12px;font-weight:600;color:#64748b;margin-bottom:4px}
+.align-row{display:flex;gap:4px;justify-content:center;flex-wrap:wrap}
+.align-cell{width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:500;border-radius:8px;border:1.5px solid #ddd;background:#fff;color:#333;transition:all .25s;position:relative}
+.align-cell::after{content:attr(data-idx);position:absolute;bottom:1px;right:4px;font-size:8px;color:#aaa;font-weight:400}
+.align-cell.match{background:#bbf7d0;border-color:#22c55e;color:#14532d}
+.align-cell.mismatch{background:#fecaca;border-color:#ef4444;color:#991b1b;animation:shake .3s}
+.align-cell.active{background:#dbeafe;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.25);z-index:1}
+.align-cell.found{background:#bbf7d0;border-color:#22c55e;color:#14532d;animation:pulse .6s}
+.align-cell.needle-ref{background:#fef3c7;border-color:#f59e0b}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
+.needle-display{display:flex;gap:4px;justify-content:center;margin-bottom:10px}
+.info-panel{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin-bottom:14px;text-align:center;font-size:14px;color:#475569;min-height:44px;display:flex;align-items:center;justify-content:center}
+.info-panel .step-num{font-weight:600;color:#3b82f6;margin-right:6px}
+.btn-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.btn{padding:8px 16px;border-radius:8px;border:1px solid #d1d5db;background:#fff;cursor:pointer;font-size:13px;font-family:inherit;color:#374151;transition:all .2s;white-space:nowrap}
+.btn:hover{background:#f3f4f6}
+.btn:active{background:#e5e7eb}
+.btn.primary{background:#3b82f6;color:#fff;border-color:#3b82f6}
+.btn.primary:hover{background:#2563eb}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.result-badge{display:inline-block;padding:4px 14px;border-radius:20px;background:#dcfce7;color:#166534;font-weight:600;font-size:15px;margin-left:8px}
+@media(prefers-color-scheme:dark){
+body{background:#0f172a}
+.container{background:#1e293b;box-shadow:0 2px 16px rgba(0,0,0,.4)}
+h1{color:#e2e8f0}
+.subtitle{color:#94a3b8}
+.align-label{color:#94a3b8}
+.align-cell{background:#1e293b;border-color:#334155;color:#cbd5e1}
+.align-cell::after{color:#64748b}
+.align-cell.match{background:rgba(34,197,94,.2);border-color:#22c55e;color:#86efac}
+.align-cell.mismatch{background:rgba(239,68,68,.2);border-color:#ef4444;color:#fca5a5}
+.align-cell.active{background:rgba(59,130,246,.2);border-color:#3b82f6}
+.align-cell.found{background:rgba(34,197,94,.2);border-color:#22c55e;color:#86efac}
+.align-cell.needle-ref{background:rgba(245,158,11,.2);border-color:#f59e0b}
+.info-panel{background:#0f172a;border-color:#334155;color:#cbd5e1}
+.info-panel .step-num{color:#60a5fa}
+.btn{background:#1e293b;border-color:#475569;color:#cbd5e1}
+.btn:hover{background:#334155}
+.btn.primary{background:#3b82f6;color:#fff}
+.result-badge{background:rgba(34,197,94,.2);color:#86efac}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>23. 找出字符串中第一个匹配项的下标</h1>
+<div class="subtitle">haystack = "sadbutsad" &nbsp; needle = "sad" &nbsp; 预期输出: 0</div>
+<div class="align-section">
+<div class="align-label">haystack</div>
+<div class="align-row" id="haystackRow"></div>
+</div>
+<div class="needle-display" id="needleDisplay"></div>
+<div class="align-section">
+<div class="align-label">needle 对齐位置: <span id="slidePos">0</span></div>
+<div class="align-row" id="needleAlignRow"></div>
+</div>
+<div class="info-panel" id="info"><span class="step-num">准备</span>将 needle 从 haystack 索引 0 开始逐步滑动比较</div>
+<div class="btn-row">
+<button class="btn" id="btnReset">↺ 重置</button>
+<button class="btn" id="btnPrev">◀ 上一步</button>
+<button class="btn primary" id="btnNext">下一步 ▶</button>
+<button class="btn" id="btnAuto">▶ 自动播放</button>
+<button class="btn" id="btnLast">⏭ 最后</button>
+</div>
+</div>
+<script>
+const haystack = "sadbutsad";
+const needle = "sad";
+const hayChars = [...haystack];
+const nedChars = [...needle];
+// Slide positions: 0..7 (len 9, needle len 3 → 9-3=6 positions, but we go to 7 for "no more")
+// Steps: position 0 compare 3 chars, position 1..., etc.
+// plus result steps
+const maxSlide = haystack.length - needle.length; // 6
+const totalSteps = maxSlide + 1 + 2; // slide 0..6, result +1
+
+let step = 0;
+let autoTimer = null;
+
+const haystackRow = document.getElementById('haystackRow');
+const needleAlignRow = document.getElementById('needleAlignRow');
+const needleDisplay = document.getElementById('needleDisplay');
+const slidePos = document.getElementById('slidePos');
+const info = document.getElementById('info');
+
+function buildGrid() {
+  haystackRow.innerHTML = '';
+  hayChars.forEach((ch, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'align-cell';
+    cell.textContent = ch;
+    cell.setAttribute('data-idx', i);
+    cell.id = 'h-' + i;
+    haystackRow.appendChild(cell);
+  });
+
+  needleDisplay.innerHTML = '';
+  nedChars.forEach((ch, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'align-cell needle-ref';
+    cell.textContent = ch;
+    cell.setAttribute('data-idx', i);
+    needleDisplay.appendChild(cell);
+  });
+
+  needleAlignRow.innerHTML = '';
+  for (let i = 0; i < hayChars.length; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'align-cell';
+    cell.style.visibility = 'hidden';
+    cell.id = 'n-' + i;
+    needleAlignRow.appendChild(cell);
+  }
+}
+
+function render() {
+  // Reset all cells
+  document.querySelectorAll('#haystackRow .align-cell').forEach(c => { c.className = 'align-cell'; });
+  document.querySelectorAll('#needleAlignRow .align-cell').forEach(c => { c.className = 'align-cell'; c.style.visibility = 'hidden'; c.textContent = ''; });
+
+  if (step === 0) {
+    slidePos.textContent = '0';
+    info.innerHTML = '<span class="step-num">准备</span>haystack = "sadbutsad", needle = "sad". 从索引0开始滑动比较';
+    updateButtons();
+    return;
+  }
+
+  const slide = step - 1;
+  if (slide <= maxSlide) {
+    slidePos.textContent = slide;
+    // Show needle aligned at position slide
+    for (let j = 0; j < nedChars.length; j++) {
+      const nCell = document.getElementById('n-' + (slide + j));
+      if (nCell) {
+        nCell.style.visibility = 'visible';
+        nCell.textContent = nedChars[j];
+      }
+    }
+
+    // Compare
+    let allMatch = true;
+    for (let j = 0; j < nedChars.length; j++) {
+      const hCell = document.getElementById('h-' + (slide + j));
+      const nCell = document.getElementById('n-' + (slide + j));
+      if (hCell && nCell) {
+        hCell.classList.add('active');
+        nCell.classList.add('active');
+        if (hayChars[slide + j] === nedChars[j]) {
+          hCell.classList.add('match');
+          nCell.classList.add('match');
+        } else {
+          hCell.classList.add('mismatch');
+          nCell.classList.add('mismatch');
+          allMatch = false;
+        }
+      }
+    }
+
+    if (allMatch && slide === 0) {
+      info.innerHTML = `<span class="step-num">步骤 ${step}</span>索引 ${slide}: 比较 "sad" vs "sad" — 全部匹配！找到匹配项，下标 = <span class="result-badge">0</span>`;
+    } else if (allMatch) {
+      info.innerHTML = `<span class="step-num">步骤 ${step}</span>索引 ${slide}: 全部匹配！下标 = <span class="result-badge">${slide}</span>`;
+    } else {
+      info.innerHTML = `<span class="step-num">步骤 ${step}</span>索引 ${slide}: 不匹配，向右滑动一格`;
+    }
+  }
+
+  if (step === maxSlide + 2) {
+    // Show last slide result
+    slidePos.textContent = maxSlide;
+    for (let j = 0; j < nedChars.length; j++) {
+      const nCell = document.getElementById('n-' + (maxSlide + j));
+      if (nCell) { nCell.style.visibility = 'visible'; nCell.textContent = nedChars[j]; }
+    }
+    for (let j = 0; j < nedChars.length; j++) {
+      const hCell = document.getElementById('h-' + (maxSlide + j));
+      if (hCell) hCell.classList.add('mismatch');
+      const nCell = document.getElementById('n-' + (maxSlide + j));
+      if (nCell) nCell.classList.add('mismatch');
+    }
+    info.innerHTML = '<span class="step-num">完成</span>在索引0处找到匹配。第一个匹配项的下标 = <span class="result-badge">0</span>';
+  }
+
+  if (step >= maxSlide + 3) {
+    slidePos.textContent = '0';
+    document.querySelectorAll('#haystackRow .align-cell').forEach(c => {
+      const idx = parseInt(c.getAttribute('data-idx'));
+      if (idx >= 0 && idx < 3) { c.classList.add('found'); }
+    });
+    info.innerHTML = '<span class="step-num">完成</span>第一个匹配项 "sad" 在索引 <span class="result-badge">0</span> 处找到';
+  }
+
+  updateButtons();
+}
+
+function updateButtons() {
+  btnPrev.disabled = step <= 0;
+  btnNext.disabled = step >= totalSteps;
+}
+
+function nextStep() { if (step < totalSteps) { step++; render(); } }
+function prevStep() { if (step > 0) { step--; render(); } }
+function resetAll() { stopAuto(); step = 0; render(); }
+function goLast() { stopAuto(); step = totalSteps; render(); }
+
+function stopAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; btnAuto.textContent = '▶ 自动播放'; } }
+function toggleAuto() {
+  if (autoTimer) { stopAuto(); return; }
+  if (step >= totalSteps) step = 0;
+  btnAuto.textContent = '⏸ 暂停';
+  autoTimer = setInterval(() => { nextStep(); if (step >= totalSteps) stopAuto(); }, 800);
+}
+
+const btnReset = document.getElementById('btnReset');
+const btnPrev = document.getElementById('btnPrev');
+const btnNext = document.getElementById('btnNext');
+const btnAuto = document.getElementById('btnAuto');
+const btnLast = document.getElementById('btnLast');
+
+btnReset.onclick = resetAll;
+btnPrev.onclick = prevStep;
+btnNext.onclick = nextStep;
+btnAuto.onclick = toggleAuto;
+btnLast.onclick = goLast;
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') { e.preventDefault(); nextStep(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); prevStep(); }
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+buildGrid();
+render();
+</script>
+</body>
+</html>

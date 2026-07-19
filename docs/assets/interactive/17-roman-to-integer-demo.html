@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --add-color: #388E3C; --sub-color: #E65100;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd;
+      --btn-bg: #333; --btn-hover: #444;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 20px;
+  }
+  .container { max-width: 680px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 10px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    margin-bottom: 8px; font-size: 13px; flex-wrap: wrap;
+  }
+  .step-num { font-weight: bold; font-size: 22px; color: #1976D2; min-width: 35px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 12px; max-width: 420px; }
+
+  .chars-row {
+    display: flex; justify-content: center; gap: 10px; margin-bottom: 8px;
+  }
+  .char-cell {
+    width: 64px; height: 80px;
+    border: 2px solid var(--cell-border);
+    border-radius: 8px; background: var(--cell-bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: border-color 0.25s, background 0.25s, transform 0.15s;
+    position: relative;
+  }
+  .char-cell .roman {
+    font-size: 28px; font-weight: bold; color: var(--text);
+  }
+  .char-cell .arabic {
+    font-size: 11px; color: var(--muted);
+  }
+  .char-cell.active { transform: scale(1.1); }
+  .char-cell.add { border-color: var(--add-color); background: #E8F5E9; }
+  .char-cell.sub { border-color: var(--sub-color); background: #FFF3E0; }
+  .char-cell.pending { border-color: var(--cell-border); background: var(--cell-bg); opacity: 0.5; }
+  @media (prefers-color-scheme: dark) {
+    .char-cell.add { background: #1a3e1a; }
+    .char-cell.sub { background: #3e2a1a; }
+  }
+
+  .op-row {
+    display: flex; justify-content: center; gap: 10px; margin-bottom: 4px;
+  }
+  .op-cell {
+    width: 64px; text-align: center; font-size: 13px; font-weight: bold;
+    min-height: 20px;
+  }
+  .op-add { color: var(--add-color); }
+  .op-sub { color: var(--sub-color); }
+
+  .compare-row {
+    display: flex; justify-content: center; gap: 10px; margin-bottom: 6px;
+  }
+  .compare-cell {
+    width: 64px; text-align: center; font-size: 10px; color: var(--muted);
+  }
+
+  .result-bar {
+    background: #F5F5F5; border-radius: 8px; padding: 8px 16px;
+    margin-bottom: 8px; text-align: center; font-family: monospace; font-size: 14px;
+  }
+  @media (prefers-color-scheme: dark) { .result-bar { background: #2a2a3e; } }
+  .result-bar .big {
+    font-size: 28px; font-weight: bold; color: #1976D2;
+    transition: all 0.3s;
+  }
+
+  .phase-badge {
+    display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px;
+    font-weight: bold;
+  }
+  .badge-add { background: #E8F5E9; color: #2E7D32; }
+  .badge-sub { background: #FFF3E0; color: #E65100; }
+  .badge-init { background: #eee; color: #666; }
+  @media (prefers-color-scheme: dark) {
+    .badge-add { background: #1a3e1a; color: #81C784; }
+    .badge-sub { background: #3e2a1a; color: #FFB74D; }
+    .badge-init { background: #444; color: #ccc; }
+  }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>罗马数字转整数 — 逐步交互演示</h2>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">/ 7 步 · 点击「下一步」开始</span>
+    <span class="phase-badge badge-init" id="phaseBdg">初始</span>
+  </div>
+
+  <div class="chars-row" id="charsRow"></div>
+  <div class="compare-row" id="compareRow"></div>
+  <div class="op-row" id="opRow"></div>
+
+  <div class="result-bar">
+    累计结果: <span class="big" id="resultVal">0</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">自动播放</button>
+    <button onclick="goStep(totalSteps)" id="endBtn">跳到最后</button>
+  </div>
+</div>
+
+<script>
+const s = 'MCMXCIV';
+const vals = { M:1000, C:100, X:10, I:1, V:5, L:50, D:500 };
+const chars = s.split('');
+const n = chars.length;
+const totalSteps = n; // 7 steps for 7 chars
+
+const steps = [];
+let result = 0;
+
+steps.push({
+  activeIdx: -1, result: 0,
+  ops: chars.map(() => ''),
+  desc: '初始化: s = "MCMXCIV", result = 0'
+});
+
+for (let i = 0; i < n; i++) {
+  const cur = vals[chars[i]];
+  const next = i < n - 1 ? vals[chars[i + 1]] : 0;
+  const isSub = cur < next;
+  const delta = isSub ? -cur : cur;
+  result += delta;
+  const ops = chars.map(() => '');
+  ops[i] = isSub ? '-' : '+';
+  steps.push({
+    activeIdx: i, result,
+    ops: [...ops],
+    desc: isSub
+      ? chars[i] + '(' + cur + ') < ' + chars[i+1] + '(' + next + '), 减法: result += (-' + cur + ') = ' + result
+      : (next === 0
+        ? chars[i] + '(' + cur + ') 是最后一个字符, 加法: result += ' + cur + ' = ' + result
+        : chars[i] + '(' + cur + ') > ' + chars[i+1] + '(' + next + '), 加法: result += ' + cur + ' = ' + result),
+    isSub
+  });
+}
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+// Build chars
+const charsRow = document.getElementById('charsRow');
+const opRow = document.getElementById('opRow');
+const compareRow = document.getElementById('compareRow');
+for (let i = 0; i < n; i++) {
+  const ch = document.createElement('div');
+  ch.className = 'char-cell';
+  ch.dataset.idx = i;
+  ch.innerHTML = '<span class="roman">' + chars[i] + '</span><span class="arabic">' + vals[chars[i]] + '</span>';
+  charsRow.appendChild(ch);
+
+  const op = document.createElement('div');
+  op.className = 'op-cell';
+  op.dataset.idx = i;
+  opRow.appendChild(op);
+
+  const cp = document.createElement('div');
+  cp.className = 'compare-cell';
+  cp.dataset.idx = i;
+  if (i < n - 1) {
+    cp.textContent = vals[chars[i]] + (vals[chars[i]] < vals[chars[i+1]] ? ' < ' : ' > ') + vals[chars[i+1]];
+  } else {
+    cp.textContent = vals[chars[i]] + ' (末尾)';
+  }
+  compareRow.appendChild(cp);
+}
+
+function render() {
+  const st = steps[current];
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = current === 0
+    ? '/ ' + totalSteps + ' 步 · 点击「下一步」开始'
+    : '第 ' + current + ' 步 · ' + st.desc;
+  document.getElementById('resultVal').textContent = st.result;
+
+  const bdg = document.getElementById('phaseBdg');
+  if (current === 0) { bdg.textContent = '初始'; bdg.className = 'phase-badge badge-init'; }
+  else if (st.isSub) { bdg.textContent = '减法'; bdg.className = 'phase-badge badge-sub'; }
+  else { bdg.textContent = '加法'; bdg.className = 'phase-badge badge-add'; }
+
+  document.querySelectorAll('.char-cell').forEach(el => {
+    el.classList.remove('active','add','sub','pending');
+    const i = parseInt(el.dataset.idx);
+    if (i < st.activeIdx) {
+      el.classList.add(st.ops[i] === '-' ? 'sub' : 'add');
+    } else if (i === st.activeIdx) {
+      el.classList.add('active', st.ops[i] === '-' ? 'sub' : 'add');
+    } else if (current === 0) {
+      el.classList.add('pending');
+    }
+  });
+
+  document.querySelectorAll('.op-cell').forEach(el => {
+    const i = parseInt(el.dataset.idx);
+    if (st.ops[i] === '+') { el.textContent = '+'; el.className = 'op-cell op-add'; }
+    else if (st.ops[i] === '-') { el.textContent = '-'; el.className = 'op-cell op-sub'; }
+    else { el.textContent = ''; el.className = 'op-cell'; }
+  });
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= totalSteps;
+  document.getElementById('endBtn').disabled = current >= totalSteps;
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, totalSteps));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer); autoRunning = false;
+    document.getElementById('playBtn').textContent = '自动播放';
+    document.getElementById('playBtn').style.background = '#1976D2';
+  } else {
+    autoRunning = true;
+    if (current >= totalSteps) goStep(0);
+    autoTimer = setInterval(() => {
+      if (current < totalSteps) goStep(current + 1);
+      else { clearInterval(autoTimer); autoRunning = false;
+        document.getElementById('playBtn').textContent = '自动播放'; }
+    }, 750);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

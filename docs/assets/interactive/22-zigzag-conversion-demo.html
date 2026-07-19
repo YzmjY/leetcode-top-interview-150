@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>22. Z字形变换</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:#f8f9fa;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
+.container{width:100%;max-width:780px;background:#fff;border-radius:16px;box-shadow:0 2px 16px rgba(0,0,0,.08);padding:28px 24px 20px}
+h1{font-size:20px;font-weight:600;text-align:center;margin-bottom:4px;color:#1a1a2e}
+.subtitle{text-align:center;font-size:13px;color:#888;margin-bottom:12px}
+.grid-scroll{overflow-x:auto;margin-bottom:8px;padding:8px 0}
+table.zigzag{border-collapse:separate;border-spacing:3px;margin:0 auto}
+td.zcell{width:38px;height:38px;text-align:center;font-size:15px;font-weight:600;border-radius:8px;border:1.5px solid #e5e7eb;background:#f9fafb;color:#cbd5e1;transition:all .3s}
+td.zcell.filled{border-color:#94a3b8;background:#fff;color:#333}
+td.zcell.row0{border-color:#ef4444;background:#fef2f2;color:#991b1b}
+td.zcell.row1{border-color:#3b82f6;background:#eff6ff;color:#1d4ed8}
+td.zcell.row2{border-color:#22c55e;background:#f0fdf4;color:#14532d}
+td.zcell.active{box-shadow:0 0 0 3px rgba(59,130,246,.35);z-index:1;transform:scale(1.08)}
+td.col-header{font-size:10px;color:#94a3b8;text-align:center;border:none;background:none;padding-bottom:2px}
+td.row-header{font-size:11px;color:#64748b;text-align:right;padding-right:8px;font-weight:500;border:none;background:none;width:24px}
+.info-panel{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin-bottom:14px;text-align:center;font-size:14px;color:#475569;min-height:44px;display:flex;align-items:center;justify-content:center}
+.info-panel .step-num{font-weight:600;color:#3b82f6;margin-right:6px}
+.btn-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.btn{padding:8px 16px;border-radius:8px;border:1px solid #d1d5db;background:#fff;cursor:pointer;font-size:13px;font-family:inherit;color:#374151;transition:all .2s;white-space:nowrap}
+.btn:hover{background:#f3f4f6}
+.btn:active{background:#e5e7eb}
+.btn.primary{background:#3b82f6;color:#fff;border-color:#3b82f6}
+.btn.primary:hover{background:#2563eb}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.result-badge{display:inline-block;padding:4px 14px;border-radius:20px;background:#dcfce7;color:#166534;font-weight:600;font-size:15px;margin-left:8px}
+.legend{display:flex;gap:16px;justify-content:center;margin-bottom:10px;font-size:11px;flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend .dot{width:12px;height:12px;border-radius:3px;display:inline-block}
+.legend .dot.r0{background:#fecaca;border:1px solid #ef4444}
+.legend .dot.r1{background:#bfdbfe;border:1px solid #3b82f6}
+.legend .dot.r2{background:#bbf7d0;border:1px solid #22c55e}
+@media(prefers-color-scheme:dark){
+body{background:#0f172a}
+.container{background:#1e293b;box-shadow:0 2px 16px rgba(0,0,0,.4)}
+h1{color:#e2e8f0}
+.subtitle{color:#94a3b8}
+td.zcell{border-color:#334155;background:#1e293b;color:#475569}
+td.zcell.filled{background:#1e293b;border-color:#475569;color:#cbd5e1}
+td.zcell.row0{background:rgba(239,68,68,.15);border-color:#ef4444;color:#fca5a5}
+td.zcell.row1{background:rgba(59,130,246,.15);border-color:#3b82f6;color:#93c5fd}
+td.zcell.row2{background:rgba(34,197,94,.15);border-color:#22c55e;color:#86efac}
+td.col-header{color:#64748b}
+td.row-header{color:#94a3b8}
+.info-panel{background:#0f172a;border-color:#334155;color:#cbd5e1}
+.info-panel .step-num{color:#60a5fa}
+.btn{background:#1e293b;border-color:#475569;color:#cbd5e1}
+.btn:hover{background:#334155}
+.btn.primary{background:#3b82f6;color:#fff}
+.result-badge{background:rgba(34,197,94,.2);color:#86efac}
+.legend .dot.r0{background:rgba(239,68,68,.3)}
+.legend .dot.r1{background:rgba(59,130,246,.3)}
+.legend .dot.r2{background:rgba(34,197,94,.3)}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>22. Z字形变换</h1>
+<div class="subtitle">s = "PAYPALISHIRING" &nbsp; numRows = 3 &nbsp; 预期输出: "PAHNAPLSIIGYIR"</div>
+<div class="legend">
+<span><span class="dot r0"></span> 第0行</span>
+<span><span class="dot r1"></span> 第1行</span>
+<span><span class="dot r2"></span> 第2行</span>
+</div>
+<div class="grid-scroll"><table class="zigzag" id="zigTable"><tbody></tbody></table></div>
+<div class="info-panel" id="info"><span class="step-num">准备</span>numRows=3，周期=4，字符按Z字形逐行填充</div>
+<div class="btn-row">
+<button class="btn" id="btnReset">↺ 重置</button>
+<button class="btn" id="btnPrev">◀ 上一步</button>
+<button class="btn primary" id="btnNext">下一步 ▶</button>
+<button class="btn" id="btnAuto">▶ 自动播放</button>
+<button class="btn" id="btnLast">⏭ 最后</button>
+</div>
+</div>
+<script>
+const S = "PAYPALISHIRING";
+const numRows = 3;
+const chars = [...S];
+const period = 2 * numRows - 2; // 4
+// Compute positions: row, col for each char
+const positions = [];
+let row = 0, col = 0, goingDown = true;
+for (let i = 0; i < chars.length; i++) {
+  positions.push({ row, col, char: chars[i] });
+  if (goingDown) {
+    if (row < numRows - 1) { row++; }
+    else { row--; col++; goingDown = false; }
+  } else {
+    if (row > 0) { row--; col++; }
+    else { row++; goingDown = true; }
+  }
+}
+const totalCols = Math.max(...positions.map(p => p.col)) + 1;
+const totalSteps = chars.length + 2;
+
+let step = 0;
+let autoTimer = null;
+
+const zigTable = document.getElementById('zigTable');
+const info = document.getElementById('info');
+
+function buildGrid() {
+  const tbody = zigTable.querySelector('tbody');
+  tbody.innerHTML = '';
+  // Header row
+  const htr = document.createElement('tr');
+  htr.appendChild(document.createElement('td')); // empty corner
+  for (let c = 0; c < totalCols; c++) {
+    const th = document.createElement('td');
+    th.className = 'col-header';
+    th.textContent = c;
+    htr.appendChild(th);
+  }
+  tbody.appendChild(htr);
+  // Data rows
+  for (let r = 0; r < numRows; r++) {
+    const tr = document.createElement('tr');
+    const rh = document.createElement('td');
+    rh.className = 'row-header';
+    rh.textContent = r;
+    tr.appendChild(rh);
+    for (let c = 0; c < totalCols; c++) {
+      const td = document.createElement('td');
+      td.className = 'zcell';
+      td.dataset.row = r;
+      td.dataset.col = c;
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+}
+
+function render() {
+  const cells = zigTable.querySelectorAll('td.zcell');
+  cells.forEach(c => { c.className = 'zcell'; c.textContent = ''; });
+
+  if (step === 0) {
+    info.innerHTML = '<span class="step-num">准备</span>s = "PAYPALISHIRING", numRows = 3, 周期 = 2*numRows - 2 = 4';
+    updateButtons();
+    return;
+  }
+
+  // Fill characters up to step
+  const filledCount = Math.min(step, chars.length);
+  const pMap = new Map();
+  for (let i = 0; i < filledCount; i++) {
+    const key = `${positions[i].row},${positions[i].col}`;
+    pMap.set(key, positions[i]);
+  }
+
+  cells.forEach(c => {
+    const r = parseInt(c.dataset.row);
+    const col = parseInt(c.dataset.col);
+    const key = `${r},${col}`;
+    if (pMap.has(key)) {
+      const pos = pMap.get(key);
+      c.textContent = pos.char;
+      c.classList.add('filled', `row${r}`);
+    }
+  });
+
+  if (step <= chars.length) {
+    const current = positions[step - 1];
+    // Find the cell for current position and add active
+    const curKey = `${current.row},${current.col}`;
+    cells.forEach(c => {
+      const r = parseInt(c.dataset.row), col = parseInt(c.dataset.col);
+      if (`${r},${col}` === curKey) c.classList.add('active');
+    });
+    const idx = step - 1;
+    info.innerHTML = `<span class="step-num">步骤 ${step}</span>放置字符 #${idx} "${chars[idx]}" → 第${current.row}行, 第${current.col}列`;
+  }
+
+  if (step === chars.length + 1) {
+    info.innerHTML = '<span class="step-num">步骤 ' + step + '</span>按行读取：第0行 "PAHN" + 第1行 "APLSIIG" + 第2行 "YIR"';
+  }
+
+  if (step >= chars.length + 2) {
+    info.innerHTML = '<span class="step-num">完成</span>最终结果 = <span class="result-badge">"PAHNAPLSIIGYIR"</span>';
+  }
+
+  updateButtons();
+}
+
+function updateButtons() {
+  btnPrev.disabled = step <= 0;
+  btnNext.disabled = step >= totalSteps;
+}
+
+function nextStep() { if (step < totalSteps) { step++; render(); } }
+function prevStep() { if (step > 0) { step--; render(); } }
+function resetAll() { stopAuto(); step = 0; render(); }
+function goLast() { stopAuto(); step = totalSteps; render(); }
+
+function stopAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; btnAuto.textContent = '▶ 自动播放'; } }
+function toggleAuto() {
+  if (autoTimer) { stopAuto(); return; }
+  if (step >= totalSteps) step = 0;
+  btnAuto.textContent = '⏸ 暂停';
+  autoTimer = setInterval(() => { nextStep(); if (step >= totalSteps) stopAuto(); }, 450);
+}
+
+const btnReset = document.getElementById('btnReset');
+const btnPrev = document.getElementById('btnPrev');
+const btnNext = document.getElementById('btnNext');
+const btnAuto = document.getElementById('btnAuto');
+const btnLast = document.getElementById('btnLast');
+
+btnReset.onclick = resetAll;
+btnPrev.onclick = prevStep;
+btnNext.onclick = nextStep;
+btnAuto.onclick = toggleAuto;
+btnLast.onclick = goLast;
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') { e.preventDefault(); nextStep(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); prevStep(); }
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+buildGrid();
+render();
+</script>
+</body>
+</html>

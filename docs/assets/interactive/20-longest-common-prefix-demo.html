@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>20. 最长公共前缀</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:#f8f9fa;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
+.container{width:100%;max-width:720px;background:#fff;border-radius:16px;box-shadow:0 2px 16px rgba(0,0,0,.08);padding:28px 24px 20px}
+h1{font-size:20px;font-weight:600;text-align:center;margin-bottom:4px;color:#1a1a2e}
+.subtitle{text-align:center;font-size:13px;color:#888;margin-bottom:16px}
+.table-wrapper{display:flex;justify-content:center;margin-bottom:12px;overflow-x:auto}
+table{border-collapse:separate;border-spacing:3px}
+td.cell{width:42px;height:42px;text-align:center;font-size:17px;font-weight:500;border-radius:8px;border:1.5px solid #ddd;background:#fff;color:#333;transition:all .25s;position:relative}
+td.cell.match{background:#bbf7d0;border-color:#22c55e;color:#14532d}
+td.cell.mismatch{background:#fecaca;border-color:#ef4444;color:#991b1b}
+td.cell.pending{border-color:#e5e7eb;color:#9ca3af}
+td.cell.col-highlight{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.3)}
+td.cell.prefix{background:#dbeafe;border-color:#60a5fa}
+td.row-label{font-size:11px;color:#888;text-align:right;padding-right:8px;font-weight:500;width:28px}.info-panel{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin-bottom:14px;text-align:center;font-size:14px;color:#475569;min-height:44px;display:flex;align-items:center;justify-content:center}
+.info-panel .step-num{font-weight:600;color:#3b82f6;margin-right:6px}
+.btn-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.btn{padding:8px 16px;border-radius:8px;border:1px solid #d1d5db;background:#fff;cursor:pointer;font-size:13px;font-family:inherit;color:#374151;transition:all .2s;white-space:nowrap}
+.btn:hover{background:#f3f4f6}
+.btn:active{background:#e5e7eb}
+.btn.primary{background:#3b82f6;color:#fff;border-color:#3b82f6}
+.btn.primary:hover{background:#2563eb}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.result-badge{display:inline-block;padding:4px 14px;border-radius:20px;background:#dcfce7;color:#166534;font-weight:600;font-size:15px;margin-left:8px}
+@media(prefers-color-scheme:dark){
+body{background:#0f172a}
+.container{background:#1e293b;box-shadow:0 2px 16px rgba(0,0,0,.4)}
+h1{color:#e2e8f0}
+.subtitle{color:#94a3b8}
+td.cell{background:#1e293b;border-color:#334155;color:#cbd5e1}
+td.cell.match{background:rgba(34,197,94,.2);border-color:#22c55e;color:#86efac}
+td.cell.mismatch{background:rgba(239,68,68,.2);border-color:#ef4444;color:#fca5a5}
+td.cell.pending{color:#64748b}
+td.cell.col-highlight{border-color:#3b82f6}
+td.cell.prefix{background:rgba(59,130,246,.2);border-color:#60a5fa}
+td.row-label{color:#94a3b8}
+.info-panel{background:#0f172a;border-color:#334155;color:#cbd5e1}
+.info-panel .step-num{color:#60a5fa}
+.btn{background:#1e293b;border-color:#475569;color:#cbd5e1}
+.btn:hover{background:#334155}
+.btn.primary{background:#3b82f6;color:#fff;border-color:#3b82f6}
+.result-badge{background:rgba(34,197,94,.2);color:#86efac}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>20. 最长公共前缀</h1>
+<div class="subtitle">strs = ["flower", "flow", "flight"] &nbsp; 预期输出: "fl"</div>
+<div class="table-wrapper"><table id="gridTable"><tbody></tbody></table></div>
+<div class="info-panel" id="info"><span class="step-num">准备</span>逐列比较每个字符串的字符，找到最长公共前缀</div>
+<div class="btn-row">
+<button class="btn" id="btnReset" title="重置">↺ 重置</button>
+<button class="btn" id="btnPrev" title="上一步 (←)">◀ 上一步</button>
+<button class="btn primary" id="btnNext" title="下一步 (→)">下一步 ▶</button>
+<button class="btn" id="btnAuto" title="自动播放 (空格)">▶ 自动播放</button>
+<button class="btn" id="btnLast" title="跳到最后">⏭ 最后</button>
+</div>
+</div>
+<script>
+const strs = ["flower", "flow", "flight"];
+const maxLen = Math.max(...strs.map(s => s.length));
+const totalSteps = maxLen + 2;
+
+let step = 0;
+let autoTimer = null;
+
+const gridTable = document.getElementById('gridTable');
+const info = document.getElementById('info');
+
+function buildGrid() {
+  const tbody = gridTable.querySelector('tbody');
+  tbody.innerHTML = '';
+  strs.forEach((s, row) => {
+    const tr = document.createElement('tr');
+    const label = document.createElement('td');
+    label.className = 'row-label';
+    label.textContent = row;
+    tr.appendChild(label);
+    for (let col = 0; col < maxLen; col++) {
+      const td = document.createElement('td');
+      td.className = 'cell pending';
+      td.textContent = col < s.length ? s[col] : '';
+      td.dataset.row = row;
+      td.dataset.col = col;
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  });
+}
+
+function render() {
+  const cells = gridTable.querySelectorAll('td.cell');
+  cells.forEach(c => { c.className = 'cell pending'; });
+  if (step === 0) {
+    info.innerHTML = '<span class="step-num">准备</span>逐列比较每个字符串的字符，找到最长公共前缀';
+    updateButtons();
+    return;
+  }
+  const col = step - 1;
+
+  if (col < maxLen) {
+    // Highlight current column
+    cells.forEach(c => {
+      if (parseInt(c.dataset.col) === col) c.classList.add('col-highlight');
+    });
+    // Mark previous columns as match & prefix
+    for (let c = 0; c < col; c++) {
+      cells.forEach(cell => { if (parseInt(cell.dataset.col) === c) { cell.classList.add('match'); cell.classList.add('prefix'); } });
+    }
+
+    // Check current column: all chars same?
+    const colChars = strs.map(s => col < s.length ? s[col] : null);
+    const first = colChars[0];
+    const allSame = colChars.every(ch => ch === first && ch !== null);
+    // Also check if any string ended
+    const anyEnded = colChars.some(ch => ch === null);
+
+    cells.forEach(cell => {
+      if (parseInt(cell.dataset.col) === col) {
+        if (anyEnded || !allSame) {
+          if (cell.dataset.row === '0') { cell.classList.add('match'); }
+          else { cell.classList.add('mismatch'); }
+        } else {
+          cell.classList.add('match');
+        }
+      }
+    });
+
+    if (anyEnded || !allSame) {
+      const prefix = strs[0].substring(0, col);
+      info.innerHTML = `<span class="step-num">列 ${col}</span>发现${anyEnded ? '某字符串已结束' : '不匹配字符'}，最长公共前缀 = <span class="result-badge">"${prefix}"</span>`;
+    } else {
+      info.innerHTML = `<span class="step-num">列 ${col}</span>所有字符串第 ${col} 列字符均为 "${first}"，匹配成功`;
+    }
+  }
+
+  if (step === maxLen + 1) {
+    for (let c = 0; c < maxLen; c++) {
+      cells.forEach(cell => { if (parseInt(cell.dataset.col) === c) cell.classList.add('match'); });
+      const colChars = strs.map(s => c < s.length ? s[c] : null);
+      const first = colChars[0];
+      const allSame = colChars.every(ch => ch === first && ch !== null);
+      if (!allSame) break;
+    }
+    info.innerHTML = '<span class="step-num">完成</span>最长公共前缀 = <span class="result-badge">"fl"</span>';
+  }
+
+  if (step >= maxLen + 2) {
+    for (let c = 0; c < maxLen; c++) {
+      cells.forEach(cell => { if (parseInt(cell.dataset.col) === c) cell.classList.add('match'); });
+    }
+    info.innerHTML = '<span class="step-num">完成</span>最长公共前缀 = <span class="result-badge">"fl"</span>';
+  }
+  updateButtons();
+}
+
+function updateButtons() {
+  btnPrev.disabled = step <= 0;
+  btnNext.disabled = step >= totalSteps;
+}
+
+function nextStep() { if (step < totalSteps) { step++; render(); } }
+function prevStep() { if (step > 0) { step--; render(); } }
+function resetAll() { stopAuto(); step = 0; render(); }
+function goLast() { stopAuto(); step = totalSteps; render(); }
+
+function stopAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; btnAuto.textContent = '▶ 自动播放'; } }
+function toggleAuto() {
+  if (autoTimer) { stopAuto(); return; }
+  if (step >= totalSteps) step = 0;
+  btnAuto.textContent = '⏸ 暂停';
+  autoTimer = setInterval(() => { nextStep(); if (step >= totalSteps) stopAuto(); }, 800);
+}
+
+const btnReset = document.getElementById('btnReset');
+const btnPrev = document.getElementById('btnPrev');
+const btnNext = document.getElementById('btnNext');
+const btnAuto = document.getElementById('btnAuto');
+const btnLast = document.getElementById('btnLast');
+
+btnReset.onclick = resetAll;
+btnPrev.onclick = prevStep;
+btnNext.onclick = nextStep;
+btnAuto.onclick = toggleAuto;
+btnLast.onclick = goLast;
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') { e.preventDefault(); nextStep(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); prevStep(); }
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+buildGrid();
+render();
+</script>
+</body>
+</html>

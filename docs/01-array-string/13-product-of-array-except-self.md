@@ -44,6 +44,17 @@
 
 **空间复杂度：** O(1)，输出数组不计入额外空间。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/13-product-of-array-except-self-demo.html"
+  style="width:100%; height:450px; border:none; border-radius:8px; background:transparent;"
+  title="除自身以外数组的乘积 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

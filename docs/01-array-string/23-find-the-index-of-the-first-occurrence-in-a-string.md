@@ -36,6 +36,17 @@
 
 **空间复杂度：** O(n)，存储 next 数组。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/23-find-the-index-of-the-first-occurrence-in-a-string-demo.html"
+  style="width:100%; height:450px; border:none; border-radius:8px; background:transparent;"
+  title="找出字符串中第一个匹配项的下标 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go
