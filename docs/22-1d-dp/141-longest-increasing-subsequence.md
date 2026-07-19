@@ -67,6 +67,17 @@
 - DP 方法体现了"以...结尾"这种常见的状态定义模式。
 - 二分优化是经典技巧，LIS 和耐心排序（Patience Sorting）有密切联系。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/141-longest-increasing-subsequence-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="最长递增子序列 (Longest Increasing Subsequence) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

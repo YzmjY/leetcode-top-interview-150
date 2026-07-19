@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>97. 单词接龙 - Word Ladder</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.container{background:#fff;border-radius:8px;padding:20px;width:800px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+h2{font-size:16px;margin-bottom:12px;color:#333}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+button{border:none;border-radius:8px;padding:8px 16px;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s;color:#fff;font-weight:500}
+button:disabled{opacity:.4;cursor:not-allowed}
+.btn-reset{background:#6c757d}
+.btn-prev{background:#0d6efd}
+.btn-next{background:#0d6efd}
+.btn-auto{background:#198754}
+.btn-end{background:#dc3545}
+button:hover:not(:disabled){filter:brightness(1.15)}
+.info-panel{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:#555;background:#f0f4f8;border-radius:8px;padding:10px 14px}
+.step-badge{background:#0d6efd;color:#fff;border-radius:20px;padding:2px 12px;font-weight:600;font-size:12px}
+.info-text{flex:1;margin-left:12px}
+.vis-area{background:#fafafa;border-radius:8px;position:relative;height:500px;overflow:hidden;border:1px solid #e0e0e0}
+svg{width:100%;height:100%}
+.hint{font-size:12px;color:#999;text-align:center;margin-top:8px}
+@media(prefers-color-scheme:dark){
+body{background:#1a1a2e}
+.container{background:#16213e;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+h2{color:#e0e0e0}
+.info-panel{background:#1a1a3e;color:#ccc}
+.vis-area{background:#0f0f23;border-color:#2a2a4a}
+.hint{color:#777}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>97. 单词接龙 (Word Ladder) — BFS 层序遍历</h2>
+<div class="controls">
+<button class="btn-reset" onclick="reset()">⟳ 重置</button>
+<button class="btn-prev" onclick="prevStep()">◀ 上步</button>
+<button class="btn-next" onclick="nextStep()">下步 ▶</button>
+<button class="btn-auto" id="btnAuto" onclick="toggleAuto()">▶ 自动播放</button>
+<button class="btn-end" onclick="jumpEnd()">▶▶ 跳到最后</button>
+</div>
+<div class="info-panel">
+<span class="step-badge" id="stepBadge">步骤 1/12</span>
+<span class="info-text" id="infoText">beginWord="hit", endWord="cog", wordList=[hot,dot,dog,lot,log,cog]</span>
+</div>
+<div class="vis-area"><svg id="svg" viewBox="0 0 800 500"></svg></div>
+<div class="hint">键盘: ← → 切换步骤 | 空格 自动播放</div>
+</div>
+<script>
+const beginWord='hit',endWord='cog';
+const wordList=['hot','dot','dog','lot','log','cog'];
+
+function diffOne(a,b){
+  let d=0;for(let i=0;i<a.length;i++)if(a[i]!==b[i])d++;return d===1;
+}
+
+let steps=[],currentStep=0,totalSteps=0,autoTimer=null;
+function buildSteps(){
+  steps=[];
+  let allWords=[beginWord,...wordList];
+  // Build adjacency
+  let adj={};
+  for(let w of allWords){adj[w]=[];}
+  for(let i=0;i<allWords.length;i++){
+    for(let j=i+1;j<allWords.length;j++){
+      if(diffOne(allWords[i],allWords[j])){
+        adj[allWords[i]].push(allWords[j]);
+        adj[allWords[j]].push(allWords[i]);
+      }
+    }
+  }
+
+  steps.push({info:'起始词: hit  目标词: cog  词表: ['+wordList.join(', ')+']',phase:'intro',level:0,currentWords:[],visited:[],edges:[],colorMap:{}});
+
+  // Show adjacency graph
+  let edgeList=[];
+  for(let w of allWords){
+    for(let n of adj[w]){
+      if(w<n)edgeList.push([w,n]);
+    }
+  }
+  steps.push({info:`构建邻接图 (相差1个字母即为相邻), 共 ${edgeList.length} 条边`,phase:'graph',level:0,currentWords:[],visited:[],edges:edgeList,colorMap:{}});
+
+  // BFS
+  let visited=new Set([beginWord]);
+  let queue=[[beginWord]];
+  let level=0;
+  let colorMap={};
+
+  steps.push({info:'BFS第0层: 起点 [hit]',phase:'start',level:0,currentWords:['hit'],visited:[...visited],edges:[],colorMap:{}});
+
+  while(queue.length>0){
+    let curLevel=queue.shift();
+    level++;
+    let nextLevel=[];
+    let levelColors=['#5b9bd5','#28a745','#ff6b00','#dc3545','#9b59b6'];
+    for(let w of curLevel)colorMap[w]=levelColors[(level-1)%levelColors.length];
+
+    for(let word of curLevel){
+      for(let nb of adj[word]){
+        if(!visited.has(nb)){
+          visited.add(nb);
+          nextLevel.push(nb);
+          colorMap[nb]=levelColors[level%levelColors.length];
+        }
+      }
+    }
+
+    if(nextLevel.length>0){
+      let found=nextLevel.includes(endWord);
+      steps.push({
+        info:`BFS第${level}层: [${nextLevel.join(', ')}]${found?' ← 找到cog!':''} (距离=${level+1})`,
+        phase:'level',level,currentWords:nextLevel,visited:[...visited],edges:edgeList,colorMap:{...colorMap},found
+      });
+      if(found)break;
+    }else{
+      steps.push({info:'BFS搜索结束, 无法到达cog',phase:'fail',level,currentWords:[],visited:[...visited],edges:edgeList,colorMap:{}});
+      break;
+    }
+    queue.push(nextLevel);
+  }
+
+  // Path reconstruction
+  steps.push({info:`最短变换序列: hit → hot → dot → dog → cog  (共5步, 距离=5)`,phase:'done',level:5,currentWords:['cog'],visited:[...visited],edges:edgeList,colorMap:{...colorMap},done:true,path:['hit','hot','dot','dog','cog']});
+}
+buildSteps();totalSteps=steps.length;
+
+const svg=document.getElementById('svg');
+
+// Position words in layers
+const words=['hit','hot','dot','dog','cog','lot','log'];
+const positions={
+  hit:{x:160,y:50},
+  hot:{x:400,y:50},
+  dot:{x:160,y:180},lot:{x:400,y:180},
+  dog:{x:160,y:320},log:{x:400,y:320},
+  cog:{x:280,y:430}
+};
+
+function draw(){
+  let s=steps[currentStep];
+  svg.innerHTML='';
+
+  // Draw edges
+  for(let [a,b] of s.edges){
+    let pa=positions[a],pb=positions[b];
+    let l=document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1',pa.x);l.setAttribute('y1',pa.y);
+    l.setAttribute('x2',pb.x);l.setAttribute('y2',pb.y);
+    l.setAttribute('stroke','#ccc');l.setAttribute('stroke-width',1.5);
+    svg.appendChild(l);
+  }
+
+  // Draw nodes
+  for(let w of words){
+    let p=positions[w];
+    let isVisited=s.visited.includes(w);
+    let isCurrent=s.currentWords.includes(w);
+    let isTarget=w===endWord;
+    let color=s.colorMap[w]||'#ddd';
+    if(!isVisited)color='#eee';
+    if(isTarget&&isVisited)color='#28a745';
+
+    if(isCurrent){
+      let hc=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      hc.setAttribute('cx',p.x);hc.setAttribute('cy',p.y);hc.setAttribute('r',34);
+      hc.setAttribute('fill','none');hc.setAttribute('stroke','#ff0');hc.setAttribute('stroke-width',3);
+      svg.appendChild(hc);
+    }
+
+    let c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',p.x);c.setAttribute('cy',p.y);c.setAttribute('r',28);
+    c.setAttribute('fill',color);c.setAttribute('stroke',isTarget&&isVisited?'#1e7e34':'#999');c.setAttribute('stroke-width',2);
+    svg.appendChild(c);
+
+    let t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',p.x);t.setAttribute('y',p.y+5);
+    t.setAttribute('text-anchor','middle');t.setAttribute('font-size','15');
+    t.setAttribute('font-family','monospace');t.setAttribute('font-weight','bold');
+    t.setAttribute('fill',isVisited&&!isCurrent?'#fff':'#333');
+    t.textContent=w;
+    svg.appendChild(t);
+  }
+
+  // Path highlight
+  if(s.path){
+    for(let i=0;i<s.path.length-1;i++){
+      let pa=positions[s.path[i]],pb=positions[s.path[i+1]];
+      let pl=document.createElementNS('http://www.w3.org/2000/svg','line');
+      pl.setAttribute('x1',pa.x);pl.setAttribute('y1',pa.y);
+      pl.setAttribute('x2',pb.x);pl.setAttribute('y2',pb.y);
+      pl.setAttribute('stroke','#28a745');pl.setAttribute('stroke-width',3);
+      pl.setAttribute('marker-end','url(#pathArr)');
+      svg.appendChild(pl);
+    }
+    // Show path text
+    let pt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    pt.setAttribute('x',600);pt.setAttribute('y',120);
+    pt.setAttribute('font-size','14');pt.setAttribute('fill','#28a745');pt.setAttribute('font-weight','bold');
+    pt.textContent='最短路径:';
+    svg.appendChild(pt);
+    let pt2=document.createElementNS('http://www.w3.org/2000/svg','text');
+    pt2.setAttribute('x',600);pt2.setAttribute('y',145);
+    pt2.setAttribute('font-size','14');pt2.setAttribute('fill','#28a745');pt2.setAttribute('font-family','monospace');
+    pt2.textContent=s.path.join(' → ');
+    svg.appendChild(pt2);
+  }
+
+  // Legend
+  let lx=600,ly=200;
+  let levels=['hit','hot→lot','dot→log','dog→log','cog'];
+  for(let i=0;i<5;i++){
+    let colors=['#ddd','#5b9bd5','#28a745','#ff6b00','#dc3545'];
+    let lc=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    lc.setAttribute('cx',lx);lc.setAttribute('cy',ly+i*28);lc.setAttribute('r',8);
+    lc.setAttribute('fill',colors[i]);
+    svg.appendChild(lc);
+    let lt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    lt.setAttribute('x',lx+14);lt.setAttribute('y',ly+i*28+4);
+    lt.setAttribute('font-size','13');lt.setAttribute('fill','#333');
+    lt.textContent='第'+i+'层';
+    svg.appendChild(lt);
+  }
+
+  let defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  let m=document.createElementNS('http://www.w3.org/2000/svg','marker');
+  m.setAttribute('id','pathArr');m.setAttribute('markerWidth','10');m.setAttribute('markerHeight','10');
+  m.setAttribute('refX','9');m.setAttribute('refY','3');m.setAttribute('orient','auto');
+  let mp=document.createElementNS('http://www.w3.org/2000/svg','path');
+  mp.setAttribute('d','M0,0 L0,6 L9,3 z');mp.setAttribute('fill','#28a745');
+  m.appendChild(mp);defs.appendChild(m);
+  svg.insertBefore(defs,svg.firstChild);
+
+  if(s.done){
+    let dm=document.createElementNS('http://www.w3.org/2000/svg','text');
+    dm.setAttribute('x',400);dm.setAttribute('y',490);
+    dm.setAttribute('text-anchor','middle');dm.setAttribute('font-size','16');dm.setAttribute('fill','#28a745');dm.setAttribute('font-weight','bold');
+    dm.textContent='✓ BFS最短路径: 5步 (包含起点)';
+    svg.appendChild(dm);
+  }
+
+  document.getElementById('stepBadge').textContent=`步骤 ${currentStep+1}/${totalSteps}`;
+  document.getElementById('infoText').textContent=s.info;
+  let btns=document.querySelectorAll('button');
+  btns.forEach(b=>b.disabled=false);
+  if(currentStep===0)document.querySelector('.btn-prev').disabled=true;
+  if(currentStep===totalSteps-1){document.querySelector('.btn-next').disabled=true;document.querySelector('.btn-end').disabled=true;document.querySelector('.btn-auto').disabled=true;}
+}
+
+function nextStep(){if(currentStep<totalSteps-1){currentStep++;draw();}}
+function prevStep(){if(currentStep>0){currentStep--;draw();}}
+function reset(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=0;draw();}
+function jumpEnd(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=totalSteps-1;draw();}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}
+  else{document.getElementById('btnAuto').textContent='⏸ 暂停';autoTimer=setInterval(()=>{if(currentStep<totalSteps-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}},1000);}
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){e.preventDefault();nextStep();}
+  else if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}
+  else if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+draw();
+</script>
+</body>
+</html>

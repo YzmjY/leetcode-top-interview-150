@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>120. 两个正序数组的中位数</title>
+<style>
+:root {
+  --bg: #f5f6fa; --card: #fff; --text: #2d3436; --sub: #636e72;
+  --border: #dfe6e9; --blue: #0984e3; --green: #00b894; --red: #e17055; --orange: #e17055;
+  --blue-bg: #dff6fd; --green-bg: #dff9e6; --hl: #ffeaa7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a2e; --card: #16213e; --text: #eee; --sub: #aaa;
+    --border: #2d3436; --blue: #74b9ff; --green: #55efc4; --red: #ff7675; --orange: #fab1a0;
+    --blue-bg: #1a3a5c; --green-bg: #1a3a2c; --hl: #5c4a1f;
+  }
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:var(--bg); display:flex; justify-content:center; align-items:center; min-height:100vh; }
+.container { width:860px; height:500px; background:var(--card); border-radius:8px; padding:20px 24px; display:flex; flex-direction:column; gap:10px; box-shadow:0 2px 12px rgba(0,0,0,0.1); }
+.header { display:flex; justify-content:space-between; align-items:center; }
+.header h2 { font-size:17px; color:var(--text); }
+.step-badge { font-size:13px; color:var(--sub); background:var(--border); padding:4px 12px; border-radius:8px; font-weight:500; }
+.info-panel { background:var(--blue-bg); border-left:3px solid var(--blue); padding:10px 14px; border-radius:8px; font-size:13px; color:var(--text); min-height:44px; display:flex; align-items:center; }
+.merged { display:flex; gap:0; justify-content:center; align-items:flex-end; flex:1; flex-wrap:nowrap; }
+.cell { width:48px; height:48px; border-radius:8px; background:var(--border); display:flex; align-items:center; justify-content:center; font-weight:600; font-size:18px; color:var(--text); margin:0 2px; transition:all 0.3s; }
+.cell.a { background:var(--blue-bg); border:2px solid var(--blue); }
+.cell.b { background:var(--green-bg); border:2px solid var(--green); }
+.cell.part-l { box-shadow:0 0 0 3px var(--red); }
+.cell.part-r { box-shadow:0 0 0 3px var(--green); }
+.cell.median { background:var(--hl); box-shadow:0 0 0 3px var(--orange); }
+.legend { display:flex; gap:16px; justify-content:center; font-size:12px; color:var(--sub); }
+.controls { display:flex; gap:8px; justify-content:center; }
+.btn { padding:7px 16px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; font-size:13px; font-family:inherit; transition:all 0.15s; }
+.btn:hover { background:var(--blue-bg); border-color:var(--blue); }
+.btn:active { transform:scale(0.96); }
+.key-hint { font-size:11px; color:var(--sub); text-align:center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h2>120. 两个正序数组的中位数</h2>
+    <span class="step-badge" id="stepBadge">步骤 0/5</span>
+  </div>
+  <div class="info-panel" id="info"></div>
+  <div class="merged" id="merged"></div>
+  <div class="legend">
+    <span style="color:var(--blue)">&#9632; nums1=[1,3]</span>
+    <span style="color:var(--green)">&#9632; nums2=[2]</span>
+    <span style="color:var(--orange)">&#9632; 中位数</span>
+  </div>
+  <div class="controls">
+    <button class="btn" onclick="reset()">重置</button>
+    <button class="btn" onclick="prev()">上步</button>
+    <button class="btn" onclick="next()">下步</button>
+    <button class="btn" id="autoBtn" onclick="toggleAuto()">自动播放</button>
+    <button class="btn" onclick="goLast()">跳到最后</button>
+  </div>
+  <div class="key-hint">键盘: &#8592; &#8593; 上步 | &#8594; &#8595; 下步 | 空格 自动播放 | R 重置 | End 跳到最后</div>
+</div>
+<script>
+const nums1 = [1,3], nums2 = [2];
+const total = nums1.length + nums2.length;
+const k = Math.floor((total + 1) / 2);
+let steps = [], cur = 0, autoTimer = null, running = false;
+
+function buildSteps() {
+  steps = [];
+  // 合并数组展示
+  const merged = [...nums1.map(v=>({v,src:'a'})), ...nums2.map(v=>({v,src:'b'}))].sort((a,b)=>a.v-b.v);
+  steps.push({desc:`nums1=[${nums1}], nums2=[${nums2}], 合并排序=[${merged.map(m=>m.v)}], 总长度=${total}`,merged,medianIdx:-1});
+  // 找中位数
+  if (total % 2 === 1) {
+    steps.push({desc:`奇数长度，中位数是第${Math.floor(total/2)+1}个元素 = ${merged[Math.floor(total/2)].v}`,merged,medianIdx:Math.floor(total/2)});
+  } else {
+    const m1 = merged[total/2-1].v, m2 = merged[total/2].v;
+    steps.push({desc:`偶数长度，中位数 = (第${total/2}个 + 第${total/2+1}个)/2 = (${m1}+${m2})/2 = ${(m1+m2)/2}`,merged,medianIdx:total/2-1,medianIdx2:total/2});
+  }
+  // 分割线展示
+  steps.push({desc:'分割线方法：二分较短数组，确保左半部分 <= 右半部分',merged,medianIdx:steps[steps.length-1].medianIdx,partition:true});
+}
+buildSteps();
+
+function render() {
+  const s = steps[cur];
+  document.getElementById('stepBadge').textContent = `步骤 ${cur}/${steps.length-1}`;
+  document.getElementById('info').textContent = s.desc;
+  document.getElementById('autoBtn').textContent = running ? '停止' : '自动播放';
+  const cont = document.getElementById('merged');
+  let html = '';
+  s.merged.forEach((m, i) => {
+    let cls = 'cell ' + m.src;
+    if (i === s.medianIdx) cls += ' median';
+    if (s.medianIdx2 !== undefined && i === s.medianIdx2) cls += ' median';
+    html += `<div class="${cls}">${m.v}</div>`;
+  });
+  cont.innerHTML = html;
+}
+function reset() { stopAuto(); cur = 0; render(); }
+function prev() { if (cur > 0) { cur--; render(); } }
+function next() { if (cur < steps.length - 1) { cur++; render(); } else { stopAuto(); } }
+function goLast() { stopAuto(); cur = steps.length - 1; render(); }
+function toggleAuto() { running ? stopAuto() : startAuto(); }
+function startAuto() { running = true; render(); autoStep(); }
+function stopAuto() { running = false; if (autoTimer) clearTimeout(autoTimer); render(); }
+function autoStep() { if (!running) return; if (cur < steps.length - 1) { cur++; render(); autoTimer = setTimeout(autoStep, 700); } else { stopAuto(); } }
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); next(); }
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+  else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); reset(); }
+  else if (e.key === 'End') { e.preventDefault(); goLast(); }
+});
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>147. 编辑距离 - 可视化演示</title>
+<style>
+:root{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--sub:#666;--border:#e0e0e0;--accent:#2563eb;--step-bg:#f0f4ff;--grid-bg:#fafafa;--radius:8px;--font:system-ui,-apple-system,sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--sub:#a0a0b0;--border:#334;--accent:#60a5fa;--step-bg:#1e293b;--grid-bg:#0f172a}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);display:flex;justify-content:center;align-items:center;min-height:100vh}
+.demo-container{width:100%;max-width:960px;height:500px;background:var(--card);border-radius:var(--radius);box-shadow:0 4px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--step-bg)}
+.header .title{font-size:15px;font-weight:600;color:var(--text)}
+.header .step-info{font-size:13px;color:var(--accent);font-weight:500}
+.controls{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.controls button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
+.controls button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.controls button:disabled{opacity:.4;cursor:not-allowed}
+.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.main-area{flex:1;display:flex;flex-direction:column;padding:12px 16px;gap:10px;overflow-y:auto}
+.info-panel{padding:10px 14px;background:var(--step-bg);border-radius:var(--radius);border:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.6}
+.info-panel strong{color:var(--accent)}
+.vis-area{flex:1;display:flex;flex-direction:column;gap:8px;align-items:center}
+.grid-wrap{overflow:auto;max-width:100%}
+.grid{display:inline-grid;gap:2px}
+.grid-cell{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-weight:700;font-size:14px;border:2px solid var(--border);background:var(--grid-bg);color:var(--text);transition:all .3s}
+.grid-cell.hdr{background:var(--step-bg);font-size:12px;color:var(--sub);font-weight:600}
+.grid-cell.cur{border-color:var(--accent);background:var(--step-bg);color:var(--accent)}
+.grid-cell.done{background:#bbf7d0;border-color:#22c55e;color:#166534}
+.grid-cell.op-del{}.grid-cell.op-ins{}.grid-cell.op-rep{}
+.step-detail{font-size:13px;color:var(--sub);text-align:center}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+@media(prefers-color-scheme:dark){.grid-cell.done{background:#14532d;border-color:#22c55e;color:#86efac}}
+</style>
+</head>
+<body>
+<div class="demo-container">
+<div class="header">
+<span class="title">147. 编辑距离 (Edit Distance)</span>
+<span class="step-info" id="stepLabel">步骤 0 / 0</span>
+</div>
+<div class="controls">
+<button onclick="reset()">重置</button>
+<button onclick="prevStep()">上步</button>
+<button onclick="nextStep()">下步</button>
+<button onclick="toggleAuto()" id="autoBtn">自动播放</button>
+<button onclick="jumpEnd()">跳到最后</button>
+</div>
+<div class="main-area">
+<div class="info-panel" id="info"><strong>输入:</strong> word1="horse", word2="ros" &nbsp;|&nbsp; <strong>思路:</strong> dp[i][j]=word1[i]==word2[j]?dp[i-1][j-1]:1+min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1])</div>
+<div class="vis-area">
+<div class="grid-wrap"><div class="grid" id="grid"></div></div>
+<div class="step-detail" id="stepDetail"></div>
+<div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+</div>
+</div>
+</div>
+<script>
+const W1='horse',W2='ros';
+let steps=[],stepIdx=0,autoTimer=null,playing=false;
+
+function buildSteps(){
+  steps=[];
+  let n1=W1.length,n2=W2.length;
+  let dp=Array.from({length:n1+1},()=>Array(n2+1).fill(0));
+  for(let i=0;i<=n1;i++){dp[i][0]=i;steps.push({dp:dp.map(r=>[...r]),i,j:0,note:`dp[${i}][0]=${i} (删除${i}个字符)`,done:false});}
+  for(let j=0;j<=n2;j++){dp[0][j]=j;steps.push({dp:dp.map(r=>[...r]),i:0,j,note:`dp[0][${j}]=${j} (插入${j}个字符)`,done:false});}
+  for(let i=1;i<=n1;i++){
+    for(let j=1;j<=n2;j++){
+      if(W1[i-1]===W2[j-1]){dp[i][j]=dp[i-1][j-1];steps.push({dp:dp.map(r=>[...r]),i,j,note:`'${W1[i-1]}'=='${W2[j-1]}' => dp[${i}][${j}]=dp[${i-1}][${j-1}]=${dp[i][j]}`,done:i===n1&&j===n2});}
+      else{
+        dp[i][j]=1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+        steps.push({dp:dp.map(r=>[...r]),i,j,note:`'${W1[i-1]}'!='${W2[j-1]}' => 1+min(del=${dp[i-1][j]},ins=${dp[i][j-1]},rep=${dp[i-1][j-1]})=${dp[i][j]}`,done:i===n1&&j===n2});
+      }
+    }
+  }
+  let last=steps[steps.length-1];
+  steps[steps.length-1]={...last,note:last.note+` | 最少操作数: ${dp[n1][n2]}`,done:true};
+}
+function render(){
+  let s=steps[stepIdx]||steps[steps.length-1]||{};
+  let total=steps.length;
+  document.getElementById('stepLabel').textContent=`步骤 ${stepIdx+1} / ${total}`;
+  document.getElementById('progress').style.width=((stepIdx+1)/total*100)+'%';
+  document.getElementById('info').innerHTML=`<strong>word1="horse", word2="ros"</strong> &nbsp;|&nbsp; ${s.note||''}`;
+
+  let dp=s.dp||[],n1=W1.length,n2=W2.length;
+  let gh='';
+  gh+=`<div class="grid-cell hdr">#</div>`;
+  gh+=`<div class="grid-cell hdr">#</div>`;
+  for(let j=0;j<n2;j++)gh+=`<div class="grid-cell hdr">${W2[j]}</div>`;
+  for(let i=0;i<=n1;i++){
+    gh+=`<div class="grid-cell hdr">${i===0?'#':W1[i-1]}</div>`;
+    for(let j=0;j<=n2;j++){
+      let v=dp[i]?.[j];
+      let cls='';
+      if(s.i===i&&s.j===j)cls='cur';
+      else if(s.done&&s.i!==undefined)cls='done';
+      gh+=`<div class="grid-cell ${cls}">${v!==undefined?v:'?'}</div>`;
+    }
+  }
+  document.getElementById('grid').innerHTML=gh;
+  document.getElementById('grid').style.gridTemplateColumns=`repeat(${n2+2},1fr)`;
+  document.getElementById('stepDetail').textContent=(s.i&&s.j)?`dp[${s.i}][${s.j}]: W1[${s.i-1}]='${W1[s.i-1]}' vs W2[${s.j-1}]='${W2[s.j-1]}'`:'';
+}
+function reset(){stopAuto();stepIdx=0;buildSteps();render();}
+function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
+function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
+function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}
+function toggleAuto(){
+  if(playing){stopAuto();}else{playing=true;document.getElementById('autoBtn').classList.add('active');document.getElementById('autoBtn').textContent='停止';
+    autoTimer=setInterval(()=>{if(stepIdx<steps.length-1){stepIdx++;render();}else{stopAuto();}},700);}
+}
+function stopAuto(){playing=false;clearInterval(autoTimer);document.getElementById('autoBtn').classList.remove('active');document.getElementById('autoBtn').textContent='自动播放';}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight')nextStep();
+  else if(e.key==='ArrowLeft')prevStep();
+  else if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+buildSteps();render();
+</script>
+</body>
+</html>

@@ -71,6 +71,17 @@
 - **时间复杂度**：O(n)，n 为路径字符串长度。分割和遍历各一次。
 - **空间复杂度**：O(n)，栈和分割后的字符串切片。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/53-simplify-path-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="简化路径 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

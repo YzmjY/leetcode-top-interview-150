@@ -51,6 +51,17 @@
 - **时间复杂度**：O(n)，每个节点被访问一次。
 - **空间复杂度**：O(h)，递归栈深度，最坏 O(n)，平均 O(log n)。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/70-invert-binary-tree-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="翻转二叉树 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

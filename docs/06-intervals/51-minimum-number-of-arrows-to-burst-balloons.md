@@ -62,6 +62,17 @@
 - **时间复杂度**：O(n log n)，排序需要 O(n log n)，遍历需要 O(n)。
 - **空间复杂度**：O(log n)，排序所需的栈空间。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/51-minimum-number-of-arrows-to-burst-balloons-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="用最少数量的箭引爆气球 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

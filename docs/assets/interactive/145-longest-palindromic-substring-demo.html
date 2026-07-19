@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>145. 最长回文子串 - 可视化演示</title>
+<style>
+:root{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--sub:#666;--border:#e0e0e0;--accent:#2563eb;--step-bg:#f0f4ff;--grid-bg:#fafafa;--radius:8px;--font:system-ui,-apple-system,sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--sub:#a0a0b0;--border:#334;--accent:#60a5fa;--step-bg:#1e293b;--grid-bg:#0f172a}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);display:flex;justify-content:center;align-items:center;min-height:100vh}
+.demo-container{width:100%;max-width:960px;height:500px;background:var(--card);border-radius:var(--radius);box-shadow:0 4px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--step-bg)}
+.header .title{font-size:15px;font-weight:600;color:var(--text)}
+.header .step-info{font-size:13px;color:var(--accent);font-weight:500}
+.controls{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.controls button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
+.controls button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.controls button:disabled{opacity:.4;cursor:not-allowed}
+.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.main-area{flex:1;display:flex;flex-direction:column;padding:12px 16px;gap:10px;overflow-y:auto}
+.info-panel{padding:10px 14px;background:var(--step-bg);border-radius:var(--radius);border:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.6}
+.info-panel strong{color:var(--accent)}
+.vis-area{flex:1;display:flex;flex-direction:column;gap:8px}
+.str-row{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;padding:6px 0}
+.ch-box{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-weight:700;font-size:17px;border:2px solid var(--border);background:var(--grid-bg);color:var(--text);transition:all .3s}
+.ch-box.center{background:#fef08a;border-color:#eab308;color:#854d0e}
+.ch-box.pal{background:#bbf7d0;border-color:#22c55e;color:#166534}
+.ch-box.l{background:#ddd6fe;border-color:#8b5cf6;color:#5b21b6}
+.ch-box.r{border-color:var(--accent);background:var(--step-bg)}
+.result{text-align:center;font-size:16px;font-weight:700;padding:4px;color:var(--text)}
+.result span{color:var(--accent);font-size:20px}
+.step-detail{font-size:13px;color:var(--sub);text-align:center}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+@media(prefers-color-scheme:dark){.ch-box.center{background:#713f12;border-color:#eab308;color:#fde047}.ch-box.pal{background:#14532d;border-color:#22c55e;color:#86efac}}
+</style>
+</head>
+<body>
+<div class="demo-container">
+<div class="header">
+<span class="title">145. 最长回文子串 (Longest Palindromic Substring)</span>
+<span class="step-info" id="stepLabel">步骤 0 / 0</span>
+</div>
+<div class="controls">
+<button onclick="reset()">重置</button>
+<button onclick="prevStep()">上步</button>
+<button onclick="nextStep()">下步</button>
+<button onclick="toggleAuto()" id="autoBtn">自动播放</button>
+<button onclick="jumpEnd()">跳到最后</button>
+</div>
+<div class="main-area">
+<div class="info-panel" id="info"><strong>输入:</strong> s = "babad" &nbsp;|&nbsp; <strong>思路:</strong> 中心扩展法: 枚举每个字符作为回文中心向两边扩展</div>
+<div class="vis-area">
+<div class="str-row" id="strRow"></div>
+<div class="result" id="result"></div>
+<div class="step-detail" id="stepDetail"></div>
+<div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+</div>
+</div>
+</div>
+<script>
+const S='babad';
+let steps=[],stepIdx=0,autoTimer=null,playing=false;
+
+function buildSteps(){
+  steps=[];
+  let n=S.length,best='';
+  for(let center=0;center<n;center++){
+    for(let odd of[true,false]){
+      let l=center,r=odd?center:center+1;
+      steps.push({l,r,center,odd,best,note:`中心: ${odd?`s[${center}]='${S[center]}' (奇数长度)`:`s[${center}]和s[${center+1}] (偶数长度)`}`,done:false});
+      while(l>=0&&r<n&&S[l]===S[r]){
+        let pal=S.substring(l,r+1);
+        if(pal.length>best.length)best=pal;
+        steps.push({l,r,center,odd,best,note:`s[${l}]=='${S[l]}' == s[${r}]=='${S[r]}' => 回文 "${pal}"`,done:false});
+        l--;r++;
+      }
+      if(l+1<=r-1){steps.push({l:l+1,r:r-1,center,odd,best,note:`中心扩展结束, 回文: "${S.substring(l+1,r)}"`,done:false});}
+    }
+  }
+  let last=steps[steps.length-1];
+  steps[steps.length-1]={...last,note:last.note+` | 最长回文子串: "${best}"`,done:true,best};
+}
+function render(){
+  let s=steps[stepIdx]||steps[steps.length-1]||{};
+  let total=steps.length;
+  document.getElementById('stepLabel').textContent=`步骤 ${stepIdx+1} / ${total}`;
+  document.getElementById('progress').style.width=((stepIdx+1)/total*100)+'%';
+  document.getElementById('info').innerHTML=`<strong>s = "babad"</strong> &nbsp;|&nbsp; ${s.note||''}`;
+
+  let sh='';
+  for(let i=0;i<S.length;i++){
+    let cls='';
+    if(i===s.center)cls='center';
+    if(s.l!==undefined&&s.r!==undefined&&i>=s.l&&i<=s.r&&S[s.l]===S[s.r])cls='pal';
+    if(i===s.l)cls+=' l';
+    if(i===s.r)cls+=' r';
+    sh+=`<div class="ch-box ${cls}">${S[i]}</div>`;
+  }
+  document.getElementById('strRow').innerHTML=sh;
+  document.getElementById('result').innerHTML=`当前最长: <span>${s.best||''}</span>`;
+  document.getElementById('stepDetail').textContent=s.l!==undefined?`左指针l=${s.l}, 右指针r=${s.r}`:'';
+}
+function reset(){stopAuto();stepIdx=0;buildSteps();render();}
+function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
+function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
+function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}
+function toggleAuto(){
+  if(playing){stopAuto();}else{playing=true;document.getElementById('autoBtn').classList.add('active');document.getElementById('autoBtn').textContent='停止';
+    autoTimer=setInterval(()=>{if(stepIdx<steps.length-1){stepIdx++;render();}else{stopAuto();}},900);}
+}
+function stopAuto(){playing=false;clearInterval(autoTimer);document.getElementById('autoBtn').classList.remove('active');document.getElementById('autoBtn').textContent='自动播放';}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight')nextStep();
+  else if(e.key==='ArrowLeft')prevStep();
+  else if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+buildSteps();render();
+</script>
+</body>
+</html>

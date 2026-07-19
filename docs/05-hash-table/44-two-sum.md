@@ -65,6 +65,17 @@
 - **时间复杂度**：O(n)，只需遍历数组一次。
 - **空间复杂度**：O(n)，哈希表最多存储 n 个元素。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/44-two-sum-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="两数之和 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

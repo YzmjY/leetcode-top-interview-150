@@ -54,6 +54,17 @@
 - **时间复杂度**：O(n)，最坏情况下访问所有节点。
 - **空间复杂度**：O(h)，递归栈深度，最坏 O(n)，平均 O(log n)。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/76-path-sum-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="路径总和 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

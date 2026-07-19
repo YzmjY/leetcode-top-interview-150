@@ -47,6 +47,17 @@
 - **时间复杂度**：O(n)，其中 n 为节点数。每个节点被访问一次。
 - **空间复杂度**：O(h)，其中 h 为树的高度。递归栈的空间开销。最坏情况下（链状树）为 O(n)，平均为 O(log n)。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/68-maximum-depth-of-binary-tree-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="二叉树的最大深度 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

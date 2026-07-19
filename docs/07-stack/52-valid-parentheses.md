@@ -63,6 +63,17 @@
 - **时间复杂度**：O(n)，n 为字符串长度，每个字符入栈出栈各最多一次。
 - **空间复杂度**：O(n)，最坏情况下栈中存放所有左括号。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/52-valid-parentheses-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="有效的括号 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>139. 单词拆分 - 可视化演示</title>
+<style>
+:root{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--sub:#666;--border:#e0e0e0;--accent:#2563eb;--step-bg:#f0f4ff;--grid-bg:#fafafa;--radius:8px;--font:system-ui,-apple-system,sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--sub:#a0a0b0;--border:#334;--accent:#60a5fa;--step-bg:#1e293b;--grid-bg:#0f172a}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);display:flex;justify-content:center;align-items:center;min-height:100vh}
+.demo-container{width:100%;max-width:960px;height:500px;background:var(--card);border-radius:var(--radius);box-shadow:0 4px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--step-bg)}
+.header .title{font-size:15px;font-weight:600;color:var(--text)}
+.header .step-info{font-size:13px;color:var(--accent);font-weight:500}
+.controls{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.controls button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
+.controls button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.controls button:disabled{opacity:.4;cursor:not-allowed}
+.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.main-area{flex:1;display:flex;flex-direction:column;padding:12px 16px;gap:10px;overflow-y:auto}
+.info-panel{padding:10px 14px;background:var(--step-bg);border-radius:var(--radius);border:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.6}
+.info-panel strong{color:var(--accent)}
+.vis-area{flex:1;display:flex;flex-direction:column;gap:8px}
+.str-row{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;padding:6px 0}
+.ch-box{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-weight:700;font-size:17px;border:2px solid var(--border);background:var(--grid-bg);color:var(--text);transition:all .3s}
+.ch-box.matched{background:#bbf7d0;border-color:#22c55e;color:#166534}
+.ch-box.cur{background:#ddd6fe;border-color:#8b5cf6;color:#5b21b6}
+.dp-table{display:flex;gap:4px;align-items:center;justify-content:center;flex-wrap:wrap;padding:6px 0}
+.dp-box{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-weight:600;font-size:13px;border:2px solid var(--border);background:var(--grid-bg);color:var(--text);transition:all .3s}
+.dp-box.true{background:#bbf7d0;border-color:#22c55e;color:#166534}
+.dp-box.current{border-color:var(--accent);background:var(--step-bg)}
+.dict-tags{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:4px 0}
+.tag{padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:var(--step-bg);color:var(--accent);border:1px solid var(--accent)}
+.step-detail{font-size:13px;color:var(--sub);text-align:center}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+@media(prefers-color-scheme:dark){.ch-box.matched{background:#14532d;border-color:#22c55e;color:#86efac}.dp-box.true{background:#14532d;border-color:#22c55e;color:#86efac}}
+</style>
+</head>
+<body>
+<div class="demo-container">
+<div class="header">
+<span class="title">139. 单词拆分 (Word Break)</span>
+<span class="step-info" id="stepLabel">步骤 0 / 0</span>
+</div>
+<div class="controls">
+<button onclick="reset()">重置</button>
+<button onclick="prevStep()">上步</button>
+<button onclick="nextStep()">下步</button>
+<button onclick="toggleAuto()" id="autoBtn">自动播放</button>
+<button onclick="jumpEnd()">跳到最后</button>
+</div>
+<div class="main-area">
+<div class="info-panel" id="info"><strong>输入:</strong> s = "leetcode", wordDict = ["leet","code"] &nbsp;|&nbsp; <strong>思路:</strong> DP: dp[i]表示前缀s[0:i]能否拆分</div>
+<div class="vis-area">
+<div class="str-row" id="strRow"></div>
+<div class="dp-table" id="dpTable"></div>
+<div class="dict-tags"><span class="tag">leet</span><span class="tag">code</span></div>
+<div class="step-detail" id="stepDetail"></div>
+<div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+</div>
+</div>
+</div>
+<script>
+const S='leetcode',DICT=['leet','code'];
+let steps=[],stepIdx=0,autoTimer=null,playing=false;
+
+function buildSteps(){
+  steps=[];
+  let n=S.length;
+  let dp=Array(n+1).fill(false);
+  dp[0]=true;
+  steps.push({dp:[...dp],j:-1,match:'',note:'dp[0]=true (空串可拆分)',done:false});
+  for(let i=1;i<=n;i++){
+    let found=false;
+    for(let j=0;j<i;j++){
+      let sub=S.substring(j,i);
+      if(dp[j]&&DICT.includes(sub)){
+        dp[i]=true;found=true;
+        steps.push({dp:[...dp],j,i,sub,note:`j=${j}, s[${j}:${i}]="${sub}" 在字典中 & dp[${j}]=true => dp[${i}]=true`,done:i===n});
+        break;
+      }
+      steps.push({dp:[...dp],j,i,sub,note:`j=${j}, s[${j}:${i}]="${sub}" ${DICT.includes(sub)?'在':'不在'}字典中`,done:false});
+    }
+    if(!found){steps.push({dp:[...dp],j:-1,i,sub:'',note:`dp[${i}] 仍为 false`,done:i===n});}
+  }
+  let last=steps[steps.length-1];
+  steps[steps.length-1]={...last,note:last.note+` | 结果: ${dp[n]}`,done:true};
+}
+function render(){
+  let s=steps[stepIdx]||steps[steps.length-1]||{};
+  let total=steps.length;
+  document.getElementById('stepLabel').textContent=`步骤 ${stepIdx+1} / ${total}`;
+  document.getElementById('progress').style.width=((stepIdx+1)/total*100)+'%';
+  document.getElementById('info').innerHTML=`<strong>s = "leetcode"</strong> &nbsp;|&nbsp; ${s.note||''}`;
+
+  let sh='';
+  for(let k=0;k<S.length;k++){
+    let cls='';
+    if(s.sub&&k>=s.j&&k<s.i)cls='matched';
+    if(k===s.j)cls='cur';
+    sh+=`<div class="ch-box ${cls}">${S[k]}</div>`;
+  }
+  document.getElementById('strRow').innerHTML=sh;
+
+  let dp=s.dp||[];
+  let dh='';for(let k=0;k<=S.length;k++){let cls=dp[k]?'true':'';if(k===s.i)cls+=' current';dh+=`<div class="dp-box ${cls}">${dp[k]?'T':'F'}</div>`;}
+  document.getElementById('dpTable').innerHTML=dh;
+  document.getElementById('stepDetail').textContent=`dp = [${dp.map(v=>v?'T':'F').join(',')}]`;
+}
+function reset(){stopAuto();stepIdx=0;buildSteps();render();}
+function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
+function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
+function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}
+function toggleAuto(){
+  if(playing){stopAuto();}else{playing=true;document.getElementById('autoBtn').classList.add('active');document.getElementById('autoBtn').textContent='停止';
+    autoTimer=setInterval(()=>{if(stepIdx<steps.length-1){stepIdx++;render();}else{stopAuto();}},900);}
+}
+function stopAuto(){playing=false;clearInterval(autoTimer);document.getElementById('autoBtn').classList.remove('active');document.getElementById('autoBtn').textContent='自动播放';}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight')nextStep();
+  else if(e.key==='ArrowLeft')prevStep();
+  else if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+buildSteps();render();
+</script>
+</body>
+</html>

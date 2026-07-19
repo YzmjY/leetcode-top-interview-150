@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>59. 合并两个有序链表 - 可视化演示</title>
+<style>
+:root {
+  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
+  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
+  --btn-active-text: #fff; --node-bg: #e9ecef;
+  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
+  --step-bg: #e7f5ff;
+}
+@media (prefers-color-scheme: dark) {
+:root {
+  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
+  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
+  --btn-active-text: #fff; --node-bg: #2a2a4a; --step-bg: #1a2a3a;
+}
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text);
+  display: flex; justify-content: center; padding: 20px;
+}
+.container {
+  width: 100%; max-width: 950px; height: 500px;
+  background: var(--card-bg); border-radius: 8px;
+  border: 1px solid var(--border); padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.step-panel {
+  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
+  display: flex; justify-content: space-between; align-items: center; font-size: 14px;
+}
+.step-num { font-weight: 700; color: var(--btn-active); }
+.step-desc { flex: 1; margin-left: 16px; }
+.svg-area { flex: 1; display: flex; justify-content: center; align-items: center; }
+.controls {
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+}
+.controls button {
+  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--btn-bg); color: var(--text); cursor: pointer;
+  font-size: 13px; font-family: inherit; transition: all 0.15s;
+}
+.controls button:hover { background: var(--btn-hover); }
+.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="step-panel">
+    <span class="step-num" id="stepNum">步骤 0 / 0</span>
+    <span class="step-desc" id="stepDesc">初始状态</span>
+  </div>
+  <div class="svg-area"><svg id="svg" viewBox="0 0 880 300"></svg></div>
+  <div class="controls">
+    <button onclick="reset()">重置</button>
+    <button onclick="prevStep()">上步</button>
+    <button onclick="nextStep()">下步</button>
+    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
+    <button onclick="goEnd()">跳到最后</button>
+  </div>
+</div>
+<script>
+const l1v = [1, 2, 4];
+const l2v = [1, 3, 4];
+const steps = [];
+let stepIdx = -1;
+
+const pos1 = [{x:60,y:70},{x:170,y:70},{x:280,y:70}];
+const pos2 = [{x:60,y:150},{x:170,y:150},{x:280,y:150}];
+const posM = [];
+for (let i = 0; i < 12; i++) posM.push({x: 520 + (i % 6) * 55, y: 100 + Math.floor(i / 6) * 60});
+
+function buildSteps() {
+  steps.length = 0;
+  let i = 0, j = 0;
+  const merged = [];
+  const hl = { l1: -1, l2: -1, chosen: '' };
+
+  steps.push({ i, j, merged: [], hl: {...hl}, desc: '初始状态：两个有序链表待合并' });
+
+  while (i < l1v.length || j < l2v.length) {
+    hl.l1 = i < l1v.length ? i : -1;
+    hl.l2 = j < l2v.length ? j : -1;
+
+    if (i >= l1v.length) {
+      merged.push(l2v[j]); hl.chosen = 'l2';
+      steps.push({ i, j, merged: [...merged], hl: {...hl}, desc: `l1 已空，取 l2[${j}]=${l2v[j]} 加入结果` });
+      j++;
+    } else if (j >= l2v.length) {
+      merged.push(l1v[i]); hl.chosen = 'l1';
+      steps.push({ i, j, merged: [...merged], hl: {...hl}, desc: `l2 已空，取 l1[${i}]=${l1v[i]} 加入结果` });
+      i++;
+    } else if (l1v[i] <= l2v[j]) {
+      merged.push(l1v[i]); hl.chosen = 'l1';
+      steps.push({ i, j, merged: [...merged], hl: {...hl}, desc: `比较: l1[${i}]=${l1v[i]} <= l2[${j}]=${l2v[j]}，选 l1 的 ${l1v[i]}` });
+      i++;
+    } else {
+      merged.push(l2v[j]); hl.chosen = 'l2';
+      steps.push({ i, j, merged: [...merged], hl: {...hl}, desc: `比较: l1[${i}]=${l1v[i]} > l2[${j}]=${l2v[j]}，选 l2 的 ${l2v[j]}` });
+      j++;
+    }
+  }
+
+  steps.push({ i, j, merged: [...merged], hl: {l1:-1,l2:-1,chosen:''},
+    desc: `合并完成！结果: [${merged.join(',')}]` });
+}
+
+const R = 20;
+function drawNode(cx, cy, val, fill, stroke, hl, extraClass) {
+  const r = hl ? R + 3 : R;
+  const sw = hl ? 3 : 2;
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${hl ? 'var(--orange)' : stroke}" stroke-width="${sw}"/>
+    <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text)" font-family="Consolas,monospace">${val}</text>`;
+}
+
+function renderSVG() {
+  const st = steps[Math.min(stepIdx, steps.length - 1)];
+  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
+  document.getElementById('stepDesc').textContent = st.desc;
+
+  const svg = document.getElementById('svg');
+  let html = `<defs>
+    <marker id="arrowB" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="var(--blue)"/>
+    </marker>
+    <marker id="arrowG" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="var(--green)"/>
+    </marker>
+    <marker id="arrowO" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="var(--orange)"/>
+    </marker>
+  </defs>`;
+
+  html += `<text x="20" y="75" font-size="14" font-weight="700" fill="var(--blue)">l1</text>`;
+  html += `<text x="20" y="155" font-size="14" font-weight="700" fill="var(--green)">l2</text>`;
+  html += `<text x="460" y="90" font-size="14" font-weight="700" fill="var(--orange)">合并结果</text>`;
+
+  // l1
+  for (let i = 0; i < l1v.length; i++) {
+    html += drawNode(pos1[i].x, pos1[i].y, l1v[i], 'var(--node-bg)', 'var(--blue)', st.hl.l1 === i && st.hl.chosen === 'l1');
+    if (i < l1v.length - 1) html += `<line x1="${pos1[i].x+R}" y1="${pos1[i].y}" x2="${pos1[i+1].x-R}" y2="${pos1[i+1].y}" stroke="var(--blue)" stroke-width="2" marker-end="url(#arrowB)"/>`;
+    if (i >= st.i) html += `<rect x="${pos1[i].x-R-2}" y="${pos1[i].y-R-2}" width="${R*2+4}" height="${R*2+4}" rx="12" fill="none" stroke="var(--text-secondary)" stroke-width="1" stroke-dasharray="3,3"/>`;
+  }
+  // l2
+  for (let i = 0; i < l2v.length; i++) {
+    html += drawNode(pos2[i].x, pos2[i].y, l2v[i], 'var(--node-bg)', 'var(--green)', st.hl.l2 === i && st.hl.chosen === 'l2');
+    if (i < l2v.length - 1) html += `<line x1="${pos2[i].x+R}" y1="${pos2[i].y}" x2="${pos2[i+1].x-R}" y2="${pos2[i+1].y}" stroke="var(--green)" stroke-width="2" marker-end="url(#arrowG)"/>`;
+    if (i >= st.j) html += `<rect x="${pos2[i].x-R-2}" y="${pos2[i].y-R-2}" width="${R*2+4}" height="${R*2+4}" rx="12" fill="none" stroke="var(--text-secondary)" stroke-width="1" stroke-dasharray="3,3"/>`;
+  }
+  // merged
+  const m = st.merged;
+  for (let i = 0; i < m.length; i++) {
+    const p = posM[Math.min(i, posM.length - 1)];
+    const isNew = stepIdx > 0 && i === m.length - 1 && m.length > (steps[stepIdx-1]?.merged?.length || 0);
+    html += drawNode(p.x, p.y, m[i], isNew ? 'rgba(253,126,20,0.1)' : 'var(--node-bg)', 'var(--orange)', isNew);
+    if (i < m.length - 1) html += `<line x1="${p.x+R}" y1="${p.y}" x2="${posM[Math.min(i+1,posM.length-1)].x-R}" y2="${posM[Math.min(i+1,posM.length-1)].y}" stroke="var(--orange)" stroke-width="2" marker-end="url(#arrowO)"/>`;
+  }
+
+  svg.innerHTML = html;
+  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
+}
+
+function reset() { stopAuto(); stepIdx = 0; renderSVG(); }
+function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; renderSVG(); }
+function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; renderSVG(); }
+function goEnd() { stopAuto(); stepIdx = steps.length - 1; renderSVG(); }
+
+let autoRunning = false, autoTimer = null;
+function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
+function startAuto() { autoRunning = true; renderSVG(); autoStep(); }
+function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); renderSVG(); }
+function autoStep() {
+  if (!autoRunning) return;
+  if (stepIdx < steps.length - 1) { stepIdx++; renderSVG(); autoTimer = setTimeout(autoStep, 900); }
+  else stopAuto();
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') nextStep();
+  else if (e.key === 'ArrowLeft') prevStep();
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+buildSteps();
+reset();
+</script>
+</body>
+</html>

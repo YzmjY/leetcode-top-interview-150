@@ -50,6 +50,17 @@
 - **时间复杂度**：O(n)，其中 n 是字符串长度。需要遍历两个字符串各一次。
 - **空间复杂度**：O(1)，使用固定大小数组（26）。若使用 map 处理 Unicode，空间为 O(k)，k 为不同字符数。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/42-valid-anagram-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="有效的字母异位词 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

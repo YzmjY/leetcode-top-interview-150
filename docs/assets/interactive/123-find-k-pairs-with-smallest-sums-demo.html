@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>123. 查找和最小的K对数字</title>
+<style>
+:root {
+  --bg: #f5f6fa; --card: #fff; --text: #2d3436; --sub: #636e72;
+  --border: #dfe6e9; --blue: #0984e3; --green: #00b894; --red: #e17055;
+  --blue-bg: #dff6fd; --green-bg: #dff9e6; --hl: #ffeaa7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a2e; --card: #16213e; --text: #eee; --sub: #aaa;
+    --border: #2d3436; --blue: #74b9ff; --green: #55efc4; --red: #ff7675;
+    --blue-bg: #1a3a5c; --green-bg: #1a3a2c; --hl: #5c4a1f;
+  }
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:var(--bg); display:flex; justify-content:center; align-items:center; min-height:100vh; }
+.container { width:860px; height:500px; background:var(--card); border-radius:8px; padding:20px 24px; display:flex; flex-direction:column; gap:10px; box-shadow:0 2px 12px rgba(0,0,0,0.1); }
+.header { display:flex; justify-content:space-between; align-items:center; }
+.header h2 { font-size:17px; color:var(--text); }
+.step-badge { font-size:13px; color:var(--sub); background:var(--border); padding:4px 12px; border-radius:8px; font-weight:500; }
+.info-panel { background:var(--blue-bg); border-left:3px solid var(--blue); padding:10px 14px; border-radius:8px; font-size:13px; color:var(--text); min-height:44px; display:flex; align-items:center; }
+.main { display:flex; gap:12px; flex:1; }
+.arr-col { display:flex; flex-direction:column; gap:6px; align-items:center; min-width:50px; }
+.arr-col .label { font-size:12px; font-weight:600; color:var(--sub); }
+.arr-cell { width:44px; height:38px; border-radius:8px; background:var(--border); display:flex; align-items:center; justify-content:center; font-weight:600; font-size:16px; color:var(--text); transition:all 0.3s; }
+.arr-cell.hl1 { background:var(--blue-bg); box-shadow:0 0 0 2px var(--blue); }
+.arr-cell.hl2 { background:var(--green-bg); box-shadow:0 0 0 2px var(--green); }
+.matrix { display:flex; flex-direction:column; gap:4px; flex:1; }
+.matrix-row { display:flex; gap:4px; }
+.m-cell { width:50px; height:42px; border-radius:8px; background:var(--border); display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--text); font-weight:500; transition:all 0.3s; }
+.m-cell.candidate { background:var(--green-bg); border:2px solid var(--green); }
+.m-cell.selected { background:var(--hl); box-shadow:0 0 0 2px var(--blue); }
+.m-cell.done { opacity:0.3; }
+.result { text-align:center; font-weight:700; font-size:14px; color:var(--green); }
+.controls { display:flex; gap:8px; justify-content:center; }
+.btn { padding:7px 16px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; font-size:13px; font-family:inherit; transition:all 0.15s; }
+.btn:hover { background:var(--blue-bg); border-color:var(--blue); }
+.btn:active { transform:scale(0.96); }
+.key-hint { font-size:11px; color:var(--sub); text-align:center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h2>123. 查找和最小的K对数字 (k=3)</h2>
+    <span class="step-badge" id="stepBadge">步骤 0/7</span>
+  </div>
+  <div class="info-panel" id="info"></div>
+  <div class="main">
+    <div class="arr-col">
+      <div class="label">nums1</div>
+      <div id="arr1">1<br>7<br>11</div>
+    </div>
+    <div class="matrix" id="matrix"></div>
+    <div class="arr-col">
+      <div class="label">nums2</div>
+      <div id="arr2">2<br>4<br>6</div>
+    </div>
+  </div>
+  <div class="result" id="result">结果: ?</div>
+  <div class="controls">
+    <button class="btn" onclick="reset()">重置</button>
+    <button class="btn" onclick="prev()">上步</button>
+    <button class="btn" onclick="next()">下步</button>
+    <button class="btn" id="autoBtn" onclick="toggleAuto()">自动播放</button>
+    <button class="btn" onclick="goLast()">跳到最后</button>
+  </div>
+  <div class="key-hint">键盘: &#8592; &#8593; 上步 | &#8594; &#8595; 下步 | 空格 自动播放</div>
+</div>
+<script>
+const nums1 = [1,7,11], nums2 = [2,4,6], k = 3;
+let steps = [], cur = 0, autoTimer = null, running = false;
+
+function buildSteps() {
+  steps = [];
+  // (i,j,sum)
+  let picked = [];
+  let visited = new Set();
+  // min-heap simulation with sorted steps
+  let heap = [[0,0,nums1[0]+nums2[0]]]; // i,j,sum
+  visited.add('0,0');
+  steps.push({heap:[...heap],picked:[...picked],desc:'初始化: 将(0,0)即(1+2=3)加入最小堆'});
+  while (picked.length < k && heap.length > 0) {
+    heap.sort((a,b)=>a[2]-b[2]);
+    let [i,j,sum] = heap.shift();
+    picked.push([i,j,sum]);
+    let desc = `弹出最小对: (${nums1[i]},${nums2[j]}) sum=${sum}, 已选${picked.length}对`;
+    // push neighbors
+    let added = [];
+    if (i+1 < nums1.length && !visited.has(`${i+1},${j}`)) {
+      heap.push([i+1,j,nums1[i+1]+nums2[j]]);
+      visited.add(`${i+1},${j}`);
+      added.push(`(${i+1},${j})`);
+    }
+    if (j+1 < nums2.length && !visited.has(`${i},${j+1}`)) {
+      heap.push([i,j+1,nums1[i]+nums2[j+1]]);
+      visited.add(`${i},${j+1}`);
+      added.push(`(${i},${j+1})`);
+    }
+    if (added.length) desc += `, 加入候选: ${added.join(', ')}`;
+    steps.push({heap:[...heap],picked:[...picked],desc});
+  }
+  steps.push({heap,picked,desc:`最终 ${k} 对: [${picked.map(p=>`(${nums1[p[0]]},${nums2[p[1]]})`).join(', ')}]`,final:true});
+}
+buildSteps();
+
+function render() {
+  const s = steps[cur];
+  document.getElementById('stepBadge').textContent = `步骤 ${cur}/${steps.length-1}`;
+  document.getElementById('info').textContent = s.desc;
+  document.getElementById('autoBtn').textContent = running ? '停止' : '自动播放';
+  document.getElementById('result').textContent = `结果: [${s.picked.map(p=>`(${nums1[p[0]]},${nums2[p[1]]})`).join(', ')}]`;
+  // Matrix
+  const mat = document.getElementById('matrix');
+  let html = '';
+  for (let i = 0; i < nums1.length; i++) {
+    html += '<div class="matrix-row">';
+    for (let j = 0; j < nums2.length; j++) {
+      let cls = 'm-cell';
+      let sum = nums1[i]+nums2[j];
+      let isPicked = s.picked.some(p=>p[0]===i&&p[1]===j);
+      let isCandidate = s.heap.some(h=>h[0]===i&&h[1]===j);
+      if (isPicked) cls += ' selected';
+      else if (isCandidate) cls += ' candidate';
+      html += `<div class="${cls}">${nums1[i]}+${nums2[j]}=${sum}</div>`;
+    }
+    html += '</div>';
+  }
+  mat.innerHTML = html;
+  // Side arrays
+  let a1='', a2='';
+  for (let i=0;i<nums1.length;i++) a1+=`<div class="arr-cell hl1">${nums1[i]}</div>`;
+  for (let j=0;j<nums2.length;j++) a2+=`<div class="arr-cell hl2">${nums2[j]}</div>`;
+  document.getElementById('arr1').innerHTML = a1;
+  document.getElementById('arr2').innerHTML = a2;
+}
+function reset() { stopAuto(); cur = 0; render(); }
+function prev() { if (cur > 0) { cur--; render(); } }
+function next() { if (cur < steps.length - 1) { cur++; render(); } else { stopAuto(); } }
+function goLast() { stopAuto(); cur = steps.length - 1; render(); }
+function toggleAuto() { running ? stopAuto() : startAuto(); }
+function startAuto() { running = true; render(); autoStep(); }
+function stopAuto() { running = false; if (autoTimer) clearTimeout(autoTimer); render(); }
+function autoStep() { if (!running) return; if (cur < steps.length - 1) { cur++; render(); autoTimer = setTimeout(autoStep, 700); } else { stopAuto(); } }
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); next(); }
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+  else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); reset(); }
+  else if (e.key === 'End') { e.preventDefault(); goLast(); }
+});
+render();
+</script>
+</body>
+</html>

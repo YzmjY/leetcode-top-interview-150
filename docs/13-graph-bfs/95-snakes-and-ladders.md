@@ -69,6 +69,17 @@
 
 **空间复杂度：** O(n^2)，visited 数组和队列。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/95-snakes-and-ladders-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="蛇梯棋 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

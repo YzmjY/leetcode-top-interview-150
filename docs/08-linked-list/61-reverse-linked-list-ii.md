@@ -54,6 +54,17 @@
 - **时间复杂度**：O(n)，一次遍历。
 - **空间复杂度**：O(1)，只使用常数个指针。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/61-reverse-linked-list-ii-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="反转链表 II - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

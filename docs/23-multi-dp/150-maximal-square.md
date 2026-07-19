@@ -62,6 +62,17 @@
 - "以某点为右下角" 是正方形类问题的经典套路。
 - 递推公式体现了正方形必须满足左、上、左上三个方向的最小约束。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/150-maximal-square-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="最大正方形 (Maximal Square) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

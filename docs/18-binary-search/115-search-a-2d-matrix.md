@@ -48,6 +48,17 @@
 - 坐标映射是本题的核心技巧。
 - 该矩阵本质上就是一个排序数组按行折叠的结果。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/115-search-a-2d-matrix-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="搜索二维矩阵 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

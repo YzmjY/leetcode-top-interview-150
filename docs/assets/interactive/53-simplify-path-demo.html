@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>53. 简化路径 - 可视化演示</title>
+<style>
+:root {
+  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
+  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
+  --btn-active-text: #fff; --stack-bg: #f1f3f5; --seg-bg: #e9ecef;
+  --blue: #228be6; --green: #40c057; --red: #fa5252; --gray: #adb5bd;
+  --step-bg: #e7f5ff;
+}
+@media (prefers-color-scheme: dark) {
+:root {
+  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
+  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
+  --btn-active-text: #fff; --stack-bg: #1e1e3a; --seg-bg: #2a2a4a;
+  --step-bg: #1a2a3a; --gray: #666;
+}
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text);
+  display: flex; justify-content: center; padding: 20px;
+}
+.container {
+  width: 100%; max-width: 900px; height: 500px;
+  background: var(--card-bg); border-radius: 8px;
+  border: 1px solid var(--border); padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.step-panel {
+  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 14px;
+}
+.step-num { font-weight: 700; color: var(--btn-active); }
+.step-desc { flex: 1; margin-left: 16px; }
+.main-area { display: flex; gap: 16px; flex: 1; min-height: 0; }
+.seg-area {
+  flex: 0 0 440px; display: flex; flex-direction: column; gap: 8px;
+}
+.path-display { font-family: "Consolas", monospace; font-size: 15px; padding: 8px 12px; background: var(--stack-bg); border-radius: 8px; border: 1px solid var(--border); word-break: break-all; }
+.seg-grid {
+  flex: 1; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; overflow-y: auto;
+}
+.seg-cell {
+  padding: 4px 10px; border-radius: 8px; background: var(--seg-bg);
+  border: 2px solid var(--border); font-family: "Consolas", monospace;
+  font-size: 14px; font-weight: 600; transition: all 0.3s; min-width: 50px; text-align: center;
+}
+.seg-cell.push { border-color: var(--green); color: var(--green); background: rgba(64,192,87,0.1); }
+.seg-cell.back { border-color: var(--red); color: var(--red); background: rgba(250,82,82,0.1); }
+.seg-cell.skip { border-color: var(--gray); color: var(--gray); background: rgba(173,181,189,0.1); }
+.seg-cell.current { transform: scale(1.1); box-shadow: 0 0 8px rgba(13,110,253,0.4); border-color: var(--blue); }
+.stack-panel {
+  flex: 1; background: var(--stack-bg); border-radius: 8px; padding: 12px;
+  border: 1px solid var(--border); display: flex; flex-direction: column;
+}
+.stack-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+.stack-items { flex: 1; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+.stack-item {
+  height: 30px; border-radius: 6px; background: var(--btn-bg);
+  display: flex; align-items: center; padding: 0 10px;
+  font-family: "Consolas", monospace; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border); transition: all 0.3s;
+}
+.stack-item.enter { background: rgba(64,192,87,0.15); border-color: var(--green); }
+.stack-item.leave { background: rgba(250,82,82,0.15); border-color: var(--red); }
+.result-line {
+  padding: 6px 12px; background: var(--stack-bg); border-radius: 8px; border: 1px solid var(--border);
+  font-family: "Consolas", monospace; font-size: 14px; font-weight: 700; color: var(--green);
+}
+.controls {
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+}
+.controls button {
+  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--btn-bg); color: var(--text); cursor: pointer;
+  font-size: 13px; font-family: inherit; transition: all 0.15s;
+}
+.controls button:hover { background: var(--btn-hover); }
+.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="step-panel">
+    <span class="step-num" id="stepNum">步骤 0 / 0</span>
+    <span class="step-desc" id="stepDesc">初始状态</span>
+  </div>
+  <div class="main-area">
+    <div class="seg-area">
+      <div class="path-display"><strong>输入:</strong> <span id="pathDisplay">/home//foo/</span></div>
+      <div class="seg-grid" id="segGrid"></div>
+      <div class="result-line"><strong>输出:</strong> <span id="resultPath"></span></div>
+    </div>
+    <div class="stack-panel">
+      <div class="stack-label">目录栈 (顶部在上)</div>
+      <div class="stack-items" id="stackItems"></div>
+    </div>
+  </div>
+  <div class="controls">
+    <button onclick="reset()">重置</button>
+    <button onclick="prevStep()">上步</button>
+    <button onclick="nextStep()">下步</button>
+    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
+    <button onclick="goEnd()">跳到最后</button>
+  </div>
+</div>
+<script>
+const path = "/home//foo/";
+const segments = path.split('/');
+const steps = [];
+let curStack = [];
+let stepIdx = -1;
+
+function buildSteps() {
+  steps.length = 0;
+  curStack = [];
+  const cellTypes = Array(segments.length).fill('');
+  steps.push({ stack: [...curStack], desc: '初始状态：准备解析路径段', cells: Array(segments.length).fill('default'), idx: -1 });
+
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const cells = Array(segments.length).fill('default');
+    cells[i] = 'current';
+    if (seg === '' || seg === '.') {
+      cells[i] = 'current skip';
+      steps.push({ stack: [...curStack], desc: `第 ${i} 段 "${seg || '(空)'}" — 无意义或当前目录，跳过`, cells: [...cells], idx: i });
+    } else if (seg === '..') {
+      if (curStack.length > 0) { const popped = curStack.pop(); cells[i] = 'current back';
+        steps.push({ stack: [...curStack], desc: `第 ${i} 段 ".." — 返回上级，弹出 "${popped}"`, cells: [...cells], idx: i });
+      } else {
+        cells[i] = 'current skip';
+        steps.push({ stack: [...curStack], desc: `第 ${i} 段 ".." — 已在根目录，忽略`, cells: [...cells], idx: i });
+      }
+    } else {
+      curStack.push(seg);
+      cells[i] = 'current push';
+      steps.push({ stack: [...curStack], desc: `第 ${i} 段 "${seg}" — 有效目录，入栈`, cells: [...cells], idx: i });
+    }
+  }
+  const result = '/' + curStack.join('/');
+  steps.push({ stack: [...curStack], desc: `完成！简化结果: ${result}`, cells: Array(segments.length).fill('default'), idx: segments.length });
+}
+
+function render() {
+  const st = steps[Math.min(stepIdx, steps.length - 1)];
+  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
+  document.getElementById('stepDesc').textContent = st.desc;
+  document.getElementById('resultPath').textContent = stepIdx === steps.length - 1 ? '/' + st.stack.join('/') : '';
+
+  const grid = document.getElementById('segGrid');
+  grid.innerHTML = '';
+  segments.forEach((seg, i) => {
+    const div = document.createElement('div');
+    div.className = 'seg-cell ' + (st.cells[i] || 'default');
+    div.textContent = seg || '(空)';
+    grid.appendChild(div);
+  });
+
+  const si = document.getElementById('stackItems');
+  si.innerHTML = '';
+  st.stack.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'stack-item';
+    div.textContent = item;
+    si.appendChild(div);
+  });
+  if (st.stack.length === 0) {
+    const empty = document.createElement('div');
+    empty.textContent = '(根目录 /)';
+    empty.style.cssText = 'color:var(--text-secondary);text-align:center;font-size:12px;';
+    si.appendChild(empty);
+  }
+
+  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
+}
+
+function reset() { stopAuto(); stepIdx = 0; render(); }
+function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; render(); }
+function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; render(); }
+function goEnd() { stopAuto(); stepIdx = steps.length - 1; render(); }
+
+let autoRunning = false, autoTimer = null;
+function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
+function startAuto() { autoRunning = true; render(); autoStep(); }
+function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); render(); }
+function autoStep() {
+  if (!autoRunning) return;
+  if (stepIdx < steps.length - 1) { stepIdx++; render(); autoTimer = setTimeout(autoStep, 800); }
+  else stopAuto();
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') nextStep();
+  else if (e.key === 'ArrowLeft') prevStep();
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+buildSteps();
+reset();
+</script>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>64. 删除排序链表中的重复元素II - 可视化演示</title>
+<style>
+:root {
+  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
+  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
+  --btn-active-text: #fff; --node-bg: #e9ecef;
+  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
+  --step-bg: #e7f5ff;
+}
+@media (prefers-color-scheme: dark) {
+:root {
+  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
+  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
+  --btn-active-text: #fff; --node-bg: #2a2a4a; --step-bg: #1a2a3a;
+}
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text);
+  display: flex; justify-content: center; padding: 20px;
+}
+.container {
+  width: 100%; max-width: 950px; height: 500px;
+  background: var(--card-bg); border-radius: 8px;
+  border: 1px solid var(--border); padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.step-panel {
+  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
+  display: flex; justify-content: space-between; align-items: center; font-size: 14px;
+}
+.step-num { font-weight: 700; color: var(--btn-active); }
+.step-desc { flex: 1; margin-left: 16px; }
+.svg-area { flex: 1; display: flex; justify-content: center; align-items: center; }
+.controls {
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+}
+.controls button {
+  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--btn-bg); color: var(--text); cursor: pointer;
+  font-size: 13px; font-family: inherit; transition: all 0.15s;
+}
+.controls button:hover { background: var(--btn-hover); }
+.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="step-panel">
+    <span class="step-num" id="stepNum">步骤 0 / 0</span>
+    <span class="step-desc" id="stepDesc">初始状态</span>
+  </div>
+  <div class="svg-area"><svg id="svg" viewBox="0 0 900 220"></svg></div>
+  <div class="controls">
+    <button onclick="reset()">重置</button>
+    <button onclick="prevStep()">上步</button>
+    <button onclick="nextStep()">下步</button>
+    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
+    <button onclick="goEnd()">跳到最后</button>
+  </div>
+</div>
+<script>
+// [1,2,3,3,4,4,5] -> [1,2,5]
+const vals = [1, 2, 3, 3, 4, 4, 5];
+const pos = [];
+for (let i = 0; i < vals.length; i++) pos.push({x: 40 + i * 120, y: 110});
+const R = 22;
+const steps = [];
+let stepIdx = -1;
+
+function buildSteps() {
+  steps.length = 0;
+  const display = vals.map(v => ({ val: v, removed: false, highlight: false, scanning: false }));
+
+  steps.push({ items: JSON.parse(JSON.stringify(display)), desc: '初始状态: [1,2,3,3,4,4,5]', curr: -1 });
+
+  // Scan and remove duplicates
+  // Step 1: check 1
+  let items = vals.map(v => ({ val: v, removed: false, highlight: false, scanning: false }));
+  items[0].scanning = true;
+  steps.push({ items: JSON.parse(JSON.stringify(items)), desc: '检查节点1: 值不重复，保留', curr: 0 });
+
+  // Step 2: check 2
+  items = JSON.parse(JSON.stringify(items));
+  items.forEach(it => { it.scanning = false; it.highlight = false; });
+  items[1].scanning = true;
+  steps.push({ items: JSON.parse(JSON.stringify(items)), desc: '检查节点2: 值不重复，保留', curr: 1 });
+
+  // Step 3: check 3,3
+  items = JSON.parse(JSON.stringify(items));
+  items.forEach(it => { it.scanning = false; it.highlight = false; });
+  items[2].scanning = true; items[3].scanning = true;
+  items[2].removed = true; items[3].removed = true;
+  items[2].highlight = true; items[3].highlight = true;
+  steps.push({ items: JSON.parse(JSON.stringify(items)), desc: '检查节点3,3: 值重复，删除所有值为3的节点', curr: 2 });
+
+  // Step 4: check 4,4
+  items = JSON.parse(JSON.stringify(items));
+  items.forEach(it => { it.scanning = false; it.highlight = false; });
+  items[4].scanning = true; items[5].scanning = true;
+  items[4].removed = true; items[5].removed = true;
+  items[4].highlight = true; items[5].highlight = true;
+  steps.push({ items: JSON.parse(JSON.stringify(items)), desc: '检查节点4,4: 值重复，删除所有值为4的节点', curr: 4 });
+
+  // Step 5: check 5
+  items = JSON.parse(JSON.stringify(items));
+  items.forEach(it => { it.scanning = false; it.highlight = false; });
+  items[6].scanning = true;
+  steps.push({ items: JSON.parse(JSON.stringify(items)), desc: '检查节点5: 值不重复，保留', curr: 6 });
+
+  // Result
+  items = JSON.parse(JSON.stringify(items));
+  items.forEach(it => { it.scanning = false; });
+  steps.push({ items: JSON.parse(JSON.stringify(items)), desc: '完成！结果: 1->2->5 (删除了所有重复元素)', curr: -1 });
+}
+
+function renderSVG() {
+  const st = steps[Math.min(stepIdx, steps.length - 1)];
+  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
+  document.getElementById('stepDesc').textContent = st.desc;
+
+  const svg = document.getElementById('svg');
+  let html = `<defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="var(--text-secondary)"/>
+    </marker>
+  </defs>`;
+
+  const items = st.items;
+  // Draw arrows between non-removed nodes
+  let prev = -1;
+  for (let i = 0; i < items.length; i++) {
+    if (!items[i].removed) {
+      if (prev >= 0) {
+        html += `<line x1="${pos[prev].x + R + 2}" y1="${pos[prev].y}" x2="${pos[i].x - R - 2}" y2="${pos[i].y}" stroke="var(--text-secondary)" stroke-width="2" marker-end="url(#arrow)"/>`;
+      }
+      prev = i;
+    }
+  }
+
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    let stroke = 'var(--blue)', fill = 'var(--node-bg)';
+
+    if (it.removed) {
+      stroke = 'var(--red)'; fill = 'rgba(250,82,82,0.15)';
+    } else if (it.highlight) {
+      stroke = 'var(--orange)'; fill = 'rgba(253,126,20,0.1)';
+    }
+    if (it.scanning && !it.removed) {
+      stroke = 'var(--green)'; fill = 'rgba(64,192,87,0.1)';
+    }
+    if (it.scanning && it.removed) {
+      stroke = 'var(--red)'; fill = 'rgba(250,82,82,0.2)';
+    }
+
+    html += `<circle cx="${pos[i].x}" cy="${pos[i].y}" r="${R}" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>
+      <text x="${pos[i].x}" y="${pos[i].y + 5}" text-anchor="middle" font-size="14" font-weight="700" fill="${it.removed ? 'var(--red)' : 'var(--text)'}" font-family="Consolas,monospace">${it.val}</text>`;
+
+    if (it.removed) {
+      html += `<line x1="${pos[i].x - R + 4}" y1="${pos[i].y - R + 4}" x2="${pos[i].x + R - 4}" y2="${pos[i].y + R - 4}" stroke="var(--red)" stroke-width="2" opacity="0.6"/>`;
+      html += `<line x1="${pos[i].x + R - 4}" y1="${pos[i].y - R + 4}" x2="${pos[i].x - R + 4}" y2="${pos[i].y + R - 4}" stroke="var(--red)" stroke-width="2" opacity="0.6"/>`;
+    }
+  }
+
+  svg.innerHTML = html;
+  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
+}
+
+function reset() { stopAuto(); stepIdx = 0; renderSVG(); }
+function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; renderSVG(); }
+function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; renderSVG(); }
+function goEnd() { stopAuto(); stepIdx = steps.length - 1; renderSVG(); }
+
+let autoRunning = false, autoTimer = null;
+function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
+function startAuto() { autoRunning = true; renderSVG(); autoStep(); }
+function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); renderSVG(); }
+function autoStep() {
+  if (!autoRunning) return;
+  if (stepIdx < steps.length - 1) { stepIdx++; renderSVG(); autoTimer = setTimeout(autoStep, 900); }
+  else stopAuto();
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') nextStep();
+  else if (e.key === 'ArrowLeft') prevStep();
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+buildSteps();
+reset();
+</script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>61. 反转链表II - 可视化演示</title>
+<style>
+:root {
+  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
+  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
+  --btn-active-text: #fff; --node-bg: #e9ecef;
+  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
+  --step-bg: #e7f5ff;
+}
+@media (prefers-color-scheme: dark) {
+:root {
+  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
+  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
+  --btn-active-text: #fff; --node-bg: #2a2a4a; --step-bg: #1a2a3a;
+}
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text);
+  display: flex; justify-content: center; padding: 20px;
+}
+.container {
+  width: 100%; max-width: 950px; height: 500px;
+  background: var(--card-bg); border-radius: 8px;
+  border: 1px solid var(--border); padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.step-panel {
+  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
+  display: flex; justify-content: space-between; align-items: center; font-size: 14px;
+}
+.step-num { font-weight: 700; color: var(--btn-active); }
+.step-desc { flex: 1; margin-left: 16px; }
+.svg-area { flex: 1; display: flex; justify-content: center; align-items: center; }
+.controls {
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+}
+.controls button {
+  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--btn-bg); color: var(--text); cursor: pointer;
+  font-size: 13px; font-family: inherit; transition: all 0.15s;
+}
+.controls button:hover { background: var(--btn-hover); }
+.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="step-panel">
+    <span class="step-num" id="stepNum">步骤 0 / 0</span>
+    <span class="step-desc" id="stepDesc">初始状态</span>
+  </div>
+  <div class="svg-area"><svg id="svg" viewBox="0 0 900 200"></svg></div>
+  <div class="controls">
+    <button onclick="reset()">重置</button>
+    <button onclick="prevStep()">上步</button>
+    <button onclick="nextStep()">下步</button>
+    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
+    <button onclick="goEnd()">跳到最后</button>
+  </div>
+</div>
+<script>
+// Original: 1->2->3->4->5, left=2, right=4
+// Target: 1->4->3->2->5
+const left = 2, right = 4; // 1-indexed
+const origVals = [1, 2, 3, 4, 5];
+let nodeVals = [...origVals];
+const pos = [{x:60,y:100},{x:200,y:100},{x:340,y:100},{x:480,y:100},{x:620,y:100}];
+const R = 22;
+const steps = [];
+let stepIdx = -1;
+
+function buildSteps() {
+  steps.length = 0;
+  nodeVals = [...origVals];
+  steps.push({ vals: [...nodeVals], desc: '初始状态: 1->2->3->4->5, left=2, right=4', hl: [], zone: [] });
+
+  // Mark pre(left-1), cur(left), next node
+  steps.push({ vals: [...nodeVals], desc: '确定反转区间: 节点2到节点4', hl: [], zone: [left-1, right-1] });
+
+  // Head insertion: right - left iterations
+  // leftIdx = 1, rightIdx = 3 (0-indexed)
+  const li = left - 1, ri = right - 1;
+  let pre = li;
+  let cur = li;
+
+  // Iteration 1: cur=2(li), take next=3 and move to after pre
+  // After: 1->3->2->4->5
+  nodeVals = [...origVals];
+  const tmp = nodeVals.splice(cur + 1, 1)[0];  // remove 3
+  nodeVals.splice(li, 0, tmp);  // insert 3 before pre's next position
+  // Actually: pre=0, cur=1, move cur+1 (3) to li+1
+  nodeVals = [1, 3, 2, 4, 5];
+  steps.push({ vals: [...nodeVals], desc: '头插法第1步：将节点3移到前面，1->3->2->4->5', hl: [0, 1, 2], zone: [left-1, right-1] });
+
+  nodeVals = [1, 4, 3, 2, 5];
+  steps.push({ vals: [...nodeVals], desc: '头插法第2步：将节点4移到前面，1->4->3->2->5', hl: [0, 1, 2, 3], zone: [left-1, right-1] });
+
+  steps.push({ vals: [...nodeVals], desc: '完成！反转区间[2,4]后得到: 1->4->3->2->5', hl: [], zone: [] });
+}
+
+function renderSVG() {
+  const st = steps[Math.min(stepIdx, steps.length - 1)];
+  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
+  document.getElementById('stepDesc').textContent = st.desc;
+
+  const svg = document.getElementById('svg');
+  let html = `<defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="var(--text-secondary)"/>
+    </marker>
+    <marker id="arrowO" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="var(--orange)"/>
+    </marker>
+  </defs>`;
+
+  // Zone highlight
+  if (st.zone && st.zone.length === 2) {
+    html += `<rect x="${pos[st.zone[0]].x - R - 5}" y="${pos[st.zone[0]].y - R - 5}" width="${pos[st.zone[1]].x - pos[st.zone[0]].x + R*2 + 10}" height="${R*2 + 10}" rx="14" fill="rgba(253,126,20,0.08)" stroke="var(--orange)" stroke-width="1.5" stroke-dasharray="5,3"/>`;
+    html += `<text x="${(pos[st.zone[0]].x + pos[st.zone[1]].x) / 2}" y="${pos[st.zone[0]].y - R - 14}" text-anchor="middle" font-size="12" fill="var(--orange)" font-weight="600">反转区间</text>`;
+  }
+
+  // Arrows
+  for (let i = 0; i < st.vals.length - 1; i++) {
+    const from = pos[i], to = pos[i + 1];
+    const inZone = st.zone && i >= st.zone[0] && i < st.zone[1];
+    html += `<line x1="${from.x + R + 2}" y1="${from.y}" x2="${to.x - R - 2}" y2="${to.y}" stroke="${inZone ? 'var(--orange)' : 'var(--text-secondary)'}" stroke-width="2" marker-end="url(#${inZone ? 'arrowO' : 'arrow'})"/>`;
+  }
+
+  // Nodes
+  for (let i = 0; i < st.vals.length; i++) {
+    const isHL = st.hl && st.hl.includes(i);
+    const inZone = st.zone && i >= st.zone[0] && i <= st.zone[1];
+    const stroke = isHL ? 'var(--orange)' : (inZone ? 'var(--orange)' : 'var(--blue)');
+    const fill = isHL ? 'rgba(253,126,20,0.2)' : (inZone ? 'rgba(253,126,20,0.06)' : 'var(--node-bg)');
+    html += `<circle cx="${pos[i].x}" cy="${pos[i].y}" r="${R}" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+      <text x="${pos[i].x}" y="${pos[i].y + 5}" text-anchor="middle" font-size="14" font-weight="700" fill="var(--text)" font-family="Consolas,monospace">${st.vals[i]}</text>`;
+  }
+
+  svg.innerHTML = html;
+  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
+}
+
+function reset() { stopAuto(); stepIdx = 0; renderSVG(); }
+function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; renderSVG(); }
+function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; renderSVG(); }
+function goEnd() { stopAuto(); stepIdx = steps.length - 1; renderSVG(); }
+
+let autoRunning = false, autoTimer = null;
+function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
+function startAuto() { autoRunning = true; renderSVG(); autoStep(); }
+function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); renderSVG(); }
+function autoStep() {
+  if (!autoRunning) return;
+  if (stepIdx < steps.length - 1) { stepIdx++; renderSVG(); autoTimer = setTimeout(autoStep, 900); }
+  else stopAuto();
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') nextStep();
+  else if (e.key === 'ArrowLeft') prevStep();
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+buildSteps();
+reset();
+</script>
+</body>
+</html>

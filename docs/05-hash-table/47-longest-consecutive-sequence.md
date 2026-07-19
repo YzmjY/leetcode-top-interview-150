@@ -48,6 +48,17 @@
 - **时间复杂度**：O(n)，每个元素最多被访问两次（一次在遍历时，一次在 while 循环中检查连续序列）。因为哈希查找是 O(1)，总体为 O(n)。
 - **空间复杂度**：O(n)，哈希集合存储所有元素。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/47-longest-consecutive-sequence-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="最长连续序列 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

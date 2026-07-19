@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>99. 添加与搜索单词 - Add and Search Words</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.container{background:#fff;border-radius:8px;padding:20px;width:820px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+h2{font-size:16px;margin-bottom:12px;color:#333}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+button{border:none;border-radius:8px;padding:8px 16px;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s;color:#fff;font-weight:500}
+button:disabled{opacity:.4;cursor:not-allowed}
+.btn-reset{background:#6c757d}
+.btn-prev{background:#0d6efd}
+.btn-next{background:#0d6efd}
+.btn-auto{background:#198754}
+.btn-end{background:#dc3545}
+button:hover:not(:disabled){filter:brightness(1.15)}
+.info-panel{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:#555;background:#f0f4f8;border-radius:8px;padding:10px 14px}
+.step-badge{background:#0d6efd;color:#fff;border-radius:20px;padding:2px 12px;font-weight:600;font-size:12px}
+.info-text{flex:1;margin-left:12px}
+.vis-area{background:#fafafa;border-radius:8px;position:relative;height:500px;overflow:hidden;border:1px solid #e0e0e0}
+svg{width:100%;height:100%}
+.hint{font-size:12px;color:#999;text-align:center;margin-top:8px}
+@media(prefers-color-scheme:dark){
+body{background:#1a1a2e}
+.container{background:#16213e;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+h2{color:#e0e0e0}
+.info-panel{background:#1a1a3e;color:#ccc}
+.vis-area{background:#0f0f23;border-color:#2a2a4a}
+.hint{color:#777}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>99. 添加与搜索单词 — Trie + 通配符 '.' DFS 搜索</h2>
+<div class="controls">
+<button class="btn-reset" onclick="reset()">⟳ 重置</button>
+<button class="btn-prev" onclick="prevStep()">◀ 上步</button>
+<button class="btn-next" onclick="nextStep()">下步 ▶</button>
+<button class="btn-auto" id="btnAuto" onclick="toggleAuto()">▶ 自动播放</button>
+<button class="btn-end" onclick="jumpEnd()">▶▶ 跳到最后</button>
+</div>
+<div class="info-panel">
+<span class="step-badge" id="stepBadge">步骤 1/10</span>
+<span class="info-text" id="infoText">插入 "bad","dad","mad" → 搜索含 '.' 通配符的单词</span>
+</div>
+<div class="vis-area"><svg id="svg" viewBox="0 0 820 500"></svg></div>
+<div class="hint">键盘: ← → 切换步骤 | 空格 自动播放</div>
+</div>
+<script>
+let trieNodes=[],nodeId=0;
+function newNode(char,depth,parent){
+  let id=nodeId++;
+  trieNodes[id]={id,char,depth,parent,children:{},isWord:false};
+  return id;
+}
+function resetTrie(){
+  trieNodes=[];nodeId=0;
+  let r=newNode('root',0,-1);
+  return r;
+}
+function insertTrie(root,word){
+  let node=root;
+  for(let ch of word){
+    if(!trieNodes[node].children[ch]){
+      let child=newNode(ch,trieNodes[node].depth+1,node);
+      trieNodes[node].children[ch]=child;
+    }
+    node=trieNodes[node].children[ch];
+  }
+  trieNodes[node].isWord=true;
+}
+function searchWithDots(node,word,idx){
+  if(idx===word.length)return trieNodes[node].isWord;
+  let ch=word[idx];
+  if(ch==='.'){
+    for(let key in trieNodes[node].children){
+      if(trieNodes[node].children[key]&&searchWithDots(trieNodes[node].children[key],word,idx+1))return true;
+    }
+    return false;
+  }
+  if(!trieNodes[node].children[ch])return false;
+  return searchWithDots(trieNodes[node].children[ch],word,idx+1);
+}
+
+let steps=[],currentStep=0,totalSteps=0,autoTimer=null;
+
+function buildSteps(){
+  steps=[];
+  let root=resetTrie();
+  steps.push({info:'初始: 空Trie, 随后插入 "bad", "dad", "mad"',hlNodes:[root],snap:JSON.parse(JSON.stringify(trieNodes)),phase:'init',result:null});
+
+  let words=['bad','dad','mad'];
+  for(let w of words){
+    insertTrie(root,w);
+    steps.push({info:`插入 "${w}" 完成`,hlNodes:[],snap:JSON.parse(JSON.stringify(trieNodes)),phase:'insert',result:null,addedWord:w});
+  }
+  steps.push({info:'Trie构建完成: b→a→d(bad), d→a→d(dad), m→a→d(mad)',hlNodes:[],snap:JSON.parse(JSON.stringify(trieNodes)),phase:'built',result:null});
+
+  // Search "pad" -> false
+  steps.push({info:'搜索 "pad": p不在根子节点 → false',hlNodes:[root],snap:JSON.parse(JSON.stringify(trieNodes)),phase:'search',result:'false',query:'pad'});
+  // Search "bad" -> true
+  let n1=root;
+  let path1=[root];
+  for(let ch of 'bad'){n1=trieNodes[n1].children[ch];path1.push(n1);}
+  steps.push({info:'搜索 "bad": b→a→d, 找到且isWord=true → true',hlNodes:path1,snap:JSON.parse(JSON.stringify(trieNodes)),phase:'search',result:'true',query:'bad'});
+  // Search ".ad" -> true
+  steps.push({info:'搜索 ".ad": .匹配任意字符 → b,d,m 都可匹配a→d → (bad/dad/mad) → true',hlNodes:[],snap:JSON.parse(JSON.stringify(trieNodes)),phase:'search',result:'true',query:'.ad'});
+  // Search "b.." -> true
+  let n2=root;
+  let path2=[root];
+  for(let ch of 'b'){n2=trieNodes[n2].children[ch]||n2;path2.push(n2);}
+  steps.push({info:'搜索 "b..": b→.匹配a→.匹配d → bad → true',hlNodes:path2,snap:JSON.parse(JSON.stringify(trieNodes)),phase:'search',result:'true',query:'b..'});
+  // Summary
+  steps.push({info:'通配符搜索: dfs(node,word,i), 遇"."遍历所有子节点',hlNodes:[],snap:JSON.parse(JSON.stringify(trieNodes)),phase:'done',result:null});
+}
+buildSteps();totalSteps=steps.length;
+
+const svg=document.getElementById('svg');
+
+function layoutTrie(ts){
+  let levels={};
+  for(let id in ts){
+    let n=ts[id];
+    if(!levels[n.depth])levels[n.depth]=[];
+    levels[n.depth].push(n);
+  }
+  let positions={};
+  let maxDepth=Math.max(...Object.keys(levels).map(Number));
+  for(let d in levels){
+    let nodes=levels[d];
+    let y=50+d*75;
+    for(let i=0;i<nodes.length;i++){
+      let x=50+i*100+((maxDepth-d)*25);
+      positions[nodes[i].id]={x,y};
+    }
+  }
+  return positions;
+}
+
+function draw(){
+  let s=steps[currentStep];
+  let ts=s.snap;
+  svg.innerHTML='';
+
+  let pos=layoutTrie(ts);
+
+  // Edges
+  for(let id in ts){
+    let n=ts[id];
+    if(n.parent>=0){
+      let pe=pos[n.parent],ce=pos[n.id];
+      let isHL=(s.hlNodes||[]).includes(Number(n.id))&&(s.hlNodes||[]).includes(n.parent);
+      let l=document.createElementNS('http://www.w3.org/2000/svg','line');
+      l.setAttribute('x1',pe.x);l.setAttribute('y1',pe.y+22);
+      l.setAttribute('x2',ce.x);l.setAttribute('y2',ce.y-22);
+      l.setAttribute('stroke',isHL?'#ff6b00':'#ccc');l.setAttribute('stroke-width',isHL?3:2);
+      svg.appendChild(l);
+      let lt=document.createElementNS('http://www.w3.org/2000/svg','text');
+      lt.setAttribute('x',(pe.x+ce.x)/2);lt.setAttribute('y',(pe.y+ce.y)/2-5);
+      lt.setAttribute('text-anchor','middle');lt.setAttribute('font-size','14');
+      lt.setAttribute('font-family','monospace');lt.setAttribute('fill',isHL?'#ff6b00':'#666');
+      lt.textContent=n.char;
+      svg.appendChild(lt);
+    }
+  }
+
+  // Nodes
+  for(let id in ts){
+    let n=ts[id];
+    let p=pos[n.id];
+    let isHL=(s.hlNodes||[]).includes(Number(id));
+    let fill=isHL?'#ff6b00':(n.isWord?'#28a745':'#5b9bd5');
+    let c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',p.x);c.setAttribute('cy',p.y);c.setAttribute('r',20);
+    c.setAttribute('fill',fill);c.setAttribute('stroke',isHL?'#ff0':'#999');c.setAttribute('stroke-width',isHL?3:1.5);
+    svg.appendChild(c);
+    let t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',p.x);t.setAttribute('y',p.y+5);
+    t.setAttribute('text-anchor','middle');t.setAttribute('font-size','14');
+    t.setAttribute('font-family','monospace');t.setAttribute('font-weight','bold');t.setAttribute('fill','#fff');
+    t.textContent=n.char==='root'?'R':n.char;
+    svg.appendChild(t);
+    if(n.isWord){
+      let ew=document.createElementNS('http://www.w3.org/2000/svg','text');
+      ew.setAttribute('x',p.x);ew.setAttribute('y',p.y+32);
+      ew.setAttribute('text-anchor','middle');ew.setAttribute('font-size','10');ew.setAttribute('fill','#28a745');ew.setAttribute('font-weight','bold');
+      ew.textContent='END';
+      svg.appendChild(ew);
+    }
+  }
+
+  // Results panel
+  let rx=480,ry=30;
+  if(s.result){
+    let color=s.result==='true'?'#d4edda':'#f8d7da';
+    let txtColor=s.result==='true'?'#155724':'#721c24';
+    let rt=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rt.setAttribute('x',rx);rt.setAttribute('y',ry);rt.setAttribute('width',280);rt.setAttribute('height',36);
+    rt.setAttribute('rx',8);rt.setAttribute('fill',color);
+    svg.appendChild(rt);
+    let rtxt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    rtxt.setAttribute('x',rx+140);rtxt.setAttribute('y',ry+24);
+    rtxt.setAttribute('text-anchor','middle');rtxt.setAttribute('font-size','15');
+    rtxt.setAttribute('fill',txtColor);rtxt.setAttribute('font-weight','bold');
+    rtxt.textContent=(s.query||'')+' → '+s.result;
+    svg.appendChild(rtxt);
+  }
+
+  // Inserted words list
+  let iy=400;
+  let iw=document.createElementNS('http://www.w3.org/2000/svg','text');
+  iw.setAttribute('x',rx);iw.setAttribute('y',iy);
+  iw.setAttribute('font-size','13');iw.setAttribute('fill','#333');iw.setAttribute('font-weight','bold');
+  iw.textContent='已插入: bad, dad, mad';
+  svg.appendChild(iw);
+  let iw2=document.createElementNS('http://www.w3.org/2000/svg','text');
+  iw2.setAttribute('x',rx);iw2.setAttribute('y',iy+22);
+  iw2.setAttribute('font-size','13');iw2.setAttribute('fill','#666');
+  iw2.textContent='搜索: pad→false, bad→true, .ad→true, b..→true';
+  svg.appendChild(iw2);
+
+  document.getElementById('stepBadge').textContent=`步骤 ${currentStep+1}/${totalSteps}`;
+  document.getElementById('infoText').textContent=s.info;
+  let btns=document.querySelectorAll('button');
+  btns.forEach(b=>b.disabled=false);
+  if(currentStep===0)document.querySelector('.btn-prev').disabled=true;
+  if(currentStep===totalSteps-1){document.querySelector('.btn-next').disabled=true;document.querySelector('.btn-end').disabled=true;document.querySelector('.btn-auto').disabled=true;}
+}
+
+function nextStep(){if(currentStep<totalSteps-1){currentStep++;draw();}}
+function prevStep(){if(currentStep>0){currentStep--;draw();}}
+function reset(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}buildSteps();totalSteps=steps.length;currentStep=0;draw();}
+function jumpEnd(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=totalSteps-1;draw();}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}
+  else{document.getElementById('btnAuto').textContent='⏸ 暂停';autoTimer=setInterval(()=>{if(currentStep<totalSteps-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}},900);}
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){e.preventDefault();nextStep();}
+  else if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}
+  else if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+draw();
+</script>
+</body>
+</html>

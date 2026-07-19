@@ -67,6 +67,17 @@
 - 首先检查长度：必须满足 `len(s1) + len(s2) == len(s3)`。
 - 状态转移中，当前字符可以来自 s1 或 s2（像两条路径交错进行）。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/146-interleaving-string-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="交错字符串 (Interleaving String) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

@@ -49,6 +49,17 @@
 - **时间复杂度**：O(n + m)，其中 n、m 分别两个链表的长度。每个节点被访问一次。
 - **空间复杂度**：O(1)，只使用了常数个额外指针（不计算新链表本身）。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/59-merge-two-sorted-lists-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="合并两个有序链表 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

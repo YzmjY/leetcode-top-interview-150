@@ -57,6 +57,17 @@
 - 这是一道最经典的 DP 入门题，体现了"最优子结构"思想。
 - 滚动数组优化的模板适用于很多一维 DP 问题。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/137-climbing-stairs-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="爬楼梯 (Climbing Stairs) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

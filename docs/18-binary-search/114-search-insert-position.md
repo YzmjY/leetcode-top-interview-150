@@ -56,6 +56,17 @@
 - 循环条件为 `left < right`，退出时 `left == right`。
 - 该模板天然处理了 target 大于所有元素的情况（返回 `len(nums)`）。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/114-search-insert-position-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="搜索插入位置 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

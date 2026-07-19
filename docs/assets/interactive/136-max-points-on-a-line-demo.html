@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>136. 直线上最多的点数 - 可视化演示</title>
+<style>
+:root{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--sub:#666;--border:#e0e0e0;--accent:#2563eb;--step-bg:#f0f4ff;--grid-bg:#fafafa;--radius:8px;--font:system-ui,-apple-system,sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--sub:#a0a0b0;--border:#334;--accent:#60a5fa;--step-bg:#1e293b;--grid-bg:#0f172a}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);display:flex;justify-content:center;align-items:center;min-height:100vh}
+.demo-container{width:100%;max-width:960px;height:500px;background:var(--card);border-radius:var(--radius);box-shadow:0 4px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--step-bg)}
+.header .title{font-size:15px;font-weight:600;color:var(--text)}
+.header .step-info{font-size:13px;color:var(--accent);font-weight:500}
+.controls{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.controls button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
+.controls button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.controls button:disabled{opacity:.4;cursor:not-allowed}
+.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.main-area{flex:1;display:flex;flex-direction:column;padding:12px 16px;gap:10px;overflow-y:auto}
+.info-panel{padding:10px 14px;background:var(--step-bg);border-radius:var(--radius);border:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.6}
+.info-panel strong{color:var(--accent)}
+.vis-area{flex:1;display:flex;gap:12px}
+.canvas-wrap{position:relative;flex:1;min-width:280px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--grid-bg)}
+canvas{display:block}
+.slope-list{width:220px;border:1px solid var(--border);border-radius:var(--radius);padding:8px;overflow-y:auto;background:var(--grid-bg)}
+.slope-list h4{font-size:13px;color:var(--accent);margin-bottom:6px}
+.slope-item{font-size:12px;color:var(--text);padding:3px 6px;border-radius:4px;font-family:monospace}
+.slope-item.active{background:var(--step-bg);font-weight:700}
+.step-detail{font-size:13px;color:var(--sub);text-align:center;padding:2px 0}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+</style>
+</head>
+<body>
+<div class="demo-container">
+<div class="header">
+<span class="title">136. 直线上最多的点数 (Max Points on a Line)</span>
+<span class="step-info" id="stepLabel">步骤 0 / 0</span>
+</div>
+<div class="controls">
+<button onclick="reset()">重置</button>
+<button onclick="prevStep()">上步</button>
+<button onclick="nextStep()">下步</button>
+<button onclick="toggleAuto()" id="autoBtn">自动播放</button>
+<button onclick="jumpEnd()">跳到最后</button>
+</div>
+<div class="main-area">
+<div class="info-panel" id="info"><strong>输入:</strong> points = [[1,1],[2,2],[3,3]] &nbsp;|&nbsp; <strong>思路:</strong> 枚举每个点作为起点，计算到其他点的斜率，用哈希表统计。</div>
+<div class="vis-area">
+<div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+<div class="slope-list"><h4>斜率统计</h4><div id="slopeList"></div></div>
+</div>
+<div class="step-detail" id="stepDetail"></div>
+<div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+</div>
+</div>
+<script>
+const POINTS=[[1,1],[2,2],[3,3]];
+const PAD=40;
+let steps=[],stepIdx=0,autoTimer=null,playing=false;
+
+function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b];}return a;}
+
+function buildSteps(){
+  steps=[];
+  let n=POINTS.length;
+  if(n<=2){steps.push({i:-1,cur:null,slopes:{},max:0,note:n+'个点, 直接返回'+n,done:true});return;}
+  let globalMax=1;
+  for(let i=0;i<n;i++){
+    let slopes={};
+    steps.push({i,cur:i,slopes:{...slopes},max:0,note:`以点[${POINTS[i]}]为起点`,done:false});
+    for(let j=0;j<n;j++){
+      if(i===j)continue;
+      let dx=POINTS[j][0]-POINTS[i][0],dy=POINTS[j][1]-POINTS[i][1];
+      let g=gcd(dx,dy);dx/=g;dy/=g;
+      let key=dy+'/'+dx;
+      slopes[key]=(slopes[key]||0)+1;
+      steps.push({i,cur:j,slopes:{...slopes},max:Math.max(...Object.values(slopes)),note:`到[${POINTS[j]}] 斜率=${key}, 计数=${slopes[key]}`,done:false});
+    }
+    let maxHere=Math.max(0,...Object.values(slopes));
+    globalMax=Math.max(globalMax,maxHere+1);
+    let last=steps[steps.length-1];
+    steps[steps.length-1]={...last,note:last.note+` | 该起点最多${maxHere+1}个点`,done:false};
+  }
+  let last=steps[steps.length-1];
+  steps[steps.length-1]={...last,note:last.note+` | 全局最大: ${globalMax}`,done:true};
+}
+
+function render(){
+  let s=steps[stepIdx]||steps[steps.length-1]||{};
+  let total=steps.length;
+  document.getElementById('stepLabel').textContent=`步骤 ${stepIdx+1} / ${total}`;
+  document.getElementById('progress').style.width=((stepIdx+1)/total*100)+'%';
+  document.getElementById('info').innerHTML=`<strong>points = [[1,1],[2,2],[3,3]]</strong> &nbsp;|&nbsp; ${s.note||''}`;
+
+  let c=document.getElementById('canvas');
+  let cw=c.parentElement.clientWidth-4;
+  let ch=c.parentElement.clientHeight-4;
+  c.width=cw;c.height=ch;
+  let ctx=c.getContext('2d');
+  let minX=Math.min(...POINTS.map(p=>p[0]))-1,maxX=Math.max(...POINTS.map(p=>p[0]))+1;
+  let minY=Math.min(...POINTS.map(p=>p[1]))-1,maxY=Math.max(...POINTS.map(p=>p[1]))+1;
+  let sx=(cw-PAD*2)/(maxX-minX||1),sy=(ch-PAD*2)/(maxY-minY||1);
+  let sc=Math.min(sx,sy);
+  function px(x){return PAD+(x-minX)*sc;}
+  function py(y){return PAD+(maxY-y)*sc;}
+
+  ctx.clearRect(0,0,cw,ch);
+  ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--border').trim()||'#ccc';
+  ctx.lineWidth=1;
+  for(let i=minX;i<=maxX;i++){ctx.beginPath();ctx.moveTo(px(i),PAD);ctx.lineTo(px(i),ch-PAD);ctx.stroke();}
+  for(let i=minY;i<=maxY;i++){ctx.beginPath();ctx.moveTo(PAD,py(i));ctx.lineTo(cw-PAD,py(i));ctx.stroke();}
+
+  POINTS.forEach((p,j)=>{
+    ctx.beginPath();ctx.arc(px(p[0]),py(p[1]),8,0,Math.PI*2);
+    let fill='#2563eb',stroke='#1d4ed8';
+    if(j===s.cur){fill='#dc2626';stroke='#991b1b';}
+    else if(j===s.i){fill='#7c3aed';stroke='#5b21b6';}
+    ctx.fillStyle=fill;ctx.fill();
+    ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='#fff';ctx.font='11px system-ui';ctx.textAlign='center';
+    ctx.fillText(`(${p[0]},${p[1]})`,px(p[0]),py(p[1])-14);
+  });
+
+  let slopes=s.slopes||{};
+  let sl=document.getElementById('slopeList');
+  let sh='';
+  let entries=Object.entries(slopes);
+  for(let [k,v] of entries){sh+=`<div class="slope-item">${k}: ${v+1}点</div>`;}
+  if(entries.length===0)sh='<div class="slope-item">等待计算...</div>';
+  sl.innerHTML=sh;
+  document.getElementById('stepDetail').textContent=`当前起点: ${s.i>=0?`[${POINTS[s.i]}]`:''} | 当前比较点: ${s.cur>=0?`[${POINTS[s.cur]}]`:''}`;
+}
+function reset(){stopAuto();stepIdx=0;buildSteps();render();}
+function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
+function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
+function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}
+function toggleAuto(){
+  if(playing){stopAuto();}else{playing=true;document.getElementById('autoBtn').classList.add('active');document.getElementById('autoBtn').textContent='停止';
+    autoTimer=setInterval(()=>{if(stepIdx<steps.length-1){stepIdx++;render();}else{stopAuto();}},900);}
+}
+function stopAuto(){playing=false;clearInterval(autoTimer);document.getElementById('autoBtn').classList.remove('active');document.getElementById('autoBtn').textContent='自动播放';}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight')nextStep();
+  else if(e.key==='ArrowLeft')prevStep();
+  else if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+window.addEventListener('resize',render);
+buildSteps();render();
+</script>
+</body>
+</html>

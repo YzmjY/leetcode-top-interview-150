@@ -74,6 +74,17 @@ LRU 缓存的经典实现是 **哈希表 + 双向链表**：
 - **时间复杂度**：`get` 和 `put` 均为 O(1)。
 - **空间复杂度**：O(capacity)，哈希表 + 双向链表最多存储 capacity 个元素。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/67-lru-cache-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="LRU 缓存 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

@@ -64,6 +64,17 @@
 - `n & (n - 1)` 是位运算中最常用的技巧之一。
 - 该技巧还可用于判断一个数是否为 2 的幂：`n > 0 && n & (n - 1) == 0`。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/127-number-of-1-bits-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="位1的个数 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>141. 最长递增子序列 - 可视化演示</title>
+<style>
+:root{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--sub:#666;--border:#e0e0e0;--accent:#2563eb;--step-bg:#f0f4ff;--grid-bg:#fafafa;--radius:8px;--font:system-ui,-apple-system,sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--sub:#a0a0b0;--border:#334;--accent:#60a5fa;--step-bg:#1e293b;--grid-bg:#0f172a}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);display:flex;justify-content:center;align-items:center;min-height:100vh}
+.demo-container{width:100%;max-width:960px;height:500px;background:var(--card);border-radius:var(--radius);box-shadow:0 4px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--step-bg)}
+.header .title{font-size:15px;font-weight:600;color:var(--text)}
+.header .step-info{font-size:13px;color:var(--accent);font-weight:500}
+.controls{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.controls button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
+.controls button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.controls button:disabled{opacity:.4;cursor:not-allowed}
+.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.main-area{flex:1;display:flex;flex-direction:column;padding:12px 16px;gap:10px;overflow-y:auto}
+.info-panel{padding:10px 14px;background:var(--step-bg);border-radius:var(--radius);border:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.6}
+.info-panel strong{color:var(--accent)}
+.vis-area{flex:1;display:flex;flex-direction:column;gap:8px}
+.nums-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:4px 0}
+.num-cell{display:flex;flex-direction:column;align-items:center;gap:2px}
+.num-cell .n{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-weight:700;font-size:16px;border:2px solid var(--border);background:var(--grid-bg);color:var(--text);transition:all .3s}
+.num-cell .dp{font-size:11px;font-weight:600;color:var(--accent)}
+.num-cell .n.hl{background:#bbf7d0;border-color:#22c55e;color:#166534}
+.num-cell .n.cur{border-color:var(--accent);background:var(--step-bg)}
+.seq-row{text-align:center;font-size:15px;padding:8px}
+.seq-row span{padding:3px 8px;margin:0 2px;border-radius:4px;font-weight:700;background:var(--step-bg);color:var(--accent)}
+.step-detail{font-size:13px;color:var(--sub);text-align:center}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+@media(prefers-color-scheme:dark){.num-cell .n.hl{background:#14532d;border-color:#22c55e;color:#86efac}}
+</style>
+</head>
+<body>
+<div class="demo-container">
+<div class="header">
+<span class="title">141. 最长递增子序列 (LIS)</span>
+<span class="step-info" id="stepLabel">步骤 0 / 0</span>
+</div>
+<div class="controls">
+<button onclick="reset()">重置</button>
+<button onclick="prevStep()">上步</button>
+<button onclick="nextStep()">下步</button>
+<button onclick="toggleAuto()" id="autoBtn">自动播放</button>
+<button onclick="jumpEnd()">跳到最后</button>
+</div>
+<div class="main-area">
+<div class="info-panel" id="info"><strong>输入:</strong> nums = [10,9,2,5,3,7,101,18] &nbsp;|&nbsp; <strong>思路:</strong> dp[i]=max(dp[j]+1) for j&lt;i and nums[j]&lt;nums[i]</div>
+<div class="vis-area">
+<div class="nums-row" id="numsRow"></div>
+<div class="seq-row" id="seqRow"></div>
+<div class="step-detail" id="stepDetail"></div>
+<div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+</div>
+</div>
+</div>
+<script>
+const NUMS=[10,9,2,5,3,7,101,18];
+let steps=[],stepIdx=0,autoTimer=null,playing=false;
+
+function buildSteps(){
+  steps=[];
+  let n=NUMS.length;
+  let dp=Array(n).fill(1);
+  steps.push({dp:[...dp],cur:-1,note:'初始化: 每个元素自身构成长度为1的LIS',done:false});
+  for(let i=0;i<n;i++){
+    let best=1,bestJ=-1;
+    for(let j=0;j<i;j++){
+      if(NUMS[j]<NUMS[i]){
+        if(dp[j]+1>best){best=dp[j]+1;bestJ=j;}
+      }
+    }
+    dp[i]=best;
+    steps.push({dp:[...dp],cur:i,bestJ,note:`i=${i}, nums[${i}]=${NUMS[i]}: ${bestJ>=0?`从j=${bestJ}(nums[${bestJ}]=${NUMS[bestJ]}), dp[${bestJ}]+1=`+(dp[bestJ]+1):'无更小前驱'}, dp[${i}]=${best}`,done:i===n-1});
+  }
+  let ans=Math.max(...dp);
+  let last=steps[steps.length-1];
+  steps[steps.length-1]={...last,note:last.note+` | LIS长度 = ${ans}`,done:true};
+}
+function render(){
+  let s=steps[stepIdx]||steps[steps.length-1]||{};
+  let total=steps.length;
+  document.getElementById('stepLabel').textContent=`步骤 ${stepIdx+1} / ${total}`;
+  document.getElementById('progress').style.width=((stepIdx+1)/total*100)+'%';
+  document.getElementById('info').innerHTML=`<strong>nums=[10,9,2,5,3,7,101,18]</strong> &nbsp;|&nbsp; ${s.note||''}`;
+
+  let dp=s.dp||[];
+  let nh='';
+  for(let i=0;i<NUMS.length;i++){
+    let cls='';
+    if(i===s.cur)cls='cur';
+    if(s.done&&dp[i]===Math.max(...dp))cls='hl';
+    nh+=`<div class="num-cell"><div class="n ${cls}">${NUMS[i]}</div><span class="dp">dp=${dp[i]||'?'}</span></div>`;
+  }
+  document.getElementById('numsRow').innerHTML=nh;
+
+  // reconstruct one LIS
+  if(s.done){
+    let maxVal=Math.max(...dp),pos=dp.lastIndexOf(maxVal),seq=[];
+    for(let i=pos;i>=0;i--){
+      if(dp[i]===maxVal){seq.unshift(NUMS[i]);maxVal--;}
+    }
+    document.getElementById('seqRow').innerHTML='LIS: '+seq.map(v=>`<span>${v}</span>`).join(' → ');
+  } else {
+    document.getElementById('seqRow').textContent='';
+  }
+  document.getElementById('stepDetail').textContent=`dp = [${dp.join(',')}]`;
+}
+function reset(){stopAuto();stepIdx=0;buildSteps();render();}
+function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
+function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
+function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}
+function toggleAuto(){
+  if(playing){stopAuto();}else{playing=true;document.getElementById('autoBtn').classList.add('active');document.getElementById('autoBtn').textContent='停止';
+    autoTimer=setInterval(()=>{if(stepIdx<steps.length-1){stepIdx++;render();}else{stopAuto();}},900);}
+}
+function stopAuto(){playing=false;clearInterval(autoTimer);document.getElementById('autoBtn').classList.remove('active');document.getElementById('autoBtn').textContent='自动播放';}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight')nextStep();
+  else if(e.key==='ArrowLeft')prevStep();
+  else if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+buildSteps();render();
+</script>
+</body>
+</html>

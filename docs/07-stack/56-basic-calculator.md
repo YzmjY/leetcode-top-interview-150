@@ -65,6 +65,17 @@
 - **时间复杂度**：O(n)，n 为字符串长度，每个字符只处理一次。
 - **空间复杂度**：O(n)，栈最多存储 n 个状态（嵌套括号层数）。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/56-basic-calculator-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="基本计算器 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

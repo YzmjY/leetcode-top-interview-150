@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>66. 分隔链表 - 可视化演示</title>
+<style>
+:root {
+  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
+  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
+  --btn-active-text: #fff; --node-bg: #e9ecef;
+  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
+  --step-bg: #e7f5ff;
+}
+@media (prefers-color-scheme: dark) {
+:root {
+  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
+  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
+  --btn-active-text: #fff; --node-bg: #2a2a4a; --step-bg: #1a2a3a;
+}
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text);
+  display: flex; justify-content: center; padding: 20px;
+}
+.container {
+  width: 100%; max-width: 950px; height: 500px;
+  background: var(--card-bg); border-radius: 8px;
+  border: 1px solid var(--border); padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.step-panel {
+  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
+  display: flex; justify-content: space-between; align-items: center; font-size: 14px;
+}
+.step-num { font-weight: 700; color: var(--btn-active); }
+.step-desc { flex: 1; margin-left: 16px; }
+.svg-area { flex: 1; display: flex; justify-content: center; align-items: center; }
+.controls {
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+}
+.controls button {
+  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--btn-bg); color: var(--text); cursor: pointer;
+  font-size: 13px; font-family: inherit; transition: all 0.15s;
+}
+.controls button:hover { background: var(--btn-hover); }
+.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="step-panel">
+    <span class="step-num" id="stepNum">步骤 0 / 0</span>
+    <span class="step-desc" id="stepDesc">初始状态</span>
+  </div>
+  <div class="svg-area"><svg id="svg" viewBox="0 0 900 280"></svg></div>
+  <div class="controls">
+    <button onclick="reset()">重置</button>
+    <button onclick="prevStep()">上步</button>
+    <button onclick="nextStep()">下步</button>
+    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
+    <button onclick="goEnd()">跳到最后</button>
+  </div>
+</div>
+<script>
+// [1,4,3,2,5,2], x=3 -> [1,2,2,4,3,5]
+const x = 3;
+const orig = [1, 4, 3, 2, 5, 2];
+const pos = [{x:30,y:60},{x:160,y:60},{x:290,y:60},{x:420,y:60},{x:550,y:60},{x:680,y:60}];
+const posSmall = [{x:30,y:150},{x:160,y:150},{x:290,y:150}];
+const posLarge = [{x:30,y:230},{x:160,y:230},{x:290,y:230},{x:420,y:230},{x:550,y:230},{x:680,y:230}];
+const R = 22;
+const steps = [];
+let stepIdx = -1;
+
+function buildSteps() {
+  steps.length = 0;
+  let small = [], large = [];
+  const hl = -1;
+
+  steps.push({ small: [], large: [], hl: -1, desc: '初始状态: [1,4,3,2,5,2], x=3', phase: 0, curr: -1 });
+
+  for (let i = 0; i < orig.length; i++) {
+    if (orig[i] < x) { small.push(orig[i]); }
+    else { large.push(orig[i]); }
+    const desc = `处理节点${orig[i]}: ${orig[i] < x ? `< 3，放入小链表` : '>= 3，放入大链表'}`;
+    steps.push({ small: [...small], large: [...large], hl: i, desc, phase: 1, curr: i });
+  }
+
+  const result = [...small, ...large];
+  steps.push({ small: [...small], large: [...large], hl: -1, desc: '连接小链表和大链表', phase: 2, curr: -1 });
+  steps.push({ small: [...small], large: [...large], hl: -1, desc: `完成！结果: [${result.join(',')}] (小的在前，大的在后)`, phase: 3, curr: -1 });
+}
+
+function renderSVG() {
+  const st = steps[Math.min(stepIdx, steps.length - 1)];
+  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
+  document.getElementById('stepDesc').textContent = st.desc;
+
+  const svg = document.getElementById('svg');
+  let html = `<defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="var(--text-secondary)"/>
+    </marker>
+    <marker id="arrowB" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="var(--blue)"/>
+    </marker>
+    <marker id="arrowG" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="var(--green)"/>
+    </marker>
+  </defs>`;
+
+  // Original row
+  html += `<text x="10" y="35" font-size="13" font-weight="700" fill="var(--orange)">原链表 (x=3)</text>`;
+  for (let i = 0; i < orig.length; i++) {
+    const hl = st.curr === i;
+    html += `<circle cx="${pos[i].x}" cy="${pos[i].y}" r="${R}" fill="${hl ? 'rgba(253,126,20,0.2)' : 'var(--node-bg)'}" stroke="${hl ? 'var(--orange)' : 'var(--blue)'}" stroke-width="${hl ? 3 : 2}"/>
+      <text x="${pos[i].x}" y="${pos[i].y + 5}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text)" font-family="Consolas,monospace">${orig[i]}</text>`;
+    if (i < orig.length - 1) html += `<line x1="${pos[i].x+R}" y1="${pos[i].y}" x2="${pos[i+1].x-R}" y2="${pos[i+1].y}" stroke="var(--blue)" stroke-width="2" marker-end="url(#arrowB)"/>`;
+  }
+
+  // Small list
+  html += `<text x="10" y="125" font-size="13" font-weight="700" fill="var(--green)">小链表 (< x)</text>`;
+  const small = st.small;
+  for (let i = 0; i < small.length; i++) {
+    const p = posSmall[Math.min(i, posSmall.length - 1)];
+    html += `<circle cx="${p.x}" cy="${p.y}" r="${R}" fill="rgba(64,192,87,0.08)" stroke="var(--green)" stroke-width="2"/>
+      <text x="${p.x}" y="${p.y + 5}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text)" font-family="Consolas,monospace">${small[i]}</text>`;
+    if (i < small.length - 1) html += `<line x1="${p.x+R}" y1="${p.y}" x2="${posSmall[Math.min(i+1,posSmall.length-1)].x-R}" y2="${posSmall[Math.min(i+1,posSmall.length-1)].y}" stroke="var(--green)" stroke-width="2" marker-end="url(#arrowG)"/>`;
+  }
+
+  // Large list
+  html += `<text x="10" y="210" font-size="13" font-weight="700" fill="var(--red)">大链表 (>= x)</text>`;
+  const large = st.large;
+  for (let i = 0; i < large.length; i++) {
+    const p = posLarge[Math.min(i, posLarge.length - 1)];
+    html += `<circle cx="${p.x}" cy="${p.y}" r="${R}" fill="rgba(250,82,82,0.08)" stroke="var(--red)" stroke-width="2"/>
+      <text x="${p.x}" y="${p.y + 5}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text)" font-family="Consolas,monospace">${large[i]}</text>`;
+    if (i < large.length - 1) html += `<line x1="${p.x+R}" y1="${p.y}" x2="${posLarge[Math.min(i+1,posLarge.length-1)].x-R}" y2="${posLarge[Math.min(i+1,posLarge.length-1)].y}" stroke="var(--red)" stroke-width="2"/>`;
+  }
+
+  // Connection arrow when phase >= 2
+  if (st.phase >= 2 && small.length > 0 && large.length > 0) {
+    const sp = posSmall[Math.min(small.length - 1, posSmall.length - 1)];
+    const lp = posLarge[0];
+    html += `<path d="M${sp.x + R},${sp.y} Q${(sp.x + lp.x)/2},${sp.y + 40} ${lp.x - R},${lp.y}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow)"/>`;
+    html += `<text x="${(sp.x + lp.x)/2 + 40}" y="${sp.y + 55}" font-size="11" fill="var(--orange)" font-weight="600">连接</text>`;
+  }
+
+  svg.innerHTML = html;
+  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
+}
+
+function reset() { stopAuto(); stepIdx = 0; renderSVG(); }
+function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; renderSVG(); }
+function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; renderSVG(); }
+function goEnd() { stopAuto(); stepIdx = steps.length - 1; renderSVG(); }
+
+let autoRunning = false, autoTimer = null;
+function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
+function startAuto() { autoRunning = true; renderSVG(); autoStep(); }
+function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); renderSVG(); }
+function autoStep() {
+  if (!autoRunning) return;
+  if (stepIdx < steps.length - 1) { stepIdx++; renderSVG(); autoTimer = setTimeout(autoStep, 900); }
+  else stopAuto();
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') nextStep();
+  else if (e.key === 'ArrowLeft') prevStep();
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+buildSteps();
+reset();
+</script>
+</body>
+</html>

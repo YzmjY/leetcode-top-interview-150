@@ -42,6 +42,17 @@
 
 **空间复杂度：** O(log n)，递归栈深度（平衡树高度）。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/108-convert-sorted-array-to-binary-search-tree-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="将有序数组转换为二叉搜索树 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

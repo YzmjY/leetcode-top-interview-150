@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222; --sub-bg: #f5f5f5;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --left-color: #1976D2; --new-color: #FF9800;
+    --merge-color: #388E3C; --right-color: #9C27B0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 16px 20px;
+  }
+  .container { max-width: 840px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
+  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
+    font-size: 14px; flex-wrap: wrap;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
+
+  .intervals-row { display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 6px; }
+  .interval {
+    display: flex; align-items: center; justify-content: center;
+    padding: 6px 12px; border: 2px solid var(--cell-border); border-radius: 8px;
+    font-size: 15px; font-weight: bold; background: var(--cell-bg); color: var(--text);
+    transition: border-color 0.25s, background 0.25s, transform 0.15s;
+    font-family: monospace;
+  }
+  .interval.left { border-color: var(--left-color); background: rgba(25,118,210,0.12); }
+  .interval.right { border-color: var(--right-color); background: rgba(156,39,176,0.12); }
+  .interval.merge { border-color: var(--merge-color); background: rgba(56,142,60,0.15); transform: scale(1.06); }
+  .interval.new { border-color: var(--new-color); background: rgba(255,152,0,0.15); transform: scale(1.06); z-index: 2; }
+  .intvl-arrow { font-size: 16px; color: var(--muted); }
+
+  .new-interval-badge {
+    display: inline-block; padding: 4px 12px; background: rgba(255,152,0,0.2);
+    border: 2px solid var(--new-color); border-radius: 8px; font-weight: bold;
+    color: var(--new-color); font-family: monospace; font-size: 15px;
+  }
+
+  .state-row {
+    display: flex; justify-content: center; gap: 20px;
+    background: var(--sub-bg); border-radius: 8px;
+    padding: 8px 14px; margin-bottom: 6px; font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .state-item { text-align: center; }
+  .state-val { font-size: 16px; font-weight: bold; font-family: monospace; }
+  .state-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .result-row {
+    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
+    margin-bottom: 6px; font-size: 13px; text-align: center;
+  }
+  .result-row .highlight { font-weight: bold; font-size: 15px; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>插入区间 — 三步法演示</h2>
+  <div class="sub-title">intervals=[[1,3],[6,9]], newInterval=[2,5] &rarr; [[1,5],[6,9]]</div>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
+  </div>
+
+  <div style="text-align:center;margin-bottom:6px;">
+    <span class="new-interval-badge">new: [2,5]</span>
+  </div>
+
+  <div class="intervals-row" id="intervalsRow"></div>
+
+  <div class="state-row">
+    <div class="state-item"><div class="state-val" id="phaseVal">--</div><div class="state-label">阶段</div></div>
+    <div class="state-item"><div class="state-val" id="idxVal">--</div><div class="state-label">当前索引</div></div>
+    <div class="state-item"><div class="state-val" id="newIntervalVal">[2,5]</div><div class="state-label">新区间</div></div>
+  </div>
+
+  <div class="result-row">
+    <span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">&#x23EE; 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
+    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
+  </div>
+</div>
+
+<script>
+const intervals = [[1,3],[6,9]];
+const newInterval = [2,5];
+let ni = [...newInterval];
+
+const steps = [];
+
+function formatResult(r) { return r.map(([a,b]) => '['+a+','+b+']').join(', '); }
+
+function simulate() {
+  steps.push({
+    desc: '初始状态 · intervals=[[1,3],[6,9]], newInterval=[2,5]',
+    phase: 'init', idx: -1, result: [], newInterval: [...ni],
+    intervalStates: intervals.map(() => ''),
+    result: 'init'
+  });
+
+  // Step 1: left part (no overlap)
+  const result = [];
+  let i = 0;
+  ni = [...newInterval];
+
+  steps.push({
+    desc: '第1步: 左侧不重叠. 将所有 end < newStart 的区间直接加入结果.',
+    phase: 'left', idx: 0, result: result.map(r => [...r]), newInterval: [...ni],
+    intervalStates: ['right', ''],
+    result: 'left-phase'
+  });
+
+  while (i < intervals.length && intervals[i][1] < ni[0]) {
+    result.push([...intervals[i]]);
+    steps.push({
+      desc: '左侧: intervals[' + i + ']=[' + intervals[i][0] + ',' + intervals[i][1] + '] end=' + intervals[i][1] + ' < ' + ni[0] + ', 直接加入结果.',
+      phase: 'left', idx: i, result: result.map(r => [...r]), newInterval: [...ni],
+      intervalStates: intervals.map((_, j) => j < i ? 'left' : (j === i ? 'left' : '')),
+      result: 'left-phase'
+    });
+    i++;
+  }
+
+  // Step 2: merge overlapping
+  steps.push({
+    desc: '第2步: 合并重叠区间. 将所有与新区间重叠的区间进行合并.',
+    phase: 'merge-start', idx: i, result: result.map(r => [...r]), newInterval: [...ni],
+    intervalStates: intervals.map((_, j) => j < i ? 'left' : (j === i ? 'new' : '')),
+    result: 'merge-phase'
+  });
+
+  while (i < intervals.length && intervals[i][0] <= ni[1]) {
+    ni[0] = Math.min(ni[0], intervals[i][0]);
+    ni[1] = Math.max(ni[1], intervals[i][1]);
+    steps.push({
+      desc: '合并: 与 [' + intervals[i][0] + ',' + intervals[i][1] + '] 重叠, 新区间变为 [' + ni[0] + ',' + ni[1] + ']',
+      phase: 'merge', idx: i, result: result.map(r => [...r]), newInterval: [...ni],
+      intervalStates: intervals.map((_, j) => j < i ? 'left' : (j === i ? 'merge' : '')),
+      result: 'merge-phase'
+    });
+    i++;
+  }
+
+  result.push([...ni]);
+  steps.push({
+    desc: '合并完成, 将新区间 [' + ni[0] + ',' + ni[1] + '] 加入结果.',
+    phase: 'merge-done', idx: i, result: result.map(r => [...r]), newInterval: [...ni],
+    intervalStates: intervals.map((_, j) => j < i ? 'merge' : 'right'),
+    result: 'merge-done'
+  });
+
+  // Step 3: right part
+  steps.push({
+    desc: '第3步: 右侧不重叠. 将剩余区间直接加入结果.',
+    phase: 'right', idx: i, result: result.map(r => [...r]), newInterval: [...ni],
+    intervalStates: intervals.map((_, j) => j < i ? 'merge' : (j >= i ? 'right' : '')),
+    result: 'right-phase'
+  });
+
+  while (i < intervals.length) {
+    result.push([...intervals[i]]);
+    steps.push({
+      desc: '右侧: 添加 [' + intervals[i][0] + ',' + intervals[i][1] + ']',
+      phase: 'right', idx: i, result: result.map(r => [...r]), newInterval: [...ni],
+      intervalStates: intervals.map((_, j) => j < i ? 'merge' : (j === i ? 'right' : (j > i ? 'right' : 'merge'))),
+      result: 'right-phase'
+    });
+    i++;
+  }
+
+  steps.push({
+    desc: '完成! 结果: [' + formatResult(result) + ']',
+    phase: 'done', idx: -1, result: result.map(r => [...r]), newInterval: [...ni],
+    intervalStates: intervals.map(() => 'merge'),
+    result: 'done'
+  });
+}
+
+simulate();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+const intervalsRow = document.getElementById('intervalsRow');
+intervals.forEach(([a, b], i) => {
+  const el = document.createElement('span');
+  el.className = 'interval'; el.id = 'intv' + i;
+  el.textContent = '[' + a + ',' + b + ']';
+  intervalsRow.appendChild(el);
+  if (i < intervals.length - 1) {
+    const comma = document.createElement('span');
+    comma.textContent = ',';
+    comma.style.color = 'var(--muted)';
+    intervalsRow.appendChild(comma);
+  }
+});
+
+function render() {
+  const s = steps[current];
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = s.desc;
+  document.getElementById('phaseVal').textContent = s.phase;
+  document.getElementById('idxVal').textContent = String(s.idx >= 0 ? s.idx : '--');
+  document.getElementById('newIntervalVal').textContent = '[' + s.newInterval[0] + ',' + s.newInterval[1] + ']';
+
+  for (let i = 0; i < intervals.length; i++) {
+    document.getElementById('intv' + i).className = 'interval';
+  }
+  if (s.intervalStates) {
+    s.intervalStates.forEach((st, i) => {
+      if (st) document.getElementById('intv' + i).className = 'interval ' + st;
+    });
+  }
+
+  const rt = document.getElementById('resultText');
+  if (s.result === 'done') {
+    rt.textContent = '[' + s.result.map(r => '[' + r[0] + ',' + r[1] + ']').join(', ') + ']';
+    rt.style.color = '#388E3C';
+  } else if (s.result === 'init') { rt.textContent = '进行中...'; rt.style.color = '#1976D2'; }
+  else if (s.result && s.result.length > 0) {
+    rt.textContent = '[' + s.result.map(r => '[' + r[0] + ',' + r[1] + ']').join(', ') + ']';
+    rt.style.color = '#1976D2';
+  } else { rt.textContent = '进行中...'; rt.style.color = '#1976D2'; }
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer); autoRunning = false;
+    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
+    document.getElementById('playBtn').style.background = '';
+    document.getElementById('playBtn').style.color = '';
+    document.getElementById('playBtn').classList.remove('play-btn');
+  } else {
+    autoRunning = true;
+    document.getElementById('playBtn').textContent = '\u23F8 暂停';
+    document.getElementById('playBtn').style.background = '#1976D2';
+    document.getElementById('playBtn').style.color = '#fff';
+    document.getElementById('playBtn').classList.add('play-btn');
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(function() {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 1200);
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

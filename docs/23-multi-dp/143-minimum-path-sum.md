@@ -56,6 +56,17 @@
 - 这是最经典的网格 DP 问题之一，与"不同路径"问题思路一致。
 - 可以直接在原数组上修改以节省空间（如果可以修改输入）。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/143-minimum-path-sum-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="最小路径和 (Minimum Path Sum) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

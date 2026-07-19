@@ -60,6 +60,17 @@
 - 泛化状态机的模板通用性强，可以解决整个 Stock 系列（I-VI）。
 - 注意 k 很大时的退化处理。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/149-best-time-to-buy-and-sell-stock-iv-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="买卖股票的最佳时机 IV (Best Time to Buy and Sell Stock IV) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

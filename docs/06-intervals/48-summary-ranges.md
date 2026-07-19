@@ -58,6 +58,17 @@
 - **时间复杂度**：O(n)，每个元素只被访问一次。
 - **空间复杂度**：O(1)，除结果列表外不占用额外空间（结果列表不计入空间复杂度）。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/48-summary-ranges-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="汇总区间 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

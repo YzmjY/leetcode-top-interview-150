@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>138. 打家劫舍 - 可视化演示</title>
+<style>
+:root{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--sub:#666;--border:#e0e0e0;--accent:#2563eb;--step-bg:#f0f4ff;--grid-bg:#fafafa;--radius:8px;--font:system-ui,-apple-system,sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--sub:#a0a0b0;--border:#334;--accent:#60a5fa;--step-bg:#1e293b;--grid-bg:#0f172a}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);display:flex;justify-content:center;align-items:center;min-height:100vh}
+.demo-container{width:100%;max-width:960px;height:480px;background:var(--card);border-radius:var(--radius);box-shadow:0 4px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--step-bg)}
+.header .title{font-size:15px;font-weight:600;color:var(--text)}
+.header .step-info{font-size:13px;color:var(--accent);font-weight:500}
+.controls{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.controls button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
+.controls button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.controls button:disabled{opacity:.4;cursor:not-allowed}
+.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.main-area{flex:1;display:flex;flex-direction:column;padding:12px 16px;gap:10px;overflow-y:auto}
+.info-panel{padding:10px 14px;background:var(--step-bg);border-radius:var(--radius);border:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.6}
+.info-panel strong{color:var(--accent)}
+.vis-area{flex:1;display:flex;flex-direction:column;gap:8px}
+.dp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;padding:8px 0}
+.dp-cell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px;border-radius:var(--radius);border:1px solid var(--border);background:var(--grid-bg);transition:all .3s}
+.dp-cell .idx{font-size:11px;color:var(--sub)}
+.dp-cell .nums{font-size:16px;font-weight:700;color:var(--text)}
+.dp-cell .dpv{font-size:13px;font-weight:600;color:var(--accent)}
+.dp-cell.current{border-color:var(--accent);background:var(--step-bg)}
+.dp-cell.chosen{background:#bbf7d0;border-color:#22c55e}
+.dp-cell.skipped{background:#fecaca;border-color:#ef4444}
+.formula{text-align:center;font-size:13px;color:var(--sub);padding:4px}
+.step-detail{font-size:13px;color:var(--sub);text-align:center}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+@media(prefers-color-scheme:dark){.dp-cell.chosen{background:#14532d;border-color:#22c55e}.dp-cell.skipped{background:#7f1d1d;border-color:#ef4444}}
+</style>
+</head>
+<body>
+<div class="demo-container">
+<div class="header">
+<span class="title">138. 打家劫舍 (House Robber)</span>
+<span class="step-info" id="stepLabel">步骤 0 / 0</span>
+</div>
+<div class="controls">
+<button onclick="reset()">重置</button>
+<button onclick="prevStep()">上步</button>
+<button onclick="nextStep()">下步</button>
+<button onclick="toggleAuto()" id="autoBtn">自动播放</button>
+<button onclick="jumpEnd()">跳到最后</button>
+</div>
+<div class="main-area">
+<div class="info-panel" id="info"><strong>输入:</strong> nums = [2, 7, 9, 3, 1] &nbsp;|&nbsp; <strong>思路:</strong> dp[i] = max(dp[i-1], dp[i-2] + nums[i])</div>
+<div class="vis-area">
+<div class="dp-grid" id="dpGrid"></div>
+<div class="formula">dp[i] = max(不偷=dp[i-1], 偷=nums[i]+dp[i-2])</div>
+<div class="step-detail" id="stepDetail"></div>
+<div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+</div>
+</div>
+</div>
+<script>
+const NUMS=[2,7,9,3,1];
+let steps=[],stepIdx=0,autoTimer=null,playing=false;
+
+function buildSteps(){
+  steps=[];
+  let n=NUMS.length;
+  let dp=Array(n).fill(0);
+  dp[0]=NUMS[0];
+  steps.push({dp:[...dp],cur:0,choice:null,note:`dp[0] = nums[0] = ${NUMS[0]} (只有一间房，偷)`,done:false});
+  dp[1]=Math.max(NUMS[0],NUMS[1]);
+  steps.push({dp:[...dp],cur:1,choice:dp[1]===NUMS[1]?'steal':'skip',note:`dp[1] = max(${NUMS[0]}, ${NUMS[1]}) = ${dp[1]}`,done:false});
+  for(let i=2;i<n;i++){
+    let steal=dp[i-2]+NUMS[i],skip=dp[i-1];
+    dp[i]=Math.max(steal,skip);
+    steps.push({dp:[...dp],cur:i,choice:dp[i]===steal?'steal':'skip',note:`dp[${i}] = max(dp[${i-2}]+nums[${i}]=${steal}, dp[${i-1}]=${skip}) = ${dp[i]}`,done:i===n-1});
+  }
+  let last=steps[steps.length-1];
+  steps[steps.length-1]={...last,note:last.note+` | 最大金额: ${dp[n-1]}`,done:true};
+}
+function render(){
+  let s=steps[stepIdx]||steps[steps.length-1]||{};
+  let total=steps.length;
+  document.getElementById('stepLabel').textContent=`步骤 ${stepIdx+1} / ${total}`;
+  document.getElementById('progress').style.width=((stepIdx+1)/total*100)+'%';
+  document.getElementById('info').innerHTML=`<strong>nums = [2,7,9,3,1]</strong> &nbsp;|&nbsp; ${s.note||''}`;
+
+  let dp=s.dp||[];
+  let g='';
+  for(let i=0;i<NUMS.length;i++){
+    let cls='';
+    if(i===s.cur)cls='current';
+    else if(i<s.cur&&s.choice==='steal'){
+      // simplified: greedily show alternating pattern
+    }
+    let v=dp[i]||'?';
+    if(s.done)v=dp[i];
+    g+=`<div class="dp-cell ${cls}">
+      <span class="idx">房屋 ${i}</span>
+      <span class="nums">$${NUMS[i]}</span>
+      <span class="dpv">dp=${typeof v==='number'?v:'?'}</span>
+    </div>`;
+  }
+  document.getElementById('dpGrid').innerHTML=g;
+  document.getElementById('stepDetail').textContent=`当前 dp 数组: [${dp.map((v,i)=>i<=s.cur||s.done?v:'?').join(', ')}]`;
+}
+function reset(){stopAuto();stepIdx=0;buildSteps();render();}
+function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
+function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
+function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}
+function toggleAuto(){
+  if(playing){stopAuto();}else{playing=true;document.getElementById('autoBtn').classList.add('active');document.getElementById('autoBtn').textContent='停止';
+    autoTimer=setInterval(()=>{if(stepIdx<steps.length-1){stepIdx++;render();}else{stopAuto();}},900);}
+}
+function stopAuto(){playing=false;clearInterval(autoTimer);document.getElementById('autoBtn').classList.remove('active');document.getElementById('autoBtn').textContent='自动播放';}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight')nextStep();
+  else if(e.key==='ArrowLeft')prevStep();
+  else if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+buildSteps();render();
+</script>
+</body>
+</html>

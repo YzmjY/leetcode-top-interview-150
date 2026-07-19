@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>91. 克隆图 - Clone Graph</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.container{background:#fff;border-radius:8px;padding:20px;width:800px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+h2{font-size:16px;margin-bottom:12px;color:#333}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+button{border:none;border-radius:8px;padding:8px 16px;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s;color:#fff;font-weight:500}
+button:disabled{opacity:.4;cursor:not-allowed}
+.btn-reset{background:#6c757d}
+.btn-prev{background:#0d6efd}
+.btn-next{background:#0d6efd}
+.btn-auto{background:#198754}
+.btn-end{background:#dc3545}
+button:hover:not(:disabled){filter:brightness(1.15)}
+.info-panel{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:#555;background:#f0f4f8;border-radius:8px;padding:10px 14px}
+.step-badge{background:#0d6efd;color:#fff;border-radius:20px;padding:2px 12px;font-weight:600;font-size:12px}
+.info-text{flex:1;margin-left:12px}
+.vis-area{background:#fafafa;border-radius:8px;position:relative;height:480px;overflow:hidden;border:1px solid #e0e0e0}
+svg{width:100%;height:100%}
+.hint{font-size:12px;color:#999;text-align:center;margin-top:8px}
+@media(prefers-color-scheme:dark){
+body{background:#1a1a2e}
+.container{background:#16213e;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+h2{color:#e0e0e0}
+.info-panel{background:#1a1a3e;color:#ccc}
+.vis-area{background:#0f0f23;border-color:#2a2a4a}
+.hint{color:#777}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>91. 克隆图 (Clone Graph) — DFS/BFS 深度拷贝</h2>
+<div class="controls">
+<button class="btn-reset" onclick="reset()">⟳ 重置</button>
+<button class="btn-prev" onclick="prevStep()">◀ 上步</button>
+<button class="btn-next" onclick="nextStep()">下步 ▶</button>
+<button class="btn-auto" id="btnAuto" onclick="toggleAuto()">▶ 自动播放</button>
+<button class="btn-end" onclick="jumpEnd()">▶▶ 跳到最后</button>
+</div>
+<div class="info-panel">
+<span class="step-badge" id="stepBadge">步骤 1/7</span>
+<span class="info-text" id="infoText">原图: 邻接表 [[2,4],[1,3],[2,4],[1,3]]</span>
+</div>
+<div class="vis-area"><svg id="svg" viewBox="0 0 800 480"></svg></div>
+<div class="hint">键盘: ← → 切换步骤 | 空格 自动播放</div>
+</div>
+<script>
+const adj=[[2,4],[1,3],[2,4],[1,3]];
+const N=4;
+// Layout: original on left, clone on right
+const origPos={1:{x:160,y:120},2:{x:300,y:120},3:{x:300,y:260},4:{x:160,y:260}};
+const clonePos={1:{x:500,y:120},2:{x:640,y:260},3:{x:640,y:400},4:{x:500,y:400}};
+// Better layout: 2 rows x 2 cols for both
+const oPos={1:{x:140,y:100},2:{x:300,y:100},3:{x:300,y:250},4:{x:140,y:250}};
+const cPos={1:{x:480,y:100},2:{x:640,y:250},3:{x:640,y:400},4:{x:480,y:400}};
+
+let steps=[],currentStep=0,totalSteps=0,autoTimer=null;
+function buildSteps(){
+  steps=[];
+  let cloned={};
+  let highlight=[];
+  steps.push({cloned:{},highlight:[],info:'原图邻接表: [[2,4],[1,3],[2,4],[1,3]] — 准备用HashMap+DFS克隆',phase:'start'});
+  // DFS from node 1
+  let visitedOrig=new Set();
+  function dfs(node){
+    if(visitedOrig.has(node))return;
+    visitedOrig.add(node);
+    cloned[node]={val:node,neighbors:[]};
+    highlight.push(node);
+    steps.push({cloned:{...cloned},highlight:[...highlight],info:`创建节点 ${node} 的克隆 (${node}')`,phase:'create',curNode:node});
+    for(let nb of adj[node-1]){
+      if(!cloned[nb])dfs(nb);
+      if(!cloned[node].neighbors.includes(nb))cloned[node].neighbors.push(nb);
+    }
+    steps.push({cloned:{...cloned},highlight:[...highlight],info:`节点 ${node}' 邻居建立完成: [${cloned[node].neighbors.join(',')}]`,phase:'edges',curNode:node});
+  }
+  dfs(1);
+  steps.push({cloned:{...cloned},highlight:[...highlight],info:`克隆完成! 4个节点已全部复制, HashMap确保无重复`,phase:'done'});
+}
+buildSteps();totalSteps=steps.length;
+
+const svg=document.getElementById('svg');
+function edgeLine(x1,y1,x2,y2,color,width,dashed){
+  let l=document.createElementNS('http://www.w3.org/2000/svg','line');
+  l.setAttribute('x1',x1);l.setAttribute('y1',y1);
+  l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+  l.setAttribute('stroke',color);l.setAttribute('stroke-width',width||2);
+  if(dashed)l.setAttribute('stroke-dasharray','6,4');
+  return l;
+}
+function nodeCircle(cx,cy,label,fill,stroke,sw){
+  let g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  let c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  c.setAttribute('cx',cx);c.setAttribute('cy',cy);c.setAttribute('r',28);
+  c.setAttribute('fill',fill);c.setAttribute('stroke',stroke||'#333');
+  c.setAttribute('stroke-width',sw||2);
+  g.appendChild(c);
+  let t=document.createElementNS('http://www.w3.org/2000/svg','text');
+  t.setAttribute('x',cx);t.setAttribute('y',cy+5);
+  t.setAttribute('text-anchor','middle');t.setAttribute('font-size','16');
+  t.setAttribute('font-family','sans-serif');t.setAttribute('font-weight','bold');
+  t.setAttribute('fill','#fff');
+  t.textContent=label;
+  g.appendChild(t);
+  return g;
+}
+
+function draw(){
+  let s=steps[currentStep];
+  svg.innerHTML='';
+  // Title
+  let tOrig=document.createElementNS('http://www.w3.org/2000/svg','text');
+  tOrig.setAttribute('x',220);tOrig.setAttribute('y',50);
+  tOrig.setAttribute('text-anchor','middle');tOrig.setAttribute('font-size','15');tOrig.setAttribute('fill','#333');tOrig.setAttribute('font-weight','bold');
+  tOrig.textContent='原图 (Original)';
+  svg.appendChild(tOrig);
+  let tClone=document.createElementNS('http://www.w3.org/2000/svg','text');
+  tClone.setAttribute('x',560);tClone.setAttribute('y',50);
+  tClone.setAttribute('text-anchor','middle');tClone.setAttribute('font-size','15');tClone.setAttribute('fill','#333');tClone.setAttribute('font-weight','bold');
+  tClone.textContent='克隆图 (Clone)';
+  svg.appendChild(tClone);
+
+  // Original graph edges
+  let origEdges=new Set();
+  for(let u=1;u<=N;u++){
+    for(let v of adj[u-1]){
+      let key=[u,v].sort().join('-');
+      if(!origEdges.has(key)){
+        origEdges.add(key);
+        let p1=oPos[u],p2=oPos[v];
+        svg.appendChild(edgeLine(p1.x,p1.y,p2.x,p2.y,'#999',2));
+      }
+    }
+  }
+  // Original nodes
+  for(let u=1;u<=N;u++){
+    let p=oPos[u];
+    svg.appendChild(nodeCircle(p.x,p.y,''+u,'#5b9bd5','#3a7abd',2));
+  }
+
+  // Clone edges
+  if(s.cloned){
+    let cloneEdges=new Set();
+    for(let key in s.cloned){
+      let u=parseInt(key);
+      for(let v of (s.cloned[u].neighbors||[])){
+        let ek=[u,v].sort().join('-');
+        if(!cloneEdges.has(ek)){
+          cloneEdges.add(ek);
+          let p1=cPos[u],p2=cPos[v];
+          let color=s.highlight.includes(u)&&s.highlight.includes(v)?'#28a745':'#28a745';
+          svg.appendChild(edgeLine(p1.x,p1.y,p2.x,p2.y,color,2.5));
+        }
+      }
+    }
+  }
+  // Clone nodes
+  for(let u=1;u<=N;u++){
+    let p=cPos[u];
+    let cloned=s.cloned&&s.cloned[u];
+    let fill=cloned?'#28a745':'#ddd';
+    let stroke=cloned?'#1e7e34':'#bbb';
+    let hl=s.highlight.includes(u)?'#ff0':'transparent';
+    if(hl!=='transparent'){
+      let g2=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      g2.setAttribute('cx',p.x);g2.setAttribute('cy',p.y);g2.setAttribute('r',34);
+      g2.setAttribute('fill','none');g2.setAttribute('stroke',hl);g2.setAttribute('stroke-width',3);
+      svg.appendChild(g2);
+    }
+    svg.appendChild(nodeCircle(p.x,p.y,cloned?u+'\'':'?',fill,stroke,2));
+  }
+
+  // Highlight curNode
+  if(s.curNode){
+    let po=oPos[s.curNode],pc=cPos[s.curNode];
+    let ho=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    ho.setAttribute('cx',po.x);ho.setAttribute('cy',po.y);ho.setAttribute('r',34);
+    ho.setAttribute('fill','none');ho.setAttribute('stroke','#ff6b00');ho.setAttribute('stroke-width',3);
+    svg.appendChild(ho);
+    let hc=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    hc.setAttribute('cx',pc.x);hc.setAttribute('cy',pc.y);hc.setAttribute('r',34);
+    hc.setAttribute('fill','none');hc.setAttribute('stroke','#ff6b00');hc.setAttribute('stroke-width',3);
+    svg.appendChild(hc);
+  }
+
+  // Arrow between original and clone (mapping)
+  if(s.phase==='create'&&s.curNode){
+    let po=oPos[s.curNode],pc=cPos[s.curNode];
+    let arr=document.createElementNS('http://www.w3.org/2000/svg','line');
+    arr.setAttribute('x1',po.x+30);arr.setAttribute('y1',po.y);
+    arr.setAttribute('x2',pc.x-30);arr.setAttribute('y2',pc.y);
+    arr.setAttribute('stroke','#ff6b00');arr.setAttribute('stroke-width',2);
+    arr.setAttribute('stroke-dasharray','5,3');
+    arr.setAttribute('marker-end','url(#arrow)');
+    svg.appendChild(arr);
+    // Add marker defs
+    let defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+    let marker=document.createElementNS('http://www.w3.org/2000/svg','marker');
+    marker.setAttribute('id','arrow');marker.setAttribute('markerWidth','10');marker.setAttribute('markerHeight','10');
+    marker.setAttribute('refX','9');marker.setAttribute('refY','3');marker.setAttribute('orient','auto');
+    let mp=document.createElementNS('http://www.w3.org/2000/svg','path');
+    mp.setAttribute('d','M0,0 L0,6 L9,3 z');mp.setAttribute('fill','#ff6b00');
+    marker.appendChild(mp);defs.appendChild(marker);
+    svg.insertBefore(defs,svg.firstChild);
+  }
+
+  document.getElementById('stepBadge').textContent=`步骤 ${currentStep+1}/${totalSteps}`;
+  document.getElementById('infoText').textContent=s.info;
+  let btns=document.querySelectorAll('button');
+  btns.forEach(b=>b.disabled=false);
+  if(currentStep===0)document.querySelector('.btn-prev').disabled=true;
+  if(currentStep===totalSteps-1){document.querySelector('.btn-next').disabled=true;document.querySelector('.btn-end').disabled=true;document.querySelector('.btn-auto').disabled=true;}
+}
+
+function nextStep(){if(currentStep<totalSteps-1){currentStep++;draw();}}
+function prevStep(){if(currentStep>0){currentStep--;draw();}}
+function reset(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=0;draw();}
+function jumpEnd(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=totalSteps-1;draw();}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}
+  else{document.getElementById('btnAuto').textContent='⏸ 暂停';autoTimer=setInterval(()=>{if(currentStep<totalSteps-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}},900);}
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){e.preventDefault();nextStep();}
+  else if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}
+  else if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+draw();
+</script>
+</body>
+</html>

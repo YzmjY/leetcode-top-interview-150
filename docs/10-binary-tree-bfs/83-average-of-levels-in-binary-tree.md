@@ -42,6 +42,17 @@
 - **时间复杂度**：O(n)，每个节点访问一次。
 - **空间复杂度**：O(w)，w 为树的最大宽度。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/83-average-of-levels-in-binary-tree-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="二叉树的层平均值 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222; --sub-bg: #f5f5f5;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --seq-color: #388E3C; --cur-color: #1976D2;
+    --colors: #E53935 #FF9800 #1976D2 #388E3C;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 16px 20px;
+  }
+  .container { max-width: 840px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
+  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
+    font-size: 14px; flex-wrap: wrap;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
+
+  .arr-row { display: flex; align-items: center; gap: 4px; justify-content: center; margin-bottom: 6px; flex-wrap: wrap; }
+  .acell {
+    width: 56px; height: 48px; border: 2px solid var(--cell-border); border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: bold; background: var(--cell-bg); color: var(--text);
+    transition: border-color 0.25s, background 0.25s, transform 0.15s;
+  }
+  .acell .ai { font-size: 9px; color: var(--muted); }
+  .acell.cur { border-color: var(--cur-color); background: rgba(25,118,210,0.12); transform: scale(1.06); z-index: 2; }
+  .acell.seq0 { border-color: #E53935; background: rgba(229,57,53,0.1); }
+  .acell.seq1 { border-color: #FF9800; background: rgba(255,152,0,0.1); }
+  .acell.seq2 { border-color: #1976D2; background: rgba(25,118,210,0.1); }
+
+  .seq-panel {
+    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
+    margin-bottom: 6px; text-align: center; font-size: 13px;
+  }
+  .seq-row { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 4px; flex-wrap: wrap; }
+  .seq-member {
+    padding: 4px 10px; border: 2px solid; border-radius: 8px;
+    font-weight: bold; font-size: 16px; font-family: monospace;
+  }
+
+  .result-row {
+    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
+    margin-bottom: 6px; font-size: 13px; text-align: center;
+  }
+  .result-row .highlight { font-weight: bold; font-size: 15px; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>最长连续序列 — 哈希集合查找演示</h2>
+  <div class="sub-title">nums=[100,4,200,1,3,2] &rarr; 最长连续序列: [1,2,3,4] 长度=4</div>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
+  </div>
+
+  <div class="arr-row" id="arrRow"></div>
+
+  <div class="seq-panel">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:3px;">连续序列</div>
+    <div id="seqContainer"><span style="color:var(--muted);font-size:12px;">暂无</span></div>
+  </div>
+
+  <div class="result-row">
+    <span style="color:var(--muted)">最长: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">&#x23EE; 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
+    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
+  </div>
+</div>
+
+<script>
+const nums = [100, 4, 200, 1, 3, 2];
+const n = nums.length;
+const numSet = new Set(nums);
+
+const steps = [];
+const foundSequences = [];
+let maxLen = 0, maxSeq = [];
+
+function simulate() {
+  steps.push({
+    desc: '初始状态 · nums=[100,4,200,1,3,2], 建立哈希集合: {' + [...numSet].join(',') + '}',
+    phase: 'init', idx: -1, hl: [], seqDisplay: [], maxLen: 0, maxSeq: [],
+    result: 'init'
+  });
+
+  for (let i = 0; i < n; i++) {
+    const val = nums[i];
+
+    if (!numSet.has(val - 1)) {
+      // Start of a sequence
+      steps.push({
+        desc: '发现序列起点: nums[' + i + ']=' + val + ' (集合中无' + (val-1) + ')',
+        phase: 'start', idx: i, hl: [[i, 'cur']],
+        seqDisplay: foundSequences.map(s => [...s]),
+        maxLen, maxSeq: [...maxSeq],
+        result: 'checking'
+      });
+
+      let cur = val;
+      let curSeq = [cur];
+      let stepIdx = 0;
+      while (numSet.has(cur + 1)) {
+        stepIdx++;
+        cur++;
+        curSeq.push(cur);
+        const posIdx = nums.indexOf(cur);
+        steps.push({
+          desc: '延伸序列: 集合中有' + cur + ', 加入序列. 当前序列: [' + curSeq.join(',') + ']',
+          phase: 'extend', idx: i, hl: [[i, 'cur']],
+          seqDisplay: foundSequences.map(s => [...s]),
+          curSeq: [...curSeq],
+          maxLen: Math.max(maxLen, curSeq.length),
+          maxSeq: curSeq.length > maxLen ? [...curSeq] : [...maxSeq],
+          result: 'checking'
+        });
+      }
+
+      foundSequences.push([...curSeq]);
+      if (curSeq.length > maxLen) {
+        maxLen = curSeq.length;
+        maxSeq = [...curSeq];
+      }
+
+      const clsIdx = foundSequences.length - 1;
+      steps.push({
+        desc: '序列[' + curSeq.join(',') + '] 长度=' + curSeq.length + ', 当前最长=' + maxLen,
+        phase: 'seq-done', idx: i,
+        hl: nums.map((v, j) => [j, curSeq.includes(v) ? 'seq' + (clsIdx % 3) : '']),
+        seqDisplay: foundSequences.map(s => [...s]),
+        maxLen, maxSeq: [...maxSeq],
+        result: 'checking'
+      });
+    } else {
+      steps.push({
+        desc: '跳过 nums[' + i + ']=' + val + ' (集合中有' + (val-1) + ', 不是序列起点)',
+        phase: 'skip', idx: i, hl: [[i, 'cur']],
+        seqDisplay: foundSequences.map(s => [...s]),
+        maxLen, maxSeq: [...maxSeq],
+        result: 'checking'
+      });
+    }
+  }
+
+  steps.push({
+    desc: '查找完成! 最长连续序列: [' + maxSeq.join(',') + '], 长度=' + maxLen,
+    phase: 'done', idx: -1,
+    hl: maxSeq.map(v => [nums.indexOf(v), 'seq0']),
+    seqDisplay: foundSequences.map(s => [...s]),
+    maxLen, maxSeq: [...maxSeq],
+    result: 'done'
+  });
+}
+
+simulate();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+const arrRow = document.getElementById('arrRow');
+nums.forEach((v, i) => {
+  const cell = document.createElement('div');
+  cell.className = 'acell'; cell.id = 'ac' + i;
+  cell.innerHTML = v + '<span class="ai">[' + i + ']</span>';
+  arrRow.appendChild(cell);
+});
+
+function render() {
+  const s = steps[current];
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = s.desc;
+
+  for (let i = 0; i < n; i++) document.getElementById('ac' + i).className = 'acell';
+  if (s.hl) s.hl.forEach(([i, cls]) => {
+    if (cls) document.getElementById('ac' + i).className = 'acell ' + cls;
+  });
+
+  // Seq display
+  const seqContainer = document.getElementById('seqContainer');
+  seqContainer.innerHTML = '';
+  if (s.seqDisplay && s.seqDisplay.length > 0) {
+    s.seqDisplay.forEach((seq, si) => {
+      const row = document.createElement('div');
+      row.className = 'seq-row';
+      seq.forEach(v => {
+        const span = document.createElement('span');
+        span.className = 'seq-member';
+        span.style.borderColor = ['#E53935','#FF9800','#1976D2'][si % 3];
+        span.style.color = ['#E53935','#FF9800','#1976D2'][si % 3];
+        span.style.background = ['rgba(229,57,53,0.08)','rgba(255,152,0,0.08)','rgba(25,118,210,0.08)'][si % 3];
+        span.textContent = v;
+        row.appendChild(span);
+      });
+      seqContainer.appendChild(row);
+    });
+  } else if (s.curSeq) {
+    const row = document.createElement('div');
+    row.className = 'seq-row';
+    s.curSeq.forEach(v => {
+      const span = document.createElement('span');
+      span.className = 'seq-member';
+      span.style.borderColor = '#1976D2'; span.style.color = '#1976D2';
+      span.style.background = 'rgba(25,118,210,0.08)';
+      span.textContent = v;
+      row.appendChild(span);
+    });
+    seqContainer.appendChild(row);
+  } else {
+    seqContainer.innerHTML = '<span style="color:var(--muted);font-size:12px;">暂无</span>';
+  }
+
+  const rt = document.getElementById('resultText');
+  if (s.result === 'done') {
+    rt.textContent = s.maxLen + ' (序列: [' + s.maxSeq.join(',') + '])';
+    rt.style.color = '#388E3C';
+  } else if (s.result === 'init') {
+    rt.textContent = '进行中...'; rt.style.color = '#1976D2';
+  } else {
+    rt.textContent = (s.maxLen || '--'); rt.style.color = '#1976D2';
+  }
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer); autoRunning = false;
+    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
+    document.getElementById('playBtn').style.background = '';
+    document.getElementById('playBtn').style.color = '';
+    document.getElementById('playBtn').classList.remove('play-btn');
+  } else {
+    autoRunning = true;
+    document.getElementById('playBtn').textContent = '\u23F8 暂停';
+    document.getElementById('playBtn').style.background = '#1976D2';
+    document.getElementById('playBtn').style.color = '#fff';
+    document.getElementById('playBtn').classList.add('play-btn');
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(function() {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 1000);
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

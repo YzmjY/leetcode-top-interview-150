@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>排序链表 - 归并排序可视化</title>
+<style>
+:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#555;--border:#dee2e6;--accent:#7c3aed;--accent2:#a78bfa;--hover:#ede9fe;--green:#22c55e;--orange:#f59e0b;--blue:#3b82f6;--red:#ef4444;--btn-bg:#e5e7eb;--btn-txt:#374151;--node-bg:#f3e8ff;--node-border:#c4b5fd;--slow:#3b82f6;--fast:#ef4444;--merged-bg:#f0fdf4}
+.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--node-bg:#1e1b4b;--node-border:#5b21b6;--slow:#60a5fa;--fast:#f87171;--merged-bg:#052e16}
+@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--node-bg:#1e1b4b;--node-border:#5b21b6;--slow:#60a5fa;--fast:#f87171;--merged-bg:#052e16}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
+.container{width:100%;max-width:780px;background:var(--card);border-radius:8px;border:1px solid var(--border);padding:20px 24px}
+h2{font-size:1.1rem;font-weight:600;margin-bottom:6px;color:var(--accent)}
+.info-panel{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:.85rem;color:var(--text2);flex-wrap:wrap}
+.info-panel .step{background:var(--accent);color:#fff;padding:3px 10px;border-radius:8px;font-weight:600;font-size:.8rem}
+.info-panel .desc{flex:1;min-width:200px}
+.vis-area{height:440px;border:1px solid var(--border);border-radius:8px;overflow:auto;background:var(--bg);padding:12px}
+.linked-list{display:flex;align-items:center;gap:0;margin-bottom:16px;flex-wrap:wrap}
+.linked-list .node{width:48px;height:48px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;background:var(--node-bg);border:2px solid var(--node-border);color:var(--text)}
+.linked-list .arrow{width:24px;height:2px;background:var(--border);position:relative}
+.linked-list .arrow::after{content:'';position:absolute;right:-2px;top:-4px;border:5px solid transparent;border-left-color:var(--border)}
+.linked-list .node.slow{border-color:var(--slow);box-shadow:0 0 8px rgba(59,130,246,.3)}
+.linked-list .node.fast{border-color:var(--fast);box-shadow:0 0 8px rgba(239,68,68,.3)}
+.linked-list .node.merged{background:var(--merged-bg);border-color:var(--green)}
+.linked-list .node.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.linked-list .node.highlight{border-color:var(--orange);box-shadow:0 0 10px rgba(245,158,11,.4)}
+.separator{border-top:2px dashed var(--border);margin:12px 0}
+.section-label{font-size:.75rem;color:var(--text2);margin-bottom:6px;font-weight:600}
+.controls{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.controls button{background:var(--btn-bg);color:var(--btn-txt);border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:inherit;transition:all .15s}
+.controls button:hover{background:var(--hover);border-color:var(--accent)}
+.controls button:active{transform:scale(.96)}
+.controls button.playing{background:var(--accent);color:#fff;border-color:var(--accent)}
+.legend{display:flex;gap:14px;margin-top:6px;font-size:.72rem;color:var(--text2);flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:4px}
+.legend .dot{width:10px;height:10px;border-radius:3px}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>109. 排序链表 (归并排序)</h2>
+<div class="info-panel">
+  <span class="step" id="stepLabel">步骤 1/24</span>
+  <span class="desc" id="stepDesc">初始链表: [4,2,1,3]</span>
+</div>
+<div class="vis-area" id="visArea">
+  <div class="section-label">归并排序过程</div>
+  <div id="llDisplay"></div>
+</div>
+<div class="controls">
+  <button onclick="reset()">重置</button>
+  <button onclick="prevStep()">上步</button>
+  <button onclick="nextStep()">下步</button>
+  <button id="playBtn" onclick="togglePlay()">自动播放</button>
+  <button onclick="jumpEnd()">最后</button>
+</div>
+<div class="legend">
+  <span><span class="dot" style="background:var(--slow)"></span>慢指针(slow)</span>
+  <span><span class="dot" style="background:var(--fast)"></span>快指针(fast)</span>
+  <span><span class="dot" style="background:var(--accent)"></span>当前操作节点</span>
+  <span><span class="dot" style="background:var(--green)"></span>已合并</span>
+</div>
+</div>
+<script>
+const arr=[4,2,1,3];
+const steps=[];
+
+function renderLL(arr,highlights={}){
+  let html='<div class="linked-list">';
+  arr.forEach((v,i)=>{
+    let cls='node';
+    if(highlights.slow===i)cls+=' slow';
+    if(highlights.fast===i)cls+=' fast';
+    if(highlights.active===i)cls+=' active';
+    if(highlights.merged&&highlights.merged.includes(i))cls+=' merged';
+    if(highlights.highlight===i)cls+=' highlight';
+    html+='<div class="'+cls+'">'+v+'</div>';
+    if(i<arr.length-1)html+='<div class="arrow"></div>';
+  });
+  html+='</div>';
+  return html;
+}
+
+// Generate merge sort steps
+function splitStep(arr,label){
+  steps.push({type:'split_info',arr:[...arr],label,desc:'分割: ['+arr.join(',')+'] (长度='+arr.length+')'});
+}
+
+function findMidStep(arr){
+  if(arr.length<=1)return;
+  let slow=0,fast=0;
+  while(fast+1<arr.length){
+    slow++;
+    fast+=2;
+    steps.push({type:'find_mid',arr:[...arr],slow,fast:Math.min(fast,arr.length-1),desc:'快慢指针: slow='+arr[slow]+'('+slow+'), fast='+(fast<arr.length?arr[fast]+'('+fast+')':'end')});
+  }
+  steps.push({type:'mid_found',arr:[...arr],mid:slow,desc:'中点: '+arr[slow]+' (索引='+slow+'), 分割为 ['+arr.slice(0,slow).join(',')+'] 和 ['+arr.slice(slow).join(',')+']'});
+}
+
+function mergeStep(left,right,merged){
+  steps.push({type:'merge_start',left:[...left],right:[...right],merged:[],desc:'合并: ['+left.join(',')+'] + ['+right.join(',')+']'});
+  let i=0,j=0;
+  const result=[];
+  while(i<left.length&&j<right.length){
+    if(left[i]<=right[j]){
+      result.push(left[i]);
+      steps.push({type:'merge_pick',left:[...left],right:[...right],merged:[...result],pickFrom:'left',pickIdx:i,desc:'选左: '+left[i]+' <= '+right[j]});
+      i++;
+    }else{
+      result.push(right[j]);
+      steps.push({type:'merge_pick',left:[...left],right:[...right],merged:[...result],pickFrom:'right',pickIdx:j,desc:'选右: '+right[j]+' < '+left[i]});
+      j++;
+    }
+  }
+  while(i<left.length){result.push(left[i]);steps.push({type:'merge_pick',left:[...left],right:[...right],merged:[...result],pickFrom:'left',pickIdx:i,desc:'剩余左: '+left[i]});i++;}
+  while(j<right.length){result.push(right[j]);steps.push({type:'merge_pick',left:[...left],right:[...right],merged:[...result],pickFrom:'right',pickIdx:j,desc:'剩余右: '+right[j]});j++;}
+  steps.push({type:'merge_done',merged:[...result],desc:'合并完成: ['+result.join(',')+']'});
+  merged.splice(0,merged.length,...result);
+}
+
+function mergeSort(arr,label){
+  splitStep(arr,label);
+  if(arr.length<=1){steps.push({type:'base_case',arr:[...arr],desc:'基础情况: 长度<=1, 返回 ['+arr.join(',')+']'});return;}
+  findMidStep(arr);
+  const mid=steps[steps.length-1].mid;
+  const left=arr.slice(0,mid),right=arr.slice(mid);
+  mergeSort(left,'左半');
+  const leftMerged=left.slice();
+  // after sorting left, left is mutated (but we use returned value)
+  mergeSort(right,'右半');
+  const rightMerged=right.slice();
+  const result=[];
+  mergeStep(leftMerged,rightMerged,result);
+  arr.splice(0,arr.length,...result);
+}
+const workArr=[...arr];
+mergeSort(workArr,'原始');
+
+let curStep=0,playId=null;
+
+function updateUI(){
+  const step=steps[curStep];
+  document.getElementById('stepLabel').textContent='步骤 '+(curStep+1)+'/'+steps.length;
+  document.getElementById('stepDesc').textContent=step.desc||'';
+  let html='';
+  if(step.type==='split_info'||step.type==='base_case'){
+    html+=renderLL(step.arr);
+    html+='<div style="font-size:.75rem;color:var(--text2);margin-top:4px">'+step.label+'</div>';
+  }else if(step.type==='find_mid'){
+    html+=renderLL(step.arr,{slow:step.slow,fast:step.fast});
+    html+='<div style="font-size:.75rem;color:var(--text2);margin-top:4px">slow='+step.arr[step.slow]+', fast='+(step.fast<step.arr.length?step.arr[step.fast]:'end')+'</div>';
+  }else if(step.type==='mid_found'){
+    html+=renderLL(step.arr,{slow:step.mid});
+    html+='<div style="font-size:.75rem;color:var(--text2);margin-top:4px">中点: '+step.arr[step.mid]+'</div>';
+  }else if(step.type==='merge_start'||step.type==='merge_pick'||step.type==='merge_done'){
+    html+='<div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">';
+    html+='<div><div class="section-label">左</div>'+renderLL(step.left,step.pickFrom==='left'?{active:step.pickIdx}:{})+'</div>';
+    html+='<div><div class="section-label">右</div>'+renderLL(step.right,step.pickFrom==='right'?{active:step.pickIdx}:{})+'</div>';
+    html+='<div><div class="section-label">合并结果</div>'+renderLL(step.merged||[],{merged:step.merged?step.merged.map((_,i)=>i):[]})+'</div>';
+    html+='</div>';
+  }
+  document.getElementById('llDisplay').innerHTML=html;
+}
+function reset(){curStep=0;stopPlay();updateUI();}
+function nextStep(){if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();}
+function prevStep(){if(curStep>0){curStep--;updateUI();}}
+function jumpEnd(){curStep=steps.length-1;stopPlay();updateUI();}
+function stopPlay(){if(playId){clearInterval(playId);playId=null;document.getElementById('playBtn').classList.remove('playing');document.getElementById('playBtn').textContent='自动播放';}}
+function togglePlay(){if(playId){stopPlay();return;}if(curStep>=steps.length-1)curStep=0;document.getElementById('playBtn').classList.add('playing');document.getElementById('playBtn').textContent='暂停';playId=setInterval(()=>{if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();},600);}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}else if(e.key==='ArrowRight'){e.preventDefault();nextStep();}else if(e.key===' '){e.preventDefault();togglePlay();}});
+updateUI();
+</script>
+</body>
+</html>

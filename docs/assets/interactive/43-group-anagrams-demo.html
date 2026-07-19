@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222; --sub-bg: #f5f5f5;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --key-color: #1976D2; --group-color: #388E3C;
+    --colors: #E53935 #FF9800 #1976D2 #388E3C #9C27B0 #00897B;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 16px 20px;
+  }
+  .container { max-width: 860px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
+  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
+    font-size: 14px; flex-wrap: wrap;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
+
+  .str-row { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 6px; }
+  .str-label { font-size: 12px; font-weight: bold; width: 60px; text-align: right; }
+  .str-cells { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+  .scell {
+    min-width: 56px; height: 42px; border: 2px solid var(--cell-border); border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: bold; background: var(--cell-bg); color: var(--text);
+    transition: border-color 0.25s, background 0.25s, transform 0.15s;
+  }
+  .scell .si { font-size: 8px; color: var(--muted); }
+  .scell.hl { border-color: var(--key-color); background: rgba(25,118,210,0.12); transform: scale(1.06); z-index: 2; }
+  .scell.g0 { border-color: #E53935; background: rgba(229,57,53,0.1); }
+  .scell.g1 { border-color: #FF9800; background: rgba(255,152,0,0.1); }
+  .scell.g2 { border-color: #1976D2; background: rgba(25,118,210,0.1); }
+
+  .groups-panel {
+    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
+    margin-bottom: 6px;
+  }
+  .groups-panel .gp-title { font-size: 12px; color: var(--muted); margin-bottom: 4px; text-align: center; }
+  .group-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; justify-content: center; }
+  .group-key {
+    padding: 3px 8px; border-radius: 6px; font-weight: bold; font-size: 13px;
+    background: rgba(25,118,210,0.15); border: 1px solid var(--key-color);
+    color: var(--key-color); min-width: 50px; text-align: center;
+  }
+  .group-members { display: flex; gap: 4px; flex-wrap: wrap; }
+  .group-member {
+    padding: 3px 8px; border-radius: 6px; font-weight: bold; font-size: 13px;
+    border: 1px solid;
+  }
+  .gm0 { border-color: #E53935; color: #E53935; background: rgba(229,57,53,0.08); }
+  .gm1 { border-color: #FF9800; color: #FF9800; background: rgba(255,152,0,0.08); }
+  .gm2 { border-color: #1976D2; color: #1976D2; background: rgba(25,118,210,0.08); }
+
+  .result-row {
+    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
+    margin-bottom: 6px; font-size: 13px; text-align: center;
+  }
+  .result-row .highlight { font-weight: bold; font-size: 15px; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>字母异位词分组 — 排序Key分组演示</h2>
+  <div class="sub-title">strs=["eat","tea","tan","ate","nat","bat"] &rarr; 按排序后作为key分组</div>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
+  </div>
+
+  <div class="str-row">
+    <span class="str-label">原词:</span>
+    <div class="str-cells" id="strCells"></div>
+  </div>
+
+  <div class="groups-panel">
+    <div class="gp-title" id="gpTitle">分组结果</div>
+    <div id="groupsContainer"><span style="color:var(--muted);font-size:12px;">{}</span></div>
+  </div>
+
+  <div class="result-row">
+    <span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">&#x23EE; 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
+    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
+  </div>
+</div>
+
+<script>
+const strs = ['eat', 'tea', 'tan', 'ate', 'nat', 'bat'];
+const sortedKeys = strs.map(s => s.split('').sort().join(''));
+const groupColors = { 'aet': 0, 'ant': 1, 'abt': 2 };
+
+const steps = [];
+const groups = {};
+
+function simulate() {
+  steps.push({
+    desc: '初始状态 · strs=["eat","tea","tan","ate","nat","bat"]',
+    phase: 'init', idx: -1, groups: {}, hl: [],
+    result: 'init'
+  });
+
+  for (let i = 0; i < strs.length; i++) {
+    const key = sortedKeys[i];
+    steps.push({
+      desc: '处理 str[' + i + ']="' + strs[i] + '", 排序后key="' + key + '"',
+      phase: 'process', idx: i, groups: {...groups},
+      hl: [[i, 'hl']], curKey: key, curVal: strs[i],
+      result: 'processing'
+    });
+
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(strs[i]);
+
+    steps.push({
+      desc: 'key="' + key + '", 加入分组. 当前分组: [' + groups[key].join(', ') + ']',
+      phase: 'grouped', idx: i, groups: JSON.parse(JSON.stringify(groups)),
+      hl: [[i, 'g' + groupColors[key]]], curKey: key, curVal: strs[i],
+      result: 'processing'
+    });
+  }
+
+  steps.push({
+    desc: '分组完成! 共3组: [eat,tea,ate], [tan,nat], [bat]',
+    phase: 'done', idx: -1,
+    groups: JSON.parse(JSON.stringify(groups)),
+    hl: [[0,'g0'],[1,'g0'],[2,'g1'],[3,'g0'],[4,'g1'],[5,'g2']],
+    result: 'success'
+  });
+}
+
+simulate();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+const strEl = document.getElementById('strCells');
+strs.forEach((w, i) => {
+  const cell = document.createElement('div');
+  cell.className = 'scell'; cell.id = 'sc' + i;
+  cell.innerHTML = w + '<span class="si">[' + i + ']</span>';
+  strEl.appendChild(cell);
+});
+
+function renderGroups(g) {
+  const container = document.getElementById('groupsContainer');
+  container.innerHTML = '';
+  const keys = Object.keys(g);
+  if (keys.length === 0) {
+    container.innerHTML = '<span style="color:var(--muted);font-size:12px;">{}</span>';
+    return;
+  }
+  keys.forEach((key, ki) => {
+    const row = document.createElement('div');
+    row.className = 'group-row';
+    const keyEl = document.createElement('span');
+    keyEl.className = 'group-key';
+    keyEl.textContent = key;
+    row.appendChild(keyEl);
+    const members = document.createElement('div');
+    members.className = 'group-members';
+    g[key].forEach(w => {
+      const m = document.createElement('span');
+      m.className = 'group-member gm' + groupColors[key];
+      m.textContent = w;
+      members.appendChild(m);
+    });
+    row.appendChild(members);
+    container.appendChild(row);
+  });
+}
+
+function render() {
+  const s = steps[current];
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = s.desc;
+
+  for (let i = 0; i < strs.length; i++) document.getElementById('sc' + i).className = 'scell';
+  if (s.hl) s.hl.forEach(([i, cls]) => {
+    document.getElementById('sc' + i).className = 'scell ' + cls;
+  });
+
+  renderGroups(s.groups || {});
+
+  const rt = document.getElementById('resultText');
+  if (s.result === 'success') { rt.textContent = '[["eat","tea","ate"],["tan","nat"],["bat"]]'; rt.style.color = '#388E3C'; }
+  else if (s.result === 'init') { rt.textContent = '进行中...'; rt.style.color = '#1976D2'; }
+  else { rt.textContent = '分组中...'; rt.style.color = '#1976D2'; }
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer); autoRunning = false;
+    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
+    document.getElementById('playBtn').style.background = '';
+    document.getElementById('playBtn').style.color = '';
+    document.getElementById('playBtn').classList.remove('play-btn');
+  } else {
+    autoRunning = true;
+    document.getElementById('playBtn').textContent = '\u23F8 暂停';
+    document.getElementById('playBtn').style.background = '#1976D2';
+    document.getElementById('playBtn').style.color = '#fff';
+    document.getElementById('playBtn').classList.add('play-btn');
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(function() {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 1000);
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

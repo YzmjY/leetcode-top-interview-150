@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从前序与中序遍历序列构造二叉树</title>
+<style>
+:root{--bg:#fff;--text:#333;--muted:#888;--btn-bg:#f0f0f0;--btn-hover:#e0e0e0;--sub-bg:#f5f5f5;--cell-border:#d0d0d0;--header:#222}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--text:#ddd;--muted:#aaa;--btn-bg:#333;--btn-hover:#444;--sub-bg:#252540;--cell-border:#444;--header:#ddd}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
+.container{max-width:900px;width:100%}
+h2{text-align:center;color:var(--header);font-size:17px;margin-bottom:6px}
+.info-bar{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:6px;font-size:14px}
+.step-num{font-weight:bold;font-size:22px;color:#1976D2;min-width:36px;text-align:center}
+.step-desc{color:var(--muted);font-size:12px;max-width:600px;text-align:center}
+.array-row{display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:4px;flex-wrap:wrap}
+.cell{background:var(--cell-bg,#fafafa);border:2px solid var(--cell-border);border-radius:8px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:bold;color:var(--text);transition:0.25s}
+.cell.hl-root{border-color:#E91E63;background:#FCE4EC;color:#C2185B}
+.cell.hl-range{border-color:#FF9800;background:#FFF3E0}
+.cell.hl-pick{border-color:#1976D2;background:#E3F2FD;color:#1565C0}
+svg{display:block;margin:0 auto;width:100%;height:360px}
+.controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+button{padding:7px 15px;border:1px solid var(--cell-border);border-radius:6px;background:var(--btn-bg);color:var(--text);font-size:12px;cursor:pointer;transition:0.15s}
+button:hover{background:var(--btn-hover)}
+button:active{transform:scale(0.96)}
+button:disabled{opacity:0.35;cursor:default}
+button.play-btn{background:#1976D2;color:#fff;border-color:#1565C0}
+.section-label{font-size:12px;font-weight:bold;color:var(--muted);text-align:center;margin-bottom:2px}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>从前序与中序遍历序列构造二叉树</h2>
+<div class="section-label">preorder = [3, 9, 20, 15, 7]</div>
+<div class="array-row" id="preRow"></div>
+<div class="section-label" style="margin-top:4px">inorder  = [9, 3, 15, 20, 7]</div>
+<div class="array-row" id="inRow"></div>
+<div class="info-bar" style="margin-top:6px">
+<span class="step-num" id="stepNum">0</span>
+<span class="step-desc" id="stepDesc">preorder=[3,9,20,15,7]  inorder=[9,3,15,20,7]</span>
+</div>
+<svg id="treeSvg" viewBox="0 0 880 320"></svg>
+<div class="controls">
+<button onclick="goStep(0)">重置</button>
+<button onclick="goStep(cur-1)" id="prevBtn">上步</button>
+<button onclick="goStep(cur+1)" id="nextBtn">下步</button>
+<button class="play-btn" onclick="toggleAuto()" id="playBtn">自动播放</button>
+<button onclick="goStep(steps.length-1)">跳到最后</button>
+</div>
+</div>
+<script>
+const pre=[3,9,20,15,7],ino=[9,3,15,20,7];
+
+const steps=[
+{desc:'初始状态',preHL:[-1],inHL:[],range:[],tree:[],curRoot:null},
+{desc:'步骤1：preorder[0]=3 是根节点，在inorder中找到3，左边[9]为左子树，右边[15,20,7]为右子树',preHL:[0],inHL:[1],range:[[0,0],[2,4]],tree:[{x:440,y:40,val:3}],curRoot:0},
+{desc:'步骤2：左子树 pre=[9] in=[9]，preorder下一个9是左子树的根',preHL:[0,1],inHL:[1,0],range:[[0,0],[2,4]],tree:[{x:440,y:40,val:3},{x:300,y:150,val:9}],curRoot:1},
+{desc:'步骤3：右子树 pre=[20,15,7] in=[15,20,7]，preorder下一个20是右子树的根',preHL:[0,1,2],inHL:[1,0,3],range:[],tree:[{x:440,y:40,val:3},{x:300,y:150,val:9},{x:580,y:150,val:20}],curRoot:2},
+{desc:'步骤4：20的左子树 pre=[15] in=[15]，15是左叶子',preHL:[0,1,2,3],inHL:[1,0,3,2],range:[],tree:[{x:440,y:40,val:3},{x:300,y:150,val:9},{x:580,y:150,val:20},{x:500,y:260,val:15}],curRoot:3},
+{desc:'步骤5：20的右子树 pre=[7] in=[7]，7是右叶子',preHL:[0,1,2,3,4],inHL:[1,0,3,2,4],range:[],tree:[{x:440,y:40,val:3},{x:300,y:150,val:9},{x:580,y:150,val:20},{x:500,y:260,val:15},{x:660,y:260,val:7}],curRoot:4},
+{desc:'完成！构造的二叉树：根3，左9，右20(左15右7)',preHL:[0,1,2,3,4],inHL:[1,0,3,2,4],range:[],tree:[{x:440,y:40,val:3},{x:300,y:150,val:9},{x:580,y:150,val:20},{x:500,y:260,val:15},{x:660,y:260,val:7}],curRoot:null}
+];
+
+let cur=0,autoTimer=null,autoRun=false;
+const preRow=document.getElementById('preRow'),inRow=document.getElementById('inRow'),svg=document.getElementById('treeSvg');
+
+for(let i=0;i<pre.length;i++){
+const c=document.createElement('div');c.className='cell';c.id='pc'+i;c.textContent=pre[i];preRow.appendChild(c);
+const d=document.createElement('div');d.className='cell';d.id='ic'+i;d.textContent=ino[i];inRow.appendChild(d);
+}
+
+function render(){
+const s=steps[cur];
+document.getElementById('stepNum').textContent=cur;
+document.getElementById('stepDesc').textContent=(cur===0?'初始状态 · ':'第'+cur+'步 · ')+s.desc;
+document.getElementById('prevBtn').disabled=cur<=0;
+document.getElementById('nextBtn').disabled=cur>=steps.length-1;
+
+for(let i=0;i<pre.length;i++){
+const c=document.getElementById('pc'+i);c.className='cell';
+if(s.preHL.includes(i))c.classList.add('hl-pick');
+}
+for(let i=0;i<ino.length;i++){
+const c=document.getElementById('ic'+i);c.className='cell';
+if(s.inHL.includes(i))c.classList.add('hl-root');
+}
+if(s.range.length){
+for(const[r of s.range]){for(let i=r[0];i<=r[1];i++)document.getElementById('ic'+i).classList.add('hl-range');}
+}
+
+let html='<defs><radialGradient id="gBlue"><stop offset="0%" stop-color="#42A5F5"/><stop offset="100%" stop-color="#1976D2"/></radialGradient><radialGradient id="gGr"><stop offset="0%" stop-color="#81C784"/><stop offset="100%" stop-color="#4CAF50"/></radialGradient></defs><rect width="880" height="320" fill="transparent"/>';
+const t=s.tree;
+const edges=[[0,1],[0,2],[2,3],[2,4]];
+for(const[e of edges]){
+if(e[0]<t.length&&e[1]<t.length){
+const a=t[e[0]],b=t[e[1]];
+html+=`<line x1="${a.x}" y1="${a.y+24}" x2="${b.x}" y2="${b.y-24}" stroke="#ccc" stroke-width="2"/>`;
+}
+}
+for(let i=0;i<t.length;i++){
+const n=t[i];const isCur=(i===s.curRoot);
+html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="${isCur?'url(#gBlue)':'var(--sub-bg)'}" stroke="${isCur?'#0D47A1':'var(--cell-border)'}" stroke-width="${isCur?3:2}"/>`;
+html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="${isCur?'#fff':'var(--text)'}" font-size="14" font-weight="bold">${n.val}</text>`;
+if(i===0)html+=`<text x="${n.x}" y="${n.y-28}" text-anchor="middle" fill="#E91E63" font-size="10" font-weight="bold">ROOT</text>`;
+}
+svg.innerHTML=html;
+}
+
+function goStep(n){cur=Math.max(0,Math.min(n,steps.length-1));render()}
+function toggleAuto(){
+if(autoRun){clearInterval(autoTimer);autoRun=false;document.getElementById('playBtn').textContent='自动播放';}
+else{document.getElementById('playBtn').textContent='暂停';autoRun=true;if(cur>=steps.length-1)goStep(0);
+autoTimer=setInterval(()=>{if(cur<steps.length-1)goStep(cur+1);else toggleAuto()},1100);}
+}
+document.addEventListener('keydown',e=>{
+if(e.key==='ArrowRight')goStep(cur+1);if(e.key==='ArrowLeft')goStep(cur-1);
+if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+render();
+</script>
+</body>
+</html>

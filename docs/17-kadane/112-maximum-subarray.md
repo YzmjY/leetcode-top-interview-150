@@ -58,6 +58,17 @@
 - 当 `maxEndingHere` 为负数时，舍弃之前的部分，从当前元素重新开始。
 - 该算法能正确处理全负数数组（返回最大的单个元素）。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/112-maximum-subarray-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="最大子数组和 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

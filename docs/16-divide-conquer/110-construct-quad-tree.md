@@ -69,6 +69,17 @@ type Node struct {
 
 **空间复杂度：** O(log n)，递归栈深度（四叉树高度）。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/110-construct-quad-tree-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="建立四叉树 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222; --sub-bg: #f5f5f5;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --cur-color: #1976D2; --range-color: #388E3C;
+    --merge-color: #FF9800; --result-color: #388E3C;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 16px 20px;
+  }
+  .container { max-width: 820px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
+  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
+    font-size: 14px; flex-wrap: wrap;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
+
+  .arr-row { display: flex; align-items: center; gap: 4px; justify-content: center; margin-bottom: 6px; flex-wrap: wrap; }
+  .acell {
+    width: 56px; height: 48px; border: 2px solid var(--cell-border); border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: bold; background: var(--cell-bg); color: var(--text);
+    transition: border-color 0.25s, background 0.25s, transform 0.15s;
+  }
+  .acell .ai { font-size: 9px; color: var(--muted); }
+  .acell.cur { border-color: var(--cur-color); background: rgba(25,118,210,0.12); transform: scale(1.06); z-index: 2; }
+  .acell.gap { border-color: #E53935; background: rgba(229,57,53,0.12); }
+  .acell.range { border-color: var(--range-color); background: rgba(56,142,60,0.12); }
+
+  .result-panel {
+    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
+    margin-bottom: 6px; text-align: center; font-size: 13px;
+  }
+
+  .result-row {
+    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
+    margin-bottom: 6px; font-size: 13px; text-align: center;
+  }
+  .result-row .highlight { font-weight: bold; font-size: 15px; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>汇总区间 — 连续序列检测演示</h2>
+  <div class="sub-title">nums=[0,1,2,4,5,7] &rarr; 连续检测 &rarr; ["0->2","4->5","7"]</div>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
+  </div>
+
+  <div class="arr-row" id="arrRow"></div>
+
+  <div class="result-panel">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:3px;">当前区间</div>
+    <div id="rangeDisplay" style="font-size:14px;font-weight:bold;color:var(--text);">--</div>
+  </div>
+
+  <div class="result-row">
+    <span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">&#x23EE; 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
+    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
+  </div>
+</div>
+
+<script>
+const nums = [0, 1, 2, 4, 5, 7];
+const n = nums.length;
+const results = [];
+
+const steps = [];
+
+function simulate() {
+  steps.push({
+    desc: '初始状态 · nums=[0,1,2,4,5,7]',
+    phase: 'init', idx: -1, hl: [], results: [], curRange: null,
+    result: 'init'
+  });
+
+  let start = 0;
+  for (let i = 0; i < n; i++) {
+    if (i === 0 || nums[i] !== nums[i - 1] + 1) {
+      // End previous range
+      if (i > 0) {
+        const range = nums[start] === nums[i - 1]
+          ? String(nums[start])
+          : nums[start] + '->' + nums[i - 1];
+        results.push(range);
+        steps.push({
+          desc: '区间结束: [' + nums[start] + '..' + nums[i - 1] + '] &rarr; "' + range + '"',
+          phase: 'end-range', idx: i - 1, hl: [[i - 1, 'cur']],
+          results: [...results], curRange: range,
+          result: 'processing'
+        });
+      }
+      start = i;
+      const range = String(nums[start]);
+      steps.push({
+        desc: '新区间开始: 从 nums[' + i + ']=' + nums[i] + ' 开始新区间',
+        phase: 'start-range', idx: i, hl: [[i, 'cur']],
+        results: [...results], curRange: range,
+        result: 'processing'
+      });
+    } else {
+      steps.push({
+        desc: 'nums[' + i + ']=' + nums[i] + ' 与前一数连续. 当前区间范围: ' + nums[start] + '->' + nums[i],
+        phase: 'extend', idx: i,
+        hl: start === i ? [[i, 'cur']] : [...Array(i-start+1)].map((_,k) => [start+k, 'range']),
+        results: [...results], curRange: nums[start] + '->' + nums[i],
+        result: 'processing'
+      });
+    }
+  }
+
+  // Final range
+  const range = nums[start] === nums[n - 1]
+    ? String(nums[start])
+    : nums[start] + '->' + nums[n - 1];
+  results.push(range);
+  steps.push({
+    desc: '最终区间: "' + range + '", 全部结果: [' + results.map(r => '"' + r + '"').join(', ') + ']',
+    phase: 'done', idx: -1,
+    hl: [...Array(n)].map((_,i) => [i, 'range']),
+    results: [...results], curRange: range,
+    result: 'done'
+  });
+}
+
+simulate();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+const arrRow = document.getElementById('arrRow');
+nums.forEach((v, i) => {
+  const cell = document.createElement('div');
+  cell.className = 'acell'; cell.id = 'ac' + i;
+  cell.innerHTML = v + '<span class="ai">[' + i + ']</span>';
+  arrRow.appendChild(cell);
+});
+
+function render() {
+  const s = steps[current];
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = s.desc;
+
+  for (let i = 0; i < n; i++) document.getElementById('ac' + i).className = 'acell';
+  if (s.hl) s.hl.forEach(([i, cls]) => {
+    if (cls) document.getElementById('ac' + i).className = 'acell ' + cls;
+  });
+
+  document.getElementById('rangeDisplay').textContent = s.curRange || '--';
+
+  const rt = document.getElementById('resultText');
+  if (s.result === 'done') {
+    rt.textContent = '[' + s.results.map(r => '"' + r + '"').join(', ') + ']';
+    rt.style.color = '#388E3C';
+  } else if (s.result === 'init') { rt.textContent = '进行中...'; rt.style.color = '#1976D2'; }
+  else { rt.textContent = (s.results && s.results.length > 0) ? '[' + s.results.map(r => '"' + r + '"').join(', ') + ']' : '进行中...'; rt.style.color = '#1976D2'; }
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer); autoRunning = false;
+    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
+    document.getElementById('playBtn').style.background = '';
+    document.getElementById('playBtn').style.color = '';
+    document.getElementById('playBtn').classList.remove('play-btn');
+  } else {
+    autoRunning = true;
+    document.getElementById('playBtn').textContent = '\u23F8 暂停';
+    document.getElementById('playBtn').style.background = '#1976D2';
+    document.getElementById('playBtn').style.color = '#fff';
+    document.getElementById('playBtn').classList.add('play-btn');
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(function() {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 1000);
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

@@ -53,6 +53,17 @@
 - **时间复杂度**：O(n + m)，其中 n 是 `pattern` 的长度，m 是 `s` 的长度。分割字符串和遍历都是线性的。
 - **空间复杂度**：O(n + m)，存储单词数组和两个哈希表。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/41-word-pattern-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="单词规律 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

@@ -54,6 +54,17 @@
 
 **空间复杂度：** O(m * n)，最坏情况下递归栈的深度为整个网格大小（全为陆地时）。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/89-number-of-islands-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="岛屿数量 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

@@ -69,6 +69,17 @@
 - 当 `nums[mid] > nums[right]` 时，最小值一定在右边。
 - 当数组没有旋转（完全有序）时，算法也能正确返回 `nums[0]`。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/119-find-minimum-in-rotated-sorted-array-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="寻找旋转排序数组中的最小值 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

@@ -49,6 +49,17 @@
 - **时间复杂度**：O(n)，每个节点访问一次。
 - **空间复杂度**：O(h)，递归栈深度，最坏 O(n)。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/78-binary-tree-maximum-path-sum-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="二叉树中的最大路径和 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

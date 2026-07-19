@@ -68,6 +68,17 @@ exection -> execution (插入 'u')
 - 编辑距离是 NLP 中字符串相似度的经典算法。
 - 三种操作（替换、插入、删除）在 DP 表中分别对应三个方向。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/147-edit-distance-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="编辑距离 (Edit Distance) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

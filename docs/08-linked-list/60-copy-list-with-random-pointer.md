@@ -61,6 +61,17 @@
 - **时间复杂度**：O(n)，两次遍历链表。
 - **空间复杂度**：O(n)，哈希表存储 n 个节点的映射关系。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/60-copy-list-with-random-pointer-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="随机链表的复制 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

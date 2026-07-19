@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222; --sub-bg: #f5f5f5;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --ransom-color: #E53935; --mag-color: #1976D2;
+    --ok-color: #388E3C;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 16px 20px;
+  }
+  .container { max-width: 800px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
+  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
+    font-size: 14px; flex-wrap: wrap;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
+
+  .char-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .char-row { display: flex; align-items: center; gap: 8px; }
+  .char-row-title { font-size: 12px; font-weight: bold; width: 100px; text-align: right; }
+  .char-cells { display: flex; gap: 4px; }
+  .ccell {
+    width: 48px; height: 48px; border: 2px solid var(--cell-border); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: bold; background: var(--cell-bg); color: var(--text);
+    transition: border-color 0.25s, background 0.25s, transform 0.15s;
+    position: relative;
+  }
+  .ccell .cidx { font-size: 9px; color: var(--muted); position: absolute; bottom: 2px; }
+  .ccell.hl-r { border-color: var(--ransom-color); background: rgba(229,57,53,0.12); transform: scale(1.08); z-index: 2; }
+  .ccell.hl-m { border-color: var(--mag-color); background: rgba(25,118,210,0.12); }
+  .ccell.matched { border-color: var(--ok-color); background: rgba(56,142,60,0.12); }
+  .ccell.used { border-color: var(--muted); opacity: 0.4; }
+
+  .freq-panel {
+    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
+    margin-bottom: 6px; text-align: center; font-size: 13px;
+    display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;
+  }
+  .freq-item { text-align: center; }
+  .freq-val { font-size: 20px; font-weight: bold; font-family: monospace; }
+  .freq-label { font-size: 11px; color: var(--muted); }
+  .fi-mag .freq-val { color: var(--mag-color); }
+  .fi-rans .freq-val { color: var(--ransom-color); }
+
+  .result-row {
+    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
+    margin-bottom: 6px; font-size: 13px; text-align: center;
+  }
+  .result-row .highlight { font-weight: bold; font-size: 15px; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>赎金信 — 字符频率统计演示</h2>
+  <div class="sub-title">ransomNote="aa", magazine="aab" &rarr; magazine 能否构成 ransomNote?</div>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
+  </div>
+
+  <div class="freq-panel">
+    <div class="freq-item fi-mag"><div class="freq-val" id="freqMag">--</div><div class="freq-label">magazine 频率</div></div>
+    <div class="freq-item fi-rans"><div class="freq-val" id="freqRans">--</div><div class="freq-label">需要字符</div></div>
+    <div class="freq-item"><div class="freq-val" id="freqResult" style="color:var(--text)">--</div><div class="freq-label">判定</div></div>
+  </div>
+
+  <div class="char-grid">
+    <div class="char-row">
+      <span class="char-row-title" style="color:var(--mag-color)">magazine:</span>
+      <div class="char-cells" id="magCells"></div>
+    </div>
+    <div class="char-row">
+      <span class="char-row-title" style="color:var(--ransom-color)">ransomNote:</span>
+      <div class="char-cells" id="ransCells"></div>
+    </div>
+  </div>
+
+  <div class="result-row">
+    <span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">&#x23EE; 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
+    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
+  </div>
+</div>
+
+<script>
+const magazine = 'aab';
+const ransomNote = 'aa';
+
+const steps = [];
+
+function simulate() {
+  const freq = {};
+  const magUsed = magazine.split('').map(() => false);
+
+  steps.push({
+    desc: '初始状态 · ransomNote="aa", magazine="aab"',
+    phase: 'init',
+    magHL: [], ransHL: [], magUsed: [...magUsed],
+    freq, freqChar: null, freqAction: null,
+    result: 'init'
+  });
+
+  // Phase 1: count magazine
+  for (let i = 0; i < magazine.length; i++) {
+    const ch = magazine[i];
+    freq[ch] = (freq[ch] || 0) + 1;
+    steps.push({
+      desc: '统计 magazine[' + i + ']=' + ch + ' &rarr; freq[' + ch + ']=' + freq[ch],
+      phase: 'count',
+      magHL: [[i, 'mag']], ransHL: [],
+      magUsed: [...magUsed],
+      freq: {...freq}, freqChar: ch, freqAction: 'count',
+      result: 'counting'
+    });
+  }
+
+  steps.push({
+    desc: 'magazine 统计完成: freq={a:2, b:1}',
+    phase: 'count-done',
+    magHL: [[0,'matched'],[1,'matched'],[2,'matched']], ransHL: [],
+    magUsed: [...magUsed],
+    freq: {...freq}, freqChar: null, freqAction: 'done',
+    result: 'counted'
+  });
+
+  // Phase 2: check ransomNote
+  let ransMatched = ransomNote.split('').map(() => false);
+  for (let i = 0; i < ransomNote.length; i++) {
+    const ch = ransomNote[i];
+    steps.push({
+      desc: '检查 ransomNote[' + i + ']=' + ch + ' &rarr; freq[' + ch + ']=' + (freq[ch] || 0),
+      phase: 'check',
+      magHL: [], ransHL: [[i, 'rans']],
+      magUsed: [...magUsed],
+      freq: {...freq}, freqChar: ch, freqAction: 'check',
+      ransMatched: [...ransMatched],
+      result: 'checking'
+    });
+
+    if (!freq[ch] || freq[ch] <= 0) {
+      steps.push({
+        desc: '失败! freq[' + ch + '] 不足, 无法构成 ransomNote.',
+        phase: 'fail',
+        magHL: [], ransHL: [[i, 'rans']],
+        magUsed: [...magUsed],
+        freq: {...freq}, freqChar: ch, freqAction: 'fail',
+        ransMatched: [...ransMatched],
+        result: 'fail'
+      });
+      return;
+    }
+
+    freq[ch]--;
+    ransMatched[i] = true;
+    steps.push({
+      desc: 'freq[' + ch + '] 足够, 消耗1个 &rarr; freq[' + ch + ']=' + freq[ch],
+      phase: 'check-ok',
+      magHL: [], ransHL: [[i, 'matched']],
+      magUsed: [...magUsed],
+      freq: {...freq}, freqChar: ch, freqAction: 'consume',
+      ransMatched: [...ransMatched],
+      result: 'checking'
+    });
+  }
+
+  steps.push({
+    desc: '所有字符检查完毕! magazine 中的字符足够构成 ransomNote.',
+    phase: 'done',
+    magHL: [[0,'matched'],[1,'matched']], ransHL: [[0,'matched'],[1,'matched']],
+    magUsed: [...magUsed],
+    freq: {...freq}, freqChar: null, freqAction: 'done',
+    ransMatched: [true, true],
+    result: 'success'
+  });
+}
+
+simulate();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+// Build cells
+const magEl = document.getElementById('magCells');
+magazine.split('').forEach((ch, i) => {
+  const cell = document.createElement('div');
+  cell.className = 'ccell';
+  cell.id = 'mag' + i;
+  cell.innerHTML = ch + '<span class="cidx">[' + i + ']</span>';
+  magEl.appendChild(cell);
+});
+
+const ransEl = document.getElementById('ransCells');
+ransomNote.split('').forEach((ch, i) => {
+  const cell = document.createElement('div');
+  cell.className = 'ccell';
+  cell.id = 'rans' + i;
+  cell.innerHTML = ch + '<span class="cidx">[' + i + ']</span>';
+  ransEl.appendChild(cell);
+});
+
+function resetAll() {
+  for (let i = 0; i < magazine.length; i++) document.getElementById('mag' + i).className = 'ccell';
+  for (let i = 0; i < ransomNote.length; i++) document.getElementById('rans' + i).className = 'ccell';
+}
+
+function render() {
+  const s = steps[current];
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = s.desc;
+
+  // Freq display
+  const freqKeys = Object.keys(s.freq);
+  document.getElementById('freqMag').textContent = freqKeys.length > 0
+    ? '{' + freqKeys.map(k => k + ':' + s.freq[k]).join(', ') + '}'
+    : '--';
+  document.getElementById('freqRans').textContent = s.freqChar ? '\'' + s.freqChar + '\'' : '--';
+  const fr = document.getElementById('freqResult');
+  if (s.freqAction === 'count') { fr.textContent = '统计中...'; fr.style.color = 'var(--mag-color)'; }
+  else if (s.freqAction === 'check') { fr.textContent = '检查中...'; fr.style.color = 'var(--ransom-color)'; }
+  else if (s.freqAction === 'consume') { fr.textContent = '消耗1个'; fr.style.color = 'var(--ok-color)'; }
+  else if (s.freqAction === 'fail') { fr.textContent = '不足!'; fr.style.color = 'var(--ransom-color)'; }
+  else if (s.freqAction === 'done') { fr.textContent = '完成'; fr.style.color = 'var(--ok-color)'; }
+  else { fr.textContent = '--'; fr.style.color = 'var(--muted)'; }
+
+  resetAll();
+
+  // Apply highlights
+  if (s.magHL) s.magHL.forEach(([i, type]) => {
+    const el = document.getElementById('mag' + i);
+    if (type === 'mag') el.className = 'ccell hl-m';
+    else if (type === 'matched') el.className = 'ccell matched';
+  });
+
+  if (s.ransHL) s.ransHL.forEach(([i, type]) => {
+    const el = document.getElementById('rans' + i);
+    if (type === 'rans') el.className = 'ccell hl-r';
+    else if (type === 'matched') el.className = 'ccell matched';
+  });
+
+  const rt = document.getElementById('resultText');
+  if (s.result === 'success') { rt.textContent = 'true - 可以构成!'; rt.style.color = '#388E3C'; }
+  else if (s.result === 'fail') { rt.textContent = 'false - 不能构成!'; rt.style.color = '#E53935'; }
+  else if (s.result === 'init') { rt.textContent = '进行中...'; rt.style.color = '#1976D2'; }
+  else { rt.textContent = '统计/检查中...'; rt.style.color = '#1976D2'; }
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer); autoRunning = false;
+    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
+    document.getElementById('playBtn').style.background = '';
+    document.getElementById('playBtn').style.color = '';
+    document.getElementById('playBtn').classList.remove('play-btn');
+  } else {
+    autoRunning = true;
+    document.getElementById('playBtn').textContent = '\u23F8 暂停';
+    document.getElementById('playBtn').style.background = '#1976D2';
+    document.getElementById('playBtn').style.color = '#fff';
+    document.getElementById('playBtn').classList.add('play-btn');
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(function() {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 1000);
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

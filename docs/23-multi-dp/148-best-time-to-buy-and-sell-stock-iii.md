@@ -78,6 +78,17 @@
 - `buy1` 的初始值为 `math.MinInt32`（或 `-prices[0]`），表示初始时不可能持有股票。
 - 此题也可以转化为"两次交易的分割"：枚举分割点，左边做一次买卖，右边做一次买卖。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/148-best-time-to-buy-and-sell-stock-iii-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="买卖股票的最佳时机 III (Best Time to Buy and Sell Stock III) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

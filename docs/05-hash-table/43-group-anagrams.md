@@ -52,6 +52,17 @@
 - **时间复杂度**：O(n * k * log k)，其中 n 是字符串数量，k 是字符串的最大长度。每个字符串排序需要 O(k log k)。
 - **空间复杂度**：O(n * k)，哈希表存储所有字符串的分组信息。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/43-group-anagrams-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="字母异位词分组 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

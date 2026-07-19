@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>112. 最大子数组和 - Kadane算法</title>
+<style>
+:root {
+  --bg: #f5f6fa; --card: #fff; --text: #2d3436; --sub: #636e72;
+  --border: #dfe6e9; --blue: #0984e3; --red: #e17055; --green: #00b894;
+  --blue-bg: #dff6fd; --hl: #ffeaa7; --focus: #fab1a0;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a2e; --card: #16213e; --text: #eee; --sub: #aaa;
+    --border: #2d3436; --blue: #74b9ff; --red: #ff7675; --green: #55efc4;
+    --blue-bg: #1a3a5c; --hl: #5c4a1f; --focus: #5c2a1f;
+  }
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:var(--bg); display:flex; justify-content:center; align-items:center; min-height:100vh; }
+.container { width:860px; height:480px; background:var(--card); border-radius:8px; padding:20px 24px; display:flex; flex-direction:column; gap:12px; box-shadow:0 2px 12px rgba(0,0,0,0.1); }
+.header { display:flex; justify-content:space-between; align-items:center; }
+.header h2 { font-size:17px; color:var(--text); }
+.step-badge { font-size:13px; color:var(--sub); background:var(--border); padding:4px 12px; border-radius:8px; font-weight:500; }
+.info-panel { background:var(--blue-bg); border-left:3px solid var(--blue); padding:10px 14px; border-radius:8px; font-size:14px; color:var(--text); min-height:44px; display:flex; align-items:center; }
+.array-grid { display:flex; gap:4px; justify-content:center; align-items:flex-end; flex:1; position:relative; }
+.cell { width:64px; height:58px; border-radius:8px; background:var(--border); display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; font-size:20px; color:var(--text); position:relative; z-index:2; transition:all 0.25s; }
+.cell .idx { font-size:10px; color:var(--sub); margin-top:2px; }
+.cell.hl { background:var(--hl); box-shadow:0 0 0 2px var(--blue); }
+.cell.in-window { background:var(--blue-bg); box-shadow:0 0 0 2px var(--blue); }
+.window-overlay { position:absolute; top:0; bottom:0; background:rgba(9,132,227,0.18); border-radius:8px; z-index:1; transition:all 0.35s; pointer-events:none; }
+.controls { display:flex; gap:8px; justify-content:center; }
+.btn { padding:7px 16px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; font-size:13px; font-family:inherit; transition:all 0.15s; }
+.btn:hover { background:var(--blue-bg); border-color:var(--blue); }
+.btn:active { transform:scale(0.96); }
+.key-hint { font-size:11px; color:var(--sub); text-align:center; }
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <div class="header">
+    <h2>112. 最大子数组和 (Kadane)</h2>
+    <span class="step-badge" id="stepBadge">步骤 0/13</span>
+  </div>
+  <div class="info-panel" id="info"></div>
+  <div class="array-grid" id="grid"></div>
+  <div class="controls">
+    <button class="btn" onclick="reset()">重置</button>
+    <button class="btn" onclick="prev()">上步</button>
+    <button class="btn" onclick="next()">下步</button>
+    <button class="btn" id="autoBtn" onclick="toggleAuto()">自动播放</button>
+    <button class="btn" onclick="goLast()">跳到最后</button>
+  </div>
+  <div class="key-hint">键盘: &#8592; &#8593; 上步 | &#8594; &#8595; 下步 | 空格 自动播放 | R 重置 | End 跳到最后</div>
+</div>
+<script>
+const nums = [-2,1,-3,4,-1,2,1,-5,4];
+const n = nums.length;
+let steps = [];
+let cur = 0, autoTimer = null, running = false;
+
+function buildSteps() {
+  steps = [];
+  let curSum = 0, maxSum = -Infinity, start = 0, bestL = 0, bestR = 0;
+  steps.push({curSum:0,maxSum:-Infinity,start:0,end:-1,bestL:0,bestR:0,desc:'初始化：当前和=0，最大和=-inf'});
+  for (let i = 0; i < n; i++) {
+    if (curSum <= 0) { curSum = nums[i]; start = i; }
+    else { curSum += nums[i]; }
+    steps.push({curSum,maxSum:Math.max(maxSum,curSum),start,end:i,bestL,bestR,desc:`i=${i} nums[${i}]=${nums[i]}，当前和=${curSum}`});
+    if (curSum > maxSum) { maxSum = curSum; bestL = start; bestR = i; steps[steps.length-1].maxSum=maxSum; steps[steps.length-1].bestL=bestL; steps[steps.length-1].bestR=bestR; steps[steps.length-1].desc+=`，更新最大和=${maxSum} [${bestL},${bestR}]`; }
+  }
+  steps.push({curSum,maxSum,bestL,bestR,start:bestL,end:bestR,desc:`最终答案：最大子数组和=${maxSum}，子数组[${bestL},${bestR}]=[${nums.slice(bestL,bestR+1)}]`});
+}
+buildSteps();
+
+function render() {
+  const s = steps[cur];
+  document.getElementById('stepBadge').textContent = `步骤 ${cur}/${steps.length-1}`;
+  document.getElementById('info').textContent = s.desc;
+  document.getElementById('autoBtn').textContent = running ? '停止' : '自动播放';
+  const grid = document.getElementById('grid');
+  let html = '';
+  for (let i = 0; i < n; i++) {
+    let cls = 'cell';
+    if (s.bestL <= i && i <= s.bestR) cls += ' in-window';
+    if (s.end >= 0 && s.start <= i && i <= s.end) cls += ' hl';
+    html += `<div class="${cls}"><span>${nums[i]}</span><span class="idx">${i}</span></div>`;
+  }
+  grid.innerHTML = html;
+}
+function reset() { stopAuto(); cur = 0; render(); }
+function prev() { if (cur > 0) { cur--; render(); } }
+function next() { if (cur < steps.length - 1) { cur++; render(); } else { stopAuto(); } }
+function goLast() { stopAuto(); cur = steps.length - 1; render(); }
+function toggleAuto() { running ? stopAuto() : startAuto(); }
+function startAuto() { running = true; render(); autoStep(); }
+function stopAuto() { running = false; if (autoTimer) clearTimeout(autoTimer); render(); }
+function autoStep() { if (!running) return; if (cur < steps.length - 1) { cur++; render(); autoTimer = setTimeout(autoStep, 500); } else { stopAuto(); } }
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); next(); }
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+  else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); reset(); }
+  else if (e.key === 'End') { e.preventDefault(); goLast(); }
+});
+render();
+</script>
+</body>
+</html>

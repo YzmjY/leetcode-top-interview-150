@@ -77,6 +77,17 @@ mergeKLists(lists, l, r):
 
 **推荐方案：** 分治合并（思路清晰，代码简洁）或优先队列（迭代实现，无递归开销）。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/111-merge-k-sorted-lists-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="合并 K 个升序链表 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

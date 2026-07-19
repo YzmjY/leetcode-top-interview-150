@@ -47,6 +47,17 @@ N 皇后是经典的回溯+约束满足问题。核心在于高效判断当前�
 
 **空间复杂度：** O(n)，列和对角线标记数组。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/105-n-queens-ii-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="N 皇后 II - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

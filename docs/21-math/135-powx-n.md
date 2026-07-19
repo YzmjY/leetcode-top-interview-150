@@ -62,6 +62,17 @@
 - n 可能为 INT_MIN，取反会溢出，需要用 `int64` 或特殊处理。
 - 递归和迭代两种写法都要掌握。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/135-powx-n-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="Pow(x, n) (Pow(x, n)) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

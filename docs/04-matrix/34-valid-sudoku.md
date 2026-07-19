@@ -63,6 +63,17 @@
 
 **空间复杂度：** O(1)，固定大小的布尔数组。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/34-valid-sudoku-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="有效的数独 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

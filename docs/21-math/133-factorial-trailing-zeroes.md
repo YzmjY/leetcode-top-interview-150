@@ -62,6 +62,17 @@
 - 本质是数论问题：统计因子 5 的个数。
 - 不需要真正计算阶乘（会溢出）。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/133-factorial-trailing-zeroes-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="阶乘后的零 (Factorial Trailing Zeroes) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

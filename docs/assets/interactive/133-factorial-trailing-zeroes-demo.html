@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>133. 阶乘后的零 - 可视化演示</title>
+<style>
+:root{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--sub:#666;--border:#e0e0e0;--accent:#2563eb;--step-bg:#f0f4ff;--grid-bg:#fafafa;--radius:8px;--font:system-ui,-apple-system,sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--sub:#a0a0b0;--border:#334;--accent:#60a5fa;--step-bg:#1e293b;--grid-bg:#0f172a}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);display:flex;justify-content:center;align-items:center;min-height:100vh}
+.demo-container{width:100%;max-width:960px;height:480px;background:var(--card);border-radius:var(--radius);box-shadow:0 4px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--step-bg)}
+.header .title{font-size:15px;font-weight:600;color:var(--text)}
+.header .step-info{font-size:13px;color:var(--accent);font-weight:500}
+.controls{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.controls button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
+.controls button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.controls button:disabled{opacity:.4;cursor:not-allowed}
+.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.main-area{flex:1;display:flex;flex-direction:column;padding:12px 16px;gap:10px;overflow-y:auto}
+.info-panel{padding:10px 14px;background:var(--step-bg);border-radius:var(--radius);border:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.6}
+.info-panel strong{color:var(--accent)}
+.vis-area{flex:1;display:flex;flex-direction:column;gap:12px}
+.formula{text-align:center;font-size:24px;font-weight:700;color:var(--text);padding:8px}
+.formula .hl{color:var(--accent)}
+.step-rows{display:flex;flex-direction:column;gap:8px;align-items:center}
+.step-row{display:flex;gap:10px;align-items:center;padding:8px 16px;background:var(--grid-bg);border-radius:var(--radius);border:1px solid var(--border);min-width:360px}
+.step-row .label{font-size:13px;font-weight:600;color:var(--accent);min-width:80px}
+.step-row .val{font-size:14px;color:var(--text);font-family:monospace}
+.step-row.active{background:var(--step-bg);border-color:var(--accent)}
+.step-row .contrib{font-size:20px;font-weight:700;color:var(--accent2,#7c3aed)}
+.final{text-align:center;font-size:18px;font-weight:700;padding:6px;color:var(--text)}
+.final .ans{font-size:28px;color:var(--accent)}
+.step-detail{font-size:13px;color:var(--sub);text-align:center}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+</style>
+</head>
+<body>
+<div class="demo-container">
+<div class="header">
+<span class="title">133. 阶乘后的零 (Factorial Trailing Zeroes)</span>
+<span class="step-info" id="stepLabel">步骤 0 / 0</span>
+</div>
+<div class="controls">
+<button onclick="reset()">重置</button>
+<button onclick="prevStep()">上步</button>
+<button onclick="nextStep()">下步</button>
+<button onclick="toggleAuto()" id="autoBtn">自动播放</button>
+<button onclick="jumpEnd()">跳到最后</button>
+</div>
+<div class="main-area">
+<div class="info-panel" id="info"><strong>输入:</strong> n = 5 &nbsp;|&nbsp; <strong>思路:</strong> 统计因子5的个数 = n/5 + n/25 + n/125 + ...</div>
+<div class="vis-area">
+<div class="formula">5! = <span class="hl">120</span> &rarr; <span class="hl" id="ansPreview">?</span> 个尾零</div>
+<div class="step-rows" id="stepRows"></div>
+<div class="step-detail" id="stepDetail"></div>
+<div class="final" id="finalAns"></div>
+<div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+</div>
+</div>
+</div>
+<script>
+const N=5;
+let steps=[],stepIdx=0,autoTimer=null,playing=false;
+
+function buildSteps(){
+  steps=[];
+  let n=N,count=0,div=5;
+  let contribs=[];
+  steps.push({div,contrib:Math.floor(n/div),total:0,note:`第1轮: n/${div} = ${Math.floor(n/div)} (统计含1个因子5的数)`,done:false});
+  contribs.push({div,contrib:Math.floor(n/div)});
+  count+=Math.floor(n/div);
+  div*=5;
+  while(div<=n){
+    let c=Math.floor(n/div);
+    steps.push({div,contrib:c,total:count,note:`第${steps.length+1}轮: n/${div} = ${c} (统计含${Math.log(div)/Math.log(5)|0}个因子5的数)`,done:false});
+    contribs.push({div,contrib:c});
+    count+=c;
+    div*=5;
+  }
+  let last=steps[steps.length-1];
+  steps[steps.length-1]={...last,note:last.note+` | 总计 = ${count} 个尾零`,done:true,total:count};
+}
+function render(){
+  let s=steps[stepIdx]||steps[steps.length-1]||{};
+  let total=steps.length;
+  document.getElementById('stepLabel').textContent=`步骤 ${stepIdx+1} / ${total}`;
+  document.getElementById('progress').style.width=((stepIdx+1)/total*100)+'%';
+  document.getElementById('info').innerHTML=`<strong>n = ${N}</strong> &nbsp;|&nbsp; <strong>操作:</strong> ${s.note||''}`;
+  document.getElementById('ansPreview').textContent=(s.done?s.total:'?');
+
+  let html='';
+  let running=0;
+  for(let i=0;i<=stepIdx;i++){
+    let si=steps[i];
+    running+=si.contrib||0;
+    html+=`<div class="step-row ${i===stepIdx?'active':''}">
+      <span class="label">n / ${si.div}</span>
+      <span class="val">= ${Math.floor(N/si.div)}</span>
+      <span class="contrib">+${Math.floor(N/si.div)}</span>
+    </div>`;
+  }
+  document.getElementById('stepRows').innerHTML=html;
+  document.getElementById('stepDetail').textContent=`累计: ${running} 个因子5`;
+  if(s.done)document.getElementById('finalAns').innerHTML=`结果: <span class="ans">${s.total||running}</span> 个尾零`;
+  else document.getElementById('finalAns').textContent='';
+}
+function reset(){stopAuto();stepIdx=0;buildSteps();render();}
+function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
+function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
+function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}
+function toggleAuto(){
+  if(playing){stopAuto();}else{playing=true;document.getElementById('autoBtn').classList.add('active');document.getElementById('autoBtn').textContent='停止';
+    autoTimer=setInterval(()=>{if(stepIdx<steps.length-1){stepIdx++;render();}else{stopAuto();}},900);}
+}
+function stopAuto(){playing=false;clearInterval(autoTimer);document.getElementById('autoBtn').classList.remove('active');document.getElementById('autoBtn').textContent='自动播放';}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight')nextStep();
+  else if(e.key==='ArrowLeft')prevStep();
+  else if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+buildSteps();render();
+</script>
+</body>
+</html>

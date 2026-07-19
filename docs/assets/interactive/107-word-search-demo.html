@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>单词搜索 - 回溯可视化</title>
+<style>
+:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#555;--border:#dee2e6;--accent:#7c3aed;--orange:#f59e0b;--blue:#3b82f6;--green:#22c55e;--red:#ef4444;--btn-bg:#e5e7eb;--btn-txt:#374151}
+.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--orange:#fbbf24;--blue:#60a5fa;--green:#4ade80;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0}
+@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--orange:#fbbf24;--blue:#60a5fa;--green:#4ade80;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
+.container{width:100%;max-width:720px;background:var(--card);border-radius:8px;border:1px solid var(--border);padding:20px 24px}
+h2{font-size:1.1rem;font-weight:600;margin-bottom:6px;color:var(--accent)}
+.info-panel{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:.85rem;color:var(--text2);flex-wrap:wrap}
+.info-panel .step{background:var(--accent);color:#fff;padding:3px 10px;border-radius:8px;font-weight:600;font-size:.8rem}
+.info-panel .desc{flex:1;min-width:200px}
+.word-info{display:flex;gap:16px;margin-bottom:8px;font-size:.8rem;color:var(--text2);align-items:center;flex-wrap:wrap}
+.word-info .target{font-family:monospace;font-size:1.2rem;font-weight:700;color:var(--accent)}
+.word-info .target .matched{color:var(--green)}
+.word-info .target .current-match{color:var(--orange)}
+.grid-area{display:flex;justify-content:center;align-items:center;height:440px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg)}
+.grid{display:grid;grid-template-columns:repeat(4,70px);grid-template-rows:repeat(3,70px);gap:3px}
+.grid .cell{width:70px;height:70px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;background:var(--btn-bg);border:2px solid var(--border);color:var(--text);transition:all .2s}
+.grid .cell.visited{background:var(--blue);color:#fff;border-color:var(--blue);opacity:.7}
+.grid .cell.current{background:var(--orange);color:#fff;border-color:var(--orange);transform:scale(1.08);box-shadow:0 0 12px rgba(245,158,11,.4)}
+.grid .cell.found{background:var(--green);color:#fff;border-color:var(--green)}
+.controls{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.controls button{background:var(--btn-bg);color:var(--btn-txt);border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:inherit;transition:all .15s}
+.controls button:hover{background:var(--hover);border-color:var(--accent)}
+.controls button:active{transform:scale(.96)}
+.controls button.playing{background:var(--accent);color:#fff;border-color:var(--accent)}
+.legend{display:flex;gap:14px;margin-top:8px;font-size:.72rem;color:var(--text2);flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:4px}
+.legend .dot{width:12px;height:12px;border-radius:3px}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>107. 单词搜索 (Word Search)</h2>
+<div class="info-panel">
+  <span class="step" id="stepLabel">步骤 1/30</span>
+  <span class="desc" id="stepDesc">开始搜索 word="ABCCED"</span>
+</div>
+<div class="word-info">
+  <span>目标单词: <span class="target" id="targetWord"></span></span>
+  <span id="matchInfo" style="color:var(--accent);font-weight:600">已匹配: 0/6</span>
+</div>
+<div class="grid-area">
+  <div class="grid" id="grid"></div>
+</div>
+<div class="controls">
+  <button onclick="reset()">重置</button>
+  <button onclick="prevStep()">上步</button>
+  <button onclick="nextStep()">下步</button>
+  <button id="playBtn" onclick="togglePlay()">自动播放</button>
+  <button onclick="jumpEnd()">最后</button>
+</div>
+<div class="legend">
+  <span><span class="dot" style="background:var(--orange)"></span>当前位置</span>
+  <span><span class="dot" style="background:var(--blue)"></span>已访问</span>
+  <span><span class="dot" style="background:var(--green)"></span>找到路径</span>
+</div>
+</div>
+<script>
+const board=[['A','B','C','E'],['S','F','C','S'],['A','D','E','E']];
+const word='ABCCED';
+const R=3,C=4;
+const steps=[];
+let found=false;
+const visited=Array.from({length:R},()=>Array(C).fill(false));
+
+function genSteps(r,c,idx){
+  if(found)return;
+  steps.push({type:'enter',r,c,idx,visited:visited.map(r=>[...r])});
+  if(idx===word.length-1){
+    found=true;
+    steps.push({type:'found',r,c,idx,visited:visited.map(r=>[...r])});
+    return;
+  }
+  visited[r][c]=true;
+  const dirs=[[0,1],[1,0],[0,-1],[-1,0]];
+  for(const [dr,dc] of dirs){
+    const nr=r+dr,nc=c+dc;
+    if(nr>=0&&nr<R&&nc>=0&&nc<C&&!visited[nr][nc]&&board[nr][nc]===word[idx+1]){
+      steps.push({type:'move',r,c,nr,nc,idx:idx+1,visited:visited.map(r=>[...r])});
+      genSteps(nr,nc,idx+1);
+      if(found)return;
+    }
+  }
+  visited[r][c]=false;
+  if(!found)steps.push({type:'backtrack',r,c,idx,visited:visited.map(r=>[...r])});
+}
+
+// find start
+for(let r=0;r<R&&!found;r++){
+  for(let c=0;c<C&&!found;c++){
+    if(board[r][c]===word[0]){
+      steps.push({type:'start_try',r,c,idx:0,visited:visited.map(r=>[...r])});
+      genSteps(r,c,0);
+    }
+  }
+}
+
+let curStep=0,playId=null;
+
+function renderGrid(step){
+  const grid=document.getElementById('grid');
+  grid.innerHTML='';
+  const v=step.visited;
+  const isFound=step.type==='found';
+  const isEnter=step.type==='enter'||step.type==='start_try';
+  for(let r=0;r<R;r++){
+    for(let c=0;c<C;c++){
+      const cell=document.createElement('div');
+      cell.className='cell';
+      cell.textContent=board[r][c];
+      if(isFound&&v[r][c])cell.classList.add('found');
+      else if(isEnter&&r===step.r&&c===step.c)cell.classList.add('current');
+      else if(v[r][c])cell.classList.add('visited');
+      grid.appendChild(cell);
+    }
+  }
+}
+
+function updateTargetWord(step){
+  const el=document.getElementById('targetWord');
+  let html='';
+  for(let i=0;i<word.length;i++){
+    const matched=i<=step.idx;
+    const isCur=i===step.idx&&(step.type==='enter'||step.type==='start_try');
+    if(isCur)html+='<span class="current-match">'+word[i]+'</span>';
+    else if(matched)html+='<span class="matched">'+word[i]+'</span>';
+    else html+=word[i];
+  }
+  el.innerHTML=html;
+  document.getElementById('matchInfo').textContent='已匹配: '+(step.idx+1)+'/'+word.length;
+}
+
+function updateUI(){
+  const step=steps[curStep];
+  document.getElementById('stepLabel').textContent='步骤 '+(curStep+1)+'/'+steps.length;
+  let desc='';
+  if(step.type==='start_try')desc='尝试起点 ['+step.r+','+step.c+'] = "'+board[step.r][step.c]+'"';
+  else if(step.type==='enter')desc='进入 ['+step.r+','+step.c+'] 匹配到 "'+word[step.idx]+'"(位置'+step.idx+')';
+  else if(step.type==='move')desc='从 ['+step.r+','+step.c+'] 移动到 ['+step.nr+','+step.nc+']';
+  else if(step.type==='found')desc='找到完整单词! 路径匹配成功';
+  else if(step.type==='backtrack')desc='回溯: 撤销 ['+step.r+','+step.c+']';
+  else desc='开始搜索';
+  document.getElementById('stepDesc').textContent=desc;
+  updateTargetWord(step);
+  renderGrid(step);
+}
+function reset(){curStep=0;stopPlay();updateUI();}
+function nextStep(){if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();}
+function prevStep(){if(curStep>0){curStep--;updateUI();}}
+function jumpEnd(){curStep=steps.length-1;stopPlay();updateUI();}
+function stopPlay(){if(playId){clearInterval(playId);playId=null;document.getElementById('playBtn').classList.remove('playing');document.getElementById('playBtn').textContent='自动播放';}}
+function togglePlay(){if(playId){stopPlay();return;}if(curStep>=steps.length-1)curStep=0;document.getElementById('playBtn').classList.add('playing');document.getElementById('playBtn').textContent='暂停';playId=setInterval(()=>{if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();},650);}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}else if(e.key==='ArrowRight'){e.preventDefault();nextStep();}else if(e.key===' '){e.preventDefault();togglePlay();}});
+// init
+function initGrid(){
+  const grid=document.getElementById('grid');
+  grid.innerHTML='';
+  for(let r=0;r<R;r++)for(let c=0;c<C;c++){
+    const cell=document.createElement('div');cell.className='cell';cell.textContent=board[r][c];grid.appendChild(cell);
+  }
+}
+initGrid();
+updateUI();
+</script>
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>93. 课程表 - Course Schedule</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.container{background:#fff;border-radius:8px;padding:20px;width:780px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+h2{font-size:16px;margin-bottom:12px;color:#333}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+button{border:none;border-radius:8px;padding:8px 16px;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s;color:#fff;font-weight:500}
+button:disabled{opacity:.4;cursor:not-allowed}
+.btn-reset{background:#6c757d}
+.btn-prev{background:#0d6efd}
+.btn-next{background:#0d6efd}
+.btn-auto{background:#198754}
+.btn-end{background:#dc3545}
+button:hover:not(:disabled){filter:brightness(1.15)}
+.info-panel{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:#555;background:#f0f4f8;border-radius:8px;padding:10px 14px}
+.step-badge{background:#0d6efd;color:#fff;border-radius:20px;padding:2px 12px;font-weight:600;font-size:12px}
+.info-text{flex:1;margin-left:12px}
+.vis-area{background:#fafafa;border-radius:8px;position:relative;height:500px;overflow:hidden;border:1px solid #e0e0e0}
+svg{width:100%;height:100%}
+.hint{font-size:12px;color:#999;text-align:center;margin-top:8px}
+@media(prefers-color-scheme:dark){
+body{background:#1a1a2e}
+.container{background:#16213e;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+h2{color:#e0e0e0}
+.info-panel{background:#1a1a3e;color:#ccc}
+.vis-area{background:#0f0f23;border-color:#2a2a4a}
+.hint{color:#777}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>93. 课程表 (Course Schedule) — 拓扑排序 / 环检测</h2>
+<div class="controls">
+<button class="btn-reset" onclick="reset()">⟳ 重置</button>
+<button class="btn-prev" onclick="prevStep()">◀ 上步</button>
+<button class="btn-next" onclick="nextStep()">下步 ▶</button>
+<button class="btn-auto" id="btnAuto" onclick="toggleAuto()">▶ 自动播放</button>
+<button class="btn-end" onclick="jumpEnd()">▶▶ 跳到最后</button>
+</div>
+<div class="info-panel">
+<span class="step-badge" id="stepBadge">步骤 1/7</span>
+<span class="info-text" id="infoText">numCourses=2, prerequisites=[[1,0]] (课程1依赖课程0)</span>
+</div>
+<div class="vis-area"><svg id="svg" viewBox="0 0 780 500"></svg></div>
+<div class="hint">键盘: ← → 切换步骤 | 空格 自动播放</div>
+</div>
+<script>
+const N=2;
+const prereq=[[1,0]]; // [course, prereq] means: to take 1 you need 0 first
+
+let steps=[],currentStep=0,totalSteps=0,autoTimer=null;
+function buildSteps(){
+  steps=[];
+  // Step 1: Initial
+  steps.push({info:'初始状态: 共2门课, 先修关系: 课程1依赖于课程0',phase:'init',indegree:{0:0,1:0},adj:{0:[],1:[]},taken:[],queue:[],processed:[],highlight:[]});
+
+  // Step 2: Build adjacency and indegree
+  let indegree={0:0,1:0},adj={0:[],1:[]};
+  steps.push({info:'处理先修关系: [1,0] → 边 0→1, 课程1的入度+1',phase:'build',indegree:{0:0,1:0},adj:{0:[],1:[]},taken:[],queue:[],processed:[],highlight:[],edgeHL:[]});
+
+  // Actually build
+  for(let [c,p] of prereq){
+    adj[p].push(c);indegree[c]++;
+  }
+  steps.push({info:'邻接表: 0→[1], 1→[]  入度: indegree[0]=0, indegree[1]=1',phase:'built',indegree:{...indegree},adj:{0:[...adj[0]],1:[...adj[1]]},taken:[],queue:[],processed:[],highlight:[]});
+
+  // Step 3: Find indegree 0 course
+  let queue=[];
+  for(let i=0;i<N;i++)if(indegree[i]===0)queue.push(i);
+  steps.push({info:'入度为0的课程: [0] — 可以立即学习! 加入队列',phase:'queue',indegree:{...indegree},adj:{0:[...adj[0]],1:[...adj[1]]},taken:[],queue:[...queue],processed:[],highlight:[0]});
+
+  // Step 4: BFS - process course 0
+  let taken=[],processed=[];
+  let q=[...queue];
+  while(q.length>0){
+    let cur=q.shift();
+    taken.push(cur);processed.push(cur);
+    let nxt=[...q];
+    steps.push({info:`学习课程 ${cur}: 从队列取出, 标记为已完成`,phase:'process',indegree:{...indegree},adj:{0:[...adj[0]],1:[...adj[1]]},taken:[...taken],queue:nxt,processed:[...processed],highlight:[cur],curCourse:cur});
+    for(let nb of adj[cur]){
+      indegree[nb]--;
+      nxt=[...q];
+      if(indegree[nb]===0){q.push(nb);nxt=[...q];}
+      let suffix=indegree[nb]===0?` → 入度降为0, 加入队列`:` → 入度降为${indegree[nb]}, 仍需等待`;
+      steps.push({info:`课程 ${cur} 学完 → 减少课程 ${nb} 的入度: ${indegree[nb]+1} → ${indegree[nb]}${suffix}`,phase:'reduce',indegree:{...indegree},adj:{0:[...adj[0]],1:[...adj[1]]},taken:[...taken],queue:nxt,processed:[...processed],highlight:[nb,cur],reduceEdge:[cur,nb]});
+    }
+  }
+  // Final
+  if(taken.length===N){
+    steps.push({info:`所有 ${N} 门课程学完! 无环, 可以完成。学习顺序: ${taken.join(' → ')}`,phase:'done',indegree:{0:0,1:0},adj:{0:[],1:[]},taken:[...taken],queue:[],processed:[...processed],highlight:[],done:true});
+  }
+}
+buildSteps();totalSteps=steps.length;
+
+const svg=document.getElementById('svg');
+const pos={0:{x:280,y:160},1:{x:500,y:160}};
+
+function draw(){
+  let s=steps[currentStep];
+  svg.innerHTML='';
+
+  // Draw edge 0 -> 1
+  let p0=pos[0],p1=pos[1];
+  let arrowColor='#0d6efd';
+  if(s.reduceEdge&&s.reduceEdge[0]===0&&s.reduceEdge[1]===1)arrowColor='#28a745';
+
+  let g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  let l=document.createElementNS('http://www.w3.org/2000/svg','line');
+  l.setAttribute('x1',p0.x+32);l.setAttribute('y1',p0.y);
+  l.setAttribute('x2',p1.x-32);l.setAttribute('y2',p1.y);
+  l.setAttribute('stroke',arrowColor);l.setAttribute('stroke-width',3);
+  l.setAttribute('marker-end','url(#arr)');
+  g.appendChild(l);
+  let lt=document.createElementNS('http://www.w3.org/2000/svg','text');
+  lt.setAttribute('x',(p0.x+p1.x)/2);lt.setAttribute('y',p0.y-12);
+  lt.setAttribute('text-anchor','middle');lt.setAttribute('font-size','13');lt.setAttribute('fill',arrowColor);
+  lt.textContent='先修';
+  g.appendChild(lt);
+  svg.appendChild(g);
+
+  // Draw nodes
+  for(let i=0;i<N;i++){
+    let p=pos[i];
+    let isHL=s.highlight.includes(i);
+    let isCur=s.curCourse===i;
+    let isTaken=s.taken.includes(i)||s.processed.includes(i);
+
+    if(isHL||isCur){
+      let hc=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      hc.setAttribute('cx',p.x);hc.setAttribute('cy',p.y);hc.setAttribute('r',40);
+      hc.setAttribute('fill','none');hc.setAttribute('stroke',isCur?'#ff0':'#ff6b00');hc.setAttribute('stroke-width',3);
+      svg.appendChild(hc);
+    }
+
+    let c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',p.x);c.setAttribute('cy',p.y);c.setAttribute('r',34);
+    c.setAttribute('fill',isTaken?'#28a745':'#5b9bd5');c.setAttribute('stroke','#3a7abd');c.setAttribute('stroke-width',2.5);
+    svg.appendChild(c);
+    let t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',p.x);t.setAttribute('y',p.y-4);
+    t.setAttribute('text-anchor','middle');t.setAttribute('font-size','16');t.setAttribute('fill','#fff');t.setAttribute('font-weight','bold');
+    t.textContent='课程'+i;
+    svg.appendChild(t);
+    let st=document.createElementNS('http://www.w3.org/2000/svg','text');
+    st.setAttribute('x',p.x);st.setAttribute('y',p.y+16);
+    st.setAttribute('text-anchor','middle');st.setAttribute('font-size','13');st.setAttribute('fill',isTaken?'#fff':'#fff');
+    st.textContent=isTaken?'✓':'入度='+s.indegree[i];
+    svg.appendChild(st);
+  }
+
+  // Queue display
+  let qy=290;
+  let qt=document.createElementNS('http://www.w3.org/2000/svg','text');
+  qt.setAttribute('x',50);qt.setAttribute('y',qy);
+  qt.setAttribute('font-size','14');qt.setAttribute('fill','#28a745');qt.setAttribute('font-weight','bold');
+  qt.textContent='BFS 队列:';
+  svg.appendChild(qt);
+  let qv=s.queue||[];
+  for(let i=0;i<qv.length;i++){
+    let qc=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    qc.setAttribute('cx',160+i*50);qc.setAttribute('cy',qy-7);qc.setAttribute('r',16);
+    qc.setAttribute('fill','#ffc107');qc.setAttribute('stroke','#e0a800');qc.setAttribute('stroke-width',2);
+    svg.appendChild(qc);
+    let qt2=document.createElementNS('http://www.w3.org/2000/svg','text');
+    qt2.setAttribute('x',160+i*50);qt2.setAttribute('y',qy-2);
+    qt2.setAttribute('text-anchor','middle');qt2.setAttribute('font-size','13');qt2.setAttribute('fill','#333');qt2.setAttribute('font-weight','bold');
+    qt2.textContent=qv[i];
+    svg.appendChild(qt2);
+  }
+
+  // Adjacency table
+  let ay=340;
+  let at=document.createElementNS('http://www.w3.org/2000/svg','text');
+  at.setAttribute('x',50);at.setAttribute('y',ay);
+  at.setAttribute('font-size','14');at.setAttribute('fill','#333');at.setAttribute('font-weight','bold');
+  at.textContent='邻接表:';
+  svg.appendChild(at);
+  let a0='课程0 → ['+s.adj[0].join(',')+']';
+  let a1='课程1 → ['+s.adj[1].join(',')+']';
+  let at0=document.createElementNS('http://www.w3.org/2000/svg','text');
+  at0.setAttribute('x',50);at0.setAttribute('y',ay+22);
+  at0.setAttribute('font-size','14');at0.setAttribute('fill','#555');at0.setAttribute('font-family','monospace');
+  at0.textContent=a0;
+  svg.appendChild(at0);
+  let at1=document.createElementNS('http://www.w3.org/2000/svg','text');
+  at1.setAttribute('x',50);at1.setAttribute('y',ay+44);
+  at1.setAttribute('font-size','14');at1.setAttribute('fill','#555');at1.setAttribute('font-family','monospace');
+  at1.textContent=a1;
+  svg.appendChild(at1);
+
+  // Taken courses
+  let ty=430;
+  let ttt=document.createElementNS('http://www.w3.org/2000/svg','text');
+  ttt.setAttribute('x',50);ttt.setAttribute('y',ty);
+  ttt.setAttribute('font-size','14');ttt.setAttribute('fill','#28a745');ttt.setAttribute('font-weight','bold');
+  ttt.textContent='已完成: [';
+  let tv=s.taken.join(',');
+  ttt.textContent+=(tv||'')+']';
+  svg.appendChild(ttt);
+
+  // Done message
+  if(s.done){
+    let dm=document.createElementNS('http://www.w3.org/2000/svg','text');
+    dm.setAttribute('x',400);dm.setAttribute('y',470);
+    dm.setAttribute('text-anchor','middle');dm.setAttribute('font-size','18');dm.setAttribute('fill','#28a745');dm.setAttribute('font-weight','bold');
+    dm.textContent='✓ 无环, 可以完成所有课程!';
+    svg.appendChild(dm);
+  }
+
+  // Arrow marker def
+  let defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  let m=document.createElementNS('http://www.w3.org/2000/svg','marker');
+  m.setAttribute('id','arr');m.setAttribute('markerWidth','10');m.setAttribute('markerHeight','10');
+  m.setAttribute('refX','9');m.setAttribute('refY','3');m.setAttribute('orient','auto');
+  let mp=document.createElementNS('http://www.w3.org/2000/svg','path');
+  mp.setAttribute('d','M0,0 L0,6 L9,3 z');mp.setAttribute('fill',arrowColor);
+  m.appendChild(mp);defs.appendChild(m);
+  svg.insertBefore(defs,svg.firstChild);
+
+  document.getElementById('stepBadge').textContent=`步骤 ${currentStep+1}/${totalSteps}`;
+  document.getElementById('infoText').textContent=s.info;
+  let btns=document.querySelectorAll('button');
+  btns.forEach(b=>b.disabled=false);
+  if(currentStep===0)document.querySelector('.btn-prev').disabled=true;
+  if(currentStep===totalSteps-1){document.querySelector('.btn-next').disabled=true;document.querySelector('.btn-end').disabled=true;document.querySelector('.btn-auto').disabled=true;}
+}
+
+function nextStep(){if(currentStep<totalSteps-1){currentStep++;draw();}}
+function prevStep(){if(currentStep>0){currentStep--;draw();}}
+function reset(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=0;draw();}
+function jumpEnd(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=totalSteps-1;draw();}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}
+  else{document.getElementById('btnAuto').textContent='⏸ 暂停';autoTimer=setInterval(()=>{if(currentStep<totalSteps-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}},900);}
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){e.preventDefault();nextStep();}
+  else if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}
+  else if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+draw();
+</script>
+</body>
+</html>

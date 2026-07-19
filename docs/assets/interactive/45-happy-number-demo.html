@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222; --sub-bg: #f5f5f5;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --calc-color: #1976D2; --ok-color: #388E3C;
+    --cycle-color: #FF9800;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 16px 20px;
+  }
+  .container { max-width: 780px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
+  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
+    font-size: 14px; flex-wrap: wrap;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
+
+  .calc-chain { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .calc-node {
+    padding: 8px 14px; border: 2px solid var(--cell-border); border-radius: 8px;
+    font-size: 16px; font-weight: bold; background: var(--cell-bg); color: var(--text);
+    font-family: monospace;
+    transition: border-color 0.25s, background 0.25s;
+  }
+  .calc-node.cur { border-color: var(--calc-color); background: rgba(25,118,210,0.12); }
+  .calc-node.old { opacity: 0.5; }
+  .calc-arrow { font-size: 18px; color: var(--muted); font-weight: bold; }
+
+  .chain-history {
+    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
+    margin-bottom: 6px; max-height: 160px; overflow-y: auto;
+    font-size: 13px; font-family: monospace;
+  }
+  .chain-entry { margin-bottom: 3px; color: var(--text); }
+  .chain-entry .highlight { color: var(--calc-color); font-weight: bold; }
+
+  .result-row {
+    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
+    margin-bottom: 6px; font-size: 13px; text-align: center;
+  }
+  .result-row .highlight { font-weight: bold; font-size: 15px; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>快乐数 — 平方和计算过程演示</h2>
+  <div class="sub-title">n=19 &rarr; 1²+9²=82 &rarr; 8²+2²=68 &rarr; ... &rarr; 1 (是快乐数!)</div>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
+  </div>
+
+  <div class="calc-chain" id="calcChain"></div>
+
+  <div class="chain-history" id="chainHistory">
+    <div style="color:var(--muted);text-align:center;">计算过程将在此显示</div>
+  </div>
+
+  <div class="result-row">
+    <span style="color:var(--muted)">判定: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">&#x23EE; 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
+    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
+  </div>
+</div>
+
+<script>
+const startN = 19;
+// Pre-compute the chain
+const chain = [];
+let n = startN;
+while (n !== 1) {
+  const digits = String(n).split('').map(Number);
+  const squares = digits.map(d => d + '\u00B2');
+  const sum = digits.reduce((a, b) => a + b * b, 0);
+  chain.push({ n, digits, squares, sum, expr: squares.join('+') + '=' + sum });
+  n = sum;
+}
+// Add final 1
+chain.push({ n: 1, digits: [1], squares: ['1'], sum: 1, expr: '1' });
+
+const steps = [];
+
+function simulate() {
+  steps.push({
+    desc: '初始状态 · n=19, 开始计算平方和',
+    phase: 'init', chainSoFar: [], result: 'init'
+  });
+
+  for (let i = 0; i < chain.length; i++) {
+    const c = chain[i];
+    steps.push({
+      desc: '第' + (i+1) + '步: n=' + c.n + ', 各位数字: [' + c.digits.join(',') + '], 平方和: ' + c.expr,
+      phase: 'calc', chainSoFar: chain.slice(0, i + 1), curN: c.n,
+      result: c.n === 1 ? 'happy' : 'calculating'
+    });
+  }
+
+  steps.push({
+    desc: '最终得到 1! n=19 是快乐数 (无循环).',
+    phase: 'done', chainSoFar: [...chain], curN: 1,
+    result: 'happy'
+  });
+}
+
+simulate();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+const calcChainEl = document.getElementById('calcChain');
+const chainHistoryEl = document.getElementById('chainHistory');
+
+function render() {
+  const s = steps[current];
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = s.desc;
+
+  // Render chain history
+  chainHistoryEl.innerHTML = '';
+  if (s.chainSoFar.length === 0) {
+    chainHistoryEl.innerHTML = '<div style="color:var(--muted);text-align:center;">计算过程将在此显示</div>';
+  } else {
+    s.chainSoFar.forEach((c, i) => {
+      const div = document.createElement('div');
+      div.className = 'chain-entry';
+      div.innerHTML = 'n=' + c.n + ' &rarr; ' + c.expr;
+      if (i === s.chainSoFar.length - 1 && (s.result === 'calculating' || s.result === 'happy')) {
+        div.innerHTML = '<span class="highlight">n=' + c.n + '</span> &rarr; ' + c.expr;
+      }
+      chainHistoryEl.appendChild(div);
+    });
+  }
+
+  // Render calc chain as visual nodes
+  calcChainEl.innerHTML = '';
+  if (s.chainSoFar.length > 0) {
+    s.chainSoFar.forEach((c, i) => {
+      const node = document.createElement('div');
+      node.className = 'calc-node ' + (i === s.chainSoFar.length - 1 ? 'cur' : 'old');
+      node.textContent = c.n;
+      calcChainEl.appendChild(node);
+      if (i < s.chainSoFar.length - 1) {
+        const arrow = document.createElement('span');
+        arrow.className = 'calc-arrow';
+        arrow.textContent = '\u2192';
+        calcChainEl.appendChild(arrow);
+      }
+    });
+  }
+
+  const rt = document.getElementById('resultText');
+  if (s.result === 'happy') { rt.textContent = 'true - 是快乐数!'; rt.style.color = '#388E3C'; }
+  else if (s.result === 'init') { rt.textContent = '进行中...'; rt.style.color = '#1976D2'; }
+  else { rt.textContent = '计算中...'; rt.style.color = '#1976D2'; }
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer); autoRunning = false;
+    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
+    document.getElementById('playBtn').style.background = '';
+    document.getElementById('playBtn').style.color = '';
+    document.getElementById('playBtn').classList.remove('play-btn');
+  } else {
+    autoRunning = true;
+    document.getElementById('playBtn').textContent = '\u23F8 暂停';
+    document.getElementById('playBtn').style.background = '#1976D2';
+    document.getElementById('playBtn').style.color = '#fff';
+    document.getElementById('playBtn').classList.add('play-btn');
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(function() {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 1200);
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

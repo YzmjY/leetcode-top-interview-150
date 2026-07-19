@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>92. 除法求值 - Evaluate Division</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.container{background:#fff;border-radius:8px;padding:20px;width:800px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+h2{font-size:16px;margin-bottom:12px;color:#333}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+button{border:none;border-radius:8px;padding:8px 16px;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s;color:#fff;font-weight:500}
+button:disabled{opacity:.4;cursor:not-allowed}
+.btn-reset{background:#6c757d}
+.btn-prev{background:#0d6efd}
+.btn-next{background:#0d6efd}
+.btn-auto{background:#198754}
+.btn-end{background:#dc3545}
+button:hover:not(:disabled){filter:brightness(1.15)}
+.info-panel{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:#555;background:#f0f4f8;border-radius:8px;padding:10px 14px}
+.step-badge{background:#0d6efd;color:#fff;border-radius:20px;padding:2px 12px;font-weight:600;font-size:12px}
+.info-text{flex:1;margin-left:12px}
+.vis-area{background:#fafafa;border-radius:8px;position:relative;height:480px;overflow:hidden;border:1px solid #e0e0e0}
+svg{width:100%;height:100%}
+.hint{font-size:12px;color:#999;text-align:center;margin-top:8px}
+@media(prefers-color-scheme:dark){
+body{background:#1a1a2e}
+.container{background:#16213e;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+h2{color:#e0e0e0}
+.info-panel{background:#1a1a3e;color:#ccc}
+.vis-area{background:#0f0f23;border-color:#2a2a4a}
+.hint{color:#777}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>92. 除法求值 (Evaluate Division) — 加权有向图 + DFS/并查集</h2>
+<div class="controls">
+<button class="btn-reset" onclick="reset()">⟳ 重置</button>
+<button class="btn-prev" onclick="prevStep()">◀ 上步</button>
+<button class="btn-next" onclick="nextStep()">下步 ▶</button>
+<button class="btn-auto" id="btnAuto" onclick="toggleAuto()">▶ 自动播放</button>
+<button class="btn-end" onclick="jumpEnd()">▶▶ 跳到最后</button>
+</div>
+<div class="info-panel">
+<span class="step-badge" id="stepBadge">步骤 1/6</span>
+<span class="info-text" id="infoText">equations=[["a","b"],["b","c"]], values=[2.0,3.0]</span>
+</div>
+<div class="vis-area"><svg id="svg" viewBox="0 0 800 480"></svg></div>
+<div class="hint">键盘: ← → 切换步骤 | 空格 自动播放</div>
+</div>
+<script>
+const equations=[['a','b'],['b','c']];
+const values=[2.0,3.0];
+const query=['a','c'];
+
+// Build graph
+let graph={}; // {node: {neighbor: weight}}
+let vars=new Set();
+for(let i=0;i<equations.length;i++){
+  let [a,b]=equations[i],v=values[i];
+  if(!graph[a])graph[a]={};
+  if(!graph[b])graph[b]={};
+  graph[a][b]=v;
+  graph[b][a]=1/v;
+  vars.add(a);vars.add(b);
+}
+
+let steps=[],currentStep=0,totalSteps=0,autoTimer=null;
+function buildSteps(){
+  steps=[];
+  // Step 1: Show equations
+  steps.push({info:'equations: a/b=2.0, b/c=3.0  查询: a/c=?',phase:'intro',graph:{},highlight:[]});
+  // Step 2: Build edge a-b with weight 2.0
+  steps.push({info:'添加边 a—b (a/b=2.0), 同时添加反向边 b—a (1/2.0≈0.5)',phase:'edge1',graph:{a:{b:2},b:{a:0.5}},highlight:['a','b'],edgeHL:[['a','b']]});
+  // Step 3: Build edge b-c with weight 3.0
+  steps.push({info:'添加边 b—c (b/c=3.0), 反向边 c—b (1/3.0≈0.333)',phase:'edge2',graph:{a:{b:2},b:{a:0.5,c:3},c:{b:1/3}},highlight:['b','c'],edgeHL:[['b','c']]});
+  // Step 4: Show complete graph
+  steps.push({info:'加权图构建完成: a—b(2.0), b—c(3.0) — 查询 a/c 即为路径乘积',phase:'graph',graph:{a:{b:2},b:{a:0.5,c:3},c:{b:1/3}},highlight:[],edgeHL:[]});
+  // Step 5: DFS from a to c
+  steps.push({info:'DFS从a出发: a→b (权重2.0), 当前值=2.0',phase:'dfs1',graph:{a:{b:2},b:{a:0.5,c:3},c:{b:1/3}},highlight:['a','b'],edgeHL:[['a','b']],path:['a','b'],curVal:2.0});
+  // Step 6: b→c (权重3.0), 2.0×3.0=6.0
+  steps.push({info:'DFS: b→c (权重3.0), 当前值=2.0×3.0=6.0 — 答案: a/c = 6.0',phase:'dfs2',graph:{a:{b:2},b:{a:0.5,c:3},c:{b:1/3}},highlight:['b','c'],edgeHL:[['b','c']],path:['a','b','c'],curVal:6.0});
+  // Step 7: Result
+  steps.push({info:'结果: a/c = 6.0  (路径: a → b → c, 权重积 2.0×3.0=6.0)',phase:'result',graph:{a:{b:2},b:{a:0.5,c:3},c:{b:1/3}},highlight:[],edgeHL:[],result:'6.0'});
+}
+buildSteps();totalSteps=steps.length;
+
+const positions={a:{x:200,y:240},b:{x:380,y:140},c:{x:560,y:240}};
+const svg=document.getElementById('svg');
+
+function edgeLine(x1,y1,x2,y2,color,width,label){
+  let g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  let l=document.createElementNS('http://www.w3.org/2000/svg','line');
+  l.setAttribute('x1',x1);l.setAttribute('y1',y1);
+  l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+  l.setAttribute('stroke',color);l.setAttribute('stroke-width',width||2.5);
+  g.appendChild(l);
+  if(label){
+    let t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    let mx=(x1+x2)/2,my=(y1+y2)/2-8;
+    t.setAttribute('x',mx);t.setAttribute('y',my);
+    t.setAttribute('text-anchor','middle');t.setAttribute('font-size','15');
+    t.setAttribute('font-weight','bold');t.setAttribute('fill',color);
+    t.textContent=label;
+    g.appendChild(t);
+  }
+  return g;
+}
+function nodeNode(cx,cy,id,fill,stroke,sw){
+  let g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  let c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  c.setAttribute('cx',cx);c.setAttribute('cy',cy);c.setAttribute('r',30);
+  c.setAttribute('fill',fill);c.setAttribute('stroke',stroke);c.setAttribute('stroke-width',sw||2.5);
+  g.appendChild(c);
+  let t=document.createElementNS('http://www.w3.org/2000/svg','text');
+  t.setAttribute('x',cx);t.setAttribute('y',cy+5);
+  t.setAttribute('text-anchor','middle');t.setAttribute('font-size','20');
+  t.setAttribute('font-family','sans-serif');t.setAttribute('font-weight','bold');
+  t.setAttribute('fill','#fff');
+  t.textContent=id;
+  g.appendChild(t);
+  return g;
+}
+
+function draw(){
+  let s=steps[currentStep];
+  svg.innerHTML='';
+  // Title
+  let ti=document.createElementNS('http://www.w3.org/2000/svg','text');
+  ti.setAttribute('x',400);ti.setAttribute('y',35);
+  ti.setAttribute('text-anchor','middle');ti.setAttribute('font-size','17');ti.setAttribute('fill','#333');ti.setAttribute('font-weight','bold');
+  ti.textContent='加权有向图 (Weighted Directed Graph)';
+  svg.appendChild(ti);
+
+  // Draw all edges from s.graph
+  let drawnEdges=new Set();
+  for(let u in s.graph){
+    for(let v in s.graph[u]){
+      let key=[u,v].sort().join('-');
+      if(!drawnEdges.has(key)){
+        drawnEdges.add(key);
+        let p1=positions[u],p2=positions[v];
+        let isHL=(s.edgeHL||[]).some(([a,b])=>(a===u&&b===v)||(a===v&&b===u));
+        let color=isHL?'#ff6b00':'#0d6efd';
+        let w=s.graph[u][v];
+        svg.appendChild(edgeLine(p1.x,p1.y,p2.x,p2.y,color,isHL?3.5:2.5,w.toFixed(2)));
+      }
+    }
+  }
+
+  // Draw nodes
+  for(let v of ['a','b','c']){
+    let p=positions[v];
+    let isHL=s.highlight.includes(v);
+    let fill=isHL?'#ff6b00':'#5b9bd5';
+    if(isHL){
+      let hc=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      hc.setAttribute('cx',p.x);hc.setAttribute('cy',p.y);hc.setAttribute('r',36);
+      hc.setAttribute('fill','none');hc.setAttribute('stroke','#ff0');hc.setAttribute('stroke-width',3);
+      svg.appendChild(hc);
+    }
+    svg.appendChild(nodeNode(p.x,p.y,v,fill,'#3a7abd',2.5));
+  }
+
+  // Show path if exists
+  if(s.path&&s.path.length>1){
+    let pathStr=s.path.join(' → ');
+    let pt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    pt.setAttribute('x',400);pt.setAttribute('y',320);
+    pt.setAttribute('text-anchor','middle');pt.setAttribute('font-size','15');pt.setAttribute('fill','#28a745');
+    pt.textContent='路径: '+pathStr;
+    svg.appendChild(pt);
+  }
+  if(s.curVal){
+    let vt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    vt.setAttribute('x',400);vt.setAttribute('y',350);
+    vt.setAttribute('text-anchor','middle');vt.setAttribute('font-size','16');vt.setAttribute('fill','#dc3545');vt.setAttribute('font-weight','bold');
+    vt.textContent='当前累积值: '+s.curVal;
+    svg.appendChild(vt);
+  }
+  if(s.result){
+    let rt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    rt.setAttribute('x',400);rt.setAttribute('y',390);
+    rt.setAttribute('text-anchor','middle');rt.setAttribute('font-size','22');rt.setAttribute('fill','#28a745');rt.setAttribute('font-weight','bold');
+    rt.textContent='答案: a/c = '+s.result;
+    svg.appendChild(rt);
+  }
+
+  // Equations display
+  let eq=document.createElementNS('http://www.w3.org/2000/svg','text');
+  eq.setAttribute('x',400);eq.setAttribute('y',430);
+  eq.setAttribute('text-anchor','middle');eq.setAttribute('font-size','14');eq.setAttribute('fill','#666');
+  eq.textContent='equations: a/b=2.0, b/c=3.0  |  query: a/c = ?';
+  svg.appendChild(eq);
+
+  document.getElementById('stepBadge').textContent=`步骤 ${currentStep+1}/${totalSteps}`;
+  document.getElementById('infoText').textContent=s.info;
+  let btns=document.querySelectorAll('button');
+  btns.forEach(b=>b.disabled=false);
+  if(currentStep===0)document.querySelector('.btn-prev').disabled=true;
+  if(currentStep===totalSteps-1){document.querySelector('.btn-next').disabled=true;document.querySelector('.btn-end').disabled=true;document.querySelector('.btn-auto').disabled=true;}
+}
+
+function nextStep(){if(currentStep<totalSteps-1){currentStep++;draw();}}
+function prevStep(){if(currentStep>0){currentStep--;draw();}}
+function reset(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=0;draw();}
+function jumpEnd(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=totalSteps-1;draw();}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}
+  else{document.getElementById('btnAuto').textContent='⏸ 暂停';autoTimer=setInterval(()=>{if(currentStep<totalSteps-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}},1000);}
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){e.preventDefault();nextStep();}
+  else if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}
+  else if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+draw();
+</script>
+</body>
+</html>

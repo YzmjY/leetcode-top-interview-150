@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>二叉树的层平均值</title>
+<style>
+:root{--bg:#fff;--text:#333;--muted:#888;--btn-bg:#f0f0f0;--btn-hover:#e0e0e0;--sub-bg:#f5f5f5;--cell-border:#d0d0d0;--header:#222}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--text:#ddd;--muted:#aaa;--btn-bg:#333;--btn-hover:#444;--sub-bg:#252540;--cell-border:#444;--header:#ddd}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
+.container{max-width:760px;width:100%}
+h2{text-align:center;color:var(--header);font-size:17px;margin-bottom:4px}
+.info-bar{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:4px;font-size:14px}
+.step-num{font-weight:bold;font-size:22px;color:#1976D2;min-width:36px;text-align:center}
+.step-desc{color:var(--muted);font-size:12px;max-width:550px;text-align:center}
+svg{display:block;margin:0 auto;width:100%;height:340px}
+.controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px}
+button{padding:7px 15px;border:1px solid var(--cell-border);border-radius:6px;background:var(--btn-bg);color:var(--text);font-size:12px;cursor:pointer;transition:0.15s}
+button:hover{background:var(--btn-hover)}
+button:active{transform:scale(0.96)}
+button:disabled{opacity:0.35;cursor:default}
+button.play-btn{background:#1976D2;color:#fff;border-color:#1565C0}
+.avg-row{display:flex;gap:20px;justify-content:center;align-items:center;margin-top:6px;flex-wrap:wrap}
+.avg-item{background:var(--sub-bg);border-radius:8px;padding:8px 16px;text-align:center}
+.avg-item .label{font-size:11px;color:var(--muted)}
+.avg-item .value{font-size:18px;font-weight:bold;color:#1976D2}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>二叉树的层平均值 — 逐层BFS计算均值</h2>
+<div class="info-bar">
+<span class="step-num" id="stepNum">0</span>
+<span class="step-desc" id="stepDesc">树：[3,9,20,null,null,15,7] · 均值 [3, 14.5, 11]</span>
+</div>
+<svg id="treeSvg" viewBox="0 0 720 320"></svg>
+<div class="avg-row" id="avgRow"></div>
+<div class="controls">
+<button onclick="goStep(0)">重置</button>
+<button onclick="goStep(cur-1)" id="prevBtn">上步</button>
+<button onclick="goStep(cur+1)" id="nextBtn">下步</button>
+<button class="play-btn" onclick="toggleAuto()" id="playBtn">自动播放</button>
+<button onclick="goStep(steps.length-1)">跳到最后</button>
+</div>
+</div>
+<script>
+const nodes=[{x:360,y:40,val:3},{x:220,y:140,val:9},{x:500,y:140,val:20},{x:360,y:250,val:15},{x:640,y:250,val:7}];
+const edges=[[0,1],[0,2],[2,3],[2,4]];
+const levels=[[0],[1,2],[3,4]];
+const avgs=[3,14.5,11];
+
+const steps=[
+{desc:'初始状态：树 [3,9,20,null,null,15,7]',hl:[],curLvl:-1,avgs:[]},
+{desc:'第1层 BFS：节点[3]，和=3，计数=1，平均=3.0',hl:[0],curLvl:0,avgs:[3]},
+{desc:'第2层 BFS：节点[9,20]，和=29，计数=2，平均=14.5',hl:[0,1,2],curLvl:1,avgs:[3,14.5]},
+{desc:'第3层 BFS：节点[15,7]，和=22，计数=2，平均=11.0',hl:[0,1,2,3,4],curLvl:2,avgs:[3,14.5,11]},
+{desc:'完成！层平均值 = [3, 14.5, 11]',hl:[0,1,2,3,4],curLvl:-1,avgs:[3,14.5,11]}
+];
+
+let cur=0,autoTimer=null,autoRun=false;
+const svg=document.getElementById('treeSvg');
+
+function render(){
+const s=steps[cur];
+document.getElementById('stepNum').textContent=cur;
+document.getElementById('stepDesc').textContent=(cur===0?'初始状态 · ':'第'+cur+'步 · ')+s.desc;
+document.getElementById('prevBtn').disabled=cur<=0;
+document.getElementById('nextBtn').disabled=cur>=steps.length-1;
+
+let html='<defs><radialGradient id="gBlue"><stop offset="0%" stop-color="#42A5F5"/><stop offset="100%" stop-color="#1976D2"/></radialGradient><radialGradient id="gGr"><stop offset="0%" stop-color="#81C784"/><stop offset="100%" stop-color="#4CAF50"/></radialGradient></defs><rect width="720" height="320" fill="transparent"/>';
+for(const[e of edges]){
+const a=nodes[e[0]],b=nodes[e[1]];
+const visited=s.hl.includes(e[0])&&s.hl.includes(e[1]);
+html+=`<line x1="${a.x}" y1="${a.y+24}" x2="${b.x}" y2="${b.y-24}" stroke="${visited?'#1976D2':'#ccc'}" stroke-width="${visited?2.5:2}"/>`;
+}
+const isComplete=cur===steps.length-1;
+for(let i=0;i<nodes.length;i++){
+const n=nodes[i];const isHL=s.hl.includes(i);
+if(isComplete){
+html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="url(#gGr)" stroke="#2E7D32" stroke-width="3"/>`;
+html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">${n.val}</text>`;
+}else if(isHL){
+html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="url(#gBlue)" stroke="#0D47A1" stroke-width="2.5"/>`;
+html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">${n.val}</text>`;
+}else{
+html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="var(--sub-bg)" stroke="var(--cell-border)" stroke-width="2"/>`;
+html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="var(--text)" font-size="14">${n.val}</text>`;
+}
+}
+svg.innerHTML=html;
+
+// Averages display
+let avgHtml='';
+for(let i=0;i<3;i++){
+const a=avgs[i];
+avgHtml+=`<div class="avg-item"><div class="label">第${i+1}层</div><div class="value" style="color:${s.avgs.includes(a)&&(cur===steps.length-1||s.curLvl===i||s.curLvl>i)?'#1976D2':'var(--muted)'}">${s.avgs.includes(a)?a:'?'}</div></div>`;
+}
+document.getElementById('avgRow').innerHTML=avgHtml;
+}
+
+function goStep(n){cur=Math.max(0,Math.min(n,steps.length-1));render()}
+function toggleAuto(){
+if(autoRun){clearInterval(autoTimer);autoRun=false;document.getElementById('playBtn').textContent='自动播放';}
+else{document.getElementById('playBtn').textContent='暂停';autoRun=true;if(cur>=steps.length-1)goStep(0);
+autoTimer=setInterval(()=>{if(cur<steps.length-1)goStep(cur+1);else toggleAuto()},900);}
+}
+document.addEventListener('keydown',e=>{
+if(e.key==='ArrowRight')goStep(cur+1);if(e.key==='ArrowLeft')goStep(cur-1);
+if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+render();
+</script>
+</body>
+</html>

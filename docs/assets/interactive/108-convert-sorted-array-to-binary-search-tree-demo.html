@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>有序数组转BST - 分治可视化</title>
+<style>
+:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#555;--border:#dee2e6;--accent:#7c3aed;--accent2:#a78bfa;--hover:#ede9fe;--green:#22c55e;--orange:#f59e0b;--blue:#3b82f6;--red:#ef4444;--btn-bg:#e5e7eb;--btn-txt:#374151;--node-bg:#f3e8ff;--node-border:#c4b5fd;--edge:#c4b5fd;--mid-highlight:#fef3c7;--left-bg:#dbeafe;--right-bg:#fce7f3;--root-node:#7c3aed}
+.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--node-bg:#1e1b4b;--node-border:#5b21b6;--edge:#5b21b6;--mid-highlight:#422006;--left-bg:#1e3a5f;--right-bg:#4a1942;--root-node:#a78bfa}
+@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--node-bg:#1e1b4b;--node-border:#5b21b6;--edge:#5b21b6;--mid-highlight:#422006;--left-bg:#1e3a5f;--right-bg:#4a1942;--root-node:#a78bfa}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
+.container{width:100%;max-width:780px;background:var(--card);border-radius:8px;border:1px solid var(--border);padding:20px 24px}
+h2{font-size:1.1rem;font-weight:600;margin-bottom:6px;color:var(--accent)}
+.info-panel{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:.85rem;color:var(--text2);flex-wrap:wrap}
+.info-panel .step{background:var(--accent);color:#fff;padding:3px 10px;border-radius:8px;font-weight:600;font-size:.8rem}
+.info-panel .desc{flex:1;min-width:200px}
+.array-display{display:flex;gap:0;margin-bottom:8px;align-items:stretch;border-radius:8px;overflow:hidden;border:2px solid var(--border);height:40px}
+.array-display .el{flex:1;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;font-family:monospace;background:var(--bg);color:var(--text);border-right:1px solid var(--border);transition:all .2s}
+.array-display .el:last-child{border-right:none}
+.array-display .el.in-range{background:var(--node-bg);color:var(--text)}
+.array-display .el.mid{background:var(--accent);color:#fff}
+.array-display .el.left-range{background:var(--left-bg);color:var(--text)}
+.array-display .el.right-range{background:var(--right-bg);color:var(--text)}
+.vis-area{height:430px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg);position:relative}
+.vis-area canvas{display:block;width:100%;height:100%}
+.controls{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.controls button{background:var(--btn-bg);color:var(--btn-txt);border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:inherit;transition:all .15s}
+.controls button:hover{background:var(--hover);border-color:var(--accent)}
+.controls button:active{transform:scale(.96)}
+.controls button.playing{background:var(--accent);color:#fff;border-color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>108. 将有序数组转换为二叉搜索树</h2>
+<div class="info-panel">
+  <span class="step" id="stepLabel">步骤 1/9</span>
+  <span class="desc" id="stepDesc">初始数组 [-10,-3,0,5,9]</span>
+</div>
+<div class="array-display" id="arrayDisplay"></div>
+<div class="vis-area"><canvas id="canvas"></canvas></div>
+<div class="controls">
+  <button onclick="reset()">重置</button>
+  <button onclick="prevStep()">上步</button>
+  <button onclick="nextStep()">下步</button>
+  <button id="playBtn" onclick="togglePlay()">自动播放</button>
+  <button onclick="jumpEnd()">最后</button>
+</div>
+</div>
+<script>
+const nums=[-10,-3,0,5,9];
+const steps=[];
+function genSteps(l,r){
+  if(l>r){steps.push({type:'empty',l,r});return;}
+  const mid=Math.floor((l+r)/2);
+  steps.push({type:'pick_mid',l,r,mid,val:nums[mid]});
+  genSteps(l,mid-1);
+  genSteps(mid+1,r);
+  steps.push({type:'done',l,r,mid,val:nums[mid]});
+}
+genSteps(0,nums.length-1);
+
+let curStep=0,playId=null;
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+
+function resize(){const r=canvas.getBoundingClientRect();canvas.width=r.width*devicePixelRatio;canvas.height=r.height*devicePixelRatio;ctx.setTransform(1,0,0,1,0,0);ctx.scale(devicePixelRatio,devicePixelRatio);draw();}
+window.addEventListener('resize',resize);
+
+// Build tree nodes from steps up to curStep
+function getTreeNodes(){
+  const nodes=[];
+  const processed=new Set();
+  for(let i=0;i<=curStep;i++){
+    const s=steps[i];
+    if(s.type==='pick_mid'&&!processed.has(s.mid)){
+      nodes.push({val:s.val,idx:s.mid,l:s.l,r:s.r,mid:s.mid,depth:0,x:0,y:0});
+      processed.add(s.mid);
+    }
+  }
+  // compute depth based on parent
+  nodes.sort((a,b)=>a.idx-b.idx);
+  // recompute depth
+  function findDepth(idx){
+    const n=nodes.find(x=>x.idx===idx);
+    if(!n)return 0;
+    const parent=nodes.find(p=>p.l<=idx&&p.r>=idx&&p.mid!==idx);
+    if(!parent||parent.mid===idx)return 0;
+    return 1+findDepth(parent.mid);
+  }
+  nodes.forEach(n=>{n.depth=findDepth(n.mid);});
+  // compute x positions
+  nodes.sort((a,b)=>a.idx-b.idx);
+  const byDepth={};
+  nodes.forEach(n=>{
+    if(!byDepth[n.depth])byDepth[n.depth]=[];
+    byDepth[n.depth].push(n);
+  });
+  Object.values(byDepth).forEach(arr=>{
+    arr.sort((a,b)=>a.idx-b.idx);
+  });
+  return {nodes,byDepth};
+}
+
+function draw(){
+  const w=canvas.width/devicePixelRatio,h=canvas.height/devicePixelRatio;
+  ctx.clearRect(0,0,w,h);
+  const step=steps[curStep];
+  const {nodes,byDepth}=getTreeNodes();
+  if(nodes.length===0)return;
+  const maxDepth=Math.max(...nodes.map(n=>n.depth),0);
+  const levelGap=80;
+  // position nodes
+  const depthKeys=Object.keys(byDepth).map(Number).sort((a,b)=>a-b);
+  depthKeys.forEach(d=>{
+    const arr=byDepth[d];
+    const spacing=w/(arr.length+1);
+    arr.forEach((n,i)=>{
+      n.x=spacing*(i+1);
+      n.y=50+d*levelGap;
+    });
+  });
+  // draw edges
+  depthKeys.forEach(d=>{
+    const parents=byDepth[d]||[];
+    const children=byDepth[d+1]||[];
+    children.forEach(child=>{
+      const parent=parents.find(p=>p.l<=child.idx&&p.r>=child.idx&&p.mid!==child.idx);
+      if(parent){
+        ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--edge').trim();
+        ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(parent.x,parent.y+24);ctx.lineTo(child.x,child.y-24);ctx.stroke();
+      }
+    });
+  });
+  // draw nodes
+  nodes.forEach(n=>{
+    const r=22;
+    const isCur=(step.type==='pick_mid'||step.type==='done')&&step.mid===n.mid;
+    if(isCur){
+      ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+      ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent2').trim();ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(n.x,n.y,r+3,0,Math.PI*2);ctx.stroke();
+    }else{
+      ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--node-bg').trim();
+      ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--node-border').trim();
+      ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fill();ctx.lineWidth=2;ctx.stroke();
+    }
+    ctx.fillStyle='#fff';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(n.val,n.x,n.y);
+  });
+  // range label
+  if(step.type==='pick_mid'){
+    ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+    ctx.font='bold 12px system-ui';ctx.textAlign='center';
+    ctx.fillText('区间 ['+step.l+','+step.r+'] 中点='+step.mid+' 值='+nums[step.mid],w/2,h-15);
+  }
+}
+
+function renderArray(step){
+  const el=document.getElementById('arrayDisplay');
+  el.innerHTML='';
+  const l=(step&&step.l!==undefined)?step.l:-1;
+  const r=(step&&step.r!==undefined)?step.r:-1;
+  const mid=(step&&step.mid!==undefined)?step.mid:-1;
+  for(let i=0;i<nums.length;i++){
+    const div=document.createElement('div');
+    div.className='el';
+    div.textContent=nums[i];
+    if(i===mid&&(step.type==='pick_mid'||step.type==='done'))div.classList.add('mid');
+    else if(i>=l&&i<=r&&i<mid)div.classList.add('left-range');
+    else if(i>=l&&i<=r&&i>mid)div.classList.add('right-range');
+    else if(i>=l&&i<=r)div.classList.add('in-range');
+    el.appendChild(div);
+  }
+}
+
+function updateUI(){
+  const step=steps[curStep];
+  document.getElementById('stepLabel').textContent='步骤 '+(curStep+1)+'/'+steps.length;
+  let desc='';
+  if(step.type==='pick_mid')desc='选取中点: 区间['+step.l+','+step.r+'], mid='+step.mid+'(值='+nums[step.mid]+')';
+  else if(step.type==='done')desc='子树完成: 根值='+nums[step.mid]+' 区间['+step.l+','+step.r+']';
+  else if(step.type==='empty')desc='空区间 ['+step.l+','+step.r+'], 返回null';
+  else desc='开始构建BST';
+  document.getElementById('stepDesc').textContent=desc;
+  renderArray(step);
+  resize();
+}
+function reset(){curStep=0;stopPlay();updateUI();}
+function nextStep(){if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();}
+function prevStep(){if(curStep>0){curStep--;updateUI();}}
+function jumpEnd(){curStep=steps.length-1;stopPlay();updateUI();}
+function stopPlay(){if(playId){clearInterval(playId);playId=null;document.getElementById('playBtn').classList.remove('playing');document.getElementById('playBtn').textContent='自动播放';}}
+function togglePlay(){if(playId){stopPlay();return;}if(curStep>=steps.length-1)curStep=0;document.getElementById('playBtn').classList.add('playing');document.getElementById('playBtn').textContent='暂停';playId=setInterval(()=>{if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();},700);}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}else if(e.key==='ArrowRight'){e.preventDefault();nextStep();}else if(e.key===' '){e.preventDefault();togglePlay();}});
+updateUI();
+</script>
+</body>
+</html>

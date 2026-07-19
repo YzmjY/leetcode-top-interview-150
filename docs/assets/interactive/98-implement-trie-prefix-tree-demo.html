@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>98. 实现Trie - Implement Trie (Prefix Tree)</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.container{background:#fff;border-radius:8px;padding:20px;width:820px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+h2{font-size:16px;margin-bottom:12px;color:#333}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+button{border:none;border-radius:8px;padding:8px 16px;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s;color:#fff;font-weight:500}
+button:disabled{opacity:.4;cursor:not-allowed}
+.btn-reset{background:#6c757d}
+.btn-prev{background:#0d6efd}
+.btn-next{background:#0d6efd}
+.btn-auto{background:#198754}
+.btn-end{background:#dc3545}
+button:hover:not(:disabled){filter:brightness(1.15)}
+.info-panel{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:#555;background:#f0f4f8;border-radius:8px;padding:10px 14px}
+.step-badge{background:#0d6efd;color:#fff;border-radius:20px;padding:2px 12px;font-weight:600;font-size:12px}
+.info-text{flex:1;margin-left:12px}
+.vis-area{background:#fafafa;border-radius:8px;position:relative;height:500px;overflow:hidden;border:1px solid #e0e0e0}
+svg{width:100%;height:100%}
+.hint{font-size:12px;color:#999;text-align:center;margin-top:8px}
+@media(prefers-color-scheme:dark){
+body{background:#1a1a2e}
+.container{background:#16213e;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+h2{color:#e0e0e0}
+.info-panel{background:#1a1a3e;color:#ccc}
+.vis-area{background:#0f0f23;border-color:#2a2a4a}
+.hint{color:#777}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>98. 实现 Trie (前缀树) — 插入"apple","app" → 搜索演示</h2>
+<div class="controls">
+<button class="btn-reset" onclick="reset()">⟳ 重置</button>
+<button class="btn-prev" onclick="prevStep()">◀ 上步</button>
+<button class="btn-next" onclick="nextStep()">下步 ▶</button>
+<button class="btn-auto" id="btnAuto" onclick="toggleAuto()">▶ 自动播放</button>
+<button class="btn-end" onclick="jumpEnd()">▶▶ 跳到最后</button>
+</div>
+<div class="info-panel">
+<span class="step-badge" id="stepBadge">步骤 1/10</span>
+<span class="info-text" id="infoText">初始空Trie (只有根节点)</span>
+</div>
+<div class="vis-area"><svg id="svg" viewBox="0 0 820 500"></svg></div>
+<div class="hint">键盘: ← → 切换步骤 | 空格 自动播放</div>
+</div>
+<script>
+// Build the trie
+let trieNodes=[];
+let nodeId=0;
+function newNode(char,depth,parent){
+  let id=nodeId++;
+  trieNodes[id]={id,char,depth,parent,children:{},isWord:false};
+  return id;
+}
+let root=newNode('root',0,-1);
+trieNodes[root].isWord=false;
+
+function insert(word){
+  let node=root;
+  let path=[root];
+  for(let ch of word){
+    if(!trieNodes[node].children[ch]){
+      let child=newNode(ch,trieNodes[node].depth+1,node);
+      trieNodes[node].children[ch]=child;
+      node=child;
+    }else{
+      node=trieNodes[node].children[ch];
+    }
+    path.push(node);
+  }
+  trieNodes[node].isWord=true;
+  return path;
+}
+
+function searchPrefix(prefix){
+  let node=root,path=[root];
+  for(let ch of prefix){
+    if(!trieNodes[node].children[ch])return null;
+    node=trieNodes[node].children[ch];
+    path.push(node);
+  }
+  return {node,path};
+}
+
+let steps=[],currentStep=0,totalSteps=0,autoTimer=null;
+
+function buildSteps(){
+  steps=[];
+  // Reset
+  trieNodes=[];nodeId=0;
+  root=newNode('root',0,-1);
+  trieNodes[root].isWord=false;
+
+  steps.push({info:'初始状态: 空Trie, 只有根节点 (Root)',hlNodes:[root],hlEdges:[],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'init'});
+
+  // Insert "apple"
+  let path1=insert('apple');
+  for(let i=1;i<path1.length;i++){
+    let p=path1[i];
+    let ch=trieNodes[p].char;
+    let prefix='apple'.substring(0,i);
+    let extra=path1.length-1===i?' (标记为单词结尾 ✓)':'';
+    steps.push({info:`插入"apple": 创建节点 '${ch}' 前缀"${prefix}"${extra}`,hlNodes:[p],hlEdges:[[path1[i-1],p]],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'insert'});
+  }
+
+  // Insert "app" - reuse existing nodes
+  let path2=insert('app');
+  let reused=true;
+  for(let i=1;i<path2.length;i++){
+    let isReused=trieNodes[path2[i]].isWord||i<path2.length-1;
+    let ch='app'[i-1];
+    if(i===path2.length){
+      steps.push({info:'插入"app": 复用已有路径 a-p-p, 在p标记为单词结尾',hlNodes:[path2[i-1]],hlEdges:[[path2[i-2],path2[i-1]]],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'reuse'});
+    }
+  }
+  steps.push({info:'插入"app"完成: a-p-p全部复用, 在第2个p标记为单词结尾',hlNodes:[path2[path2.length-1]],hlEdges:[],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'doneInsert'});
+
+  // Search "app" -> true
+  let sr=searchPrefix('app');
+  steps.push({info:'搜索"app": 沿Trie走 a→p→p, 找到且isWord=true → true',hlNodes:sr.path,hlEdges:[],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'search',searchResult:true});
+
+  // Search "apple" -> true
+  let sr2=searchPrefix('apple');
+  steps.push({info:'搜索"apple": 沿Trie走 a→p→p→l→e, isWord=true → true',hlNodes:sr2.path,hlEdges:[],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'search',searchResult:true});
+
+  // Prefix "ap" -> true
+  let sr3=searchPrefix('ap');
+  steps.push({info:'前缀查询"ap": 沿Trie走 a→p, 路径存在 → true (前缀匹配)',hlNodes:sr3.path,hlEdges:[],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'prefix',searchResult:'prefix'});
+
+  // Search "appl" -> false
+  let sr4=searchPrefix('appl');
+  if(sr4&&sr4.path.length===4){
+    steps.push({info:'搜索"appl": 沿Trie走 a→p→p→l, 找到但isWord=false → false',hlNodes:sr4.path,hlEdges:[],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'search',searchResult:false});
+  }else{
+    steps.push({info:'搜索"appl": 走到l但无此节点 / isWord=false → false',hlNodes:[],hlEdges:[],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'search',searchResult:false});
+  }
+
+  steps.push({info:'Trie总结: 根到叶路径=完整单词, 内部节点标记=单词结尾',hlNodes:[],hlEdges:[],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'done'});
+}
+buildSteps();totalSteps=steps.length;
+
+const svg=document.getElementById('svg');
+
+// Layout trie nodes
+function layoutTrie(ts){
+  // Collect nodes and position them
+  let levels={};
+  for(let id in ts){
+    let n=ts[id];
+    if(!levels[n.depth])levels[n.depth]=[];
+    levels[n.depth].push(n);
+  }
+  let positions={};
+  let maxDepth=Math.max(...Object.keys(levels).map(Number));
+  for(let d in levels){
+    let nodes=levels[d];
+    let y=60+d*70;
+    for(let i=0;i<nodes.length;i++){
+      let x=60+i*90+((maxDepth-d)*20);
+      positions[nodes[i].id]={x,y};
+    }
+  }
+  return positions;
+}
+
+function draw(){
+  let s=steps[currentStep];
+  let ts=s.treeSnapshot;
+  svg.innerHTML='';
+
+  let pos=layoutTrie(ts);
+
+  // Draw edges
+  for(let id in ts){
+    let n=ts[id];
+    if(n.parent>=0){
+      let pe=pos[n.parent],ce=pos[n.id];
+      let l=document.createElementNS('http://www.w3.org/2000/svg','line');
+      l.setAttribute('x1',pe.x);l.setAttribute('y1',pe.y+24);
+      l.setAttribute('x2',ce.x);l.setAttribute('y2',ce.y-24);
+      l.setAttribute('stroke',(s.hlEdges||[]).some(([a,b])=>a===n.parent&&b===n.id)?'#28a745':'#ccc');
+      l.setAttribute('stroke-width',2);
+      svg.appendChild(l);
+
+      // Char label on edge
+      let ll=document.createElementNS('http://www.w3.org/2000/svg','text');
+      ll.setAttribute('x',(pe.x+ce.x)/2);ll.setAttribute('y',(pe.y+ce.y)/2-3);
+      ll.setAttribute('text-anchor','middle');ll.setAttribute('font-size','14');
+      ll.setAttribute('font-family','monospace');ll.setAttribute('fill','#666');
+      ll.textContent=n.char;
+      svg.appendChild(ll);
+    }
+  }
+
+  // Draw nodes
+  for(let id in ts){
+    let n=ts[id];
+    let p=pos[n.id];
+    let isHL=(s.hlNodes||[]).includes(Number(id));
+
+    let c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',p.x);c.setAttribute('cy',p.y);c.setAttribute('r',22);
+    c.setAttribute('fill',isHL?'#ff6b00':(n.isWord?'#28a745':'#5b9bd5'));
+    c.setAttribute('stroke',isHL?'#ff0':'#999');c.setAttribute('stroke-width',isHL?3:2);
+    svg.appendChild(c);
+
+    let t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',p.x);t.setAttribute('y',p.y+5);
+    t.setAttribute('text-anchor','middle');t.setAttribute('font-size','14');
+    t.setAttribute('font-family','monospace');t.setAttribute('font-weight','bold');
+    t.setAttribute('fill','#fff');
+    t.textContent=n.char==='root'?'R':n.char;
+    svg.appendChild(t);
+
+    if(n.isWord){
+      let w=document.createElementNS('http://www.w3.org/2000/svg','text');
+      w.setAttribute('x',p.x);w.setAttribute('y',p.y+36);
+      w.setAttribute('text-anchor','middle');w.setAttribute('font-size','11');
+      w.setAttribute('fill','#28a745');w.setAttribute('font-weight','bold');
+      w.textContent='END';
+      svg.appendChild(w);
+    }
+  }
+
+  // Result display
+  let rx=520,ry=20;
+  if(s.searchResult!==undefined){
+    let rt=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rt.setAttribute('x',rx);rt.setAttribute('y',ry);rt.setAttribute('width',260);rt.setAttribute('height',40);
+    rt.setAttribute('rx',8);rt.setAttribute('fill',s.searchResult?'#d4edda':'#f8d7da');
+    svg.appendChild(rt);
+    let rtx=document.createElementNS('http://www.w3.org/2000/svg','text');
+    rtx.setAttribute('x',rx+130);rtx.setAttribute('y',ry+25);
+    rtx.setAttribute('text-anchor','middle');rtx.setAttribute('font-size','15');
+    rtx.setAttribute('fill',s.searchResult?'#155724':'#721c24');rtx.setAttribute('font-weight','bold');
+    rtx.textContent='结果: '+(s.searchResult===true?'true':s.searchResult===false?'false':s.searchResult);
+    svg.appendChild(rtx);
+  }
+
+  // Legend
+  let ly=250;
+  let items=[
+    {color:'#5b9bd5',txt:'普通节点'},
+    {color:'#28a745',txt:'单词结尾(isWord)'},
+    {color:'#ff6b00',txt:'当前搜索路径'},
+  ];
+  items.forEach((it,k)=>{
+    let lc=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    lc.setAttribute('cx',rx+10);lc.setAttribute('cy',ly+k*30);lc.setAttribute('r',8);
+    lc.setAttribute('fill',it.color);
+    svg.appendChild(lc);
+    let lt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    lt.setAttribute('x',rx+24);lt.setAttribute('y',ly+k*30+4);
+    lt.setAttribute('font-size','13');lt.setAttribute('fill','#333');
+    lt.textContent=it.txt;
+    svg.appendChild(lt);
+  });
+
+  document.getElementById('stepBadge').textContent=`步骤 ${currentStep+1}/${totalSteps}`;
+  document.getElementById('infoText').textContent=s.info;
+  let btns=document.querySelectorAll('button');
+  btns.forEach(b=>b.disabled=false);
+  if(currentStep===0)document.querySelector('.btn-prev').disabled=true;
+  if(currentStep===totalSteps-1){document.querySelector('.btn-next').disabled=true;document.querySelector('.btn-end').disabled=true;document.querySelector('.btn-auto').disabled=true;}
+}
+
+function nextStep(){if(currentStep<totalSteps-1){currentStep++;draw();}}
+function prevStep(){if(currentStep>0){currentStep--;draw();}}
+function reset(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}buildSteps();totalSteps=steps.length;currentStep=0;draw();}
+function jumpEnd(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=totalSteps-1;draw();}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}
+  else{document.getElementById('btnAuto').textContent='⏸ 暂停';autoTimer=setInterval(()=>{if(currentStep<totalSteps-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}},900);}
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){e.preventDefault();nextStep();}
+  else if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}
+  else if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+draw();
+</script>
+</body>
+</html>

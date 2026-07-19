@@ -60,6 +60,17 @@
 - 只需要反转一半，避免溢出问题。
 - 注意奇数位和偶数位的不同比较方式。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/131-palindrome-number-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="回文数 (Palindrome Number) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

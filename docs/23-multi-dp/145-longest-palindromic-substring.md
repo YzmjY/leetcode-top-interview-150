@@ -60,6 +60,17 @@
 - 中心扩展法更实用，不需要额外空间。
 - DP 方法更直观地展示区间 DP 的思想，但空间开销大。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/145-longest-palindromic-substring-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="最长回文子串 (Longest Palindromic Substring) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

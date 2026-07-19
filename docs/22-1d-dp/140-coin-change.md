@@ -63,6 +63,17 @@
 - 这是"完全背包"问题的变种，物品（硬币）可以无限使用。
 - 注意无法凑出时的返回值。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/140-coin-change-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="零钱兑换 (Coin Change) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

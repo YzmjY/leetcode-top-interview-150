@@ -48,6 +48,17 @@
 - **时间复杂度**：O(n)，每个节点入队出队各一次。
 - **空间复杂度**：O(n)，队列中最多存储约 n/2 个节点（最底层）。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/84-binary-tree-level-order-traversal-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="二叉树的层序遍历 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

@@ -64,6 +64,17 @@
 - 右边界 = upperBound(target) - 1 = lowerBound(target + 1) - 1。
 - 需要验证找到的边界是否有效（值是否等于 target）。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/118-find-first-and-last-position-of-element-in-sorted-array-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="在排序数组中查找元素的第一个和最后一个位置 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

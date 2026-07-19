@@ -56,6 +56,17 @@
 - 注意重复点的情况（本题保证点互不相同，但 LeetCode 原题可能有重复点）。
 - 使用 GCD 化简分数。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/136-max-points-on-a-line-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="直线上最多的点数 (Max Points on a Line) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

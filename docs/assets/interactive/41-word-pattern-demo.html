@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222; --sub-bg: #f5f5f5;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --p-color: #1976D2; --w-color: #E53935;
+    --ok-color: #388E3C;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 16px 20px;
+  }
+  .container { max-width: 840px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
+  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
+    font-size: 14px; flex-wrap: wrap;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
+
+  .rows { display: flex; flex-direction: column; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .row-label { font-size: 12px; font-weight: bold; width: 70px; text-align: right; }
+  .item-cells { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+  .icell {
+    min-width: 52px; height: 48px; border: 2px solid var(--cell-border); border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: bold; background: var(--cell-bg); color: var(--text);
+    transition: border-color 0.25s, background 0.25s, transform 0.15s;
+  }
+  .icell .iidx { font-size: 9px; color: var(--muted); }
+  .icell.hlp { border-color: var(--p-color); background: rgba(25,118,210,0.12); transform: scale(1.06); z-index: 2; }
+  .icell.hlw { border-color: var(--w-color); background: rgba(229,57,53,0.12); transform: scale(1.06); z-index: 2; }
+  .icell.matched { border-color: var(--ok-color); background: rgba(56,142,60,0.12); }
+
+  .map-panel {
+    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
+    margin-bottom: 6px; text-align: center; font-size: 13px;
+  }
+  .map-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  .map-entry {
+    padding: 4px 10px; border: 2px solid var(--cell-border); border-radius: 8px;
+    font-size: 14px; font-weight: bold; background: var(--cell-bg);
+    font-family: monospace;
+  }
+  .map-entry.hl { border-color: var(--p-color); background: rgba(25,118,210,0.12); }
+
+  .result-row {
+    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
+    margin-bottom: 6px; font-size: 13px; text-align: center;
+  }
+  .result-row .highlight { font-weight: bold; font-size: 15px; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>单词规律 — Pattern 映射演示</h2>
+  <div class="sub-title">pattern="abba", s="dog cat cat dog" &rarr; 检查 pattern 字符到单词的双向映射</div>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
+  </div>
+
+  <div class="rows">
+    <div class="row">
+      <span class="row-label" style="color:var(--p-color)">pattern:</span>
+      <div class="item-cells" id="pCells"></div>
+    </div>
+    <div class="row">
+      <span class="row-label" style="color:var(--w-color)">words:</span>
+      <div class="item-cells" id="wCells"></div>
+    </div>
+  </div>
+
+  <div class="map-panel">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">映射表</div>
+    <div class="map-row" id="mapRow"><span style="color:var(--muted);font-size:12px;">{}</span></div>
+  </div>
+
+  <div class="result-row">
+    <span style="color:var(--muted)">判定: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">&#x23EE; 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
+    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
+  </div>
+</div>
+
+<script>
+const pattern = 'abba';
+const words = ['dog', 'cat', 'cat', 'dog'];
+const n = 4;
+
+const steps = [];
+
+function simulate() {
+  const p2w = {}, w2p = {};
+
+  steps.push({
+    desc: '初始状态 · pattern="abba", s="dog cat cat dog"',
+    phase: 'init', idx: -1,
+    p2w: {}, w2p: {}, pHL: [], wHL: [],
+    result: 'init'
+  });
+
+  for (let i = 0; i < n; i++) {
+    const pc = pattern[i], wd = words[i];
+    steps.push({
+      desc: '第' + i + '步: pattern[' + i + ']=' + pc + ', word[' + i + ']=' + wd,
+      phase: 'check', idx: i,
+      p2w: {...p2w}, w2p: {...w2p},
+      pHL: [[i, 'p']], wHL: [[i, 'w']],
+      result: 'checking'
+    });
+
+    if (p2w[pc] !== undefined && p2w[pc] !== wd) {
+      steps.push({
+        desc: '冲突! ' + pc + '→' + p2w[pc] + ' 已有映射, 现在要映射到 ' + wd + ' &rarr; false',
+        phase: 'fail', idx: i,
+        p2w: {...p2w}, w2p: {...w2p},
+        pHL: [[i, 'p']], wHL: [[i, 'w']],
+        result: 'fail'
+      });
+      return;
+    }
+    if (w2p[wd] !== undefined && w2p[wd] !== pc) {
+      steps.push({
+        desc: '冲突! ' + wd + '→' + w2p[wd] + ' 已有映射, 现在要映射到 ' + pc + ' &rarr; false',
+        phase: 'fail', idx: i,
+        p2w: {...p2w}, w2p: {...w2p},
+        pHL: [[i, 'p']], wHL: [[i, 'w']],
+        result: 'fail'
+      });
+      return;
+    }
+
+    if (p2w[pc] === undefined) {
+      p2w[pc] = wd;
+      w2p[wd] = pc;
+      steps.push({
+        desc: '新映射: ' + pc + '→' + wd + ' (双向)',
+        phase: 'mapped', idx: i,
+        p2w: {...p2w}, w2p: {...w2p},
+        pHL: [[i, 'matched']], wHL: [[i, 'matched']],
+        result: 'checking'
+      });
+    } else {
+      steps.push({
+        desc: '映射一致: ' + pc + '→' + wd + ' 与已有映射匹配!',
+        phase: 'mapped', idx: i,
+        p2w: {...p2w}, w2p: {...w2p},
+        pHL: [[i, 'matched']], wHL: [[i, 'matched']],
+        result: 'checking'
+      });
+    }
+  }
+
+  steps.push({
+    desc: '所有位置检查完毕! pattern 与 s 符合单词规律.',
+    phase: 'done', idx: -1,
+    p2w: {...p2w}, w2p: {...w2p},
+    pHL: [[0,'matched'],[1,'matched'],[2,'matched'],[3,'matched']],
+    wHL: [[0,'matched'],[1,'matched'],[2,'matched'],[3,'matched']],
+    result: 'success'
+  });
+}
+
+simulate();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+const pEl = document.getElementById('pCells');
+pattern.split('').forEach((ch, i) => {
+  const cell = document.createElement('div');
+  cell.className = 'icell';
+  cell.id = 'pc' + i;
+  cell.innerHTML = ch + '<span class="iidx">[' + i + ']</span>';
+  pEl.appendChild(cell);
+});
+const wEl = document.getElementById('wCells');
+words.forEach((wd, i) => {
+  const cell = document.createElement('div');
+  cell.className = 'icell';
+  cell.id = 'wc' + i;
+  cell.innerHTML = wd + '<span class="iidx">[' + i + ']</span>';
+  wEl.appendChild(cell);
+});
+
+function render() {
+  const s = steps[current];
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = s.desc;
+
+  // Map display
+  const mapRow = document.getElementById('mapRow');
+  mapRow.innerHTML = '';
+  const entries = Object.entries(s.p2w);
+  if (entries.length === 0) {
+    mapRow.innerHTML = '<span style="color:var(--muted);font-size:12px;">{}</span>';
+  } else {
+    entries.forEach(([k, v]) => {
+      const el = document.createElement('span');
+      el.className = 'map-entry';
+      el.textContent = k + '→' + v;
+      mapRow.appendChild(el);
+    });
+  }
+
+  for (let i = 0; i < n; i++) {
+    document.getElementById('pc' + i).className = 'icell';
+    document.getElementById('wc' + i).className = 'icell';
+  }
+  if (s.pHL) s.pHL.forEach(([i, t]) => {
+    document.getElementById('pc' + i).className = 'icell ' + (t === 'p' ? 'hlp' : 'matched');
+  });
+  if (s.wHL) s.wHL.forEach(([i, t]) => {
+    document.getElementById('wc' + i).className = 'icell ' + (t === 'w' ? 'hlw' : 'matched');
+  });
+
+  const rt = document.getElementById('resultText');
+  if (s.result === 'success') { rt.textContent = 'true - 符合规律!'; rt.style.color = '#388E3C'; }
+  else if (s.result === 'fail') { rt.textContent = 'false - 不符合!'; rt.style.color = '#E53935'; }
+  else if (s.result === 'init') { rt.textContent = '进行中...'; rt.style.color = '#1976D2'; }
+  else { rt.textContent = '检查中...'; rt.style.color = '#1976D2'; }
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer); autoRunning = false;
+    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
+    document.getElementById('playBtn').style.background = '';
+    document.getElementById('playBtn').style.color = '';
+    document.getElementById('playBtn').classList.remove('play-btn');
+  } else {
+    autoRunning = true;
+    document.getElementById('playBtn').textContent = '\u23F8 暂停';
+    document.getElementById('playBtn').style.background = '#1976D2';
+    document.getElementById('playBtn').style.color = '#fff';
+    document.getElementById('playBtn').classList.add('play-btn');
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(function() {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 1000);
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

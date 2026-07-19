@@ -55,6 +55,17 @@
 - 注意结果必须处理完整的 32 位，即使高位为 0 也要保留。
 - 循环次数固定为 32，不能因为 `n` 变为 0 就提前终止。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/126-reverse-bits-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="颠倒二进制位 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

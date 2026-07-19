@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>60. 随机链表的复制 - 可视化演示</title>
+<style>
+:root {
+  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
+  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
+  --btn-active-text: #fff; --node-bg: #e9ecef;
+  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
+  --step-bg: #e7f5ff;
+}
+@media (prefers-color-scheme: dark) {
+:root {
+  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
+  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
+  --btn-active-text: #fff; --node-bg: #2a2a4a; --step-bg: #1a2a3a;
+}
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text);
+  display: flex; justify-content: center; padding: 20px;
+}
+.container {
+  width: 100%; max-width: 950px; height: 500px;
+  background: var(--card-bg); border-radius: 8px;
+  border: 1px solid var(--border); padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.step-panel {
+  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
+  display: flex; justify-content: space-between; align-items: center; font-size: 14px;
+}
+.step-num { font-weight: 700; color: var(--btn-active); }
+.step-desc { flex: 1; margin-left: 16px; }
+.svg-area { flex: 1; display: flex; justify-content: center; align-items: center; }
+.controls {
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+}
+.controls button {
+  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--btn-bg); color: var(--text); cursor: pointer;
+  font-size: 13px; font-family: inherit; transition: all 0.15s;
+}
+.controls button:hover { background: var(--btn-hover); }
+.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="step-panel">
+    <span class="step-num" id="stepNum">步骤 0 / 0</span>
+    <span class="step-desc" id="stepDesc">初始状态</span>
+  </div>
+  <div class="svg-area"><svg id="svg" viewBox="0 0 900 300"></svg></div>
+  <div class="controls">
+    <button onclick="reset()">重置</button>
+    <button onclick="prevStep()">上步</button>
+    <button onclick="nextStep()">下步</button>
+    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
+    <button onclick="goEnd()">跳到最后</button>
+  </div>
+</div>
+<script>
+// Nodes with [val, next, random]
+// 7 -> 13 -> 11 -> 10 -> 1 -> null
+// random: 7->null, 13->7, 11->1, 10->11, 1->7
+const nodeData = [
+  { val: 7, random: null },
+  { val: 13, random: 0 },
+  { val: 11, random: 4 },
+  { val: 10, random: 2 },
+  { val: 1, random: 0 },
+];
+const posOrig = [{x:50,y:80},{x:200,y:80},{x:350,y:80},{x:500,y:80},{x:650,y:80}];
+const posCopy = [{x:50,y:220},{x:200,y:220},{x:350,y:220},{x:500,y:220},{x:650,y:220}];
+const R = 22;
+
+const steps = [];
+let stepIdx = -1;
+
+function buildSteps() {
+  steps.length = 0;
+  steps.push({ phase: 0, desc: '初始状态：原链表，每个节点有 val、next、random 指针', copyVisible: false });
+
+  // Phase 1: interleave copies
+  steps.push({ phase: 1, hl: 0, desc: '第1步：创建拷贝节点7\'，插入原节点7之后', copyVisible: true, hli: 0 });
+  steps.push({ phase: 1, hl: 1, desc: '第2步：创建拷贝节点13\'，插入原节点13之后', copyVisible: true, hli: 1 });
+  steps.push({ phase: 1, hl: 2, desc: '第3步：创建拷贝节点11\'，插入原节点11之后', copyVisible: true, hli: 2 });
+  steps.push({ phase: 1, hl: 3, desc: '第4步：创建拷贝节点10\'，插入原节点10之后', copyVisible: true, hli: 3 });
+  steps.push({ phase: 1, hl: 4, desc: '第5步：创建拷贝节点1\'，插入原节点1之后', copyVisible: true, hli: 4 });
+
+  // Phase 2: set random pointers
+  steps.push({ phase: 2, hl: 0, desc: '第6步：设置7\'的random (原7.random=null)', hli: 0 });
+  steps.push({ phase: 2, hl: 1, desc: '第7步：设置13\'的random (原13.random指向7→13\'.random指向7\')', hli: 1, rarc: {from:1,to:0}});
+  steps.push({ phase: 2, hl: 2, desc: '第8步：设置11\'的random (原11.random指向1→11\'.random指向1\')', hli: 2, rarc: {from:2,to:4}});
+  steps.push({ phase: 2, hl: 3, desc: '第9步：设置10\'的random (原10.random指向11→10\'.random指向11\')', hli: 3, rarc: {from:3,to:2}});
+  steps.push({ phase: 2, hl: 4, desc: '第10步：设置1\'的random (原1.random指向7→1\'.random指向7\')', hli: 4, rarc: {from:4,to:0}});
+
+  // Phase 3: separate
+  steps.push({ phase: 3, desc: '完成！分离交错链表，得到深拷贝链表' });
+}
+
+function renderSVG() {
+  const st = steps[Math.min(stepIdx, steps.length - 1)];
+  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
+  document.getElementById('stepDesc').textContent = st.desc;
+
+  const svg = document.getElementById('svg');
+  let html = `<defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="var(--text-secondary)"/>
+    </marker>
+    <marker id="arrowR" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="var(--red)"/>
+    </marker>
+  </defs>`;
+
+  html += `<text x="20" y="75" font-size="13" font-weight="700" fill="var(--blue)">原链表</text>`;
+  if (st.copyVisible) html += `<text x="20" y="215" font-size="13" font-weight="700" fill="var(--green)">拷贝链表</text>`;
+
+  // Draw original nodes
+  for (let i = 0; i < nodeData.length; i++) {
+    const n = nodeData[i];
+    const hl = st.hl === i;
+    html += `<circle cx="${posOrig[i].x}" cy="${posOrig[i].y}" r="${R}" fill="${hl ? 'rgba(34,139,230,0.2)' : 'var(--node-bg)'}" stroke="${hl ? 'var(--blue)' : 'var(--blue)'}" stroke-width="2"/>
+      <text x="${posOrig[i].x}" y="${posOrig[i].y + 5}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--text)" font-family="Consolas,monospace">${n.val}</text>`;
+    // next arrows
+    if (i < nodeData.length - 1) {
+      html += `<line x1="${posOrig[i].x+R}" y1="${posOrig[i].y}" x2="${posOrig[i+1].x-R}" y2="${posOrig[i+1].y}" stroke="var(--blue)" stroke-width="2" marker-end="url(#arrow)"/>`;
+    }
+    // random arcs
+    if (n.random !== null) {
+      const ri = n.random;
+      const yOff = i === ri ? -50 : -30;
+      html += `<path d="M${posOrig[i].x},${posOrig[i].y - R} Q${posOrig[i].x},${posOrig[i].y + yOff} ${posOrig[ri].x},${posOrig[ri].y - R}" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowR)"/>`;
+    }
+  }
+
+  // Draw copy nodes if visible
+  if (st.copyVisible) {
+    for (let i = 0; i < nodeData.length; i++) {
+      const n = nodeData[i];
+      const hl = st.hli === i;
+      html += `<circle cx="${posCopy[i].x}" cy="${posCopy[i].y}" r="${R}" fill="${hl ? 'rgba(64,192,87,0.2)' : 'var(--node-bg)'}" stroke="${hl ? 'var(--green)' : 'var(--green)'}" stroke-width="2"/>
+        <text x="${posCopy[i].x}" y="${posCopy[i].y + 5}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--text)" font-family="Consolas,monospace">${n.val}'</text>`;
+      if (i < nodeData.length - 1) {
+        html += `<line x1="${posCopy[i].x+R}" y1="${posCopy[i].y}" x2="${posCopy[i+1].x-R}" y2="${posCopy[i+1].y}" stroke="var(--green)" stroke-width="2" marker-end="url(#arrow)"/>`;
+      }
+      // show random if phase >= 2 and random is set
+      if (st.phase >= 2 && n.random !== null) {
+        const ri = n.random;
+        html += `<path d="M${posCopy[i].x},${posCopy[i].y - R} Q${posCopy[i].x},${posCopy[i].y - 35} ${posCopy[ri].x},${posCopy[ri].y - R}" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowR)"/>`;
+      }
+      // also show arc being set
+      if (st.rarc && st.rarc.from === i) {
+        const ri = st.rarc.to;
+        html += `<path d="M${posCopy[i].x},${posCopy[i].y - R} Q${posCopy[i].x},${posCopy[i].y - 35} ${posCopy[ri].x},${posCopy[ri].y - R}" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-dasharray="5,3" marker-end="url(#arrowR)"/>`;
+      }
+    }
+  }
+
+  svg.innerHTML = html;
+  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
+}
+
+function reset() { stopAuto(); stepIdx = 0; renderSVG(); }
+function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; renderSVG(); }
+function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; renderSVG(); }
+function goEnd() { stopAuto(); stepIdx = steps.length - 1; renderSVG(); }
+
+let autoRunning = false, autoTimer = null;
+function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
+function startAuto() { autoRunning = true; renderSVG(); autoStep(); }
+function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); renderSVG(); }
+function autoStep() {
+  if (!autoRunning) return;
+  if (stepIdx < steps.length - 1) { stepIdx++; renderSVG(); autoTimer = setTimeout(autoStep, 900); }
+  else stopAuto();
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') nextStep();
+  else if (e.key === 'ArrowLeft') prevStep();
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+buildSteps();
+reset();
+</script>
+</body>
+</html>

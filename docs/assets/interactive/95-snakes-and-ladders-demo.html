@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>95. 蛇梯棋 - Snakes and Ladders</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.container{background:#fff;border-radius:8px;padding:20px;width:760px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+h2{font-size:16px;margin-bottom:12px;color:#333}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+button{border:none;border-radius:8px;padding:8px 16px;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s;color:#fff;font-weight:500}
+button:disabled{opacity:.4;cursor:not-allowed}
+.btn-reset{background:#6c757d}
+.btn-prev{background:#0d6efd}
+.btn-next{background:#0d6efd}
+.btn-auto{background:#198754}
+.btn-end{background:#dc3545}
+button:hover:not(:disabled){filter:brightness(1.15)}
+.info-panel{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:#555;background:#f0f4f8;border-radius:8px;padding:10px 14px}
+.step-badge{background:#0d6efd;color:#fff;border-radius:20px;padding:2px 12px;font-weight:600;font-size:12px}
+.info-text{flex:1;margin-left:12px}
+.vis-area{background:#fafafa;border-radius:8px;position:relative;height:500px;overflow:hidden;border:1px solid #e0e0e0}
+canvas{display:block}
+.hint{font-size:12px;color:#999;text-align:center;margin-top:8px}
+@media(prefers-color-scheme:dark){
+body{background:#1a1a2e}
+.container{background:#16213e;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+h2{color:#e0e0e0}
+.info-panel{background:#1a1a3e;color:#ccc}
+.vis-area{background:#0f0f23;border-color:#2a2a4a}
+.hint{color:#777}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>95. 蛇梯棋 (Snakes and Ladders) — BFS 最短路径</h2>
+<div class="controls">
+<button class="btn-reset" onclick="reset()">⟳ 重置</button>
+<button class="btn-prev" onclick="prevStep()">◀ 上步</button>
+<button class="btn-next" onclick="nextStep()">下步 ▶</button>
+<button class="btn-auto" id="btnAuto" onclick="toggleAuto()">▶ 自动播放</button>
+<button class="btn-end" onclick="jumpEnd()">▶▶ 跳到最后</button>
+</div>
+<div class="info-panel">
+<span class="step-badge" id="stepBadge">步骤 1/10</span>
+<span class="info-text" id="infoText">6×6棋盘 (1-36), BFS求从1到36的最短步数</span>
+</div>
+<div class="vis-area"><canvas id="cvs"></canvas></div>
+<div class="hint">键盘: ← → 切换步骤 | 空格 自动播放</div>
+</div>
+<script>
+// 6x6 board, standard numbering: bottom row left-to-right 1-6, then right-to-left 7-12, etc.
+const N=6,SIZE=36;
+// Ladders: 2->15, 7->27, 14->29, 25->35
+// Snakes: 17->4, 19->8, 24->16, 32->30, 34->12
+const board=new Array(SIZE+1).fill(-1);
+board[2]=15;board[7]=27;board[14]=29;board[25]=35;
+board[17]=4;board[19]=8;board[24]=16;board[32]=30;board[34]=12;
+
+function getRowCol(num){
+  let row=Math.floor((num-1)/N);
+  let col=(num-1)%N;
+  if(row%2===1)col=N-1-col;
+  return[row,col];
+}
+
+let steps=[],currentStep=0,totalSteps=0,autoTimer=null;
+
+function buildSteps(){
+  steps=[];
+  // Board overview
+  steps.push({info:'6×6棋盘, 编号1-36. 绿色=梯子(上升), 红色=蛇(下降). 骰子1-6',phase:'intro',visited:new Set(),queue:[],distance:{},highlight:[],conn:[]});
+
+  // BFS
+  let visited=new Set([1]);
+  let queue=[[1,0]]; // [pos, steps]
+  let distance={1:0};
+  let bfsSteps=[{info:'BFS起点: 位置1, 距离0',visited:new Set([1]),queue:[[1,0]],distance:{1:0},highlight:[1],conn:[]}];
+
+  while(queue.length>0){
+    let [pos,dist]=queue.shift();
+    if(pos===SIZE){
+      bfsSteps.push({info:`到达终点36! 最短路径长度=${dist}`,visited:new Set(visited),queue:[...queue],distance:{...distance},highlight:[pos],conn:[],done:true});
+      break;
+    }
+    for(let dice=1;dice<=6&&pos+dice<=SIZE;dice++){
+      let next=pos+dice;
+      if(board[next]!==-1)next=board[next];
+      if(!visited.has(next)){
+        visited.add(next);
+        distance[next]=dist+1;
+        queue.push([next,dist+1]);
+        let snakeLadder=board[pos+dice]!==-1;
+        let connInfo=[pos,pos+dice];
+        if(snakeLadder)connInfo.push(board[pos+dice]);
+        bfsSteps.push({
+          info:`从位置${pos}掷骰子${dice}→${pos+dice}${snakeLadder?'→'+board[pos+dice]+'(梯/蛇)':''}, 到达${next}, 距离${dist+1}`,
+          visited:new Set(visited),queue:[...queue],distance:{...distance},highlight:[pos,next],conn:[connInfo]
+        });
+      }
+    }
+  }
+  bfsSteps.push({info:`BFS完成! 最短路径距离=${distance[SIZE]||'无解'}`,visited:new Set(visited),queue:[],distance:{...distance},highlight:[],conn:[],done:true,final:true});
+  steps=bfsSteps;
+}
+buildSteps();totalSteps=steps.length;
+
+const cvs=document.getElementById('cvs');
+const ctx=cvs.getContext('2d');
+function resizeCanvas(){cvs.width=cvs.parentElement.clientWidth;cvs.height=cvs.parentElement.clientHeight;}
+resizeCanvas();
+window.addEventListener('resize',()=>{resizeCanvas();draw();});
+
+const CELL=55,OX=60,OY=30;
+
+function draw(){
+  let s=steps[currentStep];
+  ctx.clearRect(0,0,cvs.width,cvs.height);
+
+  // Draw grid cells
+  for(let num=1;num<=SIZE;num++){
+    let [row,col]=getRowCol(num);
+    let displayRow=N-1-row; // flip y
+    let x=OX+col*(CELL+4),y=OY+displayRow*(CELL+4);
+
+    ctx.fillStyle='#fff';
+    ctx.fillRect(x,y,CELL,CELL);
+    ctx.strokeStyle='#999';ctx.lineWidth=1;
+    ctx.strokeRect(x,y,CELL,CELL);
+
+    // Highlight visited
+    if(s.visited.has(num)){
+      ctx.fillStyle='rgba(91,155,213,0.3)';
+      ctx.fillRect(x,y,CELL,CELL);
+    }
+
+    // Current highlight
+    if(s.highlight.includes(num)){
+      ctx.strokeStyle='#ff6b00';ctx.lineWidth=3;
+      ctx.strokeRect(x-2,y-2,CELL+4,CELL+4);
+    }
+
+    // Cell number
+    ctx.fillStyle='#333';ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(num,x+CELL/2,y+CELL/2);
+
+    // Distance label
+    if(s.distance[num]!==undefined){
+      ctx.fillStyle='#0d6efd';ctx.font='10px sans-serif';
+      ctx.fillText('d='+s.distance[num],x+CELL/2,y+CELL-8);
+    }
+
+    // Snake/Ladder indicator
+    if(board[num]!==-1){
+      let icon=board[num]>num?'\u25B2':'\u25BC';
+      ctx.fillStyle=board[num]>num?'#28a745':'#dc3545';
+      ctx.font='14px sans-serif';
+      ctx.fillText(icon,x+CELL-8,y+8);
+    }
+  }
+
+  // Draw connections (snakes/ladders)
+  for(let num=1;num<=SIZE;num++){
+    if(board[num]!==-1){
+      let [r1,c1]=getRowCol(num);
+      let [r2,c2]=getRowCol(board[num]);
+      let dr1=N-1-r1,dr2=N-1-r2;
+      let x1=OX+c1*(CELL+4)+CELL/2,y1=OY+dr1*(CELL+4)+CELL/2;
+      let x2=OX+c2*(CELL+4)+CELL/2,y2=OY+dr2*(CELL+4)+CELL/2;
+      ctx.strokeStyle=board[num]>num?'rgba(40,167,69,0.5)':'rgba(220,53,69,0.5)';
+      ctx.lineWidth=2;
+      ctx.setLineDash([4,3]);
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // Draw active connection arrow
+  if(s.conn&&s.conn.length>0&&s.conn[0].length>=2){
+    let [from,to]=s.conn[0];
+    let [r1,c1]=getRowCol(from),[r2,c2]=getRowCol(to);
+    let dr1=N-1-r1,dr2=N-1-r2;
+    let x1=OX+c1*(CELL+4)+CELL/2,y1=OY+dr1*(CELL+4)+CELL/2;
+    let x2=OX+c2*(CELL+4)+CELL/2,y2=OY+dr2*(CELL+4)+CELL/2;
+    ctx.strokeStyle='#ff0';ctx.lineWidth=3;
+    ctx.setLineDash([]);
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    // arrowhead
+    let angle=Math.atan2(y2-y1,x2-x1);
+    let ax=x2-Math.cos(angle)*12,ay=y2-Math.sin(angle)*12;
+    ctx.fillStyle='#ff0';
+    ctx.beginPath();ctx.moveTo(ax,ay);
+    ctx.lineTo(ax-Math.cos(angle-Math.PI/6)*10,ay-Math.sin(angle-Math.PI/6)*10);
+    ctx.lineTo(ax-Math.cos(angle+Math.PI/6)*10,ay-Math.sin(angle+Math.PI/6)*10);
+    ctx.fill();
+
+    if(s.conn[0].length===3){
+      let snakeDest=s.conn[0][2];
+      let [r3,c3]=getRowCol(snakeDest);
+      let dr3=N-1-r3;
+      let x3=OX+c3*(CELL+4)+CELL/2,y3=OY+dr3*(CELL+4)+CELL/2;
+      ctx.strokeStyle='#28a745';
+      ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x3,y3);ctx.stroke();
+    }
+  }
+
+  // Legend
+  let lx=OX+N*(CELL+4)+30,ly=OY;
+  ctx.fillStyle='#333';ctx.font='12px sans-serif';ctx.textAlign='left';
+  ctx.fillText('梯子:',lx,ly);
+  ctx.fillStyle='#28a745';ctx.fillRect(lx,ly+8,14,14);
+  ctx.fillText(' 蛇:',lx+60,ly);
+  ctx.fillStyle='#dc3545';ctx.fillRect(lx+60,ly+8,14,14);
+
+  document.getElementById('stepBadge').textContent=`步骤 ${currentStep+1}/${totalSteps}`;
+  document.getElementById('infoText').textContent=s.info;
+  let btns=document.querySelectorAll('button');
+  btns.forEach(b=>b.disabled=false);
+  if(currentStep===0)document.querySelector('.btn-prev').disabled=true;
+  if(currentStep===totalSteps-1){document.querySelector('.btn-next').disabled=true;document.querySelector('.btn-end').disabled=true;document.querySelector('.btn-auto').disabled=true;}
+}
+
+function nextStep(){if(currentStep<totalSteps-1){currentStep++;draw();}}
+function prevStep(){if(currentStep>0){currentStep--;draw();}}
+function reset(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=0;draw();}
+function jumpEnd(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=totalSteps-1;draw();}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}
+  else{document.getElementById('btnAuto').textContent='⏸ 暂停';autoTimer=setInterval(()=>{if(currentStep<totalSteps-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}},1000);}
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){e.preventDefault();nextStep();}
+  else if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}
+  else if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+draw();
+</script>
+</body>
+</html>

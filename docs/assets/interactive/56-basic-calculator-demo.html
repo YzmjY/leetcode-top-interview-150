@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>56. 基本计算器 - 可视化演示</title>
+<style>
+:root {
+  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
+  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
+  --btn-active-text: #fff; --stack-bg: #f1f3f5; --ch-bg: #e9ecef;
+  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
+  --step-bg: #e7f5ff;
+}
+@media (prefers-color-scheme: dark) {
+:root {
+  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
+  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
+  --btn-active-text: #fff; --stack-bg: #1e1e3a; --ch-bg: #2a2a4a; --step-bg: #1a2a3a;
+}
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text);
+  display: flex; justify-content: center; padding: 20px;
+}
+.container {
+  width: 100%; max-width: 950px; height: 500px;
+  background: var(--card-bg); border-radius: 8px;
+  border: 1px solid var(--border); padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.step-panel {
+  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
+  display: flex; justify-content: space-between; align-items: center; font-size: 14px;
+}
+.step-num { font-weight: 700; color: var(--btn-active); }
+.step-desc { flex: 1; margin-left: 16px; }
+.main-area { display: flex; gap: 16px; flex: 1; min-height: 0; }
+.left-panel { flex: 0 0 480px; display: flex; flex-direction: column; gap: 8px; }
+.expr-display { font-family: "Consolas", monospace; font-size: 15px; padding: 8px 12px; background: var(--stack-bg); border-radius: 8px; border: 1px solid var(--border); }
+.ch-grid { flex: 1; display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start; overflow-y: auto; }
+.ch-cell {
+  width: 32px; height: 32px; border-radius: 6px; background: var(--ch-bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; font-family: "Consolas", monospace;
+  border: 1px solid var(--border); transition: all 0.3s;
+}
+.ch-cell.current { transform: scale(1.15); box-shadow: 0 0 6px rgba(13,110,253,0.5); border-color: var(--blue); }
+.ch-cell.paren { border-color: var(--orange); color: var(--orange); }
+.ch-cell.num { border-color: var(--blue); color: var(--blue); }
+.ch-cell.op-c { border-color: var(--green); color: var(--green); }
+.ch-cell.done { opacity: 0.4; }
+.right-panel { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.state-box {
+  flex: 1; background: var(--stack-bg); border-radius: 8px; border: 1px solid var(--border);
+  padding: 10px; display: flex; flex-direction: column; gap: 6px; overflow-y: auto;
+}
+.state-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 4px 8px; background: var(--ch-bg); border-radius: 6px; }
+.state-row .label { color: var(--text-secondary); }
+.state-row .val { font-weight: 700; font-family: "Consolas", monospace; color: var(--btn-active); }
+.result-line { padding: 6px 12px; background: var(--stack-bg); border-radius: 8px; border: 1px solid var(--border); font-size: 14px; font-weight: 700; color: var(--green); }
+.controls {
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+}
+.controls button {
+  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--btn-bg); color: var(--text); cursor: pointer;
+  font-size: 13px; font-family: inherit; transition: all 0.15s;
+}
+.controls button:hover { background: var(--btn-hover); }
+.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="step-panel">
+    <span class="step-num" id="stepNum">步骤 0 / 0</span>
+    <span class="step-desc" id="stepDesc">初始状态</span>
+  </div>
+  <div class="main-area">
+    <div class="left-panel">
+      <div class="expr-display"><strong>表达式:</strong> <span id="exprDisplay">(1+(4+5+2)-3)+(6+8)</span></div>
+      <div class="ch-grid" id="chGrid"></div>
+      <div class="result-line"><strong>结果: </strong><span id="resultVal">23</span></div>
+    </div>
+    <div class="right-panel">
+      <div class="state-box" id="stateBox">
+        <div class="state-row"><span class="label">当前结果 res</span><span class="val" id="sRes">0</span></div>
+        <div class="state-row"><span class="label">当前符号 sign</span><span class="val" id="sSign">+1</span></div>
+        <div class="state-row"><span class="label">当前数字 num</span><span class="val" id="sNum">0</span></div>
+        <div class="state-row"><span class="label">操作数栈</span><span class="val" id="sStack">[]</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="controls">
+    <button onclick="reset()">重置</button>
+    <button onclick="prevStep()">上步</button>
+    <button onclick="nextStep()">下步</button>
+    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
+    <button onclick="goEnd()">跳到最后</button>
+  </div>
+</div>
+<script>
+const expr = "(1+(4+5+2)-3)+(6+8)";
+const steps = [];
+let stepIdx = -1;
+
+function buildSteps() {
+  steps.length = 0;
+  let res = 0, sign = 1, num = 0;
+  const opStack = [];
+  const chars = expr.split('');
+
+  steps.push({ res: 0, sign: 1, num: 0, stack: [], idx: -1, desc: '初始状态: res=0, sign=+1, num=0', cells: Array(chars.length).fill('default') });
+
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    const cells = Array(chars.length).fill('default');
+    for (let j = 0; j < i; j++) cells[j] = 'done';
+    cells[i] = 'current';
+
+    if (ch >= '0' && ch <= '9') {
+      num = num * 10 + parseInt(ch);
+      cells[i] += ' num';
+      steps.push({ res, sign, num, stack: [...opStack], idx: i, desc: `读取数字 '${ch}'，num = ${num}`, cells: [...cells] });
+    } else if (ch === '+') {
+      res += sign * num;
+      num = 0; sign = 1;
+      cells[i] += ' op-c';
+      steps.push({ res, sign, num, stack: [...opStack], idx: i, desc: `遇到 '+'：res += sign*num = ${res}，sign=+1, num=0`, cells: [...cells] });
+    } else if (ch === '-') {
+      res += sign * num;
+      num = 0; sign = -1;
+      cells[i] += ' op-c';
+      steps.push({ res, sign, num, stack: [...opStack], idx: i, desc: `遇到 '-'：res += sign*num = ${res}，sign=-1, num=0`, cells: [...cells] });
+    } else if (ch === '(') {
+      opStack.push(res);
+      opStack.push(sign);
+      res = 0; sign = 1;
+      cells[i] += ' paren';
+      steps.push({ res, sign, num: 0, stack: [...opStack], idx: i, desc: `遇到 '('：保存 res=${opStack[opStack.length-2]}, sign=${opStack[opStack.length-1]} 到栈，重置 res=0, sign=1`, cells: [...cells] });
+    } else if (ch === ')') {
+      res += sign * num;
+      num = 0;
+      const prevSign = opStack.pop();
+      const prevRes = opStack.pop();
+      res = prevRes + prevSign * res;
+      sign = 1;
+      cells[i] += ' paren';
+      steps.push({ res, sign, num: 0, stack: [...opStack], idx: i, desc: `遇到 ')'：先结算 num，然后从栈恢复，res = ${prevRes} + ${prevSign} * ${res} = ${res}`, cells: [...cells] });
+    }
+  }
+  res += sign * num;
+  const finalCells = Array(chars.length).fill('done');
+  steps.push({ res, sign: 1, num: 0, stack: [], idx: chars.length, desc: `最终结算：res += sign*num = ${res}。答案: ${res}`, cells: finalCells });
+}
+
+function render() {
+  const st = steps[Math.min(stepIdx, steps.length - 1)];
+  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
+  document.getElementById('stepDesc').textContent = st.desc;
+  document.getElementById('sRes').textContent = st.res;
+  document.getElementById('sSign').textContent = st.sign >= 0 ? '+' + st.sign : st.sign;
+  document.getElementById('sNum').textContent = st.num;
+  document.getElementById('sStack').textContent = '[' + st.stack.join(', ') + ']';
+  document.getElementById('resultVal').textContent = stepIdx === steps.length - 1 ? st.res : '';
+
+  const grid = document.getElementById('chGrid');
+  grid.innerHTML = '';
+  expr.split('').forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'ch-cell ' + (st.cells[i] || 'default');
+    div.textContent = c;
+    grid.appendChild(div);
+  });
+
+  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
+}
+
+function reset() { stopAuto(); stepIdx = 0; render(); }
+function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; render(); }
+function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; render(); }
+function goEnd() { stopAuto(); stepIdx = steps.length - 1; render(); }
+
+let autoRunning = false, autoTimer = null;
+function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
+function startAuto() { autoRunning = true; render(); autoStep(); }
+function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); render(); }
+function autoStep() {
+  if (!autoRunning) return;
+  if (stepIdx < steps.length - 1) { stepIdx++; render(); autoTimer = setTimeout(autoStep, 800); }
+  else stopAuto();
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') nextStep();
+  else if (e.key === 'ArrowLeft') prevStep();
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+buildSteps();
+reset();
+</script>
+</body>
+</html>

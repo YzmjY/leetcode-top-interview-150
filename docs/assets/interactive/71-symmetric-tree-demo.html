@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>对称二叉树</title>
+<style>
+:root{--bg:#fff;--text:#333;--muted:#888;--btn-bg:#f0f0f0;--btn-hover:#e0e0e0;--sub-bg:#f5f5f5;--cell-border:#d0d0d0;--header:#222}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--text:#ddd;--muted:#aaa;--btn-bg:#333;--btn-hover:#444;--sub-bg:#252540;--cell-border:#444;--header:#ddd}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
+.container{max-width:780px;width:100%}
+h2{text-align:center;color:var(--header);font-size:18px;margin-bottom:8px}
+.info-bar{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:6px;font-size:14px}
+.step-num{font-weight:bold;font-size:24px;color:#1976D2;min-width:40px;text-align:center}
+.step-desc{color:var(--muted);font-size:13px;max-width:550px;text-align:center}
+svg{display:block;margin:0 auto;width:100%;height:440px}
+.controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+button{padding:8px 18px;border:1px solid var(--cell-border);border-radius:6px;background:var(--btn-bg);color:var(--text);font-size:13px;cursor:pointer;transition:0.15s}
+button:hover{background:var(--btn-hover)}
+button:active{transform:scale(0.96)}
+button:disabled{opacity:0.35;cursor:default}
+button.play-btn{background:#1976D2;color:#fff;border-color:#1565C0}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>对称二叉树 — 高亮对称位置节点对</h2>
+<div class="info-bar">
+<span class="step-num" id="stepNum">0</span>
+<span class="step-desc" id="stepDesc">树结构：[1,2,2,3,4,4,3] · 左右对称节点逐对检查</span>
+</div>
+<svg id="treeSvg" viewBox="0 0 750 420"></svg>
+<div class="controls">
+<button onclick="goStep(0)">重置</button>
+<button onclick="goStep(cur-1)" id="prevBtn">上步</button>
+<button onclick="goStep(cur+1)" id="nextBtn">下步</button>
+<button class="play-btn" onclick="toggleAuto()" id="playBtn">自动播放</button>
+<button onclick="goStep(steps.length-1)">跳到最后</button>
+</div>
+</div>
+<script>
+const nodes=[{x:375,y:50,val:1},{x:220,y:150,val:2},{x:530,y:150,val:2},{x:140,y:270,val:3},{x:300,y:270,val:4},{x:450,y:270,val:4},{x:610,y:270,val:3}];
+const edges=[[0,1],[0,2],[1,3],[1,4],[2,5],[2,6]];
+const pairs=[[1,2],[3,6],[4,5]];
+
+const steps=[
+{desc:'初始状态：树 [1,2,2,3,4,4,3] · 检查是否轴对称',hl:[],pair:-1},
+{desc:'步骤1：检查对称对 (2,2) — 值相等，继续递归',hl:[1,2],pair:0},
+{desc:'步骤2：检查对称对 (3,3) — 值相等(外侧)',hl:[3,6],pair:1},
+{desc:'步骤3：检查对称对 (4,4) — 值相等(内侧)',hl:[4,5],pair:2},
+{desc:'完成！二叉树是轴对称的',hl:[1,2,3,6,4,5],pair:-1}
+];
+
+let cur=0,autoTimer=null,autoRun=false;
+const svg=document.getElementById('treeSvg');
+
+function render(){
+const s=steps[cur];
+document.getElementById('stepNum').textContent=cur;
+document.getElementById('stepDesc').textContent=(cur===0?'初始状态 · ':'第'+cur+'步 · ')+s.desc;
+document.getElementById('prevBtn').disabled=cur<=0;
+document.getElementById('nextBtn').disabled=cur>=steps.length-1;
+
+let html='<defs><radialGradient id="gBlue"><stop offset="0%" stop-color="#42A5F5"/><stop offset="100%" stop-color="#1976D2"/></radialGradient><radialGradient id="gOr"><stop offset="0%" stop-color="#FFB74D"/><stop offset="100%" stop-color="#FF9800"/></radialGradient></defs>';
+html+='<rect width="750" height="420" fill="transparent"/>';
+for(const[e of edges]){
+const a=nodes[e[0]],b=nodes[e[1]];
+html+=`<line x1="${a.x}" y1="${a.y+24}" x2="${b.x}" y2="${b.y-24}" stroke="#ccc" stroke-width="2"/>`;
+}
+// Draw symmetric axis
+html+=`<line x1="375" y1="40" x2="375" y2="310" stroke="#1976D2" stroke-dasharray="6,4" stroke-width="1" opacity="0.4"/>`;
+for(let i=0;i<nodes.length;i++){
+const n=nodes[i];const isHL=s.hl.includes(i);
+const isPair=s.pair>=0&&pairs[s.pair].includes(i);
+if(isHL||isPair){
+const fill=isPair?'url(#gOr)':'url(#gBlue)';
+html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="${fill}" stroke="#0D47A1" stroke-width="2.5"/>`;
+html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">${n.val}</text>`;
+}else if(s.pair===-1&&cur===steps.length-1){
+html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="#E8F5E9" stroke="#4CAF50" stroke-width="2"/>`;
+html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="#2E7D32" font-size="14" font-weight="bold">${n.val}</text>`;
+}else{
+html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="var(--sub-bg)" stroke="var(--cell-border)" stroke-width="2"/>`;
+html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="var(--text)" font-size="14">${n.val}</text>`;
+}
+}
+svg.innerHTML=html;
+}
+
+function goStep(n){cur=Math.max(0,Math.min(n,steps.length-1));render()}
+function toggleAuto(){
+if(autoRun){clearInterval(autoTimer);autoRun=false;document.getElementById('playBtn').textContent='自动播放';}
+else{document.getElementById('playBtn').textContent='暂停';autoRun=true;if(cur>=steps.length-1)goStep(0);
+autoTimer=setInterval(()=>{if(cur<steps.length-1)goStep(cur+1);else toggleAuto()},900);}
+}
+document.addEventListener('keydown',e=>{
+if(e.key==='ArrowRight')goStep(cur+1);if(e.key==='ArrowLeft')goStep(cur-1);
+if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+render();
+</script>
+</body>
+</html>

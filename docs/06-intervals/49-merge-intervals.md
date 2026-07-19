@@ -47,6 +47,17 @@
 - **时间复杂度**：O(n log n)，其中 n 是区间数量。排序需要 O(n log n)，遍历需要 O(n)。
 - **空间复杂度**：O(n)，存储合并后的结果（不计算排序所需的额外空间）。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/49-merge-intervals-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="合并区间 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

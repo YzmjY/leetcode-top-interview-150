@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>52. 有效的括号 - 可视化演示</title>
+<style>
+:root {
+  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
+  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
+  --btn-active-text: #fff; --stack-bg: #f1f3f5; --char-bg: #e9ecef;
+  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
+  --step-bg: #e7f5ff;
+}
+@media (prefers-color-scheme: dark) {
+:root {
+  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
+  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
+  --btn-active-text: #fff; --stack-bg: #1e1e3a; --char-bg: #2a2a4a;
+  --step-bg: #1a2a3a;
+}
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text);
+  display: flex; justify-content: center; padding: 20px;
+}
+.container {
+  width: 100%; max-width: 900px; height: 500px;
+  background: var(--card-bg); border-radius: 8px;
+  border: 1px solid var(--border); padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.step-panel {
+  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 14px;
+}
+.step-num { font-weight: 700; color: var(--btn-active); }
+.step-desc { flex: 1; margin-left: 16px; }
+.main-area { display: flex; gap: 16px; flex: 1; min-height: 0; }
+.char-grid {
+  flex: 0 0 420px; display: flex; flex-wrap: wrap; gap: 6px;
+  align-content: flex-start; overflow-y: auto;
+}
+.char-cell {
+  width: 44px; height: 44px; border-radius: 8px; background: var(--char-bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; font-family: "Consolas", "Courier New", monospace;
+  border: 2px solid var(--border); transition: all 0.3s;
+}
+.char-cell.push { border-color: var(--blue); color: var(--blue); background: rgba(34,139,230,0.1); }
+.char-cell.pop { border-color: var(--green); color: var(--green); background: rgba(64,192,87,0.1); }
+.char-cell.error { border-color: var(--red); color: var(--red); background: rgba(250,82,82,0.1); }
+.char-cell.current { transform: scale(1.12); box-shadow: 0 0 8px rgba(13,110,253,0.4); }
+.stack-panel {
+  flex: 1; background: var(--stack-bg); border-radius: 8px; padding: 12px;
+  border: 1px solid var(--border); display: flex; flex-direction: column;
+}
+.stack-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+.stack-items { flex: 1; display: flex; flex-direction: column-reverse; gap: 4px; overflow-y: auto; }
+.stack-item {
+  height: 32px; border-radius: 6px; background: var(--btn-bg);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-family: "Consolas", monospace; font-size: 16px;
+  border: 1px solid var(--border); transition: all 0.3s;
+}
+.stack-item.enter { background: rgba(34,139,230,0.15); border-color: var(--blue); }
+.stack-item.leave { background: rgba(64,192,87,0.15); border-color: var(--green); }
+.controls {
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+}
+.controls button {
+  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--btn-bg); color: var(--text); cursor: pointer;
+  font-size: 13px; font-family: inherit; transition: all 0.15s;
+}
+.controls button:hover { background: var(--btn-hover); }
+.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
+.result-badge {
+  padding: 2px 10px; border-radius: 8px; font-weight: 700; font-size: 14px;
+}
+.result-badge.ok { background: rgba(64,192,87,0.15); color: var(--green); }
+.result-badge.fail { background: rgba(250,82,82,0.15); color: var(--red); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="step-panel">
+    <span class="step-num" id="stepNum">步骤 0 / 6</span>
+    <span class="step-desc" id="stepDesc">初始状态</span>
+    <span class="result-badge" id="resultBadge"></span>
+  </div>
+  <div class="main-area">
+    <div class="char-grid" id="charGrid"></div>
+    <div class="stack-panel">
+      <div class="stack-label">栈 (顶部在上)</div>
+      <div class="stack-items" id="stackItems"></div>
+    </div>
+  </div>
+  <div class="controls">
+    <button onclick="reset()">重置</button>
+    <button onclick="prevStep()">上步</button>
+    <button onclick="nextStep()">下步</button>
+    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
+    <button onclick="goEnd()">跳到最后</button>
+  </div>
+</div>
+<script>
+const s = "()[]{}";
+const pairs = { '(': ')', '[': ']', '{': '}' };
+const steps = [];
+let stack = [];
+let stepIdx = -1;
+
+function buildSteps() {
+  steps.length = 0;
+  stack = [];
+  steps.push({ idx: -1, stack: [...stack], desc: '初始状态', cells: Array(s.length).fill('default'), action: '' });
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    const cells = Array(s.length).fill('default');
+    cells[i] = 'current';
+    if ('([{'.includes(ch)) {
+      stack.push(ch);
+      cells[i] = 'current push';
+      steps.push({ idx: i, stack: [...stack], desc: `第 ${i + 1} 个字符 '${ch}' — 左括号，入栈`, cells: [...cells], action: 'push' });
+    } else {
+      const top = stack[stack.length - 1];
+      if (top && pairs[top] === ch) {
+        stack.pop();
+        cells[i] = 'current pop';
+        steps.push({ idx: i, stack: [...stack], desc: `第 ${i + 1} 个字符 '${ch}' — 匹配栈顶 '${top}'，弹出`, cells: [...cells], action: 'pop' });
+      } else {
+        cells[i] = 'current error';
+        steps.push({ idx: i, stack: [...stack], desc: `第 ${i + 1} 个字符 '${ch}' — 不匹配！`, cells: [...cells], action: 'error' });
+      }
+    }
+  }
+  const ok = stack.length === 0 && !steps.some(st => st.action === 'error');
+  const lastCells = Array(s.length).fill('default');
+  steps.push({ idx: s.length, stack: [...stack], desc: ok ? '栈为空，所有括号正确匹配！结果为 true' : '栈非空或存在不匹配，结果为 false', cells: lastCells, action: ok ? 'ok' : 'fail' });
+}
+
+function render() {
+  const st = steps[Math.min(stepIdx, steps.length - 1)];
+  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
+  document.getElementById('stepDesc').textContent = st.desc;
+  const badge = document.getElementById('resultBadge');
+  if (stepIdx === steps.length - 1) {
+    badge.className = 'result-badge ' + (st.action === 'ok' ? 'ok' : 'fail');
+    badge.textContent = st.action === 'ok' ? 'TRUE' : 'FALSE';
+  } else { badge.className = 'result-badge'; badge.textContent = ''; }
+
+  const grid = document.getElementById('charGrid');
+  grid.innerHTML = '';
+  s.split('').forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'char-cell ' + (st.cells[i] || 'default');
+    div.textContent = c;
+    grid.appendChild(div);
+  });
+
+  const si = document.getElementById('stackItems');
+  si.innerHTML = '';
+  st.stack.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'stack-item';
+    if (stepIdx > 0) {
+      const prevStack = steps[stepIdx - 1].stack;
+      if (st.action === 'push' && i === st.stack.length - 1 && i >= prevStack.length) div.className += ' enter';
+      if (st.action === 'pop' && prevStack.length > st.stack.length && i === prevStack.length - 1) return;
+    }
+    div.textContent = item;
+    si.appendChild(div);
+  });
+  if (st.stack.length === 0) {
+    const empty = document.createElement('div');
+    empty.textContent = '(空)'; empty.style.cssText = 'color:var(--text-secondary);text-align:center;';
+    si.appendChild(empty);
+  }
+
+  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
+}
+
+function reset() { stopAuto(); stepIdx = 0; render(); }
+function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; render(); }
+function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; render(); }
+function goEnd() { stopAuto(); stepIdx = steps.length - 1; render(); }
+
+let autoRunning = false, autoTimer = null;
+function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
+function startAuto() { autoRunning = true; render(); autoStep(); }
+function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); render(); }
+function autoStep() {
+  if (!autoRunning) return;
+  if (stepIdx < steps.length - 1) { stepIdx++; render(); autoTimer = setTimeout(autoStep, 800); }
+  else stopAuto();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') nextStep();
+  else if (e.key === 'ArrowLeft') prevStep();
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+buildSteps();
+reset();
+</script>
+</body>
+</html>

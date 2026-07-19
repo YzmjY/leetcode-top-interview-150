@@ -35,11 +35,15 @@
 
 ### 解题流程
 
-下图直观展示了边界收缩法的执行逻辑——以 `4×3` 矩阵为例，每个单元格右上角的数字表示遍历顺序（第几步被访问），不同颜色的箭头代表四步循环中各自的方向。
+以 `4×3` 矩阵为例，边界收缩法按顺时针方向逐步收窄。你可以点击下方演示的按钮逐步观察每一步的遍历过程：
 
-![螺旋矩阵遍历示意图](../assets/spiral-matrix.svg)
+<iframe
+  src="../../assets/interactive/spiral-matrix-demo.html"
+  style="width:100%; height:420px; border:none; border-radius:8px; background:transparent;"
+  title="螺旋矩阵遍历交互演示">
+</iframe>
 
-> **说明：** 第 3 步和第 4 步前分别检查 `top ≤ bottom` 和 `left ≤ right`，是为了防止单行或单列矩阵在已完成第 1、2 步后产生重复遍历。
+> **说明：** 第 3 步和第 4 步前分别检查 `top ≤ bottom` 和 `left ≤ right`，是为了防止单行或单列矩阵在已完成第 1、2 步后产生重复遍历。每个单元格右上角的数字表示它是第几个被访问的，颜色区分了四步不同的扫描方向。
 
 ## Go 代码实现
 

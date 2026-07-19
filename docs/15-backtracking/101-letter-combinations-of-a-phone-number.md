@@ -59,6 +59,17 @@
 
 **空间复杂度：** O(N)，递归栈深度。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/101-letter-combinations-of-a-phone-number-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="电话号码的字母组合 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

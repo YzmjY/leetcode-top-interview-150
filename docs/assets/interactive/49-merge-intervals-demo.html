@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222; --sub-bg: #f5f5f5;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --cur-color: #1976D2; --merge-color: #FF9800;
+    --ok-color: #388E3C; --remove-color: #E53935;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 16px 20px;
+  }
+  .container { max-width: 840px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
+  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
+    font-size: 14px; flex-wrap: wrap;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
+
+  .intervals-row { display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .interval {
+    display: flex; align-items: center; justify-content: center;
+    padding: 8px 14px; border: 2px solid var(--cell-border); border-radius: 8px;
+    font-size: 16px; font-weight: bold; background: var(--cell-bg); color: var(--text);
+    transition: border-color 0.25s, background 0.25s, transform 0.15s;
+    min-width: 80px; font-family: monospace;
+  }
+  .interval.cur { border-color: var(--cur-color); background: rgba(25,118,210,0.12); transform: scale(1.06); z-index: 2; }
+  .interval.merge { border-color: var(--merge-color); background: rgba(255,152,0,0.15); }
+  .interval.merged { border-color: var(--ok-color); background: rgba(56,142,60,0.15); }
+  .interval.removed { border-color: var(--remove-color); opacity: 0.3; text-decoration: line-through; }
+  .intvl-arrow { font-size: 18px; color: var(--muted); }
+
+  .state-row {
+    display: flex; justify-content: center; gap: 14px;
+    background: var(--sub-bg); border-radius: 8px;
+    padding: 8px 14px; margin-bottom: 6px; font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .state-item { text-align: center; min-width: 50px; }
+  .state-val { font-size: 16px; font-weight: bold; font-family: monospace; color: var(--text); }
+  .state-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .result-row {
+    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
+    margin-bottom: 6px; font-size: 13px; text-align: center;
+  }
+  .result-row .highlight { font-weight: bold; font-size: 15px; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>合并区间 — 排序后合并重叠演示</h2>
+  <div class="sub-title">intervals=[[1,3],[2,6],[8,10],[15,18]] &rarr; [[1,6],[8,10],[15,18]]</div>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
+  </div>
+
+  <div class="intervals-row" id="intervalsRow"></div>
+
+  <div class="state-row">
+    <div class="state-item"><div class="state-val" id="curStart">--</div><div class="state-label">当前区间</div></div>
+    <div class="state-item"><div class="state-val" id="prevEnd">--</div><div class="state-label">前区间end</div></div>
+    <div class="state-item"><div class="state-val" id="actionVal">--</div><div class="state-label">操作</div></div>
+  </div>
+
+  <div class="result-row">
+    <span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">&#x23EE; 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
+    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
+  </div>
+</div>
+
+<script>
+const intervals = [[1,3],[2,6],[8,10],[15,18]];
+// Already sorted by start
+
+const steps = [];
+
+function formatInterval(intv) { return '[' + intv[0] + ',' + intv[1] + ']'; }
+
+function simulate() {
+  steps.push({
+    desc: '初始状态 · 排序后 intervals=[[1,3],[2,6],[8,10],[15,18]]',
+    phase: 'init', idx: -1, result: [], hlIdx: [],
+    curStart: '--', prevEnd: '--', actionVal: '--',
+    result: 'init', intervalStates: intervals.map(() => '')
+  });
+
+  const merged = [];
+  let prev = intervals[0];
+  merged.push([...prev]);
+  let intervalStates = ['cur', '', '', ''];
+
+  steps.push({
+    desc: '取第一个区间 [' + prev[0] + ',' + prev[1] + '] 作为参照',
+    phase: 'start', idx: 0, result: [[...prev]], hlIdx: [0],
+    curStart: prev[0], prevEnd: prev[1],
+    actionVal: '初始',
+    intervalStates: ['cur', '', '', ''],
+    result: 'processing'
+  });
+
+  for (let i = 1; i < intervals.length; i++) {
+    const cur = intervals[i];
+    const last = merged[merged.length - 1];
+
+    steps.push({
+      desc: '比较: 当前区间[' + cur[0] + ',' + cur[1] + '] 与前一个 end=' + last[1],
+      phase: 'compare', idx: i, result: merged.map(m => [...m]), hlIdx: [i],
+      curStart: cur[0], prevEnd: last[1],
+      actionVal: cur[0] + ' <= ' + last[1] + ' ?',
+      intervalStates: intervals.map((_, j) => j < i ? (j === 0 ? 'merged' : (j < merged.findIndex(m => m[0] === intervals[j][0]) + 1 || j === 1 ? 'merged' : 'merged')) : (j === i ? 'cur' : '')),
+      result: 'processing'
+    });
+
+    if (cur[0] <= last[1]) {
+      // Merge
+      const oldEnd = last[1];
+      last[1] = Math.max(last[1], cur[1]);
+      steps.push({
+        desc: '重叠! ' + cur[0] + ' <= ' + oldEnd + ', 合并: end=' + oldEnd + ' -> ' + last[1],
+        phase: 'merge', idx: i, result: merged.map(m => [...m]), hlIdx: [i, merged.length - 1],
+        curStart: cur[0], prevEnd: oldEnd,
+        actionVal: '合并',
+        intervalStates: intervals.map((_, j) => j < i ? 'merged' : (j === i ? 'merge' : '')),
+        result: 'processing'
+      });
+    } else {
+      // No overlap
+      merged.push([...cur]);
+      steps.push({
+        desc: '不重叠! ' + cur[0] + ' > ' + last[1] + ', 添加新区间 [' + cur[0] + ',' + cur[1] + ']',
+        phase: 'nomerge', idx: i, result: merged.map(m => [...m]), hlIdx: [i],
+        curStart: cur[0], prevEnd: last[1],
+        actionVal: '添加',
+        intervalStates: intervals.map((_, j) => j < i ? 'merged' : (j === i ? 'cur' : '')),
+        result: 'processing'
+      });
+    }
+  }
+
+  steps.push({
+    desc: '合并完成! 结果: [[1,6],[8,10],[15,18]]',
+    phase: 'done', idx: -1, result: merged.map(m => [...m]), hlIdx: [],
+    curStart: '--', prevEnd: '--', actionVal: '完成',
+    intervalStates: intervals.map(() => 'merged'),
+    result: 'done'
+  });
+}
+
+simulate();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+const intervalsRow = document.getElementById('intervalsRow');
+intervals.forEach(([a, b], i) => {
+  const el = document.createElement('span');
+  el.className = 'interval';
+  el.id = 'intv' + i;
+  el.textContent = '[' + a + ',' + b + ']';
+  intervalsRow.appendChild(el);
+  if (i < intervals.length - 1) {
+    const comma = document.createElement('span');
+    comma.textContent = ',';
+    comma.style.color = 'var(--muted)';
+    comma.style.fontSize = '16px';
+    intervalsRow.appendChild(comma);
+  }
+});
+
+function render() {
+  const s = steps[current];
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = s.desc;
+  document.getElementById('curStart').textContent = String(s.curStart);
+  document.getElementById('prevEnd').textContent = String(s.prevEnd);
+  document.getElementById('actionVal').textContent = s.actionVal;
+
+  for (let i = 0; i < intervals.length; i++) {
+    document.getElementById('intv' + i).className = 'interval';
+  }
+  if (s.intervalStates) {
+    s.intervalStates.forEach((st, i) => {
+      if (st) document.getElementById('intv' + i).className = 'interval ' + st;
+    });
+  }
+
+  const rt = document.getElementById('resultText');
+  if (s.result === 'done') {
+    rt.textContent = '[' + s.result.map(r => '[' + r[0] + ',' + r[1] + ']').join(', ') + ']';
+    rt.style.color = '#388E3C';
+  } else if (s.result === 'init') { rt.textContent = '进行中...'; rt.style.color = '#1976D2'; }
+  else if (s.result && s.result.length > 0) {
+    rt.textContent = '[' + s.result.map(r => '[' + r[0] + ',' + r[1] + ']').join(', ') + ']';
+    rt.style.color = '#1976D2';
+  } else { rt.textContent = '进行中...'; rt.style.color = '#1976D2'; }
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer); autoRunning = false;
+    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
+    document.getElementById('playBtn').style.background = '';
+    document.getElementById('playBtn').style.color = '';
+    document.getElementById('playBtn').classList.remove('play-btn');
+  } else {
+    autoRunning = true;
+    document.getElementById('playBtn').textContent = '\u23F8 暂停';
+    document.getElementById('playBtn').style.background = '#1976D2';
+    document.getElementById('playBtn').style.color = '#fff';
+    document.getElementById('playBtn').classList.add('play-btn');
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(function() {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 1200);
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

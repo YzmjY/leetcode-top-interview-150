@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --sub-bg: #f5f5f5;
+    --swap-a: #1976D2; --swap-b: #E53935;
+    --swap-bg-a: #E3F2FD; --swap-bg-b: #FFEBEE;
+    --done-color: #388E3C; --done-bg: #E8F5E9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd;
+      --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+      --swap-bg-a: rgba(25,118,210,0.18);
+      --swap-bg-b: rgba(229,57,53,0.22);
+      --done-bg: rgba(56,142,60,0.18);
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 16px 20px;
+  }
+  .container { max-width: 780px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
+  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
+    font-size: 14px; flex-wrap: wrap;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
+
+  .phase-badge {
+    display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px;
+    font-weight: bold;
+  }
+  .phase-init { background: #eee; color: #666; }
+  .phase-trans { background: #FFF3E0; color: #E65100; }
+  .phase-reverse { background: #E3F2FD; color: #0D47A1; }
+  .phase-done { background: #E8F5E9; color: #2E7D32; }
+  @media (prefers-color-scheme: dark) {
+    .phase-init { background: #444; color: #ccc; }
+    .phase-trans { background: #3e2a1a; color: #FFB74D; }
+    .phase-reverse { background: #1a2a3e; color: #90CAF9; }
+    .phase-done { background: #1a3e1a; color: #81C784; }
+  }
+
+  .matrices { display: flex; gap: 28px; justify-content: center; align-items: flex-start; flex-wrap: wrap; margin-bottom: 6px; }
+  .mat-col { text-align: center; }
+  .mat-title { font-size: 12px; font-weight: bold; color: var(--muted); margin-bottom: 4px; }
+  .mat-grid { display: grid; grid-template-columns: repeat(3, 56px); gap: 3px; }
+  .mcell {
+    width: 56px; height: 56px; border: 2px solid var(--cell-border); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: bold; color: var(--text); background: var(--cell-bg);
+    position: relative; transition: border-color 0.25s, background 0.25s, transform 0.2s;
+  }
+  .mcell .cell-arrow {
+    position: absolute; font-size: 10px; color: var(--muted);
+  }
+  .mcell.swap-a { border-color: var(--swap-a); background: var(--swap-bg-a); transform: scale(1.05); z-index: 2; }
+  .mcell.swap-b { border-color: var(--swap-b); background: var(--swap-bg-b); transform: scale(1.05); z-index: 2; }
+  .mcell.done { border-color: var(--done-color); background: var(--done-bg); }
+  .mcell.final-done { border-color: var(--done-color); background: var(--done-bg); }
+
+  .arrow-hint { text-align: center; font-size: 22px; padding: 0 6px; color: var(--muted); }
+
+  .state-row {
+    display: flex; justify-content: center; gap: 14px;
+    background: var(--sub-bg); border-radius: 8px;
+    padding: 8px 14px; margin-bottom: 6px; font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .state-item { text-align: center; min-width: 50px; }
+  .state-val { font-size: 16px; font-weight: bold; font-family: monospace; }
+  .state-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+
+  .legend {
+    display: flex; gap: 14px; justify-content: center; margin-top: 8px;
+    font-size: 12px; color: var(--muted); flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+  @media (max-width: 650px) {
+    .mat-grid { grid-template-columns: repeat(3, 44px); }
+    .mcell { width: 44px; height: 44px; font-size: 17px; }
+    .matrices { gap: 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>旋转图像 (90度顺时针) — 分步演示</h2>
+  <div class="sub-title">原始矩阵 [[1,2,3],[4,5,6],[7,8,9]] &rarr; 转置 &rarr; 每行反转 &rarr; [[7,4,1],[8,5,2],[9,6,3]]</div>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
+    <span class="phase-badge phase-init" id="phaseBdg">初始</span>
+  </div>
+
+  <div class="matrices">
+    <div class="mat-col" id="matInputCol">
+      <div class="mat-title">当前矩阵</div>
+      <div class="mat-grid" id="matrixGrid"></div>
+    </div>
+    <div class="arrow-hint" id="arrowHint" style="display:flex;align-items:center;height:56px;">&rarr;</div>
+    <div class="mat-col" id="matResultCol" style="display:none;">
+      <div class="mat-title">结果</div>
+      <div class="mat-grid" id="resultGrid"></div>
+    </div>
+  </div>
+
+  <div class="state-row">
+    <div class="state-item"><div class="state-val" id="opIdx">--</div><div class="state-label">操作</div></div>
+    <div class="state-item"><div class="state-val" id="swapInfo">--</div><div class="state-label">交换详情</div></div>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">&#x23EE; 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
+    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--swap-a)"></div>位置A</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--swap-b)"></div>位置B</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--done-color)"></div>已处理</div>
+  </div>
+</div>
+
+<script>
+let matrix = [
+  [1, 2, 3],
+  [4, 5, 6],
+  [7, 8, 9]
+];
+
+const steps = [];
+const n = 3;
+
+function snapshotMatrix(m) {
+  return m.map(r => [...r]);
+}
+
+function simulate() {
+  matrix = [[1,2,3],[4,5,6],[7,8,9]];
+  steps.push({
+    desc: '初始矩阵 [[1,2,3],[4,5,6],[7,8,9]]',
+    phase: 'init', matrix: snapshotMatrix(matrix),
+    opIdx: '--', swapInfo: '--',
+    highlightA: null, highlightB: null, doneCells: []
+  });
+
+  // Step 1: Transpose (swap matrix[i][j] with matrix[j][i] for j > i)
+  steps.push({
+    desc: '第1步: 矩阵转置. 将 matrix[i][j] 与 matrix[j][i] 交换 (j > i)',
+    phase: 'trans', matrix: snapshotMatrix(matrix),
+    opIdx: '转置开始', swapInfo: '准备交换对角线对称位置',
+    highlightA: null, highlightB: null, doneCells: []
+  });
+
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const oldA = matrix[i][j], oldB = matrix[j][i];
+      // show before swap
+      steps.push({
+        desc: '转置: 交换 [' + i + ',' + j + ']=' + oldA + ' 与 [' + j + ',' + i + ']=' + oldB,
+        phase: 'trans', matrix: snapshotMatrix(matrix),
+        opIdx: 'swap(' + i + ',' + j + ')', swapInfo: oldA + ' ↔ ' + oldB,
+        highlightA: [i, j], highlightB: [j, i], doneCells: []
+      });
+      // swap
+      [matrix[i][j], matrix[j][i]] = [matrix[j][i], matrix[i][j]];
+      // show after swap
+      steps.push({
+        desc: '转置完成: [' + i + ',' + j + ']=' + matrix[i][j] + ' (原' + oldB + '), [' + j + ',' + i + ']=' + matrix[j][i] + ' (原' + oldA + ')',
+        phase: 'trans', matrix: snapshotMatrix(matrix),
+        opIdx: '已交换', swapInfo: oldB + ' ↔ ' + oldA,
+        highlightA: [i, j], highlightB: [j, i], doneCells: []
+      });
+    }
+  }
+
+  steps.push({
+    desc: '转置完成! 矩阵变为 [[1,4,7],[2,5,8],[3,6,9]]',
+    phase: 'trans', matrix: snapshotMatrix(matrix),
+    opIdx: '转置完成', swapInfo: '--',
+    highlightA: null, highlightB: null, doneCells: [[0,0],[1,1],[2,2]]
+  });
+
+  // Step 2: Reverse each row
+  steps.push({
+    desc: '第2步: 每行反转. 将每行左右镜像翻转',
+    phase: 'reverse', matrix: snapshotMatrix(matrix),
+    opIdx: '反转开始', swapInfo: '对每行进行reverse',
+    highlightA: null, highlightB: null, doneCells: []
+  });
+
+  for (let i = 0; i < n; i++) {
+    let left = 0, right = n - 1;
+    while (left < right) {
+      const oldA = matrix[i][left], oldB = matrix[i][right];
+      steps.push({
+        desc: '第' + i + '行反转: 交换 [' + i + ',' + left + ']=' + oldA + ' 与 [' + i + ',' + right + ']=' + oldB,
+        phase: 'reverse', matrix: snapshotMatrix(matrix),
+        opIdx: 'row[' + i + ']', swapInfo: oldA + ' ↔ ' + oldB,
+        highlightA: [i, left], highlightB: [i, right], doneCells: []
+      });
+      [matrix[i][left], matrix[i][right]] = [matrix[i][right], matrix[i][left]];
+      steps.push({
+        desc: '第' + i + '行反转完成: [' + i + ',' + left + ']=' + matrix[i][left] + ', [' + i + ',' + right + ']=' + matrix[i][right],
+        phase: 'reverse', matrix: snapshotMatrix(matrix),
+        opIdx: 'row[' + i + ']', swapInfo: oldB + ' ↔ ' + oldA,
+        highlightA: [i, left], highlightB: [i, right], doneCells: []
+      });
+      left++; right--;
+    }
+  }
+
+  steps.push({
+    desc: '旋转完成! 最终结果: [[7,4,1],[8,5,2],[9,6,3]]',
+    phase: 'done', matrix: snapshotMatrix(matrix),
+    opIdx: '完成', swapInfo: '--',
+    highlightA: null, highlightB: null,
+    doneCells: [[0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]]
+  });
+}
+
+simulate();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+// Build matrix grid
+const grid = document.getElementById('matrixGrid');
+for (let r = 0; r < 3; r++) {
+  for (let c = 0; c < 3; c++) {
+    const cell = document.createElement('div');
+    cell.className = 'mcell';
+    cell.id = 'mc' + r + '_' + c;
+    grid.appendChild(cell);
+  }
+}
+
+function resetCells() {
+  for (let r = 0; r < 3; r++)
+    for (let c = 0; c < 3; c++) {
+      document.getElementById('mc' + r + '_' + c).className = 'mcell';
+    }
+}
+
+function render() {
+  const s = steps[current];
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = s.desc;
+  document.getElementById('opIdx').textContent = s.opIdx;
+  document.getElementById('swapInfo').textContent = s.swapInfo;
+
+  const bdg = document.getElementById('phaseBdg');
+  if (s.phase === 'init') { bdg.textContent = '初始'; bdg.className = 'phase-badge phase-init'; }
+  else if (s.phase === 'trans') { bdg.textContent = '转置'; bdg.className = 'phase-badge phase-trans'; }
+  else if (s.phase === 'reverse') { bdg.textContent = '反转'; bdg.className = 'phase-badge phase-reverse'; }
+  else { bdg.textContent = '完成'; bdg.className = 'phase-badge phase-done'; }
+
+  resetCells();
+
+  // Set values
+  for (let r = 0; r < 3; r++)
+    for (let c = 0; c < 3; c++) {
+      document.getElementById('mc' + r + '_' + c).textContent = s.matrix[r][c];
+    }
+
+  // Highlight swap positions
+  if (s.highlightA) {
+    document.getElementById('mc' + s.highlightA[0] + '_' + s.highlightA[1]).classList.add('swap-a');
+  }
+  if (s.highlightB) {
+    document.getElementById('mc' + s.highlightB[0] + '_' + s.highlightB[1]).classList.add('swap-b');
+  }
+
+  // Done cells
+  if (s.doneCells) {
+    s.doneCells.forEach(([r, c]) => {
+      document.getElementById('mc' + r + '_' + c).classList.add('done');
+    });
+  }
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer); autoRunning = false;
+    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
+    document.getElementById('playBtn').style.background = '';
+    document.getElementById('playBtn').style.color = '';
+    document.getElementById('playBtn').classList.remove('play-btn');
+  } else {
+    autoRunning = true;
+    document.getElementById('playBtn').textContent = '\u23F8 暂停';
+    document.getElementById('playBtn').style.background = '#1976D2';
+    document.getElementById('playBtn').style.color = '#fff';
+    document.getElementById('playBtn').classList.add('play-btn');
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(function() {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 1200);
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

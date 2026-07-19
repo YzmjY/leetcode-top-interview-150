@@ -52,6 +52,17 @@
 - **时间复杂度**：O(n)，只需遍历数组一次。
 - **空间复杂度**：O(min(n, k))，哈希表最多存储 k+1 个不同元素（因为超过 k 范围的历史记录不会再被用到）。但实际上为了简洁，可以存储所有元素，也是 O(n)。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/46-contains-duplicate-ii-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="存在重复元素 II - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

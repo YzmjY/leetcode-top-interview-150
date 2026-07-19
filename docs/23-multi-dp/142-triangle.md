@@ -63,6 +63,17 @@
 - 自底向上比自顶向下更简洁，不需要处理边界比较。
 - 一维空间优化：`dp[j] = triangle[i][j] + min(dp[j], dp[j+1])`
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/142-triangle-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="三角形最小路径和 (Triangle) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

@@ -60,6 +60,17 @@
 - **时间复杂度**：O(log n)，每次计算平方和需要遍历数位（log n 位），循环次数有限。
 - **空间复杂度**：O(log n)，哈希集合最多存储循环中出现的不同数字。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/45-happy-number-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="快乐数 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

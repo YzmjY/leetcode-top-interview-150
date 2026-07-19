@@ -66,6 +66,17 @@
 - 障碍物的处理是本题核心：路径数归零，阻断所有经过该点的路径。
 - 注意起点或终点可能是障碍物的情况。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/144-unique-paths-ii-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="不同路径 II (Unique Paths II) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

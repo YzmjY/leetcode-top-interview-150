@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>组合总和 - 回溯可视化</title>
+<style>
+:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#555;--border:#dee2e6;--accent:#7c3aed;--accent2:#a78bfa;--hover:#ede9fe;--green:#22c55e;--orange:#f59e0b;--blue:#3b82f6;--red:#ef4444;--btn-bg:#e5e7eb;--btn-txt:#374151;--node-bg:#f3e8ff;--node-border:#c4b5fd;--edge:#c4b5fd;--res-bg:#f0fdf4;--res-border:#86efac}
+.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--node-bg:#1e1b4b;--node-border:#5b21b6;--edge:#5b21b6;--res-bg:#052e16;--res-border:#166534}
+@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--node-bg:#1e1b4b;--node-border:#5b21b6;--edge:#5b21b6;--res-bg:#052e16;--res-border:#166534}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
+.container{width:100%;max-width:800px;background:var(--card);border-radius:8px;border:1px solid var(--border);padding:20px 24px}
+h2{font-size:1.1rem;font-weight:600;margin-bottom:6px;color:var(--accent)}
+.info-panel{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:.85rem;color:var(--text2);flex-wrap:wrap}
+.info-panel .step{background:var(--accent);color:#fff;padding:3px 10px;border-radius:8px;font-weight:600;font-size:.8rem}
+.info-panel .desc{flex:1;min-width:200px}
+.param-row{display:flex;gap:16px;margin-bottom:8px;font-size:.8rem;color:var(--text2);align-items:center;flex-wrap:wrap}
+.param-row strong{color:var(--accent)}
+.param-row .sum{color:var(--orange);font-weight:700}
+.vis-area{height:430px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg)}
+.vis-area canvas{display:block;width:100%;height:100%}
+.results-bar{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;min-height:28px}
+.results-bar .tag{background:var(--res-bg);border:1px solid var(--res-border);color:var(--green);padding:2px 8px;border-radius:6px;font-size:.75rem;font-family:monospace}
+.controls{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.controls button{background:var(--btn-bg);color:var(--btn-txt);border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:inherit;transition:all .15s}
+.controls button:hover{background:var(--hover);border-color:var(--accent)}
+.controls button:active{transform:scale(.96)}
+.controls button.playing{background:var(--accent);color:#fff;border-color:var(--accent)}
+.legend{display:flex;gap:14px;margin-top:8px;font-size:.72rem;color:var(--text2);flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:4px}
+.legend .dot{width:10px;height:10px;border-radius:50%}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>104. 组合总和 (Combination Sum)</h2>
+<div class="info-panel">
+  <span class="step" id="stepLabel">步骤 1/28</span>
+  <span class="desc" id="stepDesc">开始回溯: candidates=[2,3,6,7], target=7</span>
+</div>
+<div class="param-row">
+  <span>可选数字: <strong>[2, 3, 6, 7]</strong></span>
+  <span>目标和: <strong>7</strong></span>
+  <span>当前组合: <strong style="color:var(--accent)" id="curPath">[]</strong></span>
+  <span>当前和: <span class="sum" id="curSum">0</span></span>
+</div>
+<div class="vis-area"><canvas id="canvas"></canvas></div>
+<div class="results-bar" id="resultsBar"></div>
+<div class="controls">
+  <button onclick="reset()">重置</button>
+  <button onclick="prevStep()">上步</button>
+  <button onclick="nextStep()">下步</button>
+  <button id="playBtn" onclick="togglePlay()">自动播放</button>
+  <button onclick="jumpEnd()">最后</button>
+</div>
+<div class="legend">
+  <span><span class="dot" style="background:var(--accent)"></span>当前节点</span>
+  <span><span class="dot" style="background:var(--node-bg);border:2px solid var(--node-border)"></span>中间节点</span>
+  <span><span class="dot" style="background:var(--green)"></span>找到解</span>
+  <span><span class="dot" style="background:var(--red)"></span>剪枝(超target)</span>
+</div>
+</div>
+<script>
+const cands=[2,3,6,7];
+const target=7;
+const steps=[];
+const results=[];
+function genSteps(start,path,sum){
+  steps.push({type:'enter',path:[...path],sum,start});
+  if(sum===target){
+    results.push([...path]);
+    steps.push({type:'found',path:[...path],sum});
+    steps.push({type:'backtrack',path:[...path.slice(0,-1)],sum:sum-(path[path.length-1]||0),removed:path[path.length-1]});
+    return;
+  }
+  if(sum>target){
+    steps.push({type:'prune',path:[...path],sum});
+    steps.push({type:'backtrack',path:[...path.slice(0,-1)],sum:sum-(path[path.length-1]||0),removed:path[path.length-1]});
+    return;
+  }
+  for(let i=start;i<cands.length;i++){
+    if(sum+cands[i]>target){
+      steps.push({type:'prune_skip',path:[...path],sum,candidate:cands[i]});
+      continue;
+    }
+    steps.push({type:'pick',path:[...path],sum,candidate:cands[i]});
+    path.push(cands[i]);
+    genSteps(i,path,sum+cands[i]);
+    path.pop();
+  }
+  if(path.length>0)steps.push({type:'backtrack',path:[...path.slice(0,-1)],sum:sum-(path[path.length-1]||0),removed:path[path.length-1]});
+}
+genSteps(0,[],0);
+
+let curStep=0,playId=null;
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+
+function resize(){const r=canvas.getBoundingClientRect();canvas.width=r.width*devicePixelRatio;canvas.height=r.height*devicePixelRatio;ctx.setTransform(1,0,0,1,0,0);ctx.scale(devicePixelRatio,devicePixelRatio);draw();}
+window.addEventListener('resize',resize);
+
+function collectNodes(){
+  const nodes={};
+  for(let i=0;i<=curStep;i++){
+    const s=steps[i];
+    if(s.type==='enter'){
+      const l=s.path.length;
+      const key=s.path.join(',')||'root';
+      if(!nodes[l])nodes[l]=[];
+      if(!nodes[l].find(n=>n.key===key))nodes[l].push({key,path:[...s.path],x:0,y:0,sum:s.sum,isPrune:false,isFound:false});
+    }
+    if(s.type==='found'){
+      const l=s.path.length;
+      const key='found_'+s.path.join(',');
+      if(!nodes[l])nodes[l]=[];
+      if(!nodes[l].find(n=>n.key===key))nodes[l].push({key,path:[...s.path],x:0,y:0,sum:s.sum,isPrune:false,isFound:true});
+    }
+    if(s.type==='prune'){
+      const l=s.path.length;
+      const key='prune_'+s.path.join(',');
+      if(!nodes[l])nodes[l]=[];
+      if(!nodes[l].find(n=>n.key===key))nodes[l].push({key,path:[...s.path],x:0,y:0,sum:s.sum,isPrune:true,isFound:false});
+    }
+  }
+  return nodes;
+}
+
+function draw(){
+  const w=canvas.width/devicePixelRatio,h=canvas.height/devicePixelRatio;
+  ctx.clearRect(0,0,w,h);
+  const step=steps[curStep];
+  const nodes=collectNodes();
+  const maxL=Math.max(...Object.keys(nodes).map(Number),0);
+  const rootX=w/2,rootY=35,levelGap=65,nodeGap=30;
+  for(let l=0;l<=maxL;l++){
+    const nds=nodes[l]||[];
+    const tw=nds.length*nodeGap*2;
+    const sx=rootX-tw/2+nodeGap;
+    nds.forEach((n,i)=>{n.x=sx+i*nodeGap*2;n.y=rootY+l*levelGap});
+  }
+  for(let l=1;l<=maxL;l++){
+    const parents=nodes[l-1]||[];
+    const children=nodes[l]||[];
+    children.forEach(child=>{
+      for(const p of parents){
+        if(child.path.slice(0,l-1).join(',')===p.path.join(',')||(child.isFound&&p.path.join(',')===child.path.join(','))){
+          ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--edge').trim();
+          ctx.lineWidth=1.5;
+          ctx.beginPath();ctx.moveTo(p.x,p.y+20);ctx.lineTo(child.x,child.y-20);ctx.stroke();
+        }
+      }
+    });
+  }
+  for(let l=0;l<=maxL;l++){
+    (nodes[l]||[]).forEach(n=>{
+      const r=17;
+      const curPathStr=(step.path||[]).join(',');
+      let isCur=false;
+      if(step.type==='enter'||step.type==='pick'){
+        isCur=n.path.join(',')===curPathStr&&!n.isFound&&!n.isPrune;
+      }else if(step.type==='found'){
+        isCur=n.isFound&&n.path.join(',')===curPathStr;
+      }
+      if(n.isFound){
+        ctx.fillStyle=isCur?getComputedStyle(document.documentElement).getPropertyValue('--accent').trim():getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
+        ctx.fillRect(n.x-32,n.y-14,64,28);
+        ctx.fillStyle='#fff';ctx.font='bold 10px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('['+n.path+']',n.x,n.y);
+      }else if(n.isPrune){
+        ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--red').trim();
+        ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#fff';ctx.font='bold 10px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('X',n.x,n.y);
+      }else if(isCur){
+        ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+        ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent2').trim();ctx.lineWidth=3;
+        ctx.beginPath();ctx.arc(n.x,n.y,r+3,0,Math.PI*2);ctx.stroke();
+        ctx.fillStyle='#fff';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+        const label=n.path.length===0?'R':'+'+n.path[n.path.length-1]+'('+n.sum+')';
+        ctx.fillText(label,n.x,n.y);
+      }else{
+        ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--node-bg').trim();
+        ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--node-border').trim();
+        ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fill();ctx.lineWidth=1.5;ctx.stroke();
+        ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text').trim();
+        ctx.font='10px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+        const label=n.path.length===0?'R':'+'+n.path[n.path.length-1]+'('+n.sum+')';
+        ctx.fillText(label,n.x,n.y);
+      }
+    });
+  }
+  if(step.type==='pick'){
+    ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--orange').trim();
+    ctx.font='bold 13px system-ui';ctx.textAlign='center';
+    ctx.fillText('选择: '+step.candidate+', 新和='+(step.sum+step.candidate),w/2,h-15);
+  }
+  if(step.type==='prune_skip'){
+    ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--red').trim();
+    ctx.font='bold 13px system-ui';ctx.textAlign='center';
+    ctx.fillText('剪枝: '+step.candidate+' 会使和超过 '+target,w/2,h-15);
+  }
+}
+
+function updateUI(){
+  const step=steps[curStep];
+  document.getElementById('stepLabel').textContent='步骤 '+(curStep+1)+'/'+steps.length;
+  let desc='';
+  if(step.type==='enter')desc='进入: 组合 ['+step.path.join(',')+'], 和='+step.sum;
+  else if(step.type==='pick')desc='选择数字 '+step.candidate+' 加入组合';
+  else if(step.type==='found')desc='找到解: ['+step.path.join(',')+'] 和='+target;
+  else if(step.type==='prune')desc='剪枝: 和='+step.sum+' > target='+target;
+  else if(step.type==='prune_skip')desc='跳过数字 '+step.candidate+' (会导致超target)';
+  else if(step.type==='backtrack')desc='回溯: 撤销数字 '+(step.removed||'');
+  else desc='开始回溯';
+  document.getElementById('stepDesc').textContent=desc;
+  document.getElementById('curPath').textContent='['+(step.path||[]).join(',')+']';
+  document.getElementById('curSum').textContent=step.sum||0;
+  const bar=document.getElementById('resultsBar');
+  const found=[];
+  for(let i=0;i<=curStep;i++){if(steps[i].type==='found')found.push('['+steps[i].path.join(',')+']');}
+  bar.innerHTML=found.map(s=>'<span class="tag">'+s+'</span>').join('');
+  resize();
+}
+function reset(){curStep=0;stopPlay();updateUI();}
+function nextStep(){if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();}
+function prevStep(){if(curStep>0){curStep--;updateUI();}}
+function jumpEnd(){curStep=steps.length-1;stopPlay();updateUI();}
+function stopPlay(){if(playId){clearInterval(playId);playId=null;document.getElementById('playBtn').classList.remove('playing');document.getElementById('playBtn').textContent='自动播放';}}
+function togglePlay(){if(playId){stopPlay();return;}if(curStep>=steps.length-1)curStep=0;document.getElementById('playBtn').classList.add('playing');document.getElementById('playBtn').textContent='暂停';playId=setInterval(()=>{if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();},550);}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}else if(e.key==='ArrowRight'){e.preventDefault();nextStep();}else if(e.key===' '){e.preventDefault();togglePlay();}});
+updateUI();
+</script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>146. 交错字符串 - 可视化演示</title>
+<style>
+:root{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--sub:#666;--border:#e0e0e0;--accent:#2563eb;--step-bg:#f0f4ff;--grid-bg:#fafafa;--radius:8px;--font:system-ui,-apple-system,sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--sub:#a0a0b0;--border:#334;--accent:#60a5fa;--step-bg:#1e293b;--grid-bg:#0f172a}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);display:flex;justify-content:center;align-items:center;min-height:100vh}
+.demo-container{width:100%;max-width:960px;height:500px;background:var(--card);border-radius:var(--radius);box-shadow:0 4px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--step-bg)}
+.header .title{font-size:15px;font-weight:600;color:var(--text)}
+.header .step-info{font-size:13px;color:var(--accent);font-weight:500}
+.controls{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.controls button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
+.controls button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.controls button:disabled{opacity:.4;cursor:not-allowed}
+.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.main-area{flex:1;display:flex;flex-direction:column;padding:12px 16px;gap:10px;overflow-y:auto}
+.info-panel{padding:10px 14px;background:var(--step-bg);border-radius:var(--radius);border:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.6}
+.info-panel strong{color:var(--accent)}
+.vis-area{flex:1;display:flex;flex-direction:column;gap:8px;align-items:center}
+.str-info{font-size:13px;color:var(--text);text-align:center;font-family:monospace}
+.grid-wrap{overflow:auto;max-width:100%}
+.grid{display:inline-grid;gap:2px}
+.grid-cell{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-weight:600;font-size:12px;border:1px solid var(--border);background:var(--grid-bg);color:var(--text);transition:all .3s}
+.grid-cell.true{background:#bbf7d0;border-color:#22c55e;color:#166534}
+.grid-cell.false{background:#fecaca;border-color:#ef4444;color:#991b1b}
+.grid-cell.cur{border:2px solid var(--accent);background:var(--step-bg)}
+.grid-cell.hdr{background:var(--step-bg);font-size:11px;color:var(--sub)}
+.step-detail{font-size:13px;color:var(--sub);text-align:center}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+@media(prefers-color-scheme:dark){.grid-cell.true{background:#14532d;border-color:#22c55e;color:#86efac}.grid-cell.false{background:#7f1d1d;border-color:#ef4444;color:#fca5a5}}
+</style>
+</head>
+<body>
+<div class="demo-container">
+<div class="header">
+<span class="title">146. 交错字符串 (Interleaving String)</span>
+<span class="step-info" id="stepLabel">步骤 0 / 0</span>
+</div>
+<div class="controls">
+<button onclick="reset()">重置</button>
+<button onclick="prevStep()">上步</button>
+<button onclick="nextStep()">下步</button>
+<button onclick="toggleAuto()" id="autoBtn">自动播放</button>
+<button onclick="jumpEnd()">跳到最后</button>
+</div>
+<div class="main-area">
+<div class="info-panel" id="info"><strong>输入:</strong> s1="aabcc", s2="dbbca", s3="aadbbcbcac" &nbsp;|&nbsp; <strong>思路:</strong> dp[i][j]表示s1[0:i)和s2[0:j)能否交错成s3[0:i+j)</div>
+<div class="vis-area">
+<div class="str-info">s1="aabcc" &nbsp; s2="dbbca" &nbsp; s3="aadbbcbcac"</div>
+<div class="grid-wrap"><div class="grid" id="grid"></div></div>
+<div class="step-detail" id="stepDetail"></div>
+<div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+</div>
+</div>
+</div>
+<script>
+const S1='aabcc',S2='dbbca',S3='aadbbcbcac';
+let steps=[],stepIdx=0,autoTimer=null,playing=false;
+
+function buildSteps(){
+  steps=[];
+  let n1=S1.length,n2=S2.length;
+  let dp=Array.from({length:n1+1},()=>Array(n2+1).fill(false));
+  dp[0][0]=true;
+  steps.push({dp:dp.map(r=>[...r]),i:0,j:0,note:'dp[0][0]=true (空串交错成空串)',done:false});
+  for(let i=1;i<=n1;i++){
+    dp[i][0]=dp[i-1][0]&&S1[i-1]===S3[i-1];
+    steps.push({dp:dp.map(r=>[...r]),i,j:0,note:`dp[${i}][0] = dp[${i-1}][0] && s1[${i-1}]==s3[${i-1}] => ${dp[i][0]}`,done:false});
+  }
+  for(let j=1;j<=n2;j++){
+    dp[0][j]=dp[0][j-1]&&S2[j-1]===S3[j-1];
+    steps.push({dp:dp.map(r=>[...r]),i:0,j,note:`dp[0][${j}] = dp[0][${j-1}] && s2[${j-1}]==s3[${j-1}] => ${dp[0][j]}`,done:false});
+  }
+  for(let i=1;i<=n1;i++){
+    for(let j=1;j<=n2;j++){
+      let k=i+j-1;
+      dp[i][j]=(dp[i-1][j]&&S1[i-1]===S3[k])||(dp[i][j-1]&&S2[j-1]===S3[k]);
+      steps.push({dp:dp.map(r=>[...r]),i,j,note:`dp[${i}][${j}]: s3[${k}]=${S3[k]}, 从s1取=${dp[i-1][j]&&S1[i-1]===S3[k]}, 从s2取=${dp[i][j-1]&&S2[j-1]===S3[k]} => ${dp[i][j]}`,done:i===n1&&j===n2});
+    }
+  }
+  let last=steps[steps.length-1];
+  steps[steps.length-1]={...last,note:last.note+` | 结果: ${dp[n1][n2]}`,done:true};
+}
+function render(){
+  let s=steps[stepIdx]||steps[steps.length-1]||{};
+  let total=steps.length;
+  document.getElementById('stepLabel').textContent=`步骤 ${stepIdx+1} / ${total}`;
+  document.getElementById('progress').style.width=((stepIdx+1)/total*100)+'%';
+  document.getElementById('info').innerHTML=`<strong>s1="aabcc", s2="dbbca"</strong> &nbsp;|&nbsp; ${s.note||''}`;
+
+  let dp=s.dp||[],n1=S1.length,n2=S2.length;
+  let gh='';
+  // Header row
+  gh+=`<div class="grid-cell hdr">s1\\s2</div>`;
+  gh+=`<div class="grid-cell hdr">#</div>`;
+  for(let j=0;j<n2;j++)gh+=`<div class="grid-cell hdr">${S2[j]}</div>`;
+  for(let i=0;i<=n1;i++){
+    gh+=`<div class="grid-cell hdr">${i===0?'#':S1[i-1]}</div>`;
+    for(let j=0;j<=n2;j++){
+      let v=dp[i]?.[j];
+      let cls='';
+      if(v===true)cls='true';
+      else if(v===false&&(i>0||j>0))cls='false';
+      if(s.i===i&&s.j===j)cls+=' cur';
+      gh+=`<div class="grid-cell ${cls}">${v===true?'T':v===false?'F':''}</div>`;
+    }
+  }
+  document.getElementById('grid').innerHTML=gh;
+  document.getElementById('grid').style.gridTemplateColumns=`repeat(${n2+2},1fr)`;
+  document.getElementById('stepDetail').textContent=(s.i!==undefined&&s.j!==undefined)?`dp[${s.i}][${s.j}]: s1前${s.i}个 + s2前${s.j}个`:'';
+}
+function reset(){stopAuto();stepIdx=0;buildSteps();render();}
+function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
+function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
+function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}
+function toggleAuto(){
+  if(playing){stopAuto();}else{playing=true;document.getElementById('autoBtn').classList.add('active');document.getElementById('autoBtn').textContent='停止';
+    autoTimer=setInterval(()=>{if(stepIdx<steps.length-1){stepIdx++;render();}else{stopAuto();}},800);}
+}
+function stopAuto(){playing=false;clearInterval(autoTimer);document.getElementById('autoBtn').classList.remove('active');document.getElementById('autoBtn').textContent='自动播放';}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight')nextStep();
+  else if(e.key==='ArrowLeft')prevStep();
+  else if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+buildSteps();render();
+</script>
+</body>
+</html>

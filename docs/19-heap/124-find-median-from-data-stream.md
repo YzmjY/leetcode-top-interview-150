@@ -71,6 +71,17 @@ medianFinder.findMedian(); // 返回 2.0
 - 插入时先插入一侧，再根据平衡条件调整。
 - 堆的平衡保证了中位数总在堆顶附近。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/124-find-median-from-data-stream-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="数据流的中位数 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

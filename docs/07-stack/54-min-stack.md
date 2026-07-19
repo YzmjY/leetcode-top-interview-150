@@ -59,6 +59,17 @@ minStack.getMin();   --> 返回 -2
 - **时间复杂度**：所有操作均为 O(1)。
 - **空间复杂度**：O(n)，n 为入栈元素个数。使用了额外的辅助栈。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/54-min-stack-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="最小栈 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

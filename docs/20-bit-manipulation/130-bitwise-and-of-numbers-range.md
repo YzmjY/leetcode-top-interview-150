@@ -63,6 +63,17 @@ left == right == 1，停止
 - 核心洞察：结果是 left 和 right 的二进制公共前缀。
 - Brian Kernighan 方法更加简洁。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/130-bitwise-and-of-numbers-range-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="数字范围按位与 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

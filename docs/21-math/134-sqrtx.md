@@ -54,6 +54,17 @@
 - 使用除法代替乘法避免溢出：`mid > x / mid` 等价于 `mid * mid > x`。
 - 注意边界条件：x = 0 和 x = 1。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/134-sqrtx-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="x 的平方根 (Sqrt(x)) - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

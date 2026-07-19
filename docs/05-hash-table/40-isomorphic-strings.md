@@ -56,6 +56,17 @@
 - **时间复杂度**：O(n)，其中 n 是字符串长度。只需要遍历一次。
 - **空间复杂度**：O(1)，使用两个固定大小（128）的数组。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/40-isomorphic-strings-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="同构字符串 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

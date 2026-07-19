@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>113. 环形子数组的最大和</title>
+<style>
+:root {
+  --bg: #f5f6fa; --card: #fff; --text: #2d3436; --sub: #636e72;
+  --border: #dfe6e9; --blue: #0984e3; --red: #e17055; --green: #00b894;
+  --blue-bg: #dff6fd; --hl: #ffeaa7; --red-bg:#ffe0dc;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a2e; --card: #16213e; --text: #eee; --sub: #aaa;
+    --border: #2d3436; --blue: #74b9ff; --red: #ff7675; --green: #55efc4;
+    --blue-bg: #1a3a5c; --hl: #5c4a1f; --red-bg:#4a2025;
+  }
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:var(--bg); display:flex; justify-content:center; align-items:center; min-height:100vh; }
+.container { width:860px; height:500px; background:var(--card); border-radius:8px; padding:20px 24px; display:flex; flex-direction:column; gap:10px; box-shadow:0 2px 12px rgba(0,0,0,0.1); }
+.header { display:flex; justify-content:space-between; align-items:center; }
+.header h2 { font-size:17px; color:var(--text); }
+.step-badge { font-size:13px; color:var(--sub); background:var(--border); padding:4px 12px; border-radius:8px; font-weight:500; }
+.info-panel { background:var(--blue-bg); border-left:3px solid var(--blue); padding:10px 14px; border-radius:8px; font-size:13px; color:var(--text); min-height:44px; display:flex; align-items:center; }
+.row { display:flex; gap:16px; flex:1; }
+.col { flex:1; display:flex; flex-direction:column; gap:6px; }
+.col-title { font-size:13px; font-weight:600; color:var(--sub); text-align:center; }
+.array-grid { display:flex; gap:4px; justify-content:center; align-items:flex-end; flex:1; position:relative; }
+.cell { width:56px; height:52px; border-radius:8px; background:var(--border); display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; font-size:18px; color:var(--text); position:relative; z-index:2; transition:all 0.25s; }
+.cell .idx { font-size:10px; color:var(--sub); margin-top:1px; }
+.cell.hl { background:var(--hl); box-shadow:0 0 0 2px var(--blue); }
+.cell.hl-red { background:var(--red-bg); box-shadow:0 0 0 2px var(--red); }
+.result-box { padding:8px 12px; border-radius:8px; border:2px solid var(--green); text-align:center; font-weight:700; font-size:20px; color:var(--green); margin-top:auto; }
+.controls { display:flex; gap:8px; justify-content:center; }
+.btn { padding:7px 16px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; font-size:13px; font-family:inherit; transition:all 0.15s; }
+.btn:hover { background:var(--blue-bg); border-color:var(--blue); }
+.btn:active { transform:scale(0.96); }
+.key-hint { font-size:11px; color:var(--sub); text-align:center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h2>113. 环形子数组的最大和</h2>
+    <span class="step-badge" id="stepBadge">步骤 0/12</span>
+  </div>
+  <div class="info-panel" id="info"></div>
+  <div class="row">
+    <div class="col">
+      <div class="col-title">普通 Kadane (最大子数组和)</div>
+      <div class="array-grid" id="grid1"></div>
+    </div>
+    <div class="col">
+      <div class="col-title">反转符号 (求最小子数组和)</div>
+      <div class="array-grid" id="grid2"></div>
+    </div>
+  </div>
+  <div class="result-box" id="resultBox">答案: ?</div>
+  <div class="controls">
+    <button class="btn" onclick="reset()">重置</button>
+    <button class="btn" onclick="prev()">上步</button>
+    <button class="btn" onclick="next()">下步</button>
+    <button class="btn" id="autoBtn" onclick="toggleAuto()">自动播放</button>
+    <button class="btn" onclick="goLast()">跳到最后</button>
+  </div>
+  <div class="key-hint">键盘: &#8592; &#8593; 上步 | &#8594; &#8595; 下步 | 空格 自动播放</div>
+</div>
+<script>
+const nums = [1,-2,3,-2];
+const n = nums.length;
+const negNums = nums.map(v => -v);
+let steps = [], cur = 0, autoTimer = null, running = false;
+
+function kadaneSteps(arr, label) {
+  let curSum = 0, maxSum = -Infinity, start = 0, bestL = 0, bestR = 0;
+  let s = [{curSum:0,maxSum:-Infinity,start:0,end:-1,bestL:0,bestR:0,desc:`${label} 初始化`}];
+  for (let i = 0; i < arr.length; i++) {
+    if (curSum <= 0) { curSum = arr[i]; start = i; }
+    else { curSum += arr[i]; }
+    s.push({curSum,maxSum,start,end:i,bestL,bestR,desc:`${label} i=${i} curSum=${curSum}`});
+    if (curSum > maxSum) { maxSum = curSum; bestL = start; bestR = i; s[s.length-1].maxSum=maxSum; s[s.length-1].bestL=bestL; s[s.length-1].bestR=bestR; s[s.length-1].desc += ' (更新)'; }
+  }
+  s.push({curSum,maxSum,bestL,bestR,start:bestL,end:bestR,desc:`${label} 结果=${maxSum} [${bestL},${bestR}]`});
+  return { steps: s, max: maxSum, l: bestL, r: bestR };
+}
+
+function buildSteps() {
+  const r1 = kadaneSteps(nums, 'maxKadane');
+  const r2 = kadaneSteps(negNums, 'minKadane');
+  const total = nums.reduce((a,b)=>a+b,0);
+  const minSubSum = -r2.max;
+  const circMax = total - minSubSum;
+  const ans = Math.max(r1.max, circMax);
+  steps = [];
+  for (let i = 0; i < Math.max(r1.steps.length, r2.steps.length); i++) {
+    let d = '';
+    let s1 = r1.steps[Math.min(i,r1.steps.length-1)];
+    let s2 = r2.steps[Math.min(i,r2.steps.length-1)];
+    if (i < r1.steps.length && i < r2.steps.length) d = '同时运行两个Kadane';
+    else if (i >= r1.steps.length) d = 'maxKadane已完成，继续minKadane';
+    else d = 'minKadane已完成，继续maxKadane';
+    if (i === r1.steps.length - 1 && i === r2.steps.length - 1) d = `最大子数组和=${r1.max}，最小子数组和=${minSubSum}，总和=${total}，环形最大=${circMax}，答案=max(${r1.max},${circMax})=${ans}`;
+    steps.push({s1,s2,desc:d,ans,r1:r1.max,r2:r2.max,circMax,total,minSubSum});
+  }
+}
+buildSteps();
+
+function renderGrid(id, arr, s) {
+  const grid = document.getElementById(id);
+  let html = '';
+  for (let i = 0; i < arr.length; i++) {
+    let cls = 'cell';
+    if (s && s.bestL <= i && i <= s.bestR) cls += ' hl';
+    if (s && s.end >= 0 && s.start <= i && i <= s.end) cls += ' hl-red';
+    html += `<div class="${cls}"><span>${arr[i]}</span><span class="idx">${i}</span></div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function render() {
+  const s = steps[cur];
+  document.getElementById('stepBadge').textContent = `步骤 ${cur}/${steps.length-1}`;
+  document.getElementById('info').textContent = s.desc;
+  document.getElementById('autoBtn').textContent = running ? '停止' : '自动播放';
+  document.getElementById('resultBox').textContent = `最大子数组和=${s.r1} | 最小子数组和=${s.minSubSum} | 总和=${s.total} | 环形最大=${s.circMax} | 答案=${s.ans}`;
+  renderGrid('grid1', nums, s.s1);
+  renderGrid('grid2', negNums, s.s2);
+}
+function reset() { stopAuto(); cur = 0; render(); }
+function prev() { if (cur > 0) { cur--; render(); } }
+function next() { if (cur < steps.length - 1) { cur++; render(); } else { stopAuto(); } }
+function goLast() { stopAuto(); cur = steps.length - 1; render(); }
+function toggleAuto() { running ? stopAuto() : startAuto(); }
+function startAuto() { running = true; render(); autoStep(); }
+function stopAuto() { running = false; if (autoTimer) clearTimeout(autoTimer); render(); }
+function autoStep() { if (!running) return; if (cur < steps.length - 1) { cur++; render(); autoTimer = setTimeout(autoStep, 500); } else { stopAuto(); } }
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); next(); }
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+  else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); reset(); }
+  else if (e.key === 'End') { e.preventDefault(); goLast(); }
+});
+render();
+</script>
+</body>
+</html>

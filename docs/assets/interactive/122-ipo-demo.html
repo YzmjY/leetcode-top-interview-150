@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>122. IPO - 最大堆选择项目</title>
+<style>
+:root {
+  --bg: #f5f6fa; --card: #fff; --text: #2d3436; --sub: #636e72;
+  --border: #dfe6e9; --blue: #0984e3; --green: #00b894; --red: #e17055;
+  --blue-bg: #dff6fd; --green-bg: #dff9e6; --hl: #ffeaa7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a2e; --card: #16213e; --text: #eee; --sub: #aaa;
+    --border: #2d3436; --blue: #74b9ff; --green: #55efc4; --red: #ff7675;
+    --blue-bg: #1a3a5c; --green-bg: #1a3a2c; --hl: #5c4a1f;
+  }
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:var(--bg); display:flex; justify-content:center; align-items:center; min-height:100vh; }
+.container { width:860px; height:500px; background:var(--card); border-radius:8px; padding:20px 24px; display:flex; flex-direction:column; gap:10px; box-shadow:0 2px 12px rgba(0,0,0,0.1); }
+.header { display:flex; justify-content:space-between; align-items:center; }
+.header h2 { font-size:17px; color:var(--text); }
+.step-badge { font-size:13px; color:var(--sub); background:var(--border); padding:4px 12px; border-radius:8px; font-weight:500; }
+.info-panel { background:var(--blue-bg); border-left:3px solid var(--blue); padding:10px 14px; border-radius:8px; font-size:13px; color:var(--text); min-height:44px; display:flex; align-items:center; }
+.projects { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; flex:1; align-content:flex-start; padding-top:10px; }
+.project { width:130px; padding:10px; border-radius:8px; background:var(--border); text-align:center; font-size:13px; color:var(--text); transition:all 0.3s; }
+.project .p-profit { font-weight:700; font-size:16px; color:var(--green); }
+.project .p-capital { font-size:12px; color:var(--sub); }
+.project.available { background:var(--green-bg); border:2px solid var(--green); }
+.project.selected { background:var(--hl); border:2px solid var(--blue); }
+.project.done { opacity:0.4; }
+.state { display:flex; gap:16px; justify-content:center; font-size:14px; font-weight:600; color:var(--text); }
+.controls { display:flex; gap:8px; justify-content:center; }
+.btn { padding:7px 16px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; font-size:13px; font-family:inherit; transition:all 0.15s; }
+.btn:hover { background:var(--blue-bg); border-color:var(--blue); }
+.btn:active { transform:scale(0.96); }
+.key-hint { font-size:11px; color:var(--sub); text-align:center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h2>122. IPO (k=2, w=0)</h2>
+    <span class="step-badge" id="stepBadge">步骤 0/6</span>
+  </div>
+  <div class="info-panel" id="info"></div>
+  <div class="state" id="state">资本 W = 0 | 已完成项目数 = 0</div>
+  <div class="projects" id="projects"></div>
+  <div class="controls">
+    <button class="btn" onclick="reset()">重置</button>
+    <button class="btn" onclick="prev()">上步</button>
+    <button class="btn" onclick="next()">下步</button>
+    <button class="btn" id="autoBtn" onclick="toggleAuto()">自动播放</button>
+    <button class="btn" onclick="goLast()">跳到最后</button>
+  </div>
+  <div class="key-hint">键盘: &#8592; &#8593; 上步 | &#8594; &#8595; 下步 | 空格 自动播放</div>
+</div>
+<script>
+const profits = [1,2,3], capital = [0,1,1];
+const n = profits.length, kMax = 2;
+let steps = [], cur = 0, autoTimer = null, running = false;
+// idx sorted by capital
+const idxs = [0,1,2]; // capital: 0,1,1
+
+function buildSteps() {
+  steps = [];
+  let w = 0, done = 0, completed = new Set();
+  let idx = 0;
+  steps.push({w,done,completed:new Set(),idx,desc:'初始化: k=2, w=0, profits=[1,2,3], capital=[0,1,1]'});
+  for (let round = 0; round < kMax; round++) {
+    // collect available
+    let avail = [];
+    for (let i = 0; i < n; i++) {
+      if (!completed.has(i) && capital[i] <= w) avail.push(i);
+    }
+    if (avail.length === 0) { steps.push({w,done,completed:new Set(completed),idx,desc:`第${round+1}轮: 无可用项目, 结束`}); break; }
+    // pick max profit
+    let best = avail.reduce((a,b)=>profits[a]>=profits[b]?a:b);
+    steps.push({w,done,completed:new Set(completed),idx,best,avail,desc:`第${round+1}轮: 可用项目=[${avail.map(i=>`P${i}(p=${profits[i]},c=${capital[i]})`)}], 选择最大利润项目${best}`});
+    completed.add(best);
+    w += profits[best];
+    done++;
+    steps.push({w,done,completed:new Set(completed),idx,best,desc:`选择项目${best}(利润${profits[best]}), 资本更新: w=${w}, 已完成=${done}`});
+  }
+  steps.push({w,done,completed:new Set(completed),idx,desc:`最终资本 w=${w}`,final:true});
+}
+buildSteps();
+
+function render() {
+  const s = steps[cur];
+  document.getElementById('stepBadge').textContent = `步骤 ${cur}/${steps.length-1}`;
+  document.getElementById('info').textContent = s.desc;
+  document.getElementById('autoBtn').textContent = running ? '停止' : '自动播放';
+  document.getElementById('state').textContent = `资本 W = ${s.w} | 已完成项目数 = ${s.done}`;
+  const projDiv = document.getElementById('projects');
+  let html = '';
+  for (let i = 0; i < n; i++) {
+    let cls = 'project';
+    if (s.completed.has(i)) cls += ' done';
+    else if (s.best === i) cls += ' selected';
+    else if (s.avail && s.avail.includes(i)) cls += ' available';
+    html += `<div class="${cls}"><div class="p-profit">利润${profits[i]}</div><div class="p-capital">资本${capital[i]}</div><div>项目${i}</div></div>`;
+  }
+  projDiv.innerHTML = html;
+}
+function reset() { stopAuto(); cur = 0; render(); }
+function prev() { if (cur > 0) { cur--; render(); } }
+function next() { if (cur < steps.length - 1) { cur++; render(); } else { stopAuto(); } }
+function goLast() { stopAuto(); cur = steps.length - 1; render(); }
+function toggleAuto() { running ? stopAuto() : startAuto(); }
+function startAuto() { running = true; render(); autoStep(); }
+function stopAuto() { running = false; if (autoTimer) clearTimeout(autoTimer); render(); }
+function autoStep() { if (!running) return; if (cur < steps.length - 1) { cur++; render(); autoTimer = setTimeout(autoStep, 600); } else { stopAuto(); } }
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
+  else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); next(); }
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+  else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); reset(); }
+  else if (e.key === 'End') { e.preventDefault(); goLast(); }
+});
+render();
+</script>
+</body>
+</html>

@@ -45,6 +45,17 @@
 - 模拟手工二进制加法，从低位向高位计算。
 - 进位 `carry` 的初始值和最终处理。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/125-add-binary-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="二进制求和 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

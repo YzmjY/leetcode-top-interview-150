@@ -46,6 +46,17 @@
 - **时间复杂度**：O(n)，计算长度和找断点各遍历一次。
 - **空间复杂度**：O(1)，只使用常数个指针。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/65-rotate-list-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="旋转链表 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

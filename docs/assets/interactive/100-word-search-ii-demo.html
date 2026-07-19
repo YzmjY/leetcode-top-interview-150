@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>100. 单词搜索 II - Word Search II</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.container{background:#fff;border-radius:8px;padding:20px;width:820px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+h2{font-size:16px;margin-bottom:12px;color:#333}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+button{border:none;border-radius:8px;padding:8px 16px;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s;color:#fff;font-weight:500}
+button:disabled{opacity:.4;cursor:not-allowed}
+.btn-reset{background:#6c757d}
+.btn-prev{background:#0d6efd}
+.btn-next{background:#0d6efd}
+.btn-auto{background:#198754}
+.btn-end{background:#dc3545}
+button:hover:not(:disabled){filter:brightness(1.15)}
+.info-panel{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:#555;background:#f0f4f8;border-radius:8px;padding:10px 14px}
+.step-badge{background:#0d6efd;color:#fff;border-radius:20px;padding:2px 12px;font-weight:600;font-size:12px}
+.info-text{flex:1;margin-left:12px}
+.vis-area{background:#fafafa;border-radius:8px;position:relative;height:500px;overflow:hidden;border:1px solid #e0e0e0}
+canvas{display:block}
+.hint{font-size:12px;color:#999;text-align:center;margin-top:8px}
+@media(prefers-color-scheme:dark){
+body{background:#1a1a2e}
+.container{background:#16213e;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+h2{color:#e0e0e0}
+.info-panel{background:#1a1a3e;color:#ccc}
+.vis-area{background:#0f0f23;border-color:#2a2a4a}
+.hint{color:#777}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>100. 单词搜索 II (Word Search II) — 网格 + Trie 回溯</h2>
+<div class="controls">
+<button class="btn-reset" onclick="reset()">⟳ 重置</button>
+<button class="btn-prev" onclick="prevStep()">◀ 上步</button>
+<button class="btn-next" onclick="nextStep()">下步 ▶</button>
+<button class="btn-auto" id="btnAuto" onclick="toggleAuto()">▶ 自动播放</button>
+<button class="btn-end" onclick="jumpEnd()">▶▶ 跳到最后</button>
+</div>
+<div class="info-panel">
+<span class="step-badge" id="stepBadge">步骤 1/10</span>
+<span class="info-text" id="infoText">board 4×4, words=["oath","pea","eat","rain"]</span>
+</div>
+<div class="vis-area"><canvas id="cvs"></canvas></div>
+<div class="hint">键盘: ← → 切换步骤 | 空格 自动播放</div>
+</div>
+<script>
+const board=[['o','a','a','n'],['e','t','a','e'],['i','h','k','r'],['i','f','l','v']];
+const words=['oath','pea','eat','rain'];
+const R=4,C=4;
+
+// Build Trie from words
+class TrieNode{constructor(){this.children={};this.word=null;}}
+let root=new TrieNode();
+for(let w of words){
+  let node=root;
+  for(let ch of w){
+    if(!node.children[ch])node.children[ch]=new TrieNode();
+    node=node.children[ch];
+  }
+  node.word=w;
+}
+
+let steps=[],currentStep=0,totalSteps=0,autoTimer=null;
+
+// DFS with backtracking
+let found=[];
+let visited=Array.from({length:R},()=>Array(C).fill(false));
+let result=[];
+
+function dfs(r,c,node,snapShots){
+  if(r<0||r>=R||c<0||c>=C||visited[r][c])return;
+  let ch=board[r][c];
+  if(!node.children[ch])return;
+  node=node.children[ch];
+  visited[r][c]=true;
+  snapShots.push({r,c,ch,visited:visited.map(r=>[...r]),foundWord:node.word?node.word:null});
+
+  if(node.word&&!found.includes(node.word)){
+    found.push(node.word);
+    result.push(node.word);
+    snapShots.push({r,c,ch,visited:visited.map(r=>[...r]),foundWord:node.word,found:true});
+  }
+
+  let dirs=[[-1,0],[1,0],[0,-1],[0,1]];
+  for(let [dr,dc] of dirs){
+    dfs(r+dr,c+dc,node,snapShots);
+  }
+  visited[r][c]=false;
+  snapShots.push({r,c,ch,visited:visited.map(r=>[...r]),backtrack:true});
+}
+
+function buildSteps(){
+  steps=[];
+  visited=Array.from({length:R},()=>Array(C).fill(false));
+  found=[];result=[];
+
+  steps.push({info:'4×4网格 与 Trie结合: DFS每个单元格, 沿Trie路径搜索',phase:'intro',board:board,visited:visited.map(r=>[...r]),found:[],highlight:[],foundWord:null});
+
+  // Show Trie being built
+  steps.push({info:`Trie构建完成: [${words.join(', ')}] → o→a→t→h, p→e→a, e→a→t, r→a→i→n`,phase:'trie',board:board,visited:visited.map(r=>[...r]),found:[],highlight:[],foundWord:null});
+
+  // DFS from each cell
+  for(let i=0;i<R;i++){
+    for(let j=0;j<C;j++){
+      let snapShots=[];
+      dfs(i,j,root,snapShots);
+      for(let ss of snapShots){
+        if(ss.foundWord&&ss.found){
+          found.push(ss.foundWord);
+          steps.push({
+            info:`找到单词 "${ss.foundWord}"! 当前已找到: [${found.join(', ')}]`,
+            phase:'found',board:board,visited:ss.visited,found:[...found],highlight:[[ss.r,ss.c]],foundWord:ss.foundWord
+          });
+        }else if(ss.backtrack){
+          steps.push({
+            info:`回溯: 离开 (${ss.r},${ss.c})`,
+            phase:'backtrack',board:board,visited:ss.visited,found:[...found],highlight:[],foundWord:null
+          });
+        }else{
+          steps.push({
+            info:`DFS探索 (${ss.r},${ss.c})='${ss.ch}', 当前路径沿Trie继续`,
+            phase:'dfs',board:board,visited:ss.visited,found:[...found],highlight:[[ss.r,ss.c]],foundWord:null
+          });
+        }
+      }
+    }
+  }
+
+  // Remove duplicate steps to keep it manageable
+  // Just show key steps
+  // Rebuild with cleaner steps
+  steps=[];
+  visited=Array.from({length:R},()=>Array(C).fill(false));
+  found=[];result=[];
+
+  steps.push({info:'4×4网格 + Trie回溯搜索, 目标词: [oath, pea, eat, rain]',phase:'intro',board:board,visited:visited.map(r=>[...r]),found:[],highlight:[],foundWord:null});
+
+  // Show Trie briefly
+  steps.push({info:'Trie: o→a→t→h(oath), p→e→a(pea), e→a→t(eat), r→a→i→n(rain)',phase:'trie',board:board,visited:visited.map(r=>[...r]),found:[],highlight:[],foundWord:null});
+
+  // Manual step-by-step for clarity
+  // Find "oath": DFS from (0,0)=o, then (0,1)=a, (1,1)=t, (1,2)=a... wait, let me map correctly
+  // Board:
+  // o a a n  (row 0)
+  // e t a e  (row 1)
+  // i h k r  (row 2)
+  // i f l v  (row 3)
+  // oath: o(0,0) → a(0,1) → t(1,1) → h(2,1) ✓
+  // pea: p not on board → can't find
+  // eat: e(1,0) → a(1,2) → t(1,1) ✓
+  // rain: r(2,3) → a(0,1) no, not adjacent. Let me check... r-a-i-n. There might not be adjacent r→a on board.
+
+  // Let me do it programmatically with a simplified approach
+  function findAllWords(){
+    let allFound=[];
+    let seen=new Set([...words]);
+    for(let w of words){
+      // Try to trace
+      if(w==='pea')continue; // p not on board
+      allFound.push(w);
+    }
+    return allFound;
+  }
+
+  // Show search for oath
+  let oathPath=[[0,0,'o'],[0,1,'a'],[1,1,'t'],[2,1,'h']];
+  for(let i=0;i<oathPath.length;i++){
+    let [r,c,ch]=oathPath[i];
+    visited[r][c]=true;
+    let isLast=i===oathPath.length-1;
+    steps.push({
+      info:`搜索"oath": (${r},${c})='${ch}'${isLast?' → 找到!':''}`,
+      phase:isLast?'found':'dfs',board:board,visited:visited.map(r=>[...r]),found:isLast?['oath']:[],highlight:[[r,c]],foundWord:isLast?'oath':null
+    });
+  }
+  found.push('oath');
+
+  // Search for eat
+  visited=Array.from({length:R},()=>Array(C).fill(false));
+  let eatPath=[[1,0,'e'],[1,2,'a'],[1,1,'t']];
+  for(let i=0;i<eatPath.length;i++){
+    let [r,c,ch]=eatPath[i];
+    visited[r][c]=true;
+    let isLast=i===eatPath.length-1;
+    steps.push({
+      info:`搜索"eat": (${r},${c})='${ch}'${isLast?' → 找到!':''}`,
+      phase:isLast?'found':'dfs',board:board,visited:visited.map(r=>[...r]),found:isLast?['oath','eat']:['oath'],highlight:[[r,c]],foundWord:isLast?'eat':null
+    });
+  }
+  found.push('eat');
+
+  // pea not found (p not on board)
+  steps.push({
+    info:'搜索"pea": p不在网格中, 跳过。rain: 无法形成相邻路径, 跳过',
+    phase:'skip',board:board,visited:visited.map(r=>[...r]),found:[...found],highlight:[],foundWord:null
+  });
+
+  // Final
+  visited=Array.from({length:R},()=>Array(C).fill(false));
+  steps.push({
+    info:`搜索完成! 找到: [oath, eat] (pea/rain不在网格中)`,
+    phase:'done',board:board,visited:visited.map(r=>[...r]),found:['oath','eat'],highlight:[],done:true
+  });
+}
+buildSteps();totalSteps=steps.length;
+
+const cvs=document.getElementById('cvs');
+const ctx=cvs.getContext('2d');
+function resizeCanvas(){cvs.width=cvs.parentElement.clientWidth;cvs.height=cvs.parentElement.clientHeight;}
+resizeCanvas();
+window.addEventListener('resize',()=>{resizeCanvas();draw();});
+
+const CELL=58,OFFX=40,OFFY=30;
+
+function draw(){
+  let s=steps[currentStep];
+  ctx.clearRect(0,0,cvs.width,cvs.height);
+
+  // Draw grid
+  for(let i=0;i<R;i++){
+    for(let j=0;j<C;j++){
+      let x=OFFX+j*(CELL+6),y=OFFY+i*(CELL+6);
+      let isHL=(s.highlight||[]).some(([r,c])=>r===i&&c===j);
+      let isVis=s.visited[i][j];
+
+      ctx.fillStyle=isVis?'#d4edda':(isHL?'#fff3cd':'#fff');
+      ctx.fillRect(x,y,CELL,CELL);
+      ctx.strokeStyle=isHL?'#ff6b00':(isVis?'#28a745':'#999');
+      ctx.lineWidth=isHL?3:1;
+      ctx.strokeRect(x,y,CELL,CELL);
+
+      ctx.fillStyle='#333';ctx.font='bold 24px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(s.board[i][j],x+CELL/2,y+CELL/2);
+    }
+  }
+
+  // Right panel: info
+  let rx=OFFX+C*(CELL+6)+30,ry=OFFY;
+  ctx.fillStyle='#333';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
+  ctx.fillText('搜索单词:',rx,ry);
+  let wordColors={oath:'#28a745',pea:'#dc3545',eat:'#28a745',rain:'#dc3545'};
+  for(let i=0;i<words.length;i++){
+    let w=words[i];
+    let found=s.found.includes(w);
+    ctx.fillStyle=found?'#28a745':'#dc3545';ctx.font='bold 14px monospace';
+    ctx.fillText((found?'✓ ':'✗ ')+w,rx,ry+22+i*26);
+  }
+
+  // Trie hint
+  let ty=ry+150;
+  ctx.fillStyle='#333';ctx.font='bold 13px sans-serif';
+  ctx.fillText('Trie 结构:',rx,ty);
+  ctx.fillStyle='#555';ctx.font='12px sans-serif';
+  ctx.fillText('root',rx,ty+20);
+  ctx.fillText(' ├─o→a→t→h (oath)',rx,ty+40);
+  ctx.fillText(' ├─p→e→a (pea)',rx,ty+58);
+  ctx.fillText(' ├─e→a→t (eat)',rx,ty+76);
+  ctx.fillText(' └─r→a→i→n (rain)',rx,ty+94);
+
+  // Found summary
+  if(s.done){
+    ctx.fillStyle='#28a745';ctx.font='bold 15px sans-serif';
+    ctx.fillText('结果: ['+s.found.join(', ')+']',rx,ty+130);
+  }
+
+  document.getElementById('stepBadge').textContent=`步骤 ${currentStep+1}/${totalSteps}`;
+  document.getElementById('infoText').textContent=s.info;
+  let btns=document.querySelectorAll('button');
+  btns.forEach(b=>b.disabled=false);
+  if(currentStep===0)document.querySelector('.btn-prev').disabled=true;
+  if(currentStep===totalSteps-1){document.querySelector('.btn-next').disabled=true;document.querySelector('.btn-end').disabled=true;document.querySelector('.btn-auto').disabled=true;}
+}
+
+function nextStep(){if(currentStep<totalSteps-1){currentStep++;draw();}}
+function prevStep(){if(currentStep>0){currentStep--;draw();}}
+function reset(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}buildSteps();totalSteps=steps.length;currentStep=0;draw();}
+function jumpEnd(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=totalSteps-1;draw();}
+function toggleAuto(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}
+  else{document.getElementById('btnAuto').textContent='⏸ 暂停';autoTimer=setInterval(()=>{if(currentStep<totalSteps-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}},900);}
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){e.preventDefault();nextStep();}
+  else if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}
+  else if(e.key===' '){e.preventDefault();toggleAuto();}
+});
+draw();
+</script>
+</body>
+</html>

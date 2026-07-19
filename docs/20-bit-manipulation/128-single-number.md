@@ -57,6 +57,17 @@
 - 异或运算的交换律和结合律使得顺序无关紧要。
 - 这是异或最经典的面试题应用。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/128-single-number-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="只出现一次的数字 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

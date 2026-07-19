@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>54. 最小栈 - 可视化演示</title>
+<style>
+:root {
+  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
+  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
+  --btn-active-text: #fff; --stack-bg: #f1f3f5;
+  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
+  --step-bg: #e7f5ff;
+}
+@media (prefers-color-scheme: dark) {
+:root {
+  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
+  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
+  --btn-active-text: #fff; --stack-bg: #1e1e3a; --step-bg: #1a2a3a;
+}
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text);
+  display: flex; justify-content: center; padding: 20px;
+}
+.container {
+  width: 100%; max-width: 900px; height: 500px;
+  background: var(--card-bg); border-radius: 8px;
+  border: 1px solid var(--border); padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.step-panel {
+  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
+  display: flex; justify-content: space-between; align-items: center; font-size: 14px;
+}
+.step-num { font-weight: 700; color: var(--btn-active); }
+.step-desc { flex: 1; margin-left: 16px; }
+.main-area { display: flex; gap: 24px; flex: 1; min-height: 0; }
+.stack-col { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.stack-col h4 { font-size: 13px; color: var(--text-secondary); margin: 0; text-align: center; }
+.stack-box {
+  flex: 1; background: var(--stack-bg); border-radius: 8px; border: 1px solid var(--border);
+  padding: 8px; display: flex; flex-direction: column-reverse; gap: 4px; overflow-y: auto;
+}
+.stack-box.min { border-left: 3px solid var(--green); }
+.stack-box.main { border-left: 3px solid var(--blue); }
+.si {
+  height: 34px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-family: "Consolas", monospace; font-size: 15px;
+  border: 1px solid var(--border); transition: all 0.3s;
+}
+.si.main-i { background: rgba(34,139,230,0.08); }
+.si.min-i { background: rgba(64,192,87,0.08); }
+.si.new { border-color: var(--orange); box-shadow: 0 0 6px rgba(253,126,20,0.3); }
+.si.removing { border-color: var(--red); background: rgba(250,82,82,0.1); }
+.info-panel {
+  flex: 0 0 200px; background: var(--stack-bg); border-radius: 8px; border: 1px solid var(--border);
+  padding: 12px; display: flex; flex-direction: column; gap: 10px;
+}
+.info-item { font-size: 13px; display: flex; justify-content: space-between; }
+.info-val { font-weight: 700; font-family: "Consolas", monospace; color: var(--btn-active); }
+.controls {
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+}
+.controls button {
+  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--btn-bg); color: var(--text); cursor: pointer;
+  font-size: 13px; font-family: inherit; transition: all 0.15s;
+}
+.controls button:hover { background: var(--btn-hover); }
+.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="step-panel">
+    <span class="step-num" id="stepNum">步骤 0 / 0</span>
+    <span class="step-desc" id="stepDesc">初始状态</span>
+  </div>
+  <div class="main-area">
+    <div class="stack-col">
+      <h4>主栈 (Main Stack)</h4>
+      <div class="stack-box main" id="mainStack"></div>
+    </div>
+    <div class="stack-col">
+      <h4>最小栈 (Min Stack)</h4>
+      <div class="stack-box min" id="minStack"></div>
+    </div>
+    <div class="info-panel">
+      <div class="info-item"><span>栈顶 top:</span><span class="info-val" id="infoTop">-</span></div>
+      <div class="info-item"><span>最小值 getMin:</span><span class="info-val" id="infoMin">-</span></div>
+      <div class="info-item" style="font-size:12px;color:var(--text-secondary);" id="infoOp">等待操作...</div>
+    </div>
+  </div>
+  <div class="controls">
+    <button onclick="reset()">重置</button>
+    <button onclick="prevStep()">上步</button>
+    <button onclick="nextStep()">下步</button>
+    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
+    <button onclick="goEnd()">跳到最后</button>
+  </div>
+</div>
+<script>
+const ops = [
+  { type: 'push', val: -2, desc: 'push(-2)' },
+  { type: 'push', val: 0, desc: 'push(0)' },
+  { type: 'push', val: -3, desc: 'push(-3)' },
+  { type: 'getMin', desc: 'getMin() → -3' },
+  { type: 'pop', desc: 'pop()' },
+  { type: 'top', desc: 'top() → 0' },
+  { type: 'getMin', desc: 'getMin() → -2' },
+];
+const steps = [];
+let mainS = [], minS = [];
+let topVal = null, minVal = null;
+let stepIdx = -1;
+
+function buildSteps() {
+  steps.length = 0;
+  mainS = []; minS = [];
+  steps.push({ main: [...mainS], min: [...minS], top: null, min: null, desc: '初始状态', op: '' });
+  for (const op of ops) {
+    if (op.type === 'push') {
+      mainS.push(op.val);
+      const newMin = minS.length === 0 ? op.val : Math.min(op.val, minS[minS.length - 1]);
+      minS.push(newMin);
+      topVal = op.val; minVal = minS[minS.length - 1];
+      steps.push({ main: [...mainS], min: [...minS], top: topVal, min: minVal, desc: op.desc, op: 'push' });
+    } else if (op.type === 'pop') {
+      mainS.pop(); minS.pop();
+      topVal = mainS.length > 0 ? mainS[mainS.length - 1] : null;
+      minVal = minS.length > 0 ? minS[minS.length - 1] : null;
+      steps.push({ main: [...mainS], min: [...minS], top: topVal, min: minVal, desc: op.desc, op: 'pop' });
+    } else if (op.type === 'getMin') {
+      minVal = minS[minS.length - 1];
+      steps.push({ main: [...mainS], min: [...minS], top: topVal, min: minVal, desc: op.desc, op: 'getMin' });
+    } else if (op.type === 'top') {
+      steps.push({ main: [...mainS], min: [...minS], top: topVal, min: minVal, desc: op.desc, op: 'top' });
+    }
+  }
+}
+
+function render() {
+  const st = steps[Math.min(stepIdx, steps.length - 1)];
+  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
+  document.getElementById('stepDesc').textContent = st.desc;
+  document.getElementById('infoTop').textContent = st.top !== null ? st.top : '-';
+  document.getElementById('infoMin').textContent = st.min !== null ? st.min : '-';
+  document.getElementById('infoOp').textContent = st.op ? `操作: ${st.op}` : '';
+
+  renderStack('mainStack', st.main, st, st.main);
+  renderStack('minStack', st.min, st, st.min);
+
+  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
+}
+
+function renderStack(id, arr, st, fullArr) {
+  const box = document.getElementById(id);
+  box.innerHTML = '';
+  arr.forEach((v, i) => {
+    const div = document.createElement('div');
+    div.className = 'si ' + (id === 'mainStack' ? 'main-i' : 'min-i');
+    if (stepIdx > 0) {
+      const prev = id === 'mainStack' ? steps[stepIdx - 1].main : steps[stepIdx - 1].min;
+      if (arr.length > prev.length && i === arr.length - 1) div.className += ' new';
+      if (arr.length < prev.length && i === prev.length - 1) return;
+    }
+    div.textContent = v;
+    box.appendChild(div);
+  });
+  if (arr.length === 0) {
+    const empty = document.createElement('div');
+    empty.textContent = '(空)'; empty.style.cssText = 'color:var(--text-secondary);text-align:center;font-size:12px;';
+    box.appendChild(empty);
+  }
+}
+
+function reset() { stopAuto(); stepIdx = 0; render(); }
+function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; render(); }
+function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; render(); }
+function goEnd() { stopAuto(); stepIdx = steps.length - 1; render(); }
+
+let autoRunning = false, autoTimer = null;
+function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
+function startAuto() { autoRunning = true; render(); autoStep(); }
+function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); render(); }
+function autoStep() {
+  if (!autoRunning) return;
+  if (stepIdx < steps.length - 1) { stepIdx++; render(); autoTimer = setTimeout(autoStep, 800); }
+  else stopAuto();
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') nextStep();
+  else if (e.key === 'ArrowLeft') prevStep();
+  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+buildSteps();
+reset();
+</script>
+</body>
+</html>

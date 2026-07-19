@@ -70,6 +70,17 @@
 - 多路归并的思路与合并 K 个有序链表一致。
 - 初始只需将每个 `(i, 0)` 入堆即可。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/123-find-k-pairs-with-smallest-sums-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="查找和最小的 K 对数字 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go

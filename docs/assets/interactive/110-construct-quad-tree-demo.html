@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>建立四叉树 - 分治可视化</title>
+<style>
+:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#555;--border:#dee2e6;--accent:#7c3aed;--accent2:#a78bfa;--hover:#ede9fe;--green:#22c55e;--orange:#f59e0b;--blue:#3b82f6;--red:#ef4444;--btn-bg:#e5e7eb;--btn-txt:#374151;--cell1:#1e293b;--cell0:#f1f5f9}
+.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--cell1:#e2e8f0;--cell0:#334155}
+@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--cell1:#e2e8f0;--cell0:#334155}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
+.container{width:100%;max-width:780px;background:var(--card);border-radius:8px;border:1px solid var(--border);padding:20px 24px}
+h2{font-size:1.1rem;font-weight:600;margin-bottom:6px;color:var(--accent)}
+.info-panel{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:.85rem;color:var(--text2);flex-wrap:wrap}
+.info-panel .step{background:var(--accent);color:#fff;padding:3px 10px;border-radius:8px;font-weight:600;font-size:.8rem}
+.info-panel .desc{flex:1;min-width:200px}
+.vis-area{height:450px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg);display:flex;align-items:center;justify-content:center}
+.vis-area canvas{display:block}
+.quad-info{display:flex;gap:8px;margin-bottom:8px;font-size:.78rem;color:var(--text2);flex-wrap:wrap;align-items:center}
+.quad-info .tag{background:var(--node-bg);border:1px solid var(--node-border);border-radius:6px;padding:2px 8px;font-family:monospace;font-size:.75rem}
+.controls{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.controls button{background:var(--btn-bg);color:var(--btn-txt);border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:inherit;transition:all .15s}
+.controls button:hover{background:var(--hover);border-color:var(--accent)}
+.controls button:active{transform:scale(.96)}
+.controls button.playing{background:var(--accent);color:#fff;border-color:var(--accent)}
+.legend{display:flex;gap:14px;margin-top:6px;font-size:.72rem;color:var(--text2);flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:4px}
+.legend .dot{width:12px;height:12px;border-radius:3px}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>110. 建立四叉树 (Construct Quad Tree)</h2>
+<div class="info-panel">
+  <span class="step" id="stepLabel">步骤 1/12</span>
+  <span class="desc" id="stepDesc">原始8x8网格</span>
+</div>
+<div class="quad-info" id="quadInfo"></div>
+<div class="vis-area"><canvas id="canvas"></canvas></div>
+<div class="controls">
+  <button onclick="reset()">重置</button>
+  <button onclick="prevStep()">上步</button>
+  <button onclick="nextStep()">下步</button>
+  <button id="playBtn" onclick="togglePlay()">自动播放</button>
+  <button onclick="jumpEnd()">最后</button>
+</div>
+<div class="legend">
+  <span><span class="dot" style="background:var(--cell1)"></span>1</span>
+  <span><span class="dot" style="background:var(--cell0)"></span>0</span>
+  <span><span class="dot" style="background:var(--accent);border:2px solid var(--accent2)"></span>当前分割区域</span>
+  <span><span class="dot" style="background:var(--green)"></span>叶子节点</span>
+  <span><span class="dot" style="background:var(--orange)"></span>非叶子(需继续分割)</span>
+</div>
+</div>
+<script>
+// 8x8 grid: top half 1s, bottom half 0s
+const N=8;
+const grid=[];
+for(let r=0;r<N;r++){
+  grid[r]=[];
+  for(let c=0;c<N;c++){
+    grid[r][c]=r<4?1:0;
+  }
+}
+
+const steps=[];
+function isUniform(r,c,sz){
+  const v=grid[r][c];
+  for(let i=r;i<r+sz;i++)for(let j=c;j<c+sz;j++)if(grid[i][j]!==v)return -1;
+  return v;
+}
+
+function buildTree(r,c,sz,depth){
+  const uniform=isUniform(r,c,sz);
+  if(uniform!==-1){
+    steps.push({type:'leaf',r,c,sz,depth,val:uniform,desc:'叶子节点: 区域('+r+','+c+') 大小'+sz+'x'+sz+' 全部='+uniform});
+    return;
+  }
+  steps.push({type:'split',r,c,sz,depth,desc:'分割区域('+r+','+c+') 大小'+sz+'x'+sz+' (非均匀)'});
+  const half=sz/2;
+  buildTree(r,c,half,depth+1);           // 左上
+  buildTree(r,c+half,half,depth+1);      // 右上
+  buildTree(r+half,c,half,depth+1);      // 左下
+  buildTree(r+half,c+half,half,depth+1); // 右下
+  steps.push({type:'done',r,c,sz,depth,desc:'区域合并完成: ('+r+','+c+') 大小'+sz+'x'+sz});
+}
+buildTree(0,0,N,0);
+
+let curStep=0,playId=null;
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+
+function resize(){const r=canvas.getBoundingClientRect();canvas.width=r.width*devicePixelRatio;canvas.height=r.height*devicePixelRatio;ctx.setTransform(1,0,0,1,0,0);ctx.scale(devicePixelRatio,devicePixelRatio);draw();}
+window.addEventListener('resize',resize);
+
+function draw(){
+  const w=canvas.width/devicePixelRatio,h=canvas.height/devicePixelRatio;
+  ctx.clearRect(0,0,w,h);
+  const step=steps[curStep];
+  const cellSize=44,gridSize=N*cellSize;
+  const offsetX=(w-gridSize)/2,offsetY=(h-gridSize)/2;
+  // draw base grid
+  for(let r=0;r<N;r++){
+    for(let c=0;c<N;c++){
+      const v=grid[r][c];
+      ctx.fillStyle=v===1?getComputedStyle(document.documentElement).getPropertyValue('--cell1').trim():getComputedStyle(document.documentElement).getPropertyValue('--cell0').trim();
+      ctx.fillRect(offsetX+c*cellSize,offsetY+r*cellSize,cellSize,cellSize);
+      ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
+      ctx.lineWidth=.5;
+      ctx.strokeRect(offsetX+c*cellSize,offsetY+r*cellSize,cellSize,cellSize);
+    }
+  }
+  // draw current region highlight
+  function drawRegion(r,c,sz,color,lineWidth){
+    ctx.strokeStyle=color;
+    ctx.lineWidth=lineWidth;
+    ctx.strokeRect(offsetX+c*cellSize,offsetY+r*cellSize,sz*cellSize,sz*cellSize);
+  }
+  // collect all leaf/split regions from steps up to curStep
+  const regions=[];
+  for(let i=0;i<=curStep;i++){
+    const s=steps[i];
+    if(s.type==='leaf')regions.push({r:s.r,c:s.c,sz:s.sz,type:'leaf',depth:s.depth});
+    if(s.type==='split')regions.push({r:s.r,c:s.c,sz:s.sz,type:'split',depth:s.depth});
+  }
+  // remove duplicates (leaf over split)
+  const seen=new Set();
+  const filtered=[];
+  for(let i=regions.length-1;i>=0;i--){
+    const key=regions[i].r+','+regions[i].c+','+regions[i].sz;
+    if(!seen.has(key)){seen.add(key);filtered.unshift(regions[i]);}
+  }
+  filtered.forEach(reg=>{
+    if(reg.type==='leaf'){
+      drawRegion(reg.r,reg.c,reg.sz,getComputedStyle(document.documentElement).getPropertyValue('--green').trim(),2);
+    }
+  });
+  // current step region
+  if(step.type==='split'){
+    drawRegion(step.r,step.c,step.sz,getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),3);
+  }
+  if(step.type==='leaf'){
+    drawRegion(step.r,step.c,step.sz,getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),3);
+  }
+  // labels
+  const leafCount=filtered.filter(r=>r.type==='leaf').length;
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text').trim();
+  ctx.font='12px system-ui';ctx.textAlign='center';
+  ctx.fillText('叶子节点数: '+leafCount,w/2,h-10);
+}
+
+function updateUI(){
+  const step=steps[curStep];
+  document.getElementById('stepLabel').textContent='步骤 '+(curStep+1)+'/'+steps.length;
+  document.getElementById('stepDesc').textContent=step.desc||'';
+  document.getElementById('quadInfo').innerHTML='<span class="tag">区域('+step.r+','+step.c+')</span><span class="tag">大小:'+step.sz+'x'+step.sz+'</span>';
+  resize();
+}
+function reset(){curStep=0;stopPlay();updateUI();}
+function nextStep(){if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();}
+function prevStep(){if(curStep>0){curStep--;updateUI();}}
+function jumpEnd(){curStep=steps.length-1;stopPlay();updateUI();}
+function stopPlay(){if(playId){clearInterval(playId);playId=null;document.getElementById('playBtn').classList.remove('playing');document.getElementById('playBtn').textContent='自动播放';}}
+function togglePlay(){if(playId){stopPlay();return;}if(curStep>=steps.length-1)curStep=0;document.getElementById('playBtn').classList.add('playing');document.getElementById('playBtn').textContent='暂停';playId=setInterval(()=>{if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();},700);}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}else if(e.key==='ArrowRight'){e.preventDefault();nextStep();}else if(e.key===' '){e.preventDefault();togglePlay();}});
+updateUI();
+</script>
+</body>
+</html>
