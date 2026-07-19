@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --sub-bg: #f5f5f5;
+    --win-bg: rgba(25,118,210,0.18);
+    --win-border: rgba(25,118,210,0.45);
+    --match-green: rgba(76,175,80,0.30);
+    --match-green-border: rgba(76,175,80,0.6);
+    --fail-red: rgba(211,47,47,0.22);
+    --fail-red-border: rgba(211,47,47,0.55);
+    --chunk-a: rgba(25,118,210,0.12);
+    --chunk-b: rgba(156,39,176,0.12);
+    --highlight-blue: #1976D2;
+    --highlight-green: #388E3C;
+    --highlight-red: #D32F2F;
+    --step-circle-bg: #1976D2;
+    --step-circle-color: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd;
+      --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+      --win-bg: rgba(66,165,245,0.22);
+      --win-border: rgba(66,165,245,0.50);
+      --match-green: rgba(76,175,80,0.30);
+      --match-green-border: rgba(76,175,80,0.6);
+      --fail-red: rgba(239,83,80,0.25);
+      --fail-red-border: rgba(239,83,80,0.6);
+      --chunk-a: rgba(66,165,245,0.14);
+      --chunk-b: rgba(186,104,200,0.14);
+      --highlight-blue: #42A5F5;
+      --highlight-green: #66BB6A;
+      --highlight-red: #EF5350;
+      --step-circle-bg: #42A5F5;
+      --step-circle-color: #1a1a2e;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 16px 20px;
+  }
+  .container { max-width: 950px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
+  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 6px;
+    font-size: 14px; flex-wrap: wrap;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: var(--highlight-blue); min-width: 36px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 680px; text-align: center; }
+
+  .state-row {
+    display: flex; justify-content: center; gap: 16px;
+    background: var(--sub-bg); border-radius: 8px;
+    padding: 10px 16px; margin-bottom: 8px; font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .state-item { text-align: center; min-width: 70px; }
+  .state-val { font-size: 20px; font-weight: bold; font-family: monospace; }
+  .state-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .sv-start .state-val { color: var(--highlight-blue); }
+  .sv-found .state-val { color: var(--highlight-green); }
+
+  /* String grid */
+  .string-row {
+    display: flex; gap: 0; margin-bottom: 2px; flex-wrap: wrap; justify-content: center;
+  }
+  .chunk {
+    display: flex; flex-direction: column; align-items: center;
+    border-radius: 8px; padding: 2px 0; margin: 0 1px;
+    transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+    position: relative;
+  }
+  .chunk-letters {
+    display: flex; gap: 1px;
+  }
+  .s-cell {
+    width: 34px; height: 38px; border-radius: 6px;
+    background: var(--cell-bg); border: 1.5px solid var(--cell-border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: bold; color: var(--text);
+    transition: background 0.3s, border-color 0.3s;
+    font-family: monospace;
+  }
+  .s-cell.chunk-a-bg { background: var(--chunk-a); }
+  .s-cell.chunk-b-bg { background: var(--chunk-b); }
+  .s-cell.win-active { background: var(--win-bg); border-color: var(--win-border); }
+  .s-cell.match-ok { background: var(--match-green); border-color: var(--match-green-border); }
+  .s-cell.match-fail { background: var(--fail-red); border-color: var(--fail-red-border); }
+  .chunk-label {
+    font-size: 9px; color: var(--muted); margin-top: 2px; text-align: center;
+    font-family: monospace;
+  }
+
+  .step-circle {
+    position: absolute; top: -10px; right: -10px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--step-circle-bg); color: var(--step-circle-color);
+    font-size: 11px; font-weight: bold; display: flex;
+    align-items: center; justify-content: center;
+    z-index: 5; opacity: 0; pointer-events: none;
+  }
+  .step-circle.visible { opacity: 1; }
+
+  /* Word requirement panel */
+  .middle-row {
+    display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 6px;
+  }
+  .word-panel {
+    background: var(--sub-bg); border-radius: 8px; padding: 8px 12px;
+    font-size: 12px;
+  }
+  .word-panel h4 { font-size: 11px; color: var(--muted); margin-bottom: 4px; text-align: center; }
+  .word-tag {
+    display: inline-block; padding: 3px 8px; margin: 2px;
+    border-radius: 4px; font-family: monospace; font-size: 13px; font-weight: bold;
+    background: var(--cell-bg); border: 1px solid var(--cell-border); color: var(--text);
+  }
+  .word-tag.needed { background: var(--fail-red); color: #fff; }
+  .word-tag.found { background: var(--match-green); color: #fff; }
+
+  .result-row {
+    background: var(--sub-bg); border-radius: 8px; padding: 10px 14px;
+    margin-bottom: 10px; font-size: 13px; text-align: center; color: var(--text);
+  }
+  .result-row .highlight { color: var(--highlight-green); font-weight: bold; font-size: 15px; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: var(--highlight-blue); color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+
+  .legend {
+    display: flex; gap: 18px; justify-content: center; margin-top: 10px;
+    font-size: 12px; color: var(--muted); flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+  @media (max-width: 700px) {
+    .s-cell { width: 24px; height: 28px; font-size: 12px; }
+    .chunk { padding: 1px 0; }
+    .chunk-letters { gap: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>串联所有单词的子串 — 滑动窗口交互演示</h2>
+  <div class="sub-title">s = "barfoothefoobarman", words = ["foo", "bar"] → 输出 [0, 9]</div>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
+  </div>
+
+  <div class="state-row">
+    <div class="state-item sv-start">
+      <div class="state-val" id="startVal">--</div>
+      <div class="state-label">窗口起始位置</div>
+    </div>
+    <div class="state-item">
+      <div class="state-val" id="matchedVal" style="font-size:14px;">--</div>
+      <div class="state-label">匹配的单词</div>
+    </div>
+    <div class="state-item sv-found">
+      <div class="state-val" id="foundVal">[]</div>
+      <div class="state-label">找到的起始索引</div>
+    </div>
+  </div>
+
+  <div class="string-row" id="stringRow" style="position:relative;"></div>
+
+  <div class="middle-row">
+    <div class="word-panel">
+      <h4>需要匹配的单词</h4>
+      <span class="word-tag" style="background:var(--chunk-a);border-color:var(--highlight-blue);">foo</span>
+      <span class="word-tag" style="background:var(--chunk-b);border-color:var(--highlight-blue);">bar</span>
+    </div>
+    <div class="word-panel" id="matchPanel">
+      <h4>当前窗口匹配状态</h4>
+      <span style="color:var(--muted);font-size:12px;">等待开始...</span>
+    </div>
+  </div>
+
+  <div class="result-row" id="resultBar">
+    <span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight">进行中...</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">&#x23EE; 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
+    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--match-green)"></div>单词匹配成功</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--fail-red)"></div>单词匹配失败</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--win-bg)"></div>当前窗口</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--chunk-a)"></div>单词分块</div>
+  </div>
+</div>
+
+<script>
+const s = 'barfoothefoobarman';
+const words = ['foo', 'bar'];
+const wordLen = 3;
+const totalWords = words.length;
+const totalLen = wordLen * totalWords;
+
+const steps = [];
+const foundIndices = [];
+
+(function simulate() {
+  steps.push({
+    start: -1, curWord: null, matched: [], found: [...foundIndices],
+    desc: '初始状态 · wordLen=3, 需要匹配: ["foo","bar"] · 从索引0开始逐个尝试',
+    action: 'init', matchResult: null, matchCellStart: -1
+  });
+
+  const wordFreq = {};
+  words.forEach(w => { wordFreq[w] = (wordFreq[w] || 0) + 1; });
+
+  for (let i = 0; i <= s.length - totalLen; i++) {
+    steps.push({
+      start: i, curWord: null, matched: [], found: [...foundIndices],
+      desc: `尝试起始位置 i=${i}, 窗口范围 [${i}, ${i+totalLen-1}], 将检查${totalWords}个单词`,
+      action: 'start', matchResult: null, matchCellStart: -1
+    });
+
+    const seen = {};
+    let j;
+    for (j = 0; j < totalWords; j++) {
+      const wordStart = i + j * wordLen;
+      const curWord = s.slice(wordStart, wordStart + wordLen);
+      const isInWords = wordFreq.hasOwnProperty(curWord) && (seen[curWord] || 0) < wordFreq[curWord];
+
+      if (isInWords) {
+        seen[curWord] = (seen[curWord] || 0) + 1;
+        steps.push({
+          start: i, curWord, matched: [...Object.keys(seen).map(k => k + ' x' + seen[k])], found: [...foundIndices],
+          desc: `  位置 ${wordStart}: "${curWord}" ✓ 匹配成功 (${j+1}/${totalWords} 个单词已匹配)`,
+          action: 'match', matchResult: 'ok', matchCellStart: wordStart
+        });
+      } else {
+        steps.push({
+          start: i, curWord, matched: [...Object.keys(seen).map(k => k + ' x' + seen[k])], found: [...foundIndices],
+          desc: `  位置 ${wordStart}: "${curWord}" ✗ 匹配失败 (不在words中或已用过) → 跳过起始位置 ${i}`,
+          action: 'match', matchResult: 'fail', matchCellStart: wordStart
+        });
+        break;
+      }
+    }
+
+    if (j === totalWords) {
+      foundIndices.push(i);
+      steps.push({
+        start: i, curWord: null, matched: [], found: [...foundIndices],
+        desc: `起始位置 ${i} 全部${totalWords}个单词匹配成功! 将 ${i} 加入结果列表 → 结果: [${foundIndices.join(', ')}]`,
+        action: 'all_matched', matchResult: 'ok', matchCellStart: -1
+      });
+    }
+  }
+
+  steps.push({
+    start: -1, curWord: null, matched: [], found: [...foundIndices],
+    desc: `算法完成! 所有可能的起始位置已检查完毕 → 结果: [${foundIndices.join(', ')}]`,
+    action: 'done', matchResult: null, matchCellStart: -1
+  });
+})();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+const stringRow = document.getElementById('stringRow');
+const sCells = [];
+
+// Build character cells grouped into chunks by wordLen
+const chunks = [];
+for (let i = 0; i < s.length; i += wordLen) {
+  const chunkStr = s.slice(i, Math.min(i + wordLen, s.length));
+  chunks.push({ start: i, text: chunkStr });
+}
+
+chunks.forEach((chunk, ci) => {
+  const chunkDiv = document.createElement('div');
+  chunkDiv.className = 'chunk';
+  chunkDiv.id = 'chunk' + ci;
+  chunkDiv.style.position = 'relative';
+
+  const lettersDiv = document.createElement('div');
+  lettersDiv.className = 'chunk-letters';
+
+  for (let k = 0; k < chunk.text.length; k++) {
+    const cell = document.createElement('div');
+    cell.className = 's-cell';
+    cell.id = 'sc' + (chunk.start + k);
+    // Alternate chunk colors
+    if (ci % 2 === 0) cell.classList.add('chunk-a-bg');
+    else cell.classList.add('chunk-b-bg');
+    cell.textContent = chunk.text[k];
+    lettersDiv.appendChild(cell);
+    sCells.push({ el: cell, idx: chunk.start + k });
+  }
+
+  const circle = document.createElement('div');
+  circle.className = 'step-circle';
+  circle.id = 'circ' + ci;
+  chunkDiv.appendChild(circle);
+
+  const label = document.createElement('div');
+  label.className = 'chunk-label';
+  label.textContent = '[' + chunk.start + '] ' + chunk.text;
+  chunkDiv.appendChild(label);
+
+  chunkDiv.appendChild(lettersDiv.cloneNode ? null : lettersDiv);
+  // Reorder: circle, letters, label
+  chunkDiv.innerHTML = '';
+  chunkDiv.appendChild(circle);
+  chunkDiv.appendChild(lettersDiv);
+  chunkDiv.appendChild(label);
+
+  stringRow.appendChild(chunkDiv);
+});
+
+// Rebuild chunk circles reference
+const chunkCircles = [];
+chunks.forEach((_, ci) => {
+  chunkCircles.push(document.getElementById('circ' + ci));
+});
+
+function getCell(idx) {
+  for (const c of sCells) {
+    if (c.idx === idx) return c.el;
+  }
+  return null;
+}
+
+function render() {
+  const step = steps[current];
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = step.desc;
+  document.getElementById('startVal').textContent = step.start >= 0 ? step.start : '--';
+  document.getElementById('matchedVal').textContent = step.matched.length > 0 ? step.matched.join(', ') : '--';
+  document.getElementById('foundVal').textContent = '[' + step.found.join(', ') + ']';
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+
+  const rText = document.getElementById('resultText');
+  if (current >= steps.length - 1) {
+    rText.textContent = '结果: [' + step.found.join(', ') + ']';
+    rText.style.color = 'var(--highlight-green)';
+  } else {
+    rText.textContent = '进行中...';
+    rText.style.color = 'var(--highlight-blue)';
+  }
+
+  // Reset all cells
+  sCells.forEach(c => { c.el.classList.remove('win-active', 'match-ok', 'match-fail'); });
+  chunkCircles.forEach(c => { if (c) { c.classList.remove('visible'); c.textContent = ''; } });
+
+  // Highlight window range
+  if (step.start >= 0 && step.action !== 'init') {
+    const end = step.start + totalLen - 1;
+    for (let i = step.start; i <= end && i < s.length; i++) {
+      const cell = getCell(i);
+      if (cell) cell.classList.add('win-active');
+    }
+  }
+
+  // Highlight match/fail cell
+  if (step.matchCellStart >= 0) {
+    const chunkIdx = Math.floor(step.matchCellStart / wordLen);
+    if (chunkCircles[chunkIdx]) {
+      chunkCircles[chunkIdx].textContent = current;
+      chunkCircles[chunkIdx].classList.add('visible');
+    }
+    for (let i = step.matchCellStart; i < step.matchCellStart + wordLen && i < s.length; i++) {
+      const cell = getCell(i);
+      if (cell) {
+        if (step.matchResult === 'ok') cell.classList.add('match-ok');
+        else cell.classList.add('match-fail');
+      }
+    }
+  }
+
+  // All matched - highlight all
+  if (step.action === 'all_matched' && step.start >= 0) {
+    const end = step.start + totalLen - 1;
+    for (let i = step.start; i <= end && i < s.length; i++) {
+      const cell = getCell(i);
+      if (cell) { cell.classList.add('match-ok'); cell.classList.remove('win-active'); }
+    }
+  }
+
+  // Update match panel
+  const mp = document.getElementById('matchPanel');
+  if (step.start >= 0 && step.action !== 'init' && step.action !== 'done') {
+    let tagsHtml = '';
+    if (step.matched.length > 0) {
+      step.matched.forEach(m => {
+        tagsHtml += '<span class="word-tag found">' + m + '</span> ';
+      });
+    } else {
+      tagsHtml = '<span style="color:var(--muted);font-size:12px;">空</span>';
+    }
+    mp.innerHTML = '<h4>当前窗口匹配状态</h4>' + tagsHtml;
+  } else if (step.action === 'done') {
+    mp.innerHTML = '<h4>当前窗口匹配状态</h4><span style="color:var(--highlight-green);font-size:12px;">算法完成!</span>';
+  } else {
+    mp.innerHTML = '<h4>当前窗口匹配状态</h4><span style="color:var(--muted);font-size:12px;">等待开始...</span>';
+  }
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer);
+    autoRunning = false;
+    document.getElementById('playBtn').innerHTML = '&#x25B6; 自动播放';
+    document.getElementById('playBtn').classList.remove('play-btn');
+    document.getElementById('playBtn').style.background = '';
+    document.getElementById('playBtn').style.color = '';
+  } else {
+    autoRunning = true;
+    document.getElementById('playBtn').innerHTML = '&#x23F8; 暂停';
+    document.getElementById('playBtn').classList.add('play-btn');
+    document.getElementById('playBtn').style.background = 'var(--highlight-blue)';
+    document.getElementById('playBtn').style.color = '#fff';
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(() => {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 1200);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #fff; --text: #333; --muted: #888;
+    --cell-bg: #fafafa; --cell-border: #d0d0d0;
+    --header: #222;
+    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
+    --sub-bg: #f5f5f5;
+    --window-bg: rgba(25,118,210,0.18);
+    --window-border: rgba(25,118,210,0.45);
+    --satisfied-bg: rgba(76,175,80,0.30);
+    --satisfied-border: rgba(76,175,80,0.6);
+    --unsatisfied-bg: #e0e0e0;
+    --unsatisfied-border: #d0d0d0;
+    --highlight-blue: #1976D2;
+    --highlight-green: #388E3C;
+    --highlight-orange: #FF9800;
+    --step-circle-bg: #1976D2;
+    --step-circle-color: #fff;
+    --need-bg: #fafafa;
+    --need-border: #d0d0d0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
+      --cell-bg: #222; --cell-border: #444;
+      --header: #ddd;
+      --btn-bg: #333; --btn-hover: #444;
+      --sub-bg: #252540;
+      --window-bg: rgba(66,165,245,0.22);
+      --window-border: rgba(66,165,245,0.50);
+      --satisfied-bg: rgba(76,175,80,0.30);
+      --satisfied-border: rgba(76,175,80,0.6);
+      --unsatisfied-bg: #333;
+      --unsatisfied-border: #444;
+      --highlight-blue: #42A5F5;
+      --highlight-green: #66BB6A;
+      --highlight-orange: #FFB74D;
+      --step-circle-bg: #42A5F5;
+      --step-circle-color: #1a1a2e;
+      --need-bg: #1e1e30;
+      --need-border: #444;
+    }
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; padding: 16px 20px;
+  }
+  .container { max-width: 960px; width: 100%; }
+  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
+  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+
+  .info-bar {
+    display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 6px;
+    font-size: 14px; flex-wrap: wrap;
+  }
+  .step-num { font-weight: bold; font-size: 24px; color: var(--highlight-blue); min-width: 36px; text-align: center; }
+  .step-desc { color: var(--muted); font-size: 13px; max-width: 680px; text-align: center; }
+
+  .state-row {
+    display: flex; justify-content: center; gap: 16px;
+    background: var(--sub-bg); border-radius: 8px;
+    padding: 10px 16px; margin-bottom: 8px; font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .state-item { text-align: center; min-width: 64px; }
+  .state-val { font-size: 20px; font-weight: bold; font-family: monospace; }
+  .state-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .sv-l .state-val { color: var(--highlight-blue); }
+  .sv-r .state-val { color: var(--highlight-orange); }
+  .sv-min .state-val { color: var(--highlight-green); }
+
+  .main-row {
+    display: flex; gap: 12px; align-items: flex-start; justify-content: center; flex-wrap: wrap; margin-bottom: 6px;
+  }
+
+  /* String grid */
+  .grid-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .grid-area { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; }
+  .cell-wrap { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .cell {
+    width: 42px; height: 40px; border-radius: 8px;
+    background: var(--cell-bg); border: 2px solid var(--cell-border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: bold; color: var(--text);
+    transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+    position: relative; z-index: 1; font-family: monospace;
+  }
+  .cell.in-window { background: var(--window-bg); border-color: var(--window-border); }
+  .cell.satisfied { background: var(--satisfied-bg); border-color: var(--satisfied-border); }
+  .cell.step-highlight { border-color: var(--highlight-blue); box-shadow: 0 0 8px rgba(25,118,210,0.35); }
+  .step-circle {
+    position: absolute; top: -10px; right: -10px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--step-circle-bg); color: var(--step-circle-color);
+    font-size: 11px; font-weight: bold; display: flex;
+    align-items: center; justify-content: center;
+    z-index: 5; opacity: 0; pointer-events: none;
+  }
+  .step-circle.visible { opacity: 1; }
+  .cell-idx { font-size: 10px; color: var(--muted); margin-top: 2px; text-align: center; }
+
+  .pointer-row {
+    display: flex; gap: 3px; min-height: 20px; flex-wrap: wrap; justify-content: center;
+  }
+  .pointer-slot { width: 42px; text-align: center; font-size: 9px; font-weight: bold; color: var(--muted); }
+
+  /* Need/Have panels */
+  .panel-group { display: flex; gap: 8px; flex-direction: column; }
+  .count-panel {
+    background: var(--need-bg); border: 1px solid var(--need-border);
+    border-radius: 8px; padding: 8px 12px; min-width: 130px;
+  }
+  .count-panel h4 { font-size: 11px; color: var(--muted); margin-bottom: 6px; text-align: center; }
+  .count-row {
+    display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 13px; font-family: monospace;
+  }
+  .count-char { font-weight: bold; min-width: 16px; color: var(--text); }
+  .count-has { color: var(--highlight-green); font-size: 14px; font-weight: bold; min-width: 20px; text-align: center; }
+  .count-need { color: var(--highlight-blue); font-size: 14px; font-weight: bold; min-width: 20px; text-align: center; }
+  .count-sep { color: var(--muted); }
+  .count-bar-bg { flex: 1; height: 6px; background: var(--cell-border); border-radius: 3px; overflow: hidden; min-width: 24px; }
+  .count-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+  .count-row.ok .count-bar-fill { background: var(--highlight-green); }
+  .count-row.ok .count-has { color: var(--highlight-green); font-weight: bold; }
+  .count-row.pend .count-bar-fill { background: var(--highlight-blue); }
+  .count-row.pend .count-has { color: var(--muted); }
+
+  .sat-row {
+    display: flex; justify-content: center; gap: 8px;
+    background: var(--sub-bg); border-radius: 8px; padding: 6px 14px;
+    font-size: 12px; margin-bottom: 4px;
+  }
+
+  .result-row {
+    background: var(--sub-bg); border-radius: 8px; padding: 10px 14px;
+    margin-bottom: 10px; font-size: 13px; text-align: center; color: var(--text);
+  }
+  .result-row .highlight { color: var(--highlight-green); font-weight: bold; font-size: 15px; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  }
+  button {
+    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
+    background: var(--btn-bg); color: var(--text); font-size: 13px;
+    cursor: pointer; transition: 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.play-btn { background: var(--highlight-blue); color: #fff; border-color: #1565C0; }
+  button.play-btn:hover { background: #1565C0; }
+
+  .legend {
+    display: flex; gap: 18px; justify-content: center; margin-top: 10px;
+    font-size: 12px; color: var(--muted); flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+  @media (max-width: 750px) {
+    .cell { width: 32px; height: 32px; font-size: 14px; }
+    .cell-idx { font-size: 8px; }
+    .pointer-slot { width: 32px; font-size: 7px; }
+    .grid-area { gap: 2px; }
+    .pointer-row { gap: 2px; }
+    .count-panel { min-width: 100px; padding: 6px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>最小覆盖子串 — 滑动窗口交互演示</h2>
+  <div class="sub-title">s = "ADOBECODEBANC", t = "ABC" → 最小覆盖子串 = "BANC"</div>
+
+  <div class="info-bar">
+    <span class="step-num" id="stepNum">0</span>
+    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
+  </div>
+
+  <div class="state-row">
+    <div class="state-item sv-l">
+      <div class="state-val" id="leftVal">0</div>
+      <div class="state-label">left 索引</div>
+    </div>
+    <div class="state-item sv-r">
+      <div class="state-val" id="rightVal">0</div>
+      <div class="state-label">right 索引</div>
+    </div>
+    <div class="state-item">
+      <div class="state-val" id="winContentVal" style="font-size:14px;">""</div>
+      <div class="state-label">窗口内容</div>
+    </div>
+    <div class="state-item sv-min">
+      <div class="state-val" id="minLenVal">∞</div>
+      <div class="state-label">当前最小长度</div>
+    </div>
+    <div class="state-item">
+      <div class="state-val" id="minStrVal" style="font-size:14px;">""</div>
+      <div class="state-label">最小覆盖子串</div>
+    </div>
+  </div>
+
+  <div class="sat-row">
+    <span>已满足: <strong id="satCount" style="color:var(--highlight-green)">0</strong>/<span id="needCount">3</span> 种字符</span>
+    <span style="color:var(--muted);">|</span>
+    <span>窗口长度: <strong id="winLenDisp">0</strong></span>
+  </div>
+
+  <div class="main-row">
+    <div class="grid-wrap">
+      <div class="grid-area" id="gridArea"></div>
+      <div class="pointer-row" id="pointerRow"></div>
+    </div>
+    <div class="panel-group">
+      <div class="count-panel" id="needPanel">
+        <h4>t 中需求 (need)</h4>
+        <div id="needContent"></div>
+      </div>
+      <div class="count-panel" id="havePanel">
+        <h4>窗口中计数 (have)</h4>
+        <div id="haveContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-row" id="resultBar">
+    <span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight">进行中...</span>
+  </div>
+
+  <div class="controls">
+    <button onclick="goStep(0)">&#x23EE; 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
+    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--satisfied-bg)"></div>已满足需求的字符</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--window-bg)"></div>滑动窗口</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--highlight-blue)"></div>当前操作元素</div>
+  </div>
+</div>
+
+<script>
+const s = 'ADOBECODEBANC';
+const t = 'ABC';
+const chars = s.split('');
+
+// Compute need
+const need = {};
+for (const ch of t) { need[ch] = (need[ch] || 0) + 1; }
+const uniqueT = Object.keys(need).length;
+
+const steps = [];
+(function simulate() {
+  steps.push({
+    left: 0, right: -1, have: {}, haveSatisfied: 0, need, minLen: Infinity, minStr: '',
+    desc: '初始状态 · left=0, right=0 · need = {A:1, B:1, C:1}',
+    action: 'init', stepCell: -1
+  });
+
+  const have = {};
+  let left = 0, haveSatisfied = 0, minLen = Infinity, minStart = -1;
+
+  for (let right = 0; right < chars.length; right++) {
+    const ch = chars[right];
+    have[ch] = (have[ch] || 0) + 1;
+    if (need[ch] && have[ch] === need[ch]) haveSatisfied++;
+
+    const winContent = chars.slice(left, right + 1).join('');
+
+    if (haveSatisfied < uniqueT) {
+      steps.push({
+        left, right, have: { ...have }, haveSatisfied, need, minLen, minStr: minStart >= 0 ? s.slice(minStart, minStart + minLen) : '',
+        desc: `right 右移到 ${right}: 加入 "${ch}", 已满足 ${haveSatisfied}/${uniqueT} 种字符 → 继续扩大窗口`,
+        action: 'expand', stepCell: right
+      });
+    }
+
+    // Shrink when all satisfied
+    while (haveSatisfied === uniqueT) {
+      const curLen = right - left + 1;
+      const curStr = chars.slice(left, right + 1).join('');
+      const isNewMin = curLen < minLen;
+      if (isNewMin) { minLen = curLen; minStart = left; }
+
+      steps.push({
+        left, right, have: { ...have }, haveSatisfied, need, minLen, minStr: minStart >= 0 ? s.slice(minStart, minStart + minLen) : '',
+        desc: `全部${uniqueT}种字符已满足! 窗口="${curStr}" 长度=${curLen}` + (isNewMin ? ` ← 新最小覆盖子串!` : ` (minLen=${minLen})`),
+        action: 'found', stepCell: left
+      });
+
+      // Remove left char
+      const removed = chars[left];
+      have[removed]--;
+      if (need[removed] && have[removed] < need[removed]) haveSatisfied--;
+      left++;
+
+      const newContent = chars.slice(left, right + 1).join('');
+      steps.push({
+        left, right, have: { ...have }, haveSatisfied, need, minLen, minStr: minStart >= 0 ? s.slice(minStart, minStart + minLen) : '',
+        desc: `left 右移到 ${left}: 移除 "${removed}", 已满足 ${haveSatisfied}/${uniqueT} 种 → 窗口="${newContent || '空'}"`,
+        action: 'shrink', stepCell: left - 1
+      });
+    }
+  }
+
+  const finalResult = minStart >= 0 ? s.slice(minStart, minStart + minLen) : '';
+  steps.push({
+    left: -1, right: -1, have: {}, haveSatisfied: 0, need, minLen, minStr: finalResult,
+    desc: `算法完成! right 到达字符串末尾 → 最小覆盖子串 = "${finalResult}" (长度=${minLen})`,
+    action: 'done', stepCell: -1
+  });
+})();
+
+let current = 0;
+let autoTimer = null;
+let autoRunning = false;
+
+const gridArea = document.getElementById('gridArea');
+const pointerRow = document.getElementById('pointerRow');
+const cells = [];
+const pointers = [];
+
+chars.forEach((ch, i) => {
+  const wrap = document.createElement('div');
+  wrap.className = 'cell-wrap';
+  wrap.innerHTML = `
+    <div class="step-circle" id="sc${i}"></div>
+    <div class="cell" id="cell${i}">${ch}</div>
+    <div class="cell-idx">[${i}]</div>
+  `;
+  gridArea.appendChild(wrap);
+  cells.push({ el: wrap.querySelector('.cell'), circle: wrap.querySelector('.step-circle') });
+
+  const ptr = document.createElement('div');
+  ptr.className = 'pointer-slot';
+  ptr.id = 'ptr' + i;
+  pointerRow.appendChild(ptr);
+  pointers.push(ptr);
+});
+
+function renderCountPanel(panelId, counts, needObj, isHavePanel) {
+  const container = panelId === 'need' ? document.getElementById('needContent') : document.getElementById('haveContent');
+  let html = '';
+  const allChars = [...new Set([...Object.keys(needObj), ...Object.keys(counts)])].sort();
+  const maxNeed = Math.max(1, ...Object.values(needObj));
+
+  allChars.forEach(ch => {
+    const n = needObj[ch] || 0;
+    const h = counts[ch] || 0;
+    if (isHavePanel) {
+      const isOk = n > 0 && h >= n;
+      const widthPct = Math.min(100, (h / Math.max(n, 1)) * 100);
+      html += `<div class="count-row${isOk ? ' ok' : ' pend'}">
+        <span class="count-char">${ch}</span>
+        <span class="count-has">${h}</span>
+        <span class="count-sep">/</span>
+        <span class="count-need">${n}</span>
+        <div class="count-bar-bg"><div class="count-bar-fill" style="width:${widthPct}%"></div></div>
+      </div>`;
+    } else {
+      html += `<div class="count-row">
+        <span class="count-char">${ch}</span>
+        <span class="count-need" style="color:${n > 0 ? 'var(--highlight-blue)' : 'var(--muted)'}">${n}</span>
+      </div>`;
+    }
+  });
+  container.innerHTML = html || '<div style="color:var(--muted);font-size:12px;text-align:center;">空</div>';
+}
+
+function render() {
+  const step = steps[current];
+  document.getElementById('stepNum').textContent = current;
+  document.getElementById('stepDesc').textContent = step.desc;
+  document.getElementById('leftVal').textContent = step.left >= 0 ? step.left : '--';
+  document.getElementById('rightVal').textContent = step.right >= 0 ? step.right : '--';
+  document.getElementById('winContentVal').textContent = step.right >= 0 && step.left >= 0 ? '"' + chars.slice(step.left, step.right + 1).join('') + '"' : '""';
+  document.getElementById('minLenVal').textContent = step.minLen === Infinity ? '∞' : step.minLen;
+  document.getElementById('minStrVal').textContent = step.minStr ? '"' + step.minStr + '"' : '""';
+  document.getElementById('satCount').textContent = step.haveSatisfied;
+  document.getElementById('needCount').textContent = uniqueT;
+  document.getElementById('winLenDisp').textContent = (step.right >= 0 && step.left >= 0) ? (step.right - step.left + 1) : 0;
+
+  document.getElementById('prevBtn').disabled = current <= 0;
+  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+
+  const rText = document.getElementById('resultText');
+  if (current >= steps.length - 1) {
+    rText.textContent = step.minStr ? '"' + step.minStr + '"' : '无覆盖子串';
+    rText.style.color = 'var(--highlight-green)';
+  } else {
+    rText.textContent = '进行中...';
+    rText.style.color = 'var(--highlight-blue)';
+  }
+
+  // Reset cells
+  cells.forEach(c => {
+    c.el.classList.remove('in-window', 'satisfied', 'step-highlight');
+    c.circle.classList.remove('visible');
+    c.circle.textContent = '';
+  });
+  pointers.forEach(p => { p.textContent = ''; p.style.color = ''; p.style.fontWeight = ''; });
+
+  // Highlight window range
+  if (step.action !== 'init' && step.action !== 'done' && step.left >= 0 && step.right >= 0) {
+    for (let i = step.left; i <= step.right && i < chars.length; i++) {
+      cells[i].el.classList.add('in-window');
+    }
+  }
+
+  // Highlight satisfied cells
+  if (step.action !== 'init' && step.action !== 'done' && step.left >= 0 && step.right >= 0) {
+    for (let i = step.left; i <= step.right && i < chars.length; i++) {
+      const ch = chars[i];
+      const hasCount = step.have[ch] || 0;
+      const needCount = step.need[ch] || 0;
+      // Mark cells whose character is in need and satisfied (all the ones in the window that are in t)
+      if (needCount > 0 && step.haveSatisfied === uniqueT) {
+        // When all satisfied, mark all t-char cells in the window
+        if (needCount > 0) cells[i].el.classList.add('satisfied');
+      }
+    }
+  }
+
+  // Step highlight
+  if (step.stepCell >= 0 && step.stepCell < chars.length) {
+    cells[step.stepCell].el.classList.add('step-highlight');
+    cells[step.stepCell].circle.textContent = current;
+    cells[step.stepCell].circle.classList.add('visible');
+  }
+
+  // Pointers
+  if (step.left >= 0 && step.left < chars.length) {
+    pointers[step.left].textContent = 'left';
+    pointers[step.left].style.color = 'var(--highlight-blue)';
+    pointers[step.left].style.fontWeight = 'bold';
+  }
+  if (step.right >= 0 && step.right < chars.length && step.right !== step.left) {
+    pointers[step.right].textContent = 'right';
+    pointers[step.right].style.color = 'var(--highlight-orange)';
+    pointers[step.right].style.fontWeight = 'bold';
+  }
+
+  // Count panels
+  renderCountPanel('need', step.need, step.need, false);
+  renderCountPanel('have', step.have, step.need, true);
+}
+
+function goStep(n) {
+  current = Math.max(0, Math.min(n, steps.length - 1));
+  render();
+}
+
+function toggleAuto() {
+  if (autoRunning) {
+    clearInterval(autoTimer);
+    autoRunning = false;
+    document.getElementById('playBtn').innerHTML = '&#x25B6; 自动播放';
+    document.getElementById('playBtn').classList.remove('play-btn');
+    document.getElementById('playBtn').style.background = '';
+    document.getElementById('playBtn').style.color = '';
+  } else {
+    autoRunning = true;
+    document.getElementById('playBtn').innerHTML = '&#x23F8; 暂停';
+    document.getElementById('playBtn').classList.add('play-btn');
+    document.getElementById('playBtn').style.background = 'var(--highlight-blue)';
+    document.getElementById('playBtn').style.color = '#fff';
+    if (current >= steps.length - 1) goStep(0);
+    autoTimer = setInterval(() => {
+      if (current < steps.length - 1) goStep(current + 1);
+      else toggleAuto();
+    }, 1200);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') goStep(current + 1);
+  if (e.key === 'ArrowLeft') goStep(current - 1);
+  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+});
+
+render();
+</script>
+</body>
+</html>

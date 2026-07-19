@@ -52,6 +52,17 @@
 
 **空间复杂度：** O(字符集大小)，对于 ASCII 为 O(128)。
 
+
+### 交互演示
+
+点击下方按钮逐步观察算法的执行过程：
+
+<iframe
+  src="../../assets/interactive/33-minimum-window-substring-demo.html"
+  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  title="最小覆盖子串 - 交互演示">
+</iframe>
+
 ## Go 代码实现
 
 ```go
