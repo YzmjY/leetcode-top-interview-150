@@ -86,13 +86,13 @@ const c=document.getElementById('ic'+i);c.className='cell';
 if(s.inHL.includes(i))c.classList.add('hl-root');
 }
 if(s.range.length){
-for(const[r of s.range]){for(let i=r[0];i<=r[1];i++)document.getElementById('ic'+i).classList.add('hl-range');}
+for(const r of s.range) {for(let i=r[0];i<=r[1];i++)document.getElementById('ic'+i).classList.add('hl-range');}
 }
 
 let html='<defs><radialGradient id="gBlue"><stop offset="0%" stop-color="#42A5F5"/><stop offset="100%" stop-color="#1976D2"/></radialGradient><radialGradient id="gGr"><stop offset="0%" stop-color="#81C784"/><stop offset="100%" stop-color="#4CAF50"/></radialGradient></defs><rect width="880" height="320" fill="transparent"/>';
 const t=s.tree;
 const edges=[[0,1],[0,2],[2,3],[2,4]];
-for(const[e of edges]){
+for(const e of edges) {
 if(e[0]<t.length&&e[1]<t.length){
 const a=t[e[0]],b=t[e[1]];
 html+=`<line x1="${a.x}" y1="${a.y+24}" x2="${b.x}" y2="${b.y-24}" stroke="#ccc" stroke-width="2"/>`;

@@ -54,7 +54,7 @@ const steps=[
 {desc:'中序访问：节点1(值1)，cnt=1，k≠1',hl:[5],cnt:1,found:-1,curNode:5},
 {desc:'中序访问：节点2(值2)，cnt=2，k≠2',hl:[5,3],cnt:2,found:-1,curNode:3},
 {desc:'中序访问：节点3(值3)，cnt=3，k=3！找到答案=3',hl:[5,3,1],cnt:3,found:1,curNode:1},
-{desc,'完成！第3小的元素 = 3',hl:[5,3,1],cnt:3,found:1,curNode:-1}
+{desc:'完成！第3小的元素 = 3',hl:[5,3,1],cnt:3,found:1,curNode:-1}
 ];
 
 let cur=0,autoTimer=null,autoRun=false,svg=document.getElementById('treeSvg');
@@ -68,7 +68,7 @@ document.getElementById('nextBtn').disabled=cur>=steps.length-1;
 document.getElementById('answer').textContent=s.found>=0?'3':'?';
 
 let html='<defs><radialGradient id="gBlue"><stop offset="0%" stop-color="#42A5F5"/><stop offset="100%" stop-color="#1976D2"/></radialGradient><radialGradient id="gOr"><stop offset="0%" stop-color="#FFB74D"/><stop offset="100%" stop-color="#FF9800"/></radialGradient><radialGradient id="gR"><stop offset="0%" stop-color="#E57373"/><stop offset="100%" stop-color="#F44336"/></radialGradient></defs><rect width="720" height="390" fill="transparent"/>';
-for(const[e of edges]){
+for(const e of edges) {
 const a=nodes[e[0]],b=nodes[e[1]];
 html+=`<line x1="${a.x}" y1="${a.y+24}" x2="${b.x}" y2="${b.y-24}" stroke="#ccc" stroke-width="2"/>`;
 }

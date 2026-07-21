@@ -69,7 +69,7 @@ html+='<text x="570" y="25" text-anchor="middle" fill="var(--text)" font-size="1
 
 const trees=[{nodes:pnodes,ox:0},{nodes:qnodes,ox:355}];
 for(const t of trees){
-for(const[e of edges]){
+for(const e of edges) {
 const a=t.nodes[e[0]],b=t.nodes[e[1]];
 html+=`<line x1="${a.x}" y1="${a.y+24}" x2="${b.x}" y2="${b.y-24}" stroke="#ccc" stroke-width="2"/>`;
 }

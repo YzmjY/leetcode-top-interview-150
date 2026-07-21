@@ -64,7 +64,7 @@ document.getElementById('nextBtn').disabled=cur>=steps.length-1;
 
 let html='<defs><radialGradient id="gBlue"><stop offset="0%" stop-color="#42A5F5"/><stop offset="100%" stop-color="#1976D2"/></radialGradient><radialGradient id="gOr"><stop offset="0%" stop-color="#FFB74D"/><stop offset="100%" stop-color="#FF9800"/></radialGradient></defs>';
 html+='<rect width="750" height="420" fill="transparent"/>';
-for(const[e of edges]){
+for(const e of edges) {
 const a=nodes[e[0]],b=nodes[e[1]];
 html+=`<line x1="${a.x}" y1="${a.y+24}" x2="${b.x}" y2="${b.y-24}" stroke="#ccc" stroke-width="2"/>`;
 }

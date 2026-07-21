@@ -67,7 +67,7 @@ document.getElementById('verdict').innerHTML=s.ok&&cur===1?'':'<span class="verd
 if(cur===steps.length-1)document.getElementById('verdict').innerHTML='<span class="verdict invalid">结果：无效BST！节点4破坏了BST性质</span>';
 
 let html='<defs><radialGradient id="gBlue"><stop offset="0%" stop-color="#42A5F5"/><stop offset="100%" stop-color="#1976D2"/></radialGradient><radialGradient id="gGr"><stop offset="0%" stop-color="#81C784"/><stop offset="100%" stop-color="#4CAF50"/></radialGradient><radialGradient id="gR"><stop offset="0%" stop-color="#E57373"/><stop offset="100%" stop-color="#F44336"/></radialGradient></defs><rect width="720" height="400" fill="transparent"/>';
-for(const[e of edges]){
+for(const e of edges) {
 const a=nodes[e[0]],b=nodes[e[1]];
 html+=`<line x1="${a.x}" y1="${a.y+24}" x2="${b.x}" y2="${b.y-24}" stroke="#ccc" stroke-width="2"/>`;
 }
