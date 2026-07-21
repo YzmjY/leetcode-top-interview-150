@@ -70,7 +70,7 @@
 
 <iframe
   src="../../assets/interactive/142-triangle-demo.html"
-  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
   title="三角形最小路径和 (Triangle) - 交互演示">
 </iframe>
 

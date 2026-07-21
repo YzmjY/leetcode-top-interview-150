@@ -66,7 +66,7 @@ s 中没有子串长度为 16 并且等于 words 的任何顺序排列的连接�
 
 <iframe
   src="../../assets/interactive/32-substring-with-concatenation-of-all-words-demo.html"
-  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
   title="串联所有单词的子串 - 交互演示">
 </iframe>
 

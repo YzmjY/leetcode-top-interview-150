@@ -50,6 +50,9 @@ markdown_extensions:
 extra_css:
   - stylesheets/extra.css
 
+extra_javascript:
+  - assets/javascripts/iframe-resize.js
+
 extra:
   generator: false
 

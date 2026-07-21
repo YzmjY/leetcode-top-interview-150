@@ -63,7 +63,7 @@
 
 <iframe
   src="../../assets/interactive/40-isomorphic-strings-demo.html"
-  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
   title="同构字符串 - 交互演示">
 </iframe>
 

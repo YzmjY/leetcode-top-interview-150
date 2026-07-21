@@ -55,7 +55,7 @@
 
 <iframe
   src="../../assets/interactive/84-binary-tree-level-order-traversal-demo.html"
-  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
   title="二叉树的层序遍历 - 交互演示">
 </iframe>
 

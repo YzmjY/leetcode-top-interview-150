@@ -55,7 +55,7 @@
 
 <iframe
   src="../../assets/interactive/87-kth-smallest-element-in-a-bst-demo.html"
-  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
   title="二叉搜索树中第 K 小的元素 - 交互演示">
 </iframe>
 

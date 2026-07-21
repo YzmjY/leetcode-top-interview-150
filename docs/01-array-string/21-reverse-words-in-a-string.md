@@ -56,7 +56,7 @@
 
 <iframe
   src="../../assets/interactive/21-reverse-words-in-a-string-demo.html"
-  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
   title="反转字符串中的单词 - 交互演示">
 </iframe>
 

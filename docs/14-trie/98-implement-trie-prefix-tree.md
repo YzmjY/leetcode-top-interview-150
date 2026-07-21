@@ -64,7 +64,7 @@ trie.search("app");     // 返回 True
 
 <iframe
   src="../../assets/interactive/98-implement-trie-prefix-tree-demo.html"
-  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
   title="实现 Trie (前缀树) - 交互演示">
 </iframe>
 
