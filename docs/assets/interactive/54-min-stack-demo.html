@@ -1,203 +1,147 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>54. 最小栈 - 可视化演示</title>
 <style>
-:root {
-  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
-  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
-  --btn-active-text: #fff; --stack-bg: #f1f3f5;
-  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
-  --step-bg: #e7f5ff;
-}
-@media (prefers-color-scheme: dark) {
-:root {
-  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
-  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
-  --btn-active-text: #fff; --stack-bg: #1e1e3a; --step-bg: #1a2a3a;
-}
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, "Microsoft YaHei", sans-serif;
-  background: var(--bg); color: var(--text);
-  display: flex; justify-content: center; padding: 20px;
-}
-.container {
-  width: 100%; max-width: 900px; height: 500px;
-  background: var(--card-bg); border-radius: 8px;
-  border: 1px solid var(--border); padding: 16px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.step-panel {
-  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
-  display: flex; justify-content: space-between; align-items: center; font-size: 14px;
-}
-.step-num { font-weight: 700; color: var(--btn-active); }
-.step-desc { flex: 1; margin-left: 16px; }
-.main-area { display: flex; gap: 24px; flex: 1; min-height: 0; }
-.stack-col { flex: 1; display: flex; flex-direction: column; gap: 8px; }
-.stack-col h4 { font-size: 13px; color: var(--text-secondary); margin: 0; text-align: center; }
-.stack-box {
-  flex: 1; background: var(--stack-bg); border-radius: 8px; border: 1px solid var(--border);
-  padding: 8px; display: flex; flex-direction: column-reverse; gap: 4px; overflow-y: auto;
-}
-.stack-box.min { border-left: 3px solid var(--green); }
-.stack-box.main { border-left: 3px solid var(--blue); }
-.si {
-  height: 34px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-family: "Consolas", monospace; font-size: 15px;
-  border: 1px solid var(--border); transition: all 0.3s;
-}
-.si.main-i { background: rgba(34,139,230,0.08); }
-.si.min-i { background: rgba(64,192,87,0.08); }
-.si.new { border-color: var(--orange); box-shadow: 0 0 6px rgba(253,126,20,0.3); }
-.si.removing { border-color: var(--red); background: rgba(250,82,82,0.1); }
-.info-panel {
-  flex: 0 0 200px; background: var(--stack-bg); border-radius: 8px; border: 1px solid var(--border);
-  padding: 12px; display: flex; flex-direction: column; gap: 10px;
-}
-.info-item { font-size: 13px; display: flex; justify-content: space-between; }
-.info-val { font-weight: 700; font-family: "Consolas", monospace; color: var(--btn-active); }
-.controls {
-  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-}
-.controls button {
-  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--btn-bg); color: var(--text); cursor: pointer;
-  font-size: 13px; font-family: inherit; transition: all 0.15s;
-}
-.controls button:hover { background: var(--btn-hover); }
-.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
+  :root { --bg:#fff; --text:#333; --muted:#888; --cell-bg:#fafafa; --cell-border:#d0d0d0; --header:#222; --sub-bg:#f5f5f5; --btn-bg:#f0f0f0; --btn-hover:#e0e0e0; }
+  @media (prefers-color-scheme:dark) { :root { --bg:#1a1a2e; --text:#ddd; --muted:#aaa; --cell-bg:#222; --cell-border:#444; --header:#ddd; --btn-bg:#333; --btn-hover:#444; --sub-bg:#252540; } }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; padding:12px 20px; }
+  .container { max-width:850px; width:100%; }
+  h2 { text-align:center; color:var(--header); font-size:17px; margin-bottom:2px; }
+  .sub-title { text-align:center; color:var(--muted); font-size:12px; margin-bottom:4px; }
+  .info-bar { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:4px; font-size:14px; flex-wrap:wrap; }
+  .step-num { font-weight:bold; font-size:22px; color:#1976D2; min-width:32px; text-align:center; }
+  .step-desc { color:var(--muted); font-size:13px; max-width:600px; text-align:center; }
+  svg { display:block; margin:0 auto; width:100%; }
+  .legend { display:flex; gap:14px; justify-content:center; margin-top:4px; font-size:11px; color:var(--muted); flex-wrap:wrap; }
+  .legend-item { display:flex; align-items:center; gap:5px; }
+  .legend-dot { width:14px; height:14px; border-radius:3px; }
+  .controls { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:6px; }
+  button { padding:7px 15px; border:1px solid var(--cell-border); border-radius:6px; background:var(--btn-bg); color:var(--text); font-size:13px; cursor:pointer; transition:0.15s; }
+  button:hover { background:var(--btn-hover); }
+  button:active { transform:scale(0.96); }
+  button:disabled { opacity:0.35; cursor:default; }
+  button.play-btn { background:#1976D2; color:#fff; border-color:#1565C0; }
 </style>
 </head>
 <body>
 <div class="container">
-  <div class="step-panel">
-    <span class="step-num" id="stepNum">步骤 0 / 0</span>
-    <span class="step-desc" id="stepDesc">初始状态</span>
-  </div>
-  <div class="main-area">
-    <div class="stack-col">
-      <h4>主栈 (Main Stack)</h4>
-      <div class="stack-box main" id="mainStack"></div>
-    </div>
-    <div class="stack-col">
-      <h4>最小栈 (Min Stack)</h4>
-      <div class="stack-box min" id="minStack"></div>
-    </div>
-    <div class="info-panel">
-      <div class="info-item"><span>栈顶 top:</span><span class="info-val" id="infoTop">-</span></div>
-      <div class="info-item"><span>最小值 getMin:</span><span class="info-val" id="infoMin">-</span></div>
-      <div class="info-item" style="font-size:12px;color:var(--text-secondary);" id="infoOp">等待操作...</div>
-    </div>
+  <h2>最小栈 — 主栈 + 辅助栈可视化</h2>
+  <div class="sub-title">push(-2)→push(0)→push(-3)→getMin(-3)→pop→top(0)→getMin(-2)</div>
+  <div class="info-bar"><span class="step-num" id="stepNum">0</span><span class="step-desc" id="stepDesc">初始状态 · 点击下一步开始</span></div>
+  <svg id="svg" viewBox="0 0 840 340"></svg>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#42A5F5;"></div>主栈</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#66BB6A;"></div>最小栈</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FF7043;"></div>新入栈/操作中</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FF5252;"></div>出栈</div>
   </div>
   <div class="controls">
-    <button onclick="reset()">重置</button>
-    <button onclick="prevStep()">上步</button>
-    <button onclick="nextStep()">下步</button>
-    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button onclick="goEnd()">跳到最后</button>
+    <button onclick="goStep(0)">&#x23EE; 重置</button>
+    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
+    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
+    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
+    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
   </div>
 </div>
 <script>
-const ops = [
-  { type: 'push', val: -2, desc: 'push(-2)' },
-  { type: 'push', val: 0, desc: 'push(0)' },
-  { type: 'push', val: -3, desc: 'push(-3)' },
-  { type: 'getMin', desc: 'getMin() → -3' },
-  { type: 'pop', desc: 'pop()' },
-  { type: 'top', desc: 'top() → 0' },
-  { type: 'getMin', desc: 'getMin() → -2' },
-];
-const steps = [];
-let mainS = [], minS = [];
-let topVal = null, minVal = null;
-let stepIdx = -1;
+const ops=[{type:'push',val:-2,desc:'push(-2)'},{type:'push',val:0,desc:'push(0)'},{type:'push',val:-3,desc:'push(-3)'},{type:'getMin',desc:'getMin() → -3'},{type:'pop',desc:'pop()'},{type:'top',desc:'top() → 0'},{type:'getMin',desc:'getMin() → -2'}];
 
-function buildSteps() {
-  steps.length = 0;
-  mainS = []; minS = [];
-  steps.push({ main: [...mainS], min: [...minS], top: null, min: null, desc: '初始状态', op: '' });
-  for (const op of ops) {
-    if (op.type === 'push') {
-      mainS.push(op.val);
-      const newMin = minS.length === 0 ? op.val : Math.min(op.val, minS[minS.length - 1]);
-      minS.push(newMin);
-      topVal = op.val; minVal = minS[minS.length - 1];
-      steps.push({ main: [...mainS], min: [...minS], top: topVal, min: minVal, desc: op.desc, op: 'push' });
-    } else if (op.type === 'pop') {
-      mainS.pop(); minS.pop();
-      topVal = mainS.length > 0 ? mainS[mainS.length - 1] : null;
-      minVal = minS.length > 0 ? minS[minS.length - 1] : null;
-      steps.push({ main: [...mainS], min: [...minS], top: topVal, min: minVal, desc: op.desc, op: 'pop' });
-    } else if (op.type === 'getMin') {
-      minVal = minS[minS.length - 1];
-      steps.push({ main: [...mainS], min: [...minS], top: topVal, min: minVal, desc: op.desc, op: 'getMin' });
-    } else if (op.type === 'top') {
-      steps.push({ main: [...mainS], min: [...minS], top: topVal, min: minVal, desc: op.desc, op: 'top' });
+const steps=[];
+(function sim(){
+  let ms=[], mi=[];
+  steps.push({desc:'初始状态', main:[...ms], min:[...mi], op:'init', opV:null, phase:'init'});
+  for(const op of ops){
+    if(op.type==='push'){
+      ms.push(op.val);
+      const nm=mi.length===0?op.val:Math.min(op.val,mi[mi.length-1]);
+      mi.push(nm);
+      steps.push({desc:op.desc, main:[...ms], min:[...mi], op:'push', opV:op.val, phase:'push'});
+    }else if(op.type==='pop'){
+      const popped=ms[ms.length-1];
+      ms.pop(); mi.pop();
+      steps.push({desc:op.desc, main:[...ms], min:[...mi], op:'pop', opV:popped, phase:'pop'});
+    }else if(op.type==='getMin'){
+      steps.push({desc:op.desc, main:[...ms], min:[...mi], op:'getMin', opV:mi[mi.length-1], phase:'getMin'});
+    }else if(op.type==='top'){
+      steps.push({desc:op.desc, main:[...ms], min:[...mi], op:'top', opV:ms[ms.length-1], phase:'top'});
     }
   }
-}
+})();
 
-function render() {
-  const st = steps[Math.min(stepIdx, steps.length - 1)];
-  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
-  document.getElementById('stepDesc').textContent = st.desc;
-  document.getElementById('infoTop').textContent = st.top !== null ? st.top : '-';
-  document.getElementById('infoMin').textContent = st.min !== null ? st.min : '-';
-  document.getElementById('infoOp').textContent = st.op ? `操作: ${st.op}` : '';
+// SVG layout: two stack columns
+const mainX=280, minX=560, stackBase=310, cellH=42, cellW=160, cellRx=6;
 
-  renderStack('mainStack', st.main, st, st.main);
-  renderStack('minStack', st.min, st, st.min);
-
-  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
-}
-
-function renderStack(id, arr, st, fullArr) {
-  const box = document.getElementById(id);
-  box.innerHTML = '';
-  arr.forEach((v, i) => {
-    const div = document.createElement('div');
-    div.className = 'si ' + (id === 'mainStack' ? 'main-i' : 'min-i');
-    if (stepIdx > 0) {
-      const prev = id === 'mainStack' ? steps[stepIdx - 1].main : steps[stepIdx - 1].min;
-      if (arr.length > prev.length && i === arr.length - 1) div.className += ' new';
-      if (arr.length < prev.length && i === prev.length - 1) return;
+function drawStack(arr, x, color, op, opV, phase){
+  let html='';
+  for(let i=0;i<arr.length;i++){
+    const y=stackBase-(i+1)*cellH;
+    const isTop=(i===arr.length-1);
+    let fill=color, stroke=color, fw='1.5', fc='#fff';
+    if(isTop && phase==='push'){
+      fill='#FF7043'; stroke='#E65100'; fw='2.5';
+    }else if(isTop && phase==='pop'){
+      fill='#FF5252'; stroke='#B71C1C'; fw='2.5';
+    }else if(phase==='getMin' && color==='#66BB6A' && isTop){
+      fill='#FF7043'; stroke='#E65100'; fw='2.5';
     }
-    div.textContent = v;
-    box.appendChild(div);
-  });
-  if (arr.length === 0) {
-    const empty = document.createElement('div');
-    empty.textContent = '(空)'; empty.style.cssText = 'color:var(--text-secondary);text-align:center;font-size:12px;';
-    box.appendChild(empty);
+    html+='<rect x="'+(x-cellW/2)+'" y="'+y+'" width="'+cellW+'" height="'+cellH+'" rx="'+cellRx+'" fill="'+fill+'" opacity="0.9" stroke="'+stroke+'" stroke-width="'+fw+'"/>';
+    html+='<text x="'+x+'" y="'+(y+cellH/2+6)+'" text-anchor="middle" fill="'+fc+'" font-size="16" font-weight="bold">'+arr[i]+'</text>';
+    // Index label
+    html+='<text x="'+(x-cellW/2-8)+'" y="'+(y+cellH/2+6)+'" text-anchor="end" fill="var(--muted)" font-size="10">'+(i+1)+'</text>';
   }
+  if(arr.length===0){
+    const y=stackBase-cellH;
+    html+='<rect x="'+(x-cellW/2)+'" y="'+y+'" width="'+cellW+'" height="'+cellH+'" rx="'+cellRx+'" fill="var(--sub-bg)" stroke="var(--cell-border)" stroke-width="1.5" stroke-dasharray="4,3"/>';
+    html+='<text x="'+x+'" y="'+(y+cellH/2+6)+'" text-anchor="middle" fill="var(--muted)" font-size="13">(空)</text>';
+  }
+  // Stack frame lines
+  html+='<line x1="'+(x-cellW/2-5)+'" y1="'+(stackBase-arr.length*cellH)+'" x2="'+(x-cellW/2-5)+'" y2="'+stackBase+'" stroke="#888" stroke-width="1.5"/>';
+  html+='<line x1="'+(x-cellW/2-10)+'" y1="'+stackBase+'" x2="'+(x+cellW/2+10)+'" y2="'+stackBase+'" stroke="#888" stroke-width="1.5"/>';
+  return html;
 }
 
-function reset() { stepIdx = 0; stopAuto(); render(); }
-function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; render(); }
-function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; render(); }
-function goEnd() { stopAuto(); stepIdx = steps.length - 1; render(); }
+let current=0, autoTimer=null, autoRun=false;
+const svg=document.getElementById('svg');
 
-let autoRunning = false, autoTimer = null;
-function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
-function startAuto() { autoRunning = true; render(); autoStep(); }
-function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); render(); }
-function autoStep() {
-  if (!autoRunning) return;
-  if (stepIdx < steps.length - 1) { stepIdx++; render(); autoTimer = setTimeout(autoStep, 800); }
-  else stopAuto();
+function render(){
+  const s=steps[current];
+  const total=steps.length-1;
+  document.getElementById('stepNum').textContent=current;
+  document.getElementById('stepDesc').textContent=s.desc;
+  document.getElementById('prevBtn').disabled=current<=0;
+  document.getElementById('nextBtn').disabled=current>=total;
+
+  let html='';
+  // Background columns
+  html+='<rect x="40" y="10" width="380" height="330" rx="12" fill="var(--sub-bg)" stroke="var(--cell-border)" stroke-width="1" opacity="0.5"/>';
+  html+='<rect x="440" y="10" width="380" height="330" rx="12" fill="var(--sub-bg)" stroke="var(--cell-border)" stroke-width="1" opacity="0.5"/>';
+
+  // Labels
+  html+='<text x="'+mainX+'" y="35" text-anchor="middle" fill="#42A5F5" font-size="14" font-weight="bold">主栈 Main</text>';
+  html+='<text x="'+minX+'" y="35" text-anchor="middle" fill="#66BB6A" font-size="14" font-weight="bold">最小栈 Min</text>';
+
+  // Draw stacks
+  html+=drawStack(s.main, mainX, '#42A5F5', s.op, s.opV, s.phase);
+  html+=drawStack(s.min, minX, '#66BB6A', s.op, s.opV, s.phase);
+
+  // Step indicator
+  if(s.phase!=='init'){
+    html+='<text x="420" y="320" text-anchor="middle" fill="var(--muted)" font-size="11">步骤 '+current+'/'+total+' · '+s.desc+'</text>';
+  }
+
+  svg.innerHTML=html;
 }
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') nextStep();
-  else if (e.key === 'ArrowLeft') prevStep();
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
-});
-buildSteps();
-reset();
+
+function goStep(n){current=Math.max(0,Math.min(n,steps.length-1));render()}
+function toggleAuto(){
+  if(autoRun){clearInterval(autoTimer);autoRun=false;document.getElementById('playBtn').textContent='\u25B6 自动播放';document.getElementById('playBtn').style.background='';document.getElementById('playBtn').style.color='';document.getElementById('playBtn').classList.remove('play-btn');}
+  else{autoRun=true;document.getElementById('playBtn').textContent='\u23F8 暂停';document.getElementById('playBtn').style.background='#1976D2';document.getElementById('playBtn').style.color='#fff';document.getElementById('playBtn').classList.add('play-btn');if(current>=steps.length-1)goStep(0);autoTimer=setInterval(function(){if(current<steps.length-1)goStep(current+1);else toggleAuto()},900);}
+}
+document.addEventListener('keydown',function(e){if(e.key==='ArrowRight')goStep(current+1);if(e.key==='ArrowLeft')goStep(current-1);if(e.key===' '){e.preventDefault();toggleAuto();}});
+render();
 </script>
 </body>
 </html>
