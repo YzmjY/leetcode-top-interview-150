@@ -133,7 +133,7 @@ function render(){
   sl.innerHTML=sh;
   document.getElementById('stepDetail').textContent=`当前起点: ${s.i>=0?`[${POINTS[s.i]}]`:''} | 当前比较点: ${s.cur>=0?`[${POINTS[s.cur]}]`:''}`;
 }
-function reset(){stopAuto();stepIdx=0;buildSteps();render();}
+function reset(){stepIdx=0; stopAuto();buildSteps();render();}
 function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
 function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
 function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}

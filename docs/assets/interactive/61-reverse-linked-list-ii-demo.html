@@ -147,7 +147,7 @@ function renderSVG() {
   document.getElementById('autoBtn').classList.toggle('active', autoRunning);
 }
 
-function reset() { stopAuto(); stepIdx = 0; renderSVG(); }
+function reset() { stepIdx = 0; stopAuto(); renderSVG(); }
 function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; renderSVG(); }
 function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; renderSVG(); }
 function goEnd() { stopAuto(); stepIdx = steps.length - 1; renderSVG(); }

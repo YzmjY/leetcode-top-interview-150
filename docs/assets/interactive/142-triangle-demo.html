@@ -107,7 +107,7 @@ function render(){
   document.getElementById('triangle').innerHTML=th;
   document.getElementById('stepDetail').textContent=s.row!==undefined?`处理第${s.row}行底向上dp: [${TRI[s.row]}]`:'';
 }
-function reset(){stopAuto();stepIdx=0;buildSteps();render();}
+function reset(){stepIdx=0; stopAuto();buildSteps();render();}
 function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
 function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
 function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}

@@ -179,7 +179,7 @@ function render() {
   document.getElementById('autoBtn').classList.toggle('active', autoRunning);
 }
 
-function reset() { stopAuto(); stepIdx = 0; render(); }
+function reset() { stepIdx = 0; stopAuto(); render(); }
 function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; render(); }
 function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; render(); }
 function goEnd() { stopAuto(); stepIdx = steps.length - 1; render(); }

@@ -239,7 +239,7 @@ function renderAll() {
   document.getElementById('autoBtn').classList.toggle('active', autoRunning);
 }
 
-function reset() { stopAuto(); stepIdx = 0; renderAll(); }
+function reset() { stepIdx = 0; stopAuto(); renderAll(); }
 function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; renderAll(); }
 function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; renderAll(); }
 function goEnd() { stopAuto(); stepIdx = steps.length - 1; renderAll(); }

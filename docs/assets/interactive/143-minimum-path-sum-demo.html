@@ -98,7 +98,7 @@ function render(){
   document.getElementById('grid').innerHTML=gh;
   document.getElementById('stepDetail').textContent=s.pos?`计算位置 [${s.pos[0]},${s.pos[1]}]`:'';
 }
-function reset(){stopAuto();stepIdx=0;buildSteps();render();}
+function reset(){stepIdx=0; stopAuto();buildSteps();render();}
 function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
 function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
 function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}
