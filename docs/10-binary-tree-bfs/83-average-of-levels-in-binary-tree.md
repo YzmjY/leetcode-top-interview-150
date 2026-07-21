@@ -49,7 +49,7 @@
 
 <iframe
   src="../../assets/interactive/83-average-of-levels-in-binary-tree-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="二叉树的层平均值 - 交互演示">
 </iframe>
 

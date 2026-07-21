@@ -55,7 +55,7 @@
 
 <iframe
   src="../../assets/interactive/115-search-a-2d-matrix-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="搜索二维矩阵 - 交互演示">
 </iframe>
 

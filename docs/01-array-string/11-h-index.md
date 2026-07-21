@@ -43,7 +43,7 @@
 
 <iframe
   src="../../assets/interactive/11-h-index-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="H 指数 - 交互演示">
 </iframe>
 

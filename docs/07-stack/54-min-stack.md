@@ -66,7 +66,7 @@ minStack.getMin();   --> 返回 -2
 
 <iframe
   src="../../assets/interactive/54-min-stack-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="最小栈 - 交互演示">
 </iframe>
 

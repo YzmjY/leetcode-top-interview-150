@@ -65,7 +65,7 @@
 
 <iframe
   src="../../assets/interactive/100-word-search-ii-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="单词搜索 II - 交互演示">
 </iframe>
 

@@ -77,7 +77,7 @@
 
 <iframe
   src="../../assets/interactive/123-find-k-pairs-with-smallest-sums-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="查找和最小的 K 对数字 - 交互演示">
 </iframe>
 

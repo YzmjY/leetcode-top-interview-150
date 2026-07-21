@@ -51,7 +51,7 @@
 
 <iframe
   src="../../assets/interactive/19-length-of-last-word-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="最后一个单词的长度 - 交互演示">
 </iframe>
 

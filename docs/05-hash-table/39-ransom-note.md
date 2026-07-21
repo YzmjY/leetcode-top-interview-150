@@ -56,7 +56,7 @@
 
 <iframe
   src="../../assets/interactive/39-ransom-note-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="赎金信 - 交互演示">
 </iframe>
 

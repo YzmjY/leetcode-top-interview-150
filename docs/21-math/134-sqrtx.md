@@ -61,7 +61,7 @@
 
 <iframe
   src="../../assets/interactive/134-sqrtx-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="x 的平方根 (Sqrt(x)) - 交互演示">
 </iframe>
 

@@ -59,7 +59,7 @@
 
 <iframe
   src="../../assets/interactive/43-group-anagrams-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="字母异位词分组 - 交互演示">
 </iframe>
 

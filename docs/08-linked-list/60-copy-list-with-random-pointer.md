@@ -68,7 +68,7 @@
 
 <iframe
   src="../../assets/interactive/60-copy-list-with-random-pointer-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="随机链表的复制 - 交互演示">
 </iframe>
 

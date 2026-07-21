@@ -63,7 +63,7 @@
 
 <iframe
   src="../../assets/interactive/136-max-points-on-a-line-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="直线上最多的点数 (Max Points on a Line) - 交互演示">
 </iframe>
 

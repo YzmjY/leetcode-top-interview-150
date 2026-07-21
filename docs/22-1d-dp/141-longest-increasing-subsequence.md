@@ -74,7 +74,7 @@
 
 <iframe
   src="../../assets/interactive/141-longest-increasing-subsequence-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="最长递增子序列 (Longest Increasing Subsequence) - 交互演示">
 </iframe>
 

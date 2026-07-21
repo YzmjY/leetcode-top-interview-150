@@ -48,7 +48,7 @@
 
 <iframe
   src="../../assets/interactive/02-remove-element-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="移除元素 - 交互演示">
 </iframe>
 

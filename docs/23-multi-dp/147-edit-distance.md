@@ -75,7 +75,7 @@ exection -> execution (插入 'u')
 
 <iframe
   src="../../assets/interactive/147-edit-distance-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="编辑距离 (Edit Distance) - 交互演示">
 </iframe>
 

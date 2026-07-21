@@ -67,7 +67,7 @@ P     I
 
 <iframe
   src="../../assets/interactive/22-zigzag-conversion-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="Z 字形变换 - 交互演示">
 </iframe>
 

@@ -51,7 +51,7 @@
 
 <iframe
   src="../../assets/interactive/37-set-matrix-zeroes-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="矩阵置零 - 交互演示">
 </iframe>
 

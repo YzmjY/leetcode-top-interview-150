@@ -81,7 +81,7 @@ M             1000
 
 <iframe
   src="../../assets/interactive/18-integer-to-roman-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="整数转罗马数字 - 交互演示">
 </iframe>
 

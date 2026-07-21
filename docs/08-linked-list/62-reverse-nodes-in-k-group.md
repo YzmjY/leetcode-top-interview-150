@@ -65,7 +65,7 @@ pre -> 1 -> 2 -> 3 -> rest
 
 <iframe
   src="../../assets/interactive/62-reverse-nodes-in-k-group-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="K 个一组翻转链表 - 交互演示">
 </iframe>
 

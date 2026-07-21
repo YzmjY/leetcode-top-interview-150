@@ -59,7 +59,7 @@
 
 <iframe
   src="../../assets/interactive/71-symmetric-tree-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="对称二叉树 - 交互演示">
 </iframe>
 

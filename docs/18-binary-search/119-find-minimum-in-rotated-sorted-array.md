@@ -76,7 +76,7 @@
 
 <iframe
   src="../../assets/interactive/119-find-minimum-in-rotated-sorted-array-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="寻找旋转排序数组中的最小值 - 交互演示">
 </iframe>
 

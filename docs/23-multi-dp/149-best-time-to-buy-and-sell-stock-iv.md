@@ -67,7 +67,7 @@
 
 <iframe
   src="../../assets/interactive/149-best-time-to-buy-and-sell-stock-iv-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="买卖股票的最佳时机 IV (Best Time to Buy and Sell Stock IV) - 交互演示">
 </iframe>
 

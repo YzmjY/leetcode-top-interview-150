@@ -54,7 +54,7 @@
 
 <iframe
   src="../../assets/interactive/15-candy-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="分发糖果 - 交互演示">
 </iframe>
 

@@ -64,7 +64,7 @@
 
 <iframe
   src="../../assets/interactive/128-single-number-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="只出现一次的数字 - 交互演示">
 </iframe>
 

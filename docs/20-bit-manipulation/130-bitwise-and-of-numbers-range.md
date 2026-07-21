@@ -70,7 +70,7 @@ left == right == 1，停止
 
 <iframe
   src="../../assets/interactive/130-bitwise-and-of-numbers-range-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="数字范围按位与 - 交互演示">
 </iframe>
 

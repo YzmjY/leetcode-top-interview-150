@@ -57,7 +57,7 @@
 
 <iframe
   src="../../assets/interactive/42-valid-anagram-demo.html"
-  style="width:100%; min-height:300px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; min-height:550px; border:none; border-radius:8px; background:transparent;"
   title="有效的字母异位词 - 交互演示">
 </iframe>
 
