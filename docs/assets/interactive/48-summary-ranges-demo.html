@@ -4,98 +4,44 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222; --sub-bg: #f5f5f5;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --cur-color: #1976D2; --range-color: #388E3C;
-    --merge-color: #FF9800; --result-color: #388E3C;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
-      --sub-bg: #252540;
-    }
-  }
+  :root { --bg:#fff; --text:#333; --muted:#888; --cell-bg:#fafafa; --cell-border:#d0d0d0; --header:#222; --sub-bg:#f5f5f5; --btn-bg:#f0f0f0; --btn-hover:#e0e0e0; }
+  @media (prefers-color-scheme:dark) { :root { --bg:#1a1a2e; --text:#ddd; --muted:#aaa; --cell-bg:#222; --cell-border:#444; --header:#ddd; --btn-bg:#333; --btn-hover:#444; --sub-bg:#252540; } }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 16px 20px;
-  }
-  .container { max-width: 820px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
-  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
-    font-size: 14px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
-
-  .arr-row { display: flex; align-items: center; gap: 4px; justify-content: center; margin-bottom: 6px; flex-wrap: wrap; }
-  .acell {
-    width: 56px; height: 48px; border: 2px solid var(--cell-border); border-radius: 8px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-size: 20px; font-weight: bold; background: var(--cell-bg); color: var(--text);
-    transition: border-color 0.25s, background 0.25s, transform 0.15s;
-  }
-  .acell .ai { font-size: 9px; color: var(--muted); }
-  .acell.cur { border-color: var(--cur-color); background: rgba(25,118,210,0.12); transform: scale(1.06); z-index: 2; }
-  .acell.gap { border-color: #E53935; background: rgba(229,57,53,0.12); }
-  .acell.range { border-color: var(--range-color); background: rgba(56,142,60,0.12); }
-
-  .result-panel {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 6px; text-align: center; font-size: 13px;
-  }
-
-  .result-row {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 6px; font-size: 13px; text-align: center;
-  }
-  .result-row .highlight { font-weight: bold; font-size: 15px; }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
+  body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; padding:14px 20px; }
+  .container { max-width:900px; width:100%; }
+  h2 { text-align:center; color:var(--header); font-size:17px; margin-bottom:2px; }
+  .sub-title { text-align:center; color:var(--muted); font-size:12px; margin-bottom:6px; }
+  .info-bar { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:4px; font-size:14px; flex-wrap:wrap; }
+  .step-num { font-weight:bold; font-size:22px; color:#1976D2; min-width:32px; text-align:center; }
+  .step-desc { color:var(--muted); font-size:13px; max-width:600px; text-align:center; }
+  svg { display:block; margin:0 auto; width:100%; }
+  .result-row { background:var(--sub-bg); border-radius:8px; padding:8px 14px; margin-bottom:4px; font-size:13px; text-align:center; }
+  .result-row .highlight { font-weight:bold; font-size:15px; }
+  .legend { display:flex; gap:14px; justify-content:center; margin-top:4px; font-size:11px; color:var(--muted); flex-wrap:wrap; }
+  .legend-item { display:flex; align-items:center; gap:5px; }
+  .legend-dot { width:14px; height:14px; border-radius:3px; }
+  .controls { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:6px; }
+  button { padding:7px 15px; border:1px solid var(--cell-border); border-radius:6px; background:var(--btn-bg); color:var(--text); font-size:13px; cursor:pointer; transition:0.15s; }
+  button:hover { background:var(--btn-hover); }
+  button:active { transform:scale(0.96); }
+  button:disabled { opacity:0.35; cursor:default; }
+  button.play-btn { background:#1976D2; color:#fff; border-color:#1565C0; }
 </style>
 </head>
 <body>
 <div class="container">
-  <h2>汇总区间 — 连续序列检测演示</h2>
-  <div class="sub-title">nums=[0,1,2,4,5,7] &rarr; 连续检测 &rarr; ["0->2","4->5","7"]</div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
+  <h2>汇总区间 — 连续序列检测</h2>
+  <div class="sub-title">nums=[0,1,2,4,5,7] &rarr; 连续检测 &rarr; ["0→2","4→5","7"]</div>
+  <div class="info-bar"><span class="step-num" id="stepNum">0</span><span class="step-desc" id="stepDesc">初始状态 · 点击下一步开始</span></div>
+  <svg id="svg" viewBox="0 0 880 320"></svg>
+  <div class="result-row"><span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span></div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#42A5F5;"></div>当前扫描</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#66BB6A;"></div>已有范围</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FF7043;"></div>新区间起始</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#AB47BC;"></div>已输出区间</div>
+    <div class="legend-item" style="color:#FF5722;">━ 范围带</div>
   </div>
-
-  <div class="arr-row" id="arrRow"></div>
-
-  <div class="result-panel">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:3px;">当前区间</div>
-    <div id="rangeDisplay" style="font-size:14px;font-weight:bold;color:var(--text);">--</div>
-  </div>
-
-  <div class="result-row">
-    <span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
-  </div>
-
   <div class="controls">
     <button onclick="goStep(0)">&#x23EE; 重置</button>
     <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
@@ -104,139 +50,118 @@
     <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
   </div>
 </div>
-
 <script>
-const nums = [0, 1, 2, 4, 5, 7];
-const n = nums.length;
-const results = [];
+const nums=[0,1,2,4,5,7];
+const xMin=-1, xMax=8;
+const axisY=160, dotR=22;
+const xScale=v=>60+(v-xMin)*760/(xMax-xMin);
 
-const steps = [];
+const steps=[];
+(function sim(){
+  const res=[];
+  steps.push({desc:'初始状态 · nums=[0,1,2,4,5,7]', phase:'init', curIdx:-1, results:[], curRange:null, nStates:Array(nums.length).fill(''), ranges:[]});
 
-function simulate() {
-  steps.push({
-    desc: '初始状态 · nums=[0,1,2,4,5,7]',
-    phase: 'init', idx: -1, hl: [], results: [], curRange: null,
-    result: 'init'
-  });
+  let start=0;
+  for(let i=0;i<nums.length;i++){
+    if(i===0){
+      steps.push({desc:'从nums[0]='+nums[0]+' 开始新区间', phase:'start', curIdx:i, results:[...res], curRange:String(nums[0]), nStates:nums.map((_,j)=>j===i?'start':''), ranges:[]});
+      continue;
+    }
+    if(nums[i]!==nums[i-1]+1){
+      const range=nums[start]===nums[i-1]?String(nums[start]):nums[start]+'→'+nums[i-1];
+      res.push(range);
+      steps.push({desc:'断点! nums['+(i-1)+']='+nums[i-1]+' → nums['+i+']='+nums[i]+' 不连续, 输出区间: "'+range+'"', phase:'end-range', curIdx:i, results:[...res], curRange:range, nStates:nums.map((_,j)=>j>=start&&j<i?'shrink':'')});
+      start=i;
+      steps.push({desc:'从nums['+i+']='+nums[i]+' 开始新区间', phase:'start', curIdx:i, results:[...res], curRange:String(nums[i]), nStates:nums.map((_,j)=>j===i?'start':(j<start?'shrink':'')), ranges:res.map((r,idx)=>({label:r,row:idx}))});
+    }else{
+      steps.push({desc:'连续! nums['+(i-1)+']='+nums[i-1]+' → nums['+i+']='+nums[i]+', 范围扩展: '+nums[start]+'→'+nums[i], phase:'extend', curIdx:i, results:[...res], curRange:nums[start]+'→'+nums[i], nStates:nums.map((_,j)=>j>=start&&j<=i?'range':''), ranges:res.map((r,idx)=>({label:r,row:idx}))});
+    }
+  }
+  const finalR=nums[start]===nums[nums.length-1]?String(nums[start]):nums[start]+'→'+nums[nums.length-1];
+  res.push(finalR);
+  steps.push({desc:'完成! 最终区间: "'+finalR+'", 全部结果: ['+res.map(r=>'"'+r+'"').join(', ')+']', phase:'done', curIdx:-1, results:[...res], curRange:finalR, nStates:nums.map(()=>'shrink'), ranges:res.map((r,idx)=>({label:r,row:idx}))});
+})();
 
-  let start = 0;
-  for (let i = 0; i < n; i++) {
-    if (i === 0 || nums[i] !== nums[i - 1] + 1) {
-      // End previous range
-      if (i > 0) {
-        const range = nums[start] === nums[i - 1]
-          ? String(nums[start])
-          : nums[start] + '->' + nums[i - 1];
-        results.push(range);
-        steps.push({
-          desc: '区间结束: [' + nums[start] + '..' + nums[i - 1] + '] &rarr; "' + range + '"',
-          phase: 'end-range', idx: i - 1, hl: [[i - 1, 'cur']],
-          results: [...results], curRange: range,
-          result: 'processing'
-        });
-      }
-      start = i;
-      const range = String(nums[start]);
-      steps.push({
-        desc: '新区间开始: 从 nums[' + i + ']=' + nums[i] + ' 开始新区间',
-        phase: 'start-range', idx: i, hl: [[i, 'cur']],
-        results: [...results], curRange: range,
-        result: 'processing'
-      });
-    } else {
-      steps.push({
-        desc: 'nums[' + i + ']=' + nums[i] + ' 与前一数连续. 当前区间范围: ' + nums[start] + '->' + nums[i],
-        phase: 'extend', idx: i,
-        hl: start === i ? [[i, 'cur']] : [...Array(i-start+1)].map((_,k) => [start+k, 'range']),
-        results: [...results], curRange: nums[start] + '->' + nums[i],
-        result: 'processing'
-      });
+function clr(st){
+  if(st==='start')return'#FF7043';
+  if(st==='range')return'#66BB6A';
+  if(st==='shrink')return'#AB47BC';
+  return'#42A5F5';
+}
+
+let current=0,autoTimer=null,autoRun=false;
+const svg=document.getElementById('svg');
+
+function render(){
+  const s=steps[current];
+  document.getElementById('stepNum').textContent=current;
+  document.getElementById('stepDesc').textContent=s.desc;
+  document.getElementById('prevBtn').disabled=current<=0;
+  document.getElementById('nextBtn').disabled=current>=steps.length-1;
+  const rt=document.getElementById('resultText');
+  if(s.phase==='done'){rt.textContent='['+s.results.map(r=>'"'+r+'"').join(', ')+']';rt.style.color='#388E3C';}
+  else if(s.results&&s.results.length>0){rt.textContent='['+s.results.map(r=>'"'+r+'"').join(', ')+']';rt.style.color='#1976D2';}
+  else{rt.textContent='进行中...';rt.style.color='#1976D2';}
+
+  let html='';
+  // axis line
+  html+='<line x1="60" y1="'+axisY+'" x2="820" y2="'+axisY+'" stroke="#888" stroke-width="1.5"/>';
+  html+='<polygon points="820,'+(axisY-5)+' 820,'+(axisY+5)+' 828,'+axisY+'" fill="#888"/>';
+  for(let v=-1;v<=8;v++){
+    const x=xScale(v);
+    html+='<line x1="'+x+'" y1="'+axisY+'" x2="'+x+'" y2="'+(axisY+6)+'" stroke="#888" stroke-width="1"/>';
+    if(v>=-0&&v<=7) html+='<text x="'+x+'" y="'+(axisY+20)+'" text-anchor="middle" fill="var(--muted)" font-size="11">'+v+'</text>';
+  }
+
+  // Range bands above dots
+  if(s.curRange&&s.curRange.includes('→')){
+    const parts=s.curRange.split('→');
+    const rStart=parseInt(parts[0]), rEnd=parseInt(parts[1]);
+    const rx1=xScale(rStart), rx2=xScale(rEnd);
+    html+='<rect x="'+(rx1-dotR/2)+'" y="'+(axisY-90)+'" width="'+(rx2-rx1+dotR)+'" height="14" rx="7" fill="#FF5722" opacity="0.25"/>';
+    html+='<text x="'+((rx1+rx2)/2)+'" y="'+(axisY-80)+'" text-anchor="middle" fill="#FF5722" font-size="12" font-weight="bold">当前: '+s.curRange+'</text>';
+  }else if(s.curRange){
+    const rx=xScale(parseInt(s.curRange));
+    html+='<rect x="'+(rx-dotR/2)+'" y="'+(axisY-90)+'" width="'+dotR+'" height="14" rx="7" fill="#FF5722" opacity="0.25"/>';
+    html+='<text x="'+rx+'" y="'+(axisY-80)+'" text-anchor="middle" fill="#FF5722" font-size="12" font-weight="bold">当前: '+s.curRange+'</text>';
+  }
+
+  // Dots for each number
+  for(let j=0;j<nums.length;j++){
+    const x=xScale(nums[j]);
+    const st=s.nStates[j]||'';
+    const c=clr(st);
+    html+='<circle cx="'+x+'" cy="'+axisY+'" r="'+dotR+'" fill="'+c+'" opacity="0.9" stroke="'+c+'" stroke-width="2"/>';
+    html+='<text x="'+x+'" y="'+(axisY+6)+'" text-anchor="middle" fill="#fff" font-size="15" font-weight="bold">'+nums[j]+'</text>';
+    html+='<text x="'+x+'" y="'+(axisY+45)+'" text-anchor="middle" fill="var(--muted)" font-size="10">['+j+']</text>';
+    if(s.curIdx===j){
+      html+='<text x="'+x+'" y="'+(axisY-dotR-8)+'" text-anchor="middle" fill="'+c+'" font-size="12" font-weight="bold">▼</text>';
     }
   }
 
-  // Final range
-  const range = nums[start] === nums[n - 1]
-    ? String(nums[start])
-    : nums[start] + '->' + nums[n - 1];
-  results.push(range);
-  steps.push({
-    desc: '最终区间: "' + range + '", 全部结果: [' + results.map(r => '"' + r + '"').join(', ') + ']',
-    phase: 'done', idx: -1,
-    hl: [...Array(n)].map((_,i) => [i, 'range']),
-    results: [...results], curRange: range,
-    result: 'done'
-  });
-}
-
-simulate();
-
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-const arrRow = document.getElementById('arrRow');
-nums.forEach((v, i) => {
-  const cell = document.createElement('div');
-  cell.className = 'acell'; cell.id = 'ac' + i;
-  cell.innerHTML = v + '<span class="ai">[' + i + ']</span>';
-  arrRow.appendChild(cell);
-});
-
-function render() {
-  const s = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = s.desc;
-
-  for (let i = 0; i < n; i++) document.getElementById('ac' + i).className = 'acell';
-  if (s.hl) s.hl.forEach(([i, cls]) => {
-    if (cls) document.getElementById('ac' + i).className = 'acell ' + cls;
-  });
-
-  document.getElementById('rangeDisplay').textContent = s.curRange || '--';
-
-  const rt = document.getElementById('resultText');
-  if (s.result === 'done') {
-    rt.textContent = '[' + s.results.map(r => '"' + r + '"').join(', ') + ']';
-    rt.style.color = '#388E3C';
-  } else if (s.result === 'init') { rt.textContent = '进行中...'; rt.style.color = '#1976D2'; }
-  else { rt.textContent = (s.results && s.results.length > 0) ? '[' + s.results.map(r => '"' + r + '"').join(', ') + ']' : '进行中...'; rt.style.color = '#1976D2'; }
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
-}
-
-function goStep(n) {
-  current = Math.max(0, Math.min(n, steps.length - 1));
-  render();
-}
-
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer); autoRunning = false;
-    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-    document.getElementById('playBtn').classList.remove('play-btn');
-  } else {
-    autoRunning = true;
-    document.getElementById('playBtn').textContent = '\u23F8 暂停';
-    document.getElementById('playBtn').style.background = '#1976D2';
-    document.getElementById('playBtn').style.color = '#fff';
-    document.getElementById('playBtn').classList.add('play-btn');
-    if (current >= steps.length - 1) goStep(0);
-    autoTimer = setInterval(function() {
-      if (current < steps.length - 1) goStep(current + 1);
-      else toggleAuto();
-    }, 1000);
+  // Result ranges below
+  if(s.ranges){
+    s.ranges.forEach((r,idx)=>{
+      const parts=r.label.split('→');
+      const rs=parseInt(parts[0]), re=parts.length>1?parseInt(parts[1]):rs;
+      const rx1=xScale(rs), rx2=xScale(re);
+      const y=axisY+60+idx*32;
+      html+='<rect x="'+rx1+'" y="'+y+'" width="'+Math.max(30,rx2-rx1)+'" height="20" rx="10" fill="#AB47BC" opacity="0.85" stroke="#AB47BC" stroke-width="1.5"/>';
+      html+='<text x="'+((rx1+rx2)/2)+'" y="'+(y+14)+'" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">'+r.label+'</text>';
+    });
   }
+
+  html+='<text x="820" y="'+(axisY-10)+'" text-anchor="end" fill="var(--muted)" font-size="10">nums</text>';
+
+  svg.innerHTML=html;
 }
 
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
-});
-
+function goStep(n){current=Math.max(0,Math.min(n,steps.length-1));render()}
+function toggleAuto(){
+  if(autoRun){clearInterval(autoTimer);autoRun=false;document.getElementById('playBtn').textContent='\u25B6 自动播放';document.getElementById('playBtn').style.background='';document.getElementById('playBtn').style.color='';document.getElementById('playBtn').classList.remove('play-btn');}
+  else{autoRun=true;document.getElementById('playBtn').textContent='\u23F8 暂停';document.getElementById('playBtn').style.background='#1976D2';document.getElementById('playBtn').style.color='#fff';document.getElementById('playBtn').classList.add('play-btn');if(current>=steps.length-1)goStep(0);autoTimer=setInterval(function(){if(current<steps.length-1)goStep(current+1);else toggleAuto()},1000);}
+}
+document.addEventListener('keydown',function(e){if(e.key==='ArrowRight')goStep(current+1);if(e.key==='ArrowLeft')goStep(current-1);if(e.key===' '){e.preventDefault();toggleAuto();}});
 render();
 </script>
 </body>
