@@ -49,7 +49,7 @@
 
 <iframe
   src="../../assets/interactive/108-convert-sorted-array-to-binary-search-tree-demo.html"
-  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="将有序数组转换为二叉搜索树 - 交互演示">
 </iframe>
 

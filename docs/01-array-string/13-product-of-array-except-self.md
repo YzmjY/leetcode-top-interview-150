@@ -51,7 +51,7 @@
 
 <iframe
   src="../../assets/interactive/13-product-of-array-except-self-demo.html"
-  style="width:100%; height:450px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="除自身以外数组的乘积 - 交互演示">
 </iframe>
 

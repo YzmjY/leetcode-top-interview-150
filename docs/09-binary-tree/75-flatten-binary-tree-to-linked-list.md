@@ -65,7 +65,7 @@
 
 <iframe
   src="../../assets/interactive/75-flatten-binary-tree-to-linked-list-demo.html"
-  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="二叉树展开为链表 - 交互演示">
 </iframe>
 

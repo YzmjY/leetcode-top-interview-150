@@ -39,7 +39,7 @@
 
 <iframe
   src="../../assets/interactive/35-spiral-matrix-demo.html"
-  style="width:100%; height:420px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="螺旋矩阵遍历交互演示">
 </iframe>
 

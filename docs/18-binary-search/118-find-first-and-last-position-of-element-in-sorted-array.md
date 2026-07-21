@@ -71,7 +71,7 @@
 
 <iframe
   src="../../assets/interactive/118-find-first-and-last-position-of-element-in-sorted-array-demo.html"
-  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="在排序数组中查找元素的第一个和最后一个位置 - 交互演示">
 </iframe>
 

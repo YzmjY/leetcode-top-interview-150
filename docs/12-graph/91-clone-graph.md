@@ -66,7 +66,7 @@ type Node struct {
 
 <iframe
   src="../../assets/interactive/91-clone-graph-demo.html"
-  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="克隆图 - 交互演示">
 </iframe>
 

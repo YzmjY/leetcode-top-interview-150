@@ -64,7 +64,7 @@
 
 <iframe
   src="../../assets/interactive/58-add-two-numbers-demo.html"
-  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="两数相加 - 交互演示">
 </iframe>
 

@@ -60,7 +60,7 @@
 
 <iframe
   src="../../assets/interactive/41-word-pattern-demo.html"
-  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="单词规律 - 交互演示">
 </iframe>
 

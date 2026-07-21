@@ -69,7 +69,7 @@
 
 <iframe
   src="../../assets/interactive/150-maximal-square-demo.html"
-  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="最大正方形 (Maximal Square) - 交互演示">
 </iframe>
 

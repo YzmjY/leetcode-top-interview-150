@@ -61,7 +61,7 @@
 
 <iframe
   src="../../assets/interactive/61-reverse-linked-list-ii-demo.html"
-  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="反转链表 II - 交互演示">
 </iframe>
 

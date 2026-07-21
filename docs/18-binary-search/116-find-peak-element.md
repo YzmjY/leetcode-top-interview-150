@@ -64,7 +64,7 @@
 
 <iframe
   src="../../assets/interactive/116-find-peak-element-demo.html"
-  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="寻找峰值 - 交互演示">
 </iframe>
 

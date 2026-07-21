@@ -76,7 +76,7 @@
 
 <iframe
   src="../../assets/interactive/120-median-of-two-sorted-arrays-demo.html"
-  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="寻找两个正序数组的中位数 - 交互演示">
 </iframe>
 

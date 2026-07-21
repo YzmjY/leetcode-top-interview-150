@@ -48,7 +48,7 @@
 
 <iframe
   src="../../assets/interactive/03-remove-duplicates-from-sorted-array-demo.html"
-  style="width:100%; height:450px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="删除有序数组中的重复项 - 交互演示">
 </iframe>
 

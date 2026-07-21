@@ -74,7 +74,7 @@
 
 <iframe
   src="../../assets/interactive/146-interleaving-string-demo.html"
-  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="交错字符串 (Interleaving String) - 交互演示">
 </iframe>
 

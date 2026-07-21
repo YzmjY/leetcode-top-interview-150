@@ -55,7 +55,7 @@
 
 <iframe
   src="../../assets/interactive/30-minimum-size-subarray-sum-demo.html"
-  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="长度最小的子数组 - 交互演示">
 </iframe>
 

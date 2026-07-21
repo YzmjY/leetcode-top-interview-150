@@ -50,7 +50,7 @@
 
 <iframe
   src="../../assets/interactive/106-generate-parentheses-demo.html"
-  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="括号生成 - 交互演示">
 </iframe>
 

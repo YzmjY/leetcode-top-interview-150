@@ -56,7 +56,7 @@
 
 <iframe
   src="../../assets/interactive/59-merge-two-sorted-lists-demo.html"
-  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="合并两个有序链表 - 交互演示">
 </iframe>
 

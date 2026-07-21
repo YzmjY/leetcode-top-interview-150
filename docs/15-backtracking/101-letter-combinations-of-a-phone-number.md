@@ -66,7 +66,7 @@
 
 <iframe
   src="../../assets/interactive/101-letter-combinations-of-a-phone-number-demo.html"
-  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="电话号码的字母组合 - 交互演示">
 </iframe>
 

@@ -81,7 +81,7 @@ LRU 缓存的经典实现是 **哈希表 + 双向链表**：
 
 <iframe
   src="../../assets/interactive/67-lru-cache-demo.html"
-  style="width:100%; height:480px; border:none; border-radius:8px; background:transparent;"
+  style="width:100%; height:580px; border:none; border-radius:8px; background:transparent;"
   title="LRU 缓存 - 交互演示">
 </iframe>
 
