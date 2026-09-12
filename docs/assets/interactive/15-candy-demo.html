@@ -1,317 +1,199 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --color-left: #1976D2; --color-right: #F9A825; --color-final: #388E3C;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd;
-      --btn-bg: #333; --btn-hover: #444;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 20px;
-  }
-  .container { max-width: 650px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 10px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 12px;
-    margin-bottom: 8px; font-size: 14px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 22px; color: #1976D2; min-width: 35px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 12px; max-width: 380px; }
-
-  .var-panel {
-    background: #F5F5F5; border-radius: 8px; padding: 6px 14px;
-    margin-bottom: 8px; font-family: monospace; font-size: 12px;
-    color: var(--text); text-align: center;
-  }
-  @media (prefers-color-scheme: dark) { .var-panel { background: #2a2a3e; } }
-
-  .children-row {
-    display: flex; justify-content: center; gap: 16px; margin-bottom: 10px;
-  }
-  .child-card {
-    width: 130px; border: 2px solid var(--cell-border);
-    border-radius: 8px; background: var(--cell-bg);
-    text-align: center; transition: border-color 0.25s, background 0.25s, transform 0.15s;
-    overflow: hidden;
-  }
-  .child-card .rating-row {
-    background: #f0f0f0; padding: 6px; font-size: 13px; font-weight: bold;
-  }
-  @media (prefers-color-scheme: dark) { .child-card .rating-row { background: #333; } }
-  .child-card .rating-val {
-    font-size: 28px; font-weight: bold; display: block;
-  }
-  .child-card .candy-section {
-    padding: 6px 8px;
-  }
-  .child-card .lr-row {
-    display: flex; justify-content: center; gap: 12px; margin: 4px 0;
-  }
-  .child-card .lr-item {
-    font-size: 14px; font-weight: bold;
-    padding: 3px 8px; border-radius: 4px;
-    min-width: 36px;
-  }
-  .lr-left { background: #E3F2FD; color: #1565C0; }
-  .lr-right { background: #FFF9C4; color: #F57F17; }
-  @media (prefers-color-scheme: dark) {
-    .lr-left { background: #1a3a5e; color: #64B5F6; }
-    .lr-right { background: #3e3a1a; color: #FFD54F; }
-  }
-  .child-card .final-row {
-    padding: 4px 8px 8px;
-    font-size: 20px; font-weight: bold;
-  }
-  .final-val {
-    padding: 4px 12px; border-radius: 6px; display: inline-block;
-  }
-  .final-set { background: #E8F5E9; color: #2E7D32; }
-  @media (prefers-color-scheme: dark) { .final-set { background: #1a3e1a; color: #81C784; } }
-
-  .child-card.active-left { border-color: var(--color-left); transform: scale(1.04); }
-  .child-card.active-right { border-color: var(--color-right); transform: scale(1.04); }
-  .child-card.active-final { border-color: var(--color-final); transform: scale(1.04); }
-
-  .phase-badge {
-    display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px;
-    font-weight: bold;
-  }
-  .phase-init { background: #eee; color: #666; }
-  .phase-lr { background: #E3F2FD; color: #1565C0; }
-  .phase-rl { background: #FFF9C4; color: #F57F17; }
-  .phase-final { background: #E8F5E9; color: #2E7D32; }
-  @media (prefers-color-scheme: dark) {
-    .phase-init { background: #444; color: #ccc; }
-    .phase-lr { background: #1a3a5e; color: #64B5F6; }
-    .phase-rl { background: #3e3a1a; color: #FFD54F; }
-    .phase-final { background: #1a3e1a; color: #81C784; }
-  }
-
-  .total-bar {
-    text-align: center; font-size: 13px; margin-bottom: 8px;
-  }
-  .total-bar span { font-weight: bold; color: var(--color-final); font-size: 18px; }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>15. 分发糖果 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>分发糖果 — 逐步交互演示</h2>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">/ 7 步 · 点击「下一步」开始</span>
-    <span class="phase-badge phase-init" id="phaseBdg">初始</span>
-  </div>
-
-  <div class="var-panel" id="varPanel">
-    ratings = [1, 0, 2] &nbsp; 每个孩子至少 1 颗糖
-  </div>
-
-  <div class="children-row" id="childrenRow"></div>
-
-  <div class="total-bar" id="totalBar">
-    总糖果数: <span id="totalCandy">3</span>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">自动播放</button>
-    <button onclick="goStep(totalSteps)" id="endBtn">跳到最后</button>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const ratings = [1, 0, 2];
-const n = ratings.length;
-const totalSteps = 7;
+const CASES = [
+  { label: '示例 1', ratings: [1, 0, 2] },
+  { label: '示例 2', ratings: [1, 2, 2] }
+];
 
-// Build steps
-const steps = [];
-// Left-candy and right-candy arrays
-const leftCandy = [1, 1, 1];
-const rightCandy = [1, 1, 1];
-const finalCandy = [0, 0, 0];
+/* 真实跑一遍题解的两趟贪心：先只满足「比左边高」，再从右往左补「比右边高」 */
+function simulate(label, ratings, steps) {
+  const n = ratings.length;
+  const candies = [];
+  for (let i = 0; i < n; i++) candies.push(1);
+  let left = candies.slice();
 
-steps.push({
-  phase: 'init', activeIdx: -1, activeSide: '',
-  left: [1,1,1], right: [1,1,1], final: [null,null,null],
-  desc: '初始：每个孩子至少 1 颗糖', varText: 'candy(left) = [1,1,1]  candy(right) = [1,1,1]'
-});
-
-// Left to Right pass
-for (let i = 0; i < n; i++) {
-  if (i > 0 && ratings[i] > ratings[i-1]) {
-    leftCandy[i] = leftCandy[i-1] + 1;
+  function push(extra) {
+    const s = {
+      label: label, ratings: ratings, candies: candies.slice(), left: left.slice(),
+      phase: 'init', i: -1, old: null, need: null, done: false, total: null, note: ''
+    };
+    Object.keys(extra).forEach(function (k) { s[k] = extra[k]; });
+    steps.push(s);
   }
-  steps.push({
-    phase: 'lr', activeIdx: i, activeSide: 'left',
-    left: [...leftCandy], right: [...rightCandy], final: [null,null,null],
-    desc: i === 0
-      ? '左→右: 孩子 0，左侧无邻居，candy[0]=1'
-      : ratings[i] > ratings[i-1]
-        ? '左→右: 孩子 ' + i + '，评分 ' + ratings[i] + ' > ' + ratings[i-1] + '，candy[' + i + ']=candy[' + (i-1) + ']+1=' + leftCandy[i]
-        : '左→右: 孩子 ' + i + '，评分 ' + ratings[i] + ' <= ' + ratings[i-1] + '，candy[' + i + ']=1',
-    varText: '左→右遍历 · candy(left)=[' + leftCandy.join(',') + ']'
+
+  push({
+    note: `【${label}】初始化：每个孩子至少 1 颗糖，所以 candies = [${candies.join(', ')}]。"相邻评分更高者糖更多" 这个约束在左右两个方向上都要成立，一次遍历顾不过来，因此拆成两趟：第一趟只保证「比左边评分高的孩子更多」，第二趟再从右往左补齐「比右边评分高的孩子更多」。`
   });
-}
 
-// Right to Left pass
-const finalCandyVals = [...leftCandy];
-for (let i = n - 1; i >= 0; i--) {
-  if (i < n - 1 && ratings[i] > ratings[i+1]) {
-    rightCandy[i] = rightCandy[i+1] + 1;
-  }
-  finalCandyVals[i] = Math.max(leftCandy[i], rightCandy[i]);
-  steps.push({
-    phase: 'rl', activeIdx: i, activeSide: 'right',
-    left: [...leftCandy], right: [...rightCandy], final: [...finalCandyVals],
-    desc: i === n - 1
-      ? '右→左: 孩子 ' + i + '，右侧无邻居，candy[' + i + ']=max(' + leftCandy[i] + ', 1)=' + finalCandyVals[i]
-      : ratings[i] > ratings[i+1]
-        ? '右→左: 孩子 ' + i + '，评分 ' + ratings[i] + ' > ' + ratings[i+1] + '，rightCandy=' + rightCandy[i] + '，candy[' + i + ']=max(' + leftCandy[i] + ',' + rightCandy[i] + ')=' + finalCandyVals[i]
-        : '右→左: 孩子 ' + i + '，评分 ' + ratings[i] + ' <= ' + ratings[i+1] + '，candy[' + i + ']=max(' + leftCandy[i] + ',1)=' + finalCandyVals[i],
-    varText: '右→左遍历 · candy(right)=[' + rightCandy.join(',') + '] · final=max(left,right)'
-  });
-}
-
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-// Build child cards
-const childrenRow = document.getElementById('childrenRow');
-for (let i = 0; i < n; i++) {
-  const div = document.createElement('div');
-  div.className = 'child-card';
-  div.dataset.idx = i;
-  div.innerHTML =
-    '<div class="rating-row">孩子 ' + i + '<span class="rating-val">' + ratings[i] + '</span><span style="font-size:11px;">评分</span></div>' +
-    '<div class="candy-section">' +
-    '<div style="font-size:10px;color:var(--muted);margin-bottom:2px;">糖果分配</div>' +
-    '<div class="lr-row">' +
-    '<span class="lr-item lr-left" id="leftVal' + i + '">1</span>' +
-    '<span class="lr-item lr-right" id="rightVal' + i + '">1</span>' +
-    '</div>' +
-    '<div style="font-size:10px;color:var(--muted);margin-bottom:2px;">左遍历~右遍历</div>' +
-    '</div>' +
-    '<div class="final-row"><span class="final-val" id="finalVal' + i + '">-</span></div>';
-  childrenRow.appendChild(div);
-}
-
-function render() {
-  const s = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = current === 0
-    ? '/ ' + totalSteps + ' 步 · 点击「下一步」开始'
-    : '第 ' + current + ' 步 · ' + s.desc;
-  document.getElementById('varPanel').textContent = s.varText;
-
-  const bdg = document.getElementById('phaseBdg');
-  if (s.phase === 'init') { bdg.textContent = '初始'; bdg.className = 'phase-badge phase-init'; }
-  else if (s.phase === 'lr') { bdg.textContent = '左→右'; bdg.className = 'phase-badge phase-lr'; }
-  else { bdg.textContent = '右→左'; bdg.className = 'phase-badge phase-rl'; }
-
-  // Update cards
-  document.querySelectorAll('.child-card').forEach(el => {
-    el.classList.remove('active-left','active-right','active-final');
-    const i = parseInt(el.dataset.idx);
-    document.getElementById('leftVal' + i).textContent = s.left[i];
-    document.getElementById('rightVal' + i).textContent = s.right[i];
-    const fv = document.getElementById('finalVal' + i);
-    const fe = fv.parentElement.querySelector('.final-val');
-    if (s.final[i] !== null) {
-      fv.textContent = s.final[i];
-      fe.classList.add('final-set');
+  // 第一趟：左 → 右
+  for (let i = 0; i < n; i++) {
+    if (i === 0) {
+      push({
+        phase: 'left', i: i,
+        note: `【${label}】第一趟（左→右）i = 0：最左边的孩子左边没有邻居，没有「比左边高」的问题，candies[0] 保持最少的 1 颗。`
+      });
+      continue;
+    }
+    const old = candies[i];
+    if (ratings[i] > ratings[i - 1]) {
+      candies[i] = candies[i - 1] + 1;
+      push({
+        phase: 'left', i: i, old: old,
+        note: `【${label}】第一趟（左→右）i = ${i}：比较 ratings[${i}] = ${ratings[i]} 与左边的 ratings[${i - 1}] = ${ratings[i - 1]}，前者更大，所以这个孩子必须比左边多。candies[${i}] = candies[${i - 1}] + 1 = ${candies[i - 1]} + 1 = ${candies[i]}。`
+      });
     } else {
-      fv.textContent = '-';
-      fe.classList.remove('final-set');
+      push({
+        phase: 'left', i: i, old: old,
+        note: `【${label}】第一趟（左→右）i = ${i}：比较 ratings[${i}] = ${ratings[i]} 与左边的 ratings[${i - 1}] = ${ratings[i - 1]}，前者不大于后者（评分相等或更低），左规则不要求他更多，candies[${i}] 保持 ${candies[i]} 颗——已经是最低配额，不能再少。`
+      });
     }
-    if (i === s.activeIdx) {
-      if (s.activeSide === 'left') el.classList.add('active-left');
-      else if (s.activeSide === 'right') el.classList.add('active-right');
-    }
-    // Highlight final values when phase is rl and we've passed this index
-    if (s.phase === 'rl' && i >= s.activeIdx) {
-      el.classList.add('active-final');
-    }
-  });
+  }
 
-  // Total candy
+  left = candies.slice();
+
+  // 第二趟：右 → 左
+  for (let i = n - 1; i >= 0; i--) {
+    if (i === n - 1) {
+      push({
+        phase: 'right', i: i, left: left,
+        note: `【${label}】第二趟（右→左）起点 i = ${n - 1}：最右边的孩子右边没有邻居，candies[${i}] = ${candies[i]} 保持不变。接下来往左逐个检查「评分比右边高的孩子」。`
+      });
+      continue;
+    }
+    const old = candies[i];
+    if (ratings[i] > ratings[i + 1]) {
+      const need = candies[i + 1] + 1;
+      candies[i] = Math.max(candies[i], need);
+      push({
+        phase: 'right', i: i, old: old, need: need, left: left,
+        note: `【${label}】第二趟（右→左）i = ${i}：比较 ratings[${i}] = ${ratings[i]} 与右边的 ratings[${i + 1}] = ${ratings[i + 1]}，前者更大，所以这个孩子必须比右边多。右边孩子拿了 ${candies[i + 1]} 颗，他至少要 ${candies[i + 1]} + 1 = ${need} 颗。` +
+          (need > old
+            ? ` 第一趟算出的左侧值 ${old} 不够用，取两者较大的：candies[${i}] 从 ${old} 提升到 ${candies[i]}，这样左、右两条规则同时被满足（两者取 max 就是交集）。`
+            : ` 而第一趟已经算出的 ${old} 已经 ≥ ${need}，左侧规则要求得更严，所以 candies[${i}] 保持 ${candies[i]} 不变——取 max 的结果就是它自己。`)
+      });
+    } else {
+      push({
+        phase: 'right', i: i, old: old, left: left,
+        note: `【${label}】第二趟（右→左）i = ${i}：比较 ratings[${i}] = ${ratings[i]} 与右边的 ratings[${i + 1}] = ${ratings[i + 1]}，前者不大于后者，右规则不要求他更多，candies[${i}] 保持第一趟定下的 ${candies[i]}。`
+      });
+    }
+  }
+
   let total = 0;
-  if (current === totalSteps) {
-    total = s.final.reduce((a,b) => a + b, 0);
-  } else if (s.phase === 'rl' && s.final[0] !== null) {
-    total = s.final.reduce((a,b) => a + (b !== null ? b : 0), 0);
-  } else {
-    total = s.left.reduce((a,b) => a + b, 0);
+  for (let i = 0; i < n; i++) total += candies[i];
+
+  push({
+    phase: 'done', done: true, total: total, left: left,
+    note: `【${label}】结论：最终糖果分配 [${candies.join(', ')}]，总和 ${candies.join(' + ')} = ${total}。第一趟让每个孩子不输给左邻居，第二趟让他不输给右邻居，两趟都只做加法取 max，所以时间 O(n)，空间 O(n)（可以优化到 O(1)）。`
+  });
+}
+
+function buildSteps() {
+  const steps = [];
+  CASES.forEach(function (c) { simulate(c.label, c.ratings, steps); });
+  return steps;
+}
+
+function ratingsRow(step) {
+  const row = Demo.el('div', 'row');
+  step.ratings.forEach(function (v, idx) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(v));
+    if (idx === step.i && !step.done) cell.classList.add('is-active');
+    col.appendChild(cell);
+    const ptr = Demo.el('div', 'ptr', '孩子 ' + idx);
+    if (idx === step.i && !step.done) ptr.classList.add('ptr--info');
+    else ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    row.appendChild(col);
+  });
+  return row;
+}
+
+function candyRow(step, values, compareIdx) {
+  const row = Demo.el('div', 'row');
+  values.forEach(function (v, idx) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(v));
+    if (step.done) cell.classList.add('is-ok');
+    else if (idx === step.i) cell.classList.add('is-active');
+    else if (step.phase === 'right' && idx > step.i) cell.classList.add('is-ok');
+    else if (step.phase === 'left' && idx < step.i) cell.classList.add('is-info');
+    col.appendChild(cell);
+
+    let label = '';
+    if (!step.done) {
+      if (idx === compareIdx) label = '比较中';
+      else if (idx === step.i) label = '当前';
+    }
+    const ptr = Demo.el('div', 'ptr', label);
+    if (!label) ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    row.appendChild(col);
+  });
+  return row;
+}
+
+Demo.create({
+  title: '15. 分发糖果 — 左右两趟贪心，取较大值',
+  info: '示例 1：ratings = [1,0,2] → 5；示例 2：ratings = [1,2,2] → 4。每个孩子至少 1 颗，且相邻孩子中评分更高者必须拿到更多。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 400,
+  legend: [
+    { color: 'var(--demo-accent)', label: '本步正在处理的孩子' },
+    { color: 'var(--demo-info)', label: '第一趟（左规则）已确定' },
+    { color: 'var(--demo-ok)', label: '第二趟（右规则）已核对 / 最终结果' }
+  ],
+  render: function (step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const head = Demo.el('div', 'row');
+    head.appendChild(Demo.el('span', 'tag', Demo.esc('用例 ' + step.label)));
+    head.appendChild(Demo.el('span', 'tag ' + (step.done ? 'tag--ok' : 'tag--info'),
+      step.done ? '答案：最少 ' + step.total + ' 颗糖'
+        : (step.phase === 'right' ? '第二趟：从右往左补右规则' : '第一趟：从左往右满足左规则')));
+    ctx.stage.appendChild(head);
+
+    const ratePanel = Demo.el('div', 'panel');
+    ratePanel.style.width = '100%';
+    ratePanel.appendChild(Demo.el('div', 'panel__title', '孩子们的评分 ratings'));
+    ratePanel.appendChild(ratingsRow(step));
+    ctx.stage.appendChild(ratePanel);
+
+    const leftPanel = Demo.el('div', 'panel');
+    leftPanel.style.width = '100%';
+    leftPanel.appendChild(Demo.el('div', 'panel__title', '第一趟（只考虑左边邻居）得到的糖果数'));
+    leftPanel.appendChild(candyRow(step, step.left, step.phase === 'left' ? step.i - 1 : -1));
+    ctx.stage.appendChild(leftPanel);
+
+    const curPanel = Demo.el('div', 'panel');
+    curPanel.style.width = '100%';
+    curPanel.appendChild(Demo.el('div', 'panel__title',
+      step.done ? '最终糖果数（两趟取较大值）' : '当前糖果数 candies（第二趟会在它基础上往上取 max）'));
+    curPanel.appendChild(candyRow(step, step.candies, step.phase === 'right' ? step.i + 1 : -1));
+    ctx.stage.appendChild(curPanel);
+
+    const foot = Demo.el('div', 'row');
+    const sum = step.candies.reduce(function (a, b) { return a + b; }, 0);
+    foot.appendChild(Demo.el('span', 'tag ' + (step.done ? 'tag--ok' : ''),
+      '当前糖果总数 = ' + sum));
+    if (step.need != null) {
+      foot.appendChild(Demo.el('span', 'tag ' + (step.need > step.old ? 'tag--warn' : 'tag--info'),
+        '右规则要求 ≥ ' + step.need + '，左侧已有 ' + step.old + '，取较大者 ' + step.candies[step.i]));
+    }
+    ctx.stage.appendChild(foot);
   }
-  document.getElementById('totalCandy').textContent = total;
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= totalSteps;
-  document.getElementById('endBtn').disabled = current >= totalSteps;
-}
-
-function goStep(n) {
-  current = Math.max(0, Math.min(n, totalSteps));
-  render();
-}
-
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer); autoRunning = false;
-    document.getElementById('playBtn').textContent = '自动播放';
-    document.getElementById('playBtn').style.background = '#1976D2';
-  } else {
-    autoRunning = true;
-    if (current >= totalSteps) goStep(0);
-    autoTimer = setInterval(() => {
-      if (current < totalSteps) goStep(current + 1);
-      else { clearInterval(autoTimer); autoRunning = false;
-        document.getElementById('playBtn').textContent = '自动播放'; }
-    }, 800);
-  }
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
 });
-
-render();
 </script>
 </body>
 </html>

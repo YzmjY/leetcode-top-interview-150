@@ -3,171 +3,213 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>单词搜索 - 回溯可视化</title>
-<style>
-:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#555;--border:#dee2e6;--accent:#7c3aed;--orange:#f59e0b;--blue:#3b82f6;--green:#22c55e;--red:#ef4444;--btn-bg:#e5e7eb;--btn-txt:#374151}
-.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--orange:#fbbf24;--blue:#60a5fa;--green:#4ade80;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0}
-@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--orange:#fbbf24;--blue:#60a5fa;--green:#4ade80;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
-.container{width:100%;max-width:720px;background:var(--card);border-radius:8px;border:1px solid var(--border);padding:20px 24px}
-h2{font-size:1.1rem;font-weight:600;margin-bottom:6px;color:var(--accent)}
-.info-panel{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:.85rem;color:var(--text2);flex-wrap:wrap}
-.info-panel .step{background:var(--accent);color:#fff;padding:3px 10px;border-radius:8px;font-weight:600;font-size:.8rem}
-.info-panel .desc{flex:1;min-width:200px}
-.word-info{display:flex;gap:16px;margin-bottom:8px;font-size:.8rem;color:var(--text2);align-items:center;flex-wrap:wrap}
-.word-info .target{font-family:monospace;font-size:1.2rem;font-weight:700;color:var(--accent)}
-.word-info .target .matched{color:var(--green)}
-.word-info .target .current-match{color:var(--orange)}
-.grid-area{display:flex;justify-content:center;align-items:center;height:440px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg)}
-.grid{display:grid;grid-template-columns:repeat(4,70px);grid-template-rows:repeat(3,70px);gap:3px}
-.grid .cell{width:70px;height:70px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;background:var(--btn-bg);border:2px solid var(--border);color:var(--text);transition:all .2s}
-.grid .cell.visited{background:var(--blue);color:#fff;border-color:var(--blue);opacity:.7}
-.grid .cell.current{background:var(--orange);color:#fff;border-color:var(--orange);transform:scale(1.08);box-shadow:0 0 12px rgba(245,158,11,.4)}
-.grid .cell.found{background:var(--green);color:#fff;border-color:var(--green)}
-.controls{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-.controls button{background:var(--btn-bg);color:var(--btn-txt);border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:inherit;transition:all .15s}
-.controls button:hover{background:var(--hover);border-color:var(--accent)}
-.controls button:active{transform:scale(.96)}
-.controls button.playing{background:var(--accent);color:#fff;border-color:var(--accent)}
-.legend{display:flex;gap:14px;margin-top:8px;font-size:.72rem;color:var(--text2);flex-wrap:wrap}
-.legend span{display:flex;align-items:center;gap:4px}
-.legend .dot{width:12px;height:12px;border-radius:3px}
-</style>
+<title>107. 单词搜索 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>107. 单词搜索 (Word Search)</h2>
-<div class="info-panel">
-  <span class="step" id="stepLabel">步骤 1/30</span>
-  <span class="desc" id="stepDesc">开始搜索 word="ABCCED"</span>
-</div>
-<div class="word-info">
-  <span>目标单词: <span class="target" id="targetWord"></span></span>
-  <span id="matchInfo" style="color:var(--accent);font-weight:600">已匹配: 0/6</span>
-</div>
-<div class="grid-area">
-  <div class="grid" id="grid"></div>
-</div>
-<div class="controls">
-  <button onclick="reset()">重置</button>
-  <button onclick="prevStep()">上步</button>
-  <button onclick="nextStep()">下步</button>
-  <button id="playBtn" onclick="togglePlay()">自动播放</button>
-  <button onclick="jumpEnd()">最后</button>
-</div>
-<div class="legend">
-  <span><span class="dot" style="background:var(--orange)"></span>当前位置</span>
-  <span><span class="dot" style="background:var(--blue)"></span>已访问</span>
-  <span><span class="dot" style="background:var(--green)"></span>找到路径</span>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const board=[['A','B','C','E'],['S','F','C','S'],['A','D','E','E']];
-const word='ABCCED';
-const R=3,C=4;
-const steps=[];
-let found=false;
-const visited=Array.from({length:R},()=>Array(C).fill(false));
+const BOARD = [
+  ['A', 'B', 'C', 'E'],
+  ['S', 'F', 'C', 'S'],
+  ['A', 'D', 'E', 'E']
+];
+const WORD = 'SEE';
+const M = BOARD.length;
+const N = BOARD[0].length;
+const DIRS = [[1, 0, '下'], [-1, 0, '上'], [0, 1, '右'], [0, -1, '左']];
 
-function genSteps(r,c,idx){
-  if(found)return;
-  steps.push({type:'enter',r,c,idx,visited:visited.map(r=>[...r])});
-  if(idx===word.length-1){
-    found=true;
-    steps.push({type:'found',r,c,idx,visited:visited.map(r=>[...r])});
-    return;
+function buildSteps() {
+  const grid = BOARD.map(row => row.slice());
+  const steps = [];
+  const path = [];
+  let found = false;
+
+  function inPath(r, c) {
+    return path.some(p => p[0] === r && p[1] === c);
   }
-  visited[r][c]=true;
-  const dirs=[[0,1],[1,0],[0,-1],[-1,0]];
-  for(const [dr,dc] of dirs){
-    const nr=r+dr,nc=c+dc;
-    if(nr>=0&&nr<R&&nc>=0&&nc<C&&!visited[nr][nc]&&board[nr][nc]===word[idx+1]){
-      steps.push({type:'move',r,c,nr,nc,idx:idx+1,visited:visited.map(r=>[...r])});
-      genSteps(nr,nc,idx+1);
-      if(found)return;
+
+  function snap(extra) {
+    return {
+      grid: grid.map(row => row.slice()),
+      path: path.map(p => [p[0], p[1]]),
+      matched: path.length,
+      attempt: extra.attempt == null ? null : extra.attempt,
+      mismatch: extra.mismatch == null ? null : extra.mismatch,
+      startCell: extra.startCell == null ? null : extra.startCell,
+      dir: extra.dir == null ? null : extra.dir,
+      outOfBounds: !!extra.outOfBounds,
+      found: !!extra.found,
+      phase: extra.phase,
+      note: extra.note
+    };
+  }
+
+  steps.push(snap({
+    phase: 'init',
+    note: `初始化：board 为 ${M}×${N} 网格，word = "${WORD}"。先遍历每个格子找与 word[0] = '${WORD[0]}' 相同的字符作为 DFS 起点；DFS 中一旦进入某个格子，就把它原地改成 '#'，避免同一条路径重复使用同一个格子。`
+  }));
+
+  function dfs(i, j, index, dirName) {
+    if (index === WORD.length) return true;
+
+    if (i < 0 || i >= M || j < 0 || j >= N) {
+      steps.push(snap({
+        dir: dirName, outOfBounds: true, phase: 'fail',
+        note: `从上一层向${dirName}走到 (${i}, ${j})，已经越出 ${M}×${N} 的边界，直接返回 false，让上一层换一个方向。`
+      }));
+      return false;
+    }
+
+    if (grid[i][j] !== WORD[index]) {
+      steps.push(snap({
+        dir: dirName, attempt: [i, j], mismatch: [i, j], phase: 'fail',
+        note: `来到 (${i}, ${j})，格子字符是 '${grid[i][j]}'，而当前位置需要匹配 word[${index}] = '${WORD[index]}'，字符不匹配，剪枝返回 false。`
+      }));
+      return false;
+    }
+
+    const origin = grid[i][j];
+    grid[i][j] = '#';
+    path.push([i, j]);
+    steps.push(snap({
+      attempt: [i, j], dir: dirName, phase: 'enter',
+      note: `进入 (${i}, ${j})：字符 '${origin}' 与 word[${index}] 匹配，把该格标记为 '#' 后压入路径，已匹配前缀 "${WORD.slice(0, index + 1)}"。接下来按 ${DIRS.map(d => d[2]).join('→')} 的顺序尝试四个方向。`
+    }));
+
+    for (let k = 0; k < DIRS.length; k++) {
+      const d = DIRS[k];
+      if (dfs(i + d[0], j + d[1], index + 1, d[2])) {
+        grid[i][j] = origin;
+        return true;
+      }
+    }
+
+    grid[i][j] = origin;
+    path.pop();
+    steps.push(snap({
+      attempt: [i, j], phase: 'back',
+      note: `( ${i}, ${j} ) 的四个方向都走不通，撤销该格的访问标记（'#' 恢复为 '${origin}'）并把路径弹出，返回 false，让上一层换个方向继续尝试。这就是回溯的「撤销」。`
+    }));
+    return false;
+  }
+
+  for (let i = 0; i < M && !found; i++) {
+    for (let j = 0; j < N && !found; j++) {
+      if (grid[i][j] !== WORD[0]) continue;
+      steps.push(snap({
+        startCell: [i, j], phase: 'start',
+        note: `扫描到 (${i}, ${j})：字符 '${WORD[0]}' 与 word[0] 相同，可以作为起点尝试 DFS。若从这里出发搜不到，就继续扫描后面的格子作为新起点。`
+      }));
+      if (dfs(i, j, 0, '起点')) {
+        found = true;
+        steps.push(snap({
+          found: true, phase: 'found',
+          note: `从 (${i}, ${j}) 出发的 DFS 找到了完整路径，递归逐层返回 true，搜索提前结束。`
+        }));
+      }
     }
   }
-  visited[r][c]=false;
-  if(!found)steps.push({type:'backtrack',r,c,idx,visited:visited.map(r=>[...r])});
+
+  steps.push(snap({
+    found, phase: 'done',
+    note: found
+      ? `word = "${WORD}" 存在于网格中，路径为 ${path.map(p => '(' + p[0] + ',' + p[1] + ')').join(' → ')}，逐格检查字符正好拼出 "${WORD}"，因此返回 true。`
+      : `所有起点都尝试完毕，没有找到 "${WORD}"，返回 false。`
+  }));
+
+  return steps;
 }
 
-// find start
-for(let r=0;r<R&&!found;r++){
-  for(let c=0;c<C&&!found;c++){
-    if(board[r][c]===word[0]){
-      steps.push({type:'start_try',r,c,idx:0,visited:visited.map(r=>[...r])});
-      genSteps(r,c,0);
-    }
-  }
+function wordRow(step) {
+  const row = Demo.el('div', 'row');
+  WORD.split('').forEach((ch, i) => {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell cell--sm', Demo.esc(ch));
+    if (i < step.matched) cell.classList.add('is-ok');
+    else if (i === step.matched) cell.classList.add('is-active');
+    else cell.classList.add('cell--empty');
+    col.appendChild(cell);
+    col.appendChild(Demo.el('div', 'ptr ptr--dim', String(i)));
+    row.appendChild(col);
+  });
+  return row;
 }
 
-let curStep=0,playId=null;
-
-function renderGrid(step){
-  const grid=document.getElementById('grid');
-  grid.innerHTML='';
-  const v=step.visited;
-  const isFound=step.type==='found';
-  const isEnter=step.type==='enter'||step.type==='start_try';
-  for(let r=0;r<R;r++){
-    for(let c=0;c<C;c++){
-      const cell=document.createElement('div');
-      cell.className='cell';
-      cell.textContent=board[r][c];
-      if(isFound&&v[r][c])cell.classList.add('found');
-      else if(isEnter&&r===step.r&&c===step.c)cell.classList.add('current');
-      else if(v[r][c])cell.classList.add('visited');
+function boardView(step) {
+  const grid = Demo.el('div', 'grid');
+  grid.style.gridTemplateColumns = 'repeat(' + N + ', 44px)';
+  for (let r = 0; r < M; r++) {
+    for (let c = 0; c < N; c++) {
+      const value = step.grid[r][c];
+      const cell = Demo.el('div', 'grid-cell', Demo.esc(value));
+      const isPath = step.path.some(p => p[0] === r && p[1] === c);
+      const isAttempt = step.attempt && step.attempt[0] === r && step.attempt[1] === c;
+      const isMismatch = step.mismatch && step.mismatch[0] === r && step.mismatch[1] === c;
+      const isStart = step.startCell && step.startCell[0] === r && step.startCell[1] === c;
+      if (isMismatch) {
+        cell.classList.add('is-bad');
+      } else if (isPath) {
+        const last = step.path[step.path.length - 1];
+        const isLast = last && last[0] === r && last[1] === c;
+        if (isLast && (step.phase === 'enter' || step.phase === 'start')) cell.classList.add('is-active');
+        else cell.classList.add('is-ok');
+      } else if (isAttempt) {
+        cell.classList.add(step.phase === 'fail' ? 'is-bad' : 'is-active');
+      } else if (isStart) {
+        cell.classList.add('is-info');
+      } else if (value === '#') {
+        cell.classList.add('is-ok');
+      }
+      cell.style.fontSize = '18px';
       grid.appendChild(cell);
     }
   }
+  return grid;
 }
 
-function updateTargetWord(step){
-  const el=document.getElementById('targetWord');
-  let html='';
-  for(let i=0;i<word.length;i++){
-    const matched=i<=step.idx;
-    const isCur=i===step.idx&&(step.type==='enter'||step.type==='start_try');
-    if(isCur)html+='<span class="current-match">'+word[i]+'</span>';
-    else if(matched)html+='<span class="matched">'+word[i]+'</span>';
-    else html+=word[i];
-  }
-  el.innerHTML=html;
-  document.getElementById('matchInfo').textContent='已匹配: '+(step.idx+1)+'/'+word.length;
-}
+Demo.create({
+  title: '107. 单词搜索 — 网格 DFS + 原地标记回溯',
+  info: `输入：3×4 网格（含 "SEE" 所需字符），word = "${WORD}"（题目示例 2，结果 true）。示例 1 的 "ABCCED" 同样为 true，路径更长，原理一致。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前进入 / 正在匹配的格子' },
+    { color: 'var(--demo-ok)', label: '当前路径上的格子（已标记 #）' },
+    { color: 'var(--demo-danger)', label: '字符不匹配，剪枝' },
+    { color: 'var(--demo-info)', label: '本步的 DFS 起点' }
+  ],
+  stageHeight: 380,
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
 
-function updateUI(){
-  const step=steps[curStep];
-  document.getElementById('stepLabel').textContent='步骤 '+(curStep+1)+'/'+steps.length;
-  let desc='';
-  if(step.type==='start_try')desc='尝试起点 ['+step.r+','+step.c+'] = "'+board[step.r][step.c]+'"';
-  else if(step.type==='enter')desc='进入 ['+step.r+','+step.c+'] 匹配到 "'+word[step.idx]+'"(位置'+step.idx+')';
-  else if(step.type==='move')desc='从 ['+step.r+','+step.c+'] 移动到 ['+step.nr+','+step.nc+']';
-  else if(step.type==='found')desc='找到完整单词! 路径匹配成功';
-  else if(step.type==='backtrack')desc='回溯: 撤销 ['+step.r+','+step.c+']';
-  else desc='开始搜索';
-  document.getElementById('stepDesc').textContent=desc;
-  updateTargetWord(step);
-  renderGrid(step);
-}
-function reset(){curStep=0;stopPlay();updateUI();}
-function nextStep(){if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();}
-function prevStep(){if(curStep>0){curStep--;updateUI();}}
-function jumpEnd(){curStep=steps.length-1;stopPlay();updateUI();}
-function stopPlay(){if(playId){clearInterval(playId);playId=null;document.getElementById('playBtn').classList.remove('playing');document.getElementById('playBtn').textContent='自动播放';}}
-function togglePlay(){if(playId){stopPlay();return;}if(curStep>=steps.length-1)curStep=0;document.getElementById('playBtn').classList.add('playing');document.getElementById('playBtn').textContent='暂停';playId=setInterval(()=>{if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();},650);}
-document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}else if(e.key==='ArrowRight'){e.preventDefault();nextStep();}else if(e.key===' '){e.preventDefault();togglePlay();}});
-// init
-function initGrid(){
-  const grid=document.getElementById('grid');
-  grid.innerHTML='';
-  for(let r=0;r<R;r++)for(let c=0;c<C;c++){
-    const cell=document.createElement('div');cell.className='cell';cell.textContent=board[r][c];grid.appendChild(cell);
+    const top = Demo.el('div', 'row');
+    top.appendChild(boardView(step));
+    const side = Demo.el('div', 'col');
+    side.appendChild(Demo.el('div', 'panel__title', 'word = "' + WORD + '"'));
+    side.appendChild(wordRow(step));
+    side.appendChild(Demo.el('span', 'tag' + (step.found ? ' tag--ok' : ''), '已匹配 ' + step.matched + ' / ' + WORD.length + ' 个字符'));
+    top.appendChild(side);
+    ctx.stage.appendChild(top);
+
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.style.textAlign = 'center';
+    const dirText = step.dir
+      ? '本次方向：' + step.dir + (step.outOfBounds ? '（越界）' : '')
+      : '（尚未移动）';
+    const cellText = step.attempt ? '(' + step.attempt[0] + ', ' + step.attempt[1] + ')' : '—';
+    panel.appendChild(Demo.el('div', null,
+      '<span class="tag">' + Demo.esc(dirText) + '</span>' +
+      ' &nbsp; <span class="tag tag--info">当前格子 ' + Demo.esc(cellText) + '</span>' +
+      ' &nbsp; <span class="tag' + (step.found ? ' tag--ok' : '') + '">' + (step.found ? '找到 word，返回 true' : '搜索中') + '</span>'));
+    const pathText = step.path.map(p => '(' + p[0] + ',' + p[1] + ')').join(' → ');
+    const line2 = Demo.el('div', null, '路径：' + Demo.esc(pathText || '（空）'));
+    line2.style.marginTop = '6px';
+    panel.appendChild(line2);
+    ctx.stage.appendChild(panel);
   }
-}
-initGrid();
-updateUI();
+});
 </script>
 </body>
 </html>

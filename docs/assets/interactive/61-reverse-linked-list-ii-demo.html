@@ -3,171 +3,185 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>61. 反转链表II - 可视化演示</title>
-<style>
-:root {
-  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
-  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
-  --btn-active-text: #fff; --node-bg: #e9ecef;
-  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
-  --step-bg: #e7f5ff;
-}
-@media (prefers-color-scheme: dark) {
-:root {
-  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
-  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
-  --btn-active-text: #fff; --node-bg: #2a2a4a; --step-bg: #1a2a3a;
-}
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, "Microsoft YaHei", sans-serif;
-  background: var(--bg); color: var(--text);
-  display: flex; justify-content: center; padding: 20px;
-}
-.container {
-  width: 100%; max-width: 950px; height: 500px;
-  background: var(--card-bg); border-radius: 8px;
-  border: 1px solid var(--border); padding: 16px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.step-panel {
-  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
-  display: flex; justify-content: space-between; align-items: center; font-size: 14px;
-}
-.step-num { font-weight: 700; color: var(--btn-active); }
-.step-desc { flex: 1; margin-left: 16px; }
-.svg-area { flex: 1; display: flex; justify-content: center; align-items: center; }
-.controls {
-  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-}
-.controls button {
-  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--btn-bg); color: var(--text); cursor: pointer;
-  font-size: 13px; font-family: inherit; transition: all 0.15s;
-}
-.controls button:hover { background: var(--btn-hover); }
-.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
-</style>
+<title>61. 反转链表 II - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <div class="step-panel">
-    <span class="step-num" id="stepNum">步骤 0 / 0</span>
-    <span class="step-desc" id="stepDesc">初始状态</span>
-  </div>
-  <div class="svg-area"><svg id="svg" viewBox="0 0 900 200"></svg></div>
-  <div class="controls">
-    <button onclick="reset()">重置</button>
-    <button onclick="prevStep()">上步</button>
-    <button onclick="nextStep()">下步</button>
-    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button onclick="goEnd()">跳到最后</button>
-  </div>
-</div>
+<script src="demo.js"></script>
 <script>
-// Original: 1->2->3->4->5, left=2, right=4
-// Target: 1->4->3->2->5
-const left = 2, right = 4; // 1-indexed
-const origVals = [1, 2, 3, 4, 5];
-let nodeVals = [...origVals];
-const pos = [{x:60,y:100},{x:200,y:100},{x:340,y:100},{x:480,y:100},{x:620,y:100}];
-const R = 22;
-const steps = [];
-let stepIdx = -1;
+const VALS = [1, 2, 3, 4, 5];
+const LEFT = 2;
+const RIGHT = 4;
 
 function buildSteps() {
-  steps.length = 0;
-  nodeVals = [...origVals];
-  steps.push({ vals: [...nodeVals], desc: '初始状态: 1->2->3->4->5, left=2, right=4', hl: [], zone: [] });
+  const nodes = VALS.map((v, k) => ({ val: v, idx: k, next: null }));
+  for (let k = 0; k + 1 < nodes.length; k++) nodes[k].next = nodes[k + 1];
+  const dummy = { val: null, idx: -1, dummy: true, next: nodes[0] };
 
-  // Mark pre(left-1), cur(left), next node
-  steps.push({ vals: [...nodeVals], desc: '确定反转区间: 节点2到节点4', hl: [], zone: [left-1, right-1] });
+  const order = () => {
+    const arr = [];
+    let cur = dummy;
+    let guard = 0;
+    while (cur && guard < 20) { arr.push(cur.idx); cur = cur.next; guard += 1; }
+    return arr;
+  };
+  const valueOf = idx => (idx < 0 ? 'dummy' : VALS[idx]);
+  const nameOf = idx => '节点 ' + valueOf(idx);
 
-  // Head insertion: right - left iterations
-  // leftIdx = 1, rightIdx = 3 (0-indexed)
-  const li = left - 1, ri = right - 1;
-  let pre = li;
-  let cur = li;
+  const steps = [];
+  let pre = dummy;
+  let cur = null;
+  let move = null;
+  let inserted = 0;
 
-  // Iteration 1: cur=2(li), take next=3 and move to after pre
-  // After: 1->3->2->4->5
-  nodeVals = [...origVals];
-  const tmp = nodeVals.splice(cur + 1, 1)[0];  // remove 3
-  nodeVals.splice(li, 0, tmp);  // insert 3 before pre's next position
-  // Actually: pre=0, cur=1, move cur+1 (3) to li+1
-  nodeVals = [1, 3, 2, 4, 5];
-  steps.push({ vals: [...nodeVals], desc: '头插法第1步：将节点3移到前面，1->3->2->4->5', hl: [0, 1, 2], zone: [left-1, right-1] });
+  steps.push({
+    order: order(), pre: -1, cur: null, move: null, inserted: 0, phase: 'init', done: false,
+    note: '初始化：dummy 指向头节点，pre 从 dummy 出发。要反转的是位置 ' + LEFT + ' 到 ' + RIGHT +
+      '（值为 ' + VALS.slice(LEFT - 1, RIGHT).join('、') + '）这一段。加 dummy 是为了让 left = 1（从头反转）时不用特判。'
+  });
 
-  nodeVals = [1, 4, 3, 2, 5];
-  steps.push({ vals: [...nodeVals], desc: '头插法第2步：将节点4移到前面，1->4->3->2->5', hl: [0, 1, 2, 3], zone: [left-1, right-1] });
+  for (let k = 0; k < LEFT - 1; k++) pre = pre.next;
+  cur = pre.next;
+  steps.push({
+    order: order(), pre: pre.idx, cur: cur ? cur.idx : null, move: null, inserted: 0, phase: 'walk', done: false,
+    note: 'pre 从 dummy 走 left - 1 = ' + (LEFT - 1) + ' 步，停在 ' + nameOf(pre.idx) +
+      '，它就是待反转段的前驱；cur = pre.Next = ' + nameOf(cur.idx) +
+      '，是待反转段的第一个节点，反转后它会变成这一段的尾巴。'
+  });
 
-  steps.push({ vals: [...nodeVals], desc: '完成！反转区间[2,4]后得到: 1->4->3->2->5', hl: [], zone: [] });
-}
-
-function renderSVG() {
-  const st = steps[Math.min(stepIdx, steps.length - 1)];
-  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
-  document.getElementById('stepDesc').textContent = st.desc;
-
-  const svg = document.getElementById('svg');
-  let html = `<defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="var(--text-secondary)"/>
-    </marker>
-    <marker id="arrowO" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="var(--orange)"/>
-    </marker>
-  </defs>`;
-
-  // Zone highlight
-  if (st.zone && st.zone.length === 2) {
-    html += `<rect x="${pos[st.zone[0]].x - R - 5}" y="${pos[st.zone[0]].y - R - 5}" width="${pos[st.zone[1]].x - pos[st.zone[0]].x + R*2 + 10}" height="${R*2 + 10}" rx="14" fill="rgba(253,126,20,0.08)" stroke="var(--orange)" stroke-width="1.5" stroke-dasharray="5,3"/>`;
-    html += `<text x="${(pos[st.zone[0]].x + pos[st.zone[1]].x) / 2}" y="${pos[st.zone[0]].y - R - 14}" text-anchor="middle" font-size="12" fill="var(--orange)" font-weight="600">反转区间</text>`;
+  for (let t = 0; t < RIGHT - LEFT; t++) {
+    move = cur.next;
+    cur.next = move.next;
+    move.next = pre.next;
+    pre.next = move;
+    inserted += 1;
+    steps.push({
+      order: order(), pre: pre.idx, cur: cur.idx, move: move.idx, inserted: inserted, phase: 'insert', done: false,
+      note: '头插第 ' + inserted + ' 次（共需 ' + (RIGHT - LEFT) + ' 次）：把 cur.Next 处的 ' + nameOf(move.idx) +
+        ' 摘下来——令 cur.Next = move.Next 跳过它，再令 move.Next = pre.Next 接回原段的头部，最后 pre.Next = move 把它挂到 pre 后面。' +
+        ' 链表变成 [' + order().map(valueOf).join(', ') + ']。cur 保持不动，仍指向 ' + nameOf(cur.idx) +
+        '，它始终是已反转部分的尾巴。'
+    });
   }
 
-  // Arrows
-  for (let i = 0; i < st.vals.length - 1; i++) {
-    const from = pos[i], to = pos[i + 1];
-    const inZone = st.zone && i >= st.zone[0] && i < st.zone[1];
-    html += `<line x1="${from.x + R + 2}" y1="${from.y}" x2="${to.x - R - 2}" y2="${to.y}" stroke="${inZone ? 'var(--orange)' : 'var(--text-secondary)'}" stroke-width="2" marker-end="url(#${inZone ? 'arrowO' : 'arrow'})"/>`;
-  }
+  steps.push({
+    order: order(), pre: pre.idx, cur: cur ? cur.idx : null, move: move ? move.idx : null, inserted: inserted,
+    phase: 'done', done: true,
+    note: '头插 ' + (RIGHT - LEFT) + ' 次后，位置 ' + LEFT + '..' + RIGHT + ' 已完成反转，返回 dummy.Next = [' +
+      order().slice(1).map(valueOf).join(', ') + ']。整个过程只调整 next 指针，没有新建节点，一次遍历，时间 O(n)、额外空间 O(1)。'
+  });
 
-  // Nodes
-  for (let i = 0; i < st.vals.length; i++) {
-    const isHL = st.hl && st.hl.includes(i);
-    const inZone = st.zone && i >= st.zone[0] && i <= st.zone[1];
-    const stroke = isHL ? 'var(--orange)' : (inZone ? 'var(--orange)' : 'var(--blue)');
-    const fill = isHL ? 'rgba(253,126,20,0.2)' : (inZone ? 'rgba(253,126,20,0.06)' : 'var(--node-bg)');
-    html += `<circle cx="${pos[i].x}" cy="${pos[i].y}" r="${R}" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
-      <text x="${pos[i].x}" y="${pos[i].y + 5}" text-anchor="middle" font-size="14" font-weight="700" fill="var(--text)" font-family="Consolas,monospace">${st.vals[i]}</text>`;
-  }
-
-  svg.innerHTML = html;
-  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
+  return steps;
 }
 
-function reset() { stepIdx = 0; stopAuto(); renderSVG(); }
-function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; renderSVG(); }
-function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; renderSVG(); }
-function goEnd() { stopAuto(); stepIdx = steps.length - 1; renderSVG(); }
-
-let autoRunning = false, autoTimer = null;
-function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
-function startAuto() { autoRunning = true; renderSVG(); autoStep(); }
-function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); renderSVG(); }
-function autoStep() {
-  if (!autoRunning) return;
-  if (stepIdx < steps.length - 1) { stepIdx++; renderSVG(); autoTimer = setTimeout(autoStep, 900); }
-  else stopAuto();
+function applyTone(node, tone) {
+  const tones = {
+    accent: ['var(--demo-accent-soft)', 'var(--demo-accent)'],
+    violet: ['var(--demo-violet-soft)', 'var(--demo-violet)'],
+    pink: ['var(--demo-pink-soft)', 'var(--demo-pink)'],
+    info: ['var(--demo-info-soft)', 'var(--demo-info)'],
+    ok: ['var(--demo-ok-soft)', 'var(--demo-ok)']
+  };
+  const pair = tones[tone];
+  if (!pair) return;
+  node.style.background = pair[0];
+  node.style.borderColor = pair[1];
 }
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') nextStep();
-  else if (e.key === 'ArrowLeft') prevStep();
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+
+function col(item) {
+  const box = Demo.el('div', 'col');
+  const tag = Demo.el('div', 'ptr', Demo.esc(item.label));
+  tag.classList.add('ptr--dim');
+  tag.style.minWidth = '46px';
+  box.appendChild(tag);
+
+  const node = Demo.el('div', 'll-node');
+  node.style.width = '48px';
+  node.style.flex = 'none';
+  if (item.dummy) {
+    node.style.borderStyle = 'dashed';
+    node.style.fontSize = '11px';
+  }
+  node.innerHTML = Demo.esc(item.text);
+  if (item.cls) node.classList.add(item.cls);
+  applyTone(node, item.tone);
+  box.appendChild(node);
+
+  const ptr = Demo.el('div', 'ptr', Demo.esc(item.ptr || ''));
+  ptr.style.minWidth = '46px';
+  if (!item.ptr) ptr.classList.add('ptr--dim');
+  if (item.ptrCls) ptr.classList.add(item.ptrCls);
+  box.appendChild(ptr);
+  return box;
+}
+
+Demo.create({
+  title: '61. 反转链表 II — 一次遍历的头插法（穿针引线）',
+  info: '输入：head = [' + VALS.join(', ') + ']，left = ' + LEFT + ', right = ' + RIGHT +
+    '。只需把 next 指针重新接线：pre 停在待反转段之前，cur 固定为已反转部分的尾巴，每次把 cur 后面的节点「拔出」再插到 pre 后面。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 300,
+  legend: [
+    { color: 'var(--demo-violet)', label: 'pre：待反转段的前驱' },
+    { color: 'var(--demo-accent)', label: 'cur：已反转部分的尾巴' },
+    { color: 'var(--demo-pink)', label: 'move：本步被拔出的节点' },
+    { color: 'var(--demo-info)', label: '待反转区间内的节点' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title',
+      '当前链表（从左到右就是 next 的顺序，按原下标标注节点身份）'));
+    const row = Demo.el('div', 'row');
+    step.order.forEach((idx, k) => {
+      if (k > 0) {
+        const arrow = Demo.el('div', 'arrow', '→');
+        arrow.style.width = '22px';
+        arrow.style.textAlign = 'center';
+        row.appendChild(arrow);
+      }
+      const label = idx < 0 ? 'dummy' : '原 #' + idx;
+      const text = idx < 0 ? 'dummy' : VALS[idx];
+      const inRange = idx >= LEFT - 1 && idx <= RIGHT - 1;
+      let tone = inRange ? 'info' : '';
+      if (idx === step.pre) tone = 'violet';
+      if (idx === step.cur) tone = 'accent';
+      if (idx === step.move) tone = 'pink';
+
+      const ptrLabels = [];
+      if (idx === step.pre) ptrLabels.push('pre');
+      if (idx === step.cur) ptrLabels.push('cur');
+      if (idx === step.move) ptrLabels.push('move');
+      let ptrCls = '';
+      if (idx === step.pre) ptrCls = 'ptr--violet';
+      else if (idx === step.move) ptrCls = 'ptr--pink';
+
+      row.appendChild(col({
+        label: label,
+        text: text,
+        dummy: idx < 0,
+        tone: tone,
+        ptr: ptrLabels.join(' '),
+        ptrCls: ptrCls
+      }));
+    });
+    panel.appendChild(row);
+    ctx.stage.appendChild(panel);
+
+    const info = Demo.el('div', 'panel');
+    info.style.width = '100%';
+    info.style.textAlign = 'center';
+    info.innerHTML = '反转区间：位置 ' + LEFT + '..' + RIGHT + '（原下标 ' + (LEFT - 1) + '..' + (RIGHT - 1) + '）　｜　' +
+      'pre = ' + (step.pre < 0 ? 'dummy' : VALS[step.pre]) + '　｜　' +
+      'cur = ' + (step.cur == null ? '—' : VALS[step.cur]) + '　｜　' +
+      '已完成头插 <strong>' + step.inserted + '</strong> / ' + (RIGHT - LEFT) +
+      '　' + (step.done ? '<span class="tag tag--ok">完成</span>' : '<span class="tag tag--warn">继续</span>');
+    ctx.stage.appendChild(info);
+  }
 });
-buildSteps();
-reset();
 </script>
 </body>
 </html>

@@ -3,139 +3,187 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>150. 最大正方形 - 可视化演示</title>
-<style>
-:root{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--sub:#666;--border:#e0e0e0;--accent:#2563eb;--step-bg:#f0f4ff;--grid-bg:#fafafa;--radius:8px;--font:system-ui,-apple-system,sans-serif}
-@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--sub:#a0a0b0;--border:#334;--accent:#60a5fa;--step-bg:#1e293b;--grid-bg:#0f172a}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:var(--font);background:var(--bg);display:flex;justify-content:center;align-items:center;min-height:100vh}
-.demo-container{width:100%;max-width:960px;height:500px;background:var(--card);border-radius:var(--radius);box-shadow:0 4px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
-.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--step-bg)}
-.header .title{font-size:15px;font-weight:600;color:var(--text)}
-.header .step-info{font-size:13px;color:var(--accent);font-weight:500}
-.controls{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.controls button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
-.controls button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
-.controls button:disabled{opacity:.4;cursor:not-allowed}
-.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.main-area{flex:1;display:flex;flex-direction:column;padding:12px 16px;gap:10px;overflow-y:auto}
-.info-panel{padding:10px 14px;background:var(--step-bg);border-radius:var(--radius);border:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.6}
-.info-panel strong{color:var(--accent)}
-.vis-area{flex:1;display:flex;flex-direction:column;gap:8px;align-items:center}
-.grid-wrap{display:inline-grid;gap:3px;justify-content:center;padding:4px 0;position:relative}
-.grid-cell{width:52px;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:4px;font-weight:700;font-size:14px;border:2px solid var(--border);background:var(--grid-bg);color:var(--text);transition:all .3s;position:relative}
-.grid-cell .orig{font-size:12px;color:var(--sub)}
-.grid-cell .dp{font-size:10px;font-weight:600;color:var(--accent)}
-.grid-cell.zero{opacity:.4}
-.grid-cell.cur{border-color:var(--accent);background:var(--step-bg)}
-.grid-cell.in-square{background:#bbf7d0;border-color:#22c55e;color:#166534}
-.max-info{text-align:center;font-size:15px;font-weight:700;color:var(--text);padding:4px}
-.max-info span{color:var(--accent);font-size:20px}
-.step-detail{font-size:13px;color:var(--sub);text-align:center}
-.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
-@media(prefers-color-scheme:dark){.grid-cell.in-square{background:#14532d;border-color:#22c55e;color:#86efac}}
-</style>
+<title>150. 最大正方形 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="demo-container">
-<div class="header">
-<span class="title">150. 最大正方形 (Maximal Square)</span>
-<span class="step-info" id="stepLabel">步骤 0 / 0</span>
-</div>
-<div class="controls">
-<button onclick="reset()">重置</button>
-<button onclick="prevStep()">上步</button>
-<button onclick="nextStep()">下步</button>
-<button onclick="toggleAuto()" id="autoBtn">自动播放</button>
-<button onclick="jumpEnd()">跳到最后</button>
-</div>
-<div class="main-area">
-<div class="info-panel" id="info"><strong>输入:</strong> matrix 4x5 (0/1) &nbsp;|&nbsp; <strong>思路:</strong> dp[i][j]=1+min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1])当matrix[i][j]=='1'</div>
-<div class="vis-area">
-<div class="grid-wrap" id="grid"></div>
-<div class="max-info" id="maxInfo"></div>
-<div class="step-detail" id="stepDetail"></div>
-<div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
-</div>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const M=[
-  ['1','0','1','0','0'],
-  ['1','0','1','1','1'],
-  ['1','1','1','1','1'],
-  ['1','0','0','1','0']
+const MATRIX = [
+  ['1', '0', '1', '0', '0'],
+  ['1', '0', '1', '1', '1'],
+  ['1', '1', '1', '1', '1'],
+  ['1', '0', '0', '1', '0']
 ];
-const R=4,C=5;
-let steps=[],stepIdx=0,autoTimer=null,playing=false;
+const R = MATRIX.length;
+const C = MATRIX[0].length;
 
-function buildSteps(){
-  steps=[];
-  let dp=Array.from({length:R},()=>Array(C).fill(0));
-  let maxSide=0,maxI=-1,maxJ=-1;
-  steps.push({dp:dp.map(r=>[...r]),i:-1,j:-1,maxSide:0,note:'初始化dp全0',done:false});
-  for(let i=0;i<R;i++){
-    for(let j=0;j<C;j++){
-      if(M[i][j]==='1'){
-        if(i===0||j===0){
-          dp[i][j]=1;
-          steps.push({dp:dp.map(r=>[...r]),i,j,maxSide:Math.max(maxSide,1),note:`边界位置[${i},${j}]: dp=1`,done:false});
-        } else {
-          dp[i][j]=1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
-          steps.push({dp:dp.map(r=>[...r]),i,j,maxSide:Math.max(maxSide,dp[i][j]),note:`[${i},${j}]: min(上${dp[i-1][j]},左${dp[i][j-1]},左上${dp[i-1][j-1]})+1 = ${dp[i][j]}`,done:i===R-1&&j===C-1});
-        }
-        if(dp[i][j]>maxSide){maxSide=dp[i][j];maxI=i;maxJ=j;}
-      } else {
-        steps.push({dp:dp.map(r=>[...r]),i,j,maxSide,note:`[${i},${j}] = '0', dp=0`,done:i===R-1&&j===C-1});
+function buildSteps() {
+  const dp = Array.from({ length: R }, () => new Array(C).fill(0));
+  const filled = Array.from({ length: R }, () => new Array(C).fill(false));
+  const steps = [];
+  let maxSide = 0, bestI = -1, bestJ = -1;
+
+  function push(note, cur, srcs, best, formulaTitle, formula) {
+    steps.push({
+      dp: dp.map(r => r.slice()),
+      filled: filled.map(r => r.slice()),
+      cur: cur, srcs: srcs || [], best: best || [],
+      maxSide: maxSide, bestI: bestI, bestJ: bestJ,
+      formulaTitle: formulaTitle, formula: formula,
+      note: note, done: false
+    });
+  }
+
+  push(
+    `初始化 ${R}×${C} 的 dp 表，全部置 0。dp[i][j] 的含义是「以 (i, j) 为右下角的最大正方形的边长」，所以每个格子只依赖它的上、左、左上三个邻居。`,
+    null, [], [], '初始状态', 'dp 全 0，正方形边长最大值的起点也是 0'
+  );
+
+  for (let i = 0; i < R; i++) {
+    for (let j = 0; j < C; j++) {
+      filled[i][j] = true;
+
+      if (MATRIX[i][j] === '0') {
+        dp[i][j] = 0;
+        push(
+          `(${i}, ${j}) 的原始值是 '0'。以它作为右下角的正方形必须包含这个 0，根本放不了 1，所以 dp[${i}][${j}] = 0，它也不可能成为答案的一部分。`,
+          [i, j], [], [],
+          '遇到 0', `matrix[${i}][${j}] == '0' ⇒ dp[${i}][${j}] = 0`
+        );
+        continue;
       }
-    }
-  }
-  let last=steps[steps.length-1];
-  steps[steps.length-1]={...last,note:last.note+` | 最大正方形边长=${maxSide}, 面积=${maxSide*maxSide}`,done:true,maxSide,maxI,maxJ};
-}
-function render(){
-  let s=steps[stepIdx]||steps[steps.length-1]||{};
-  let total=steps.length;
-  document.getElementById('stepLabel').textContent=`步骤 ${stepIdx+1} / ${total}`;
-  document.getElementById('progress').style.width=((stepIdx+1)/total*100)+'%';
-  document.getElementById('info').innerHTML=`<strong>matrix 4x5</strong> &nbsp;|&nbsp; ${s.note||''}`;
 
-  let dp=s.dp||[];
-  let gh='';
-  for(let i=0;i<R;i++){
-    for(let j=0;j<C;j++){
-      let cls='';
-      if(M[i][j]==='0')cls='zero';
-      if(s.i===i&&s.j===j)cls='cur';
-      if(s.done&&s.maxSide>0&&i<=s.maxI&&i>s.maxI-s.maxSide&&j<=s.maxJ&&j>s.maxJ-s.maxSide)cls='in-square';
-      let v=M[i][j]==='0'?'0':(dp[i]?.[j]??'?');
-      gh+=`<div class="grid-cell ${cls}">
-        <span class="orig">${M[i][j]}</span>
-        <span class="dp">${M[i][j]==='0'?'':`dp=${v}`}</span>
-      </div>`;
+      if (i === 0 || j === 0) {
+        dp[i][j] = 1;
+        if (dp[i][j] > maxSide) { maxSide = dp[i][j]; bestI = i; bestJ = j; }
+        push(
+          `(${i}, ${j}) 是 '1'，且位于第一行或第一列。它不可能再向左上扩展（缺少上/左/左上邻居），能构成的正方形最大就是 1×1，所以 dp[${i}][${j}] = 1。`,
+          [i, j], [], [[i, j]],
+          '边界格', `matrix[${i}][${j}] == '1' 且在边界 ⇒ dp[${i}][${j}] = 1`
+        );
+        continue;
+      }
+
+      const up = dp[i - 1][j];
+      const left = dp[i][j - 1];
+      const diag = dp[i - 1][j - 1];
+      const mn = Math.min(up, left, diag);
+      dp[i][j] = mn + 1;
+      const best = [];
+      if (up === mn) best.push([i - 1, j]);
+      if (left === mn) best.push([i, j - 1]);
+      if (diag === mn) best.push([i - 1, j - 1]);
+      if (dp[i][j] > maxSide) { maxSide = dp[i][j]; bestI = i; bestJ = j; }
+
+      push(
+        `(${i}, ${j}) 是 '1'，看三个邻居限制的边长：上方 dp[${i - 1}][${j}] = ${up}，左方 dp[${i}][${j - 1}] = ${left}，左上 dp[${i - 1}][${j - 1}] = ${diag}。取最小的 ${mn} 说明三个方向同时能满足的最大正方形是 ${mn}×${mn}，再加上当前格子自己，dp[${i}][${j}] = ${mn} + 1 = ${dp[i][j]}。`,
+        [i, j], [[i - 1, j], [i, j - 1], [i - 1, j - 1]], best,
+        '三个方向取最小再加 1',
+        `dp[${i}][${j}] = 1 + min(上 ${up}, 左 ${left}, 左上 ${diag}) = 1 + ${mn} = ${dp[i][j]}`
+      );
     }
   }
-  document.getElementById('grid').innerHTML=gh;
-  document.getElementById('grid').style.gridTemplateColumns=`repeat(${C},1fr)`;
-  document.getElementById('maxInfo').innerHTML=s.done?`最大正方形: 边长<span>${s.maxSide}</span>, 面积<span>${s.maxSide*s.maxSide}</span>`:'';
-  document.getElementById('stepDetail').textContent=(s.i>=0&&s.j>=0)?`计算位置 [${s.i},${s.j}]`:'';
+
+  steps.push({
+    dp: dp.map(r => r.slice()),
+    filled: filled.map(r => r.slice()),
+    cur: [bestI, bestJ], srcs: [], best: [[bestI, bestJ]],
+    maxSide: maxSide, bestI: bestI, bestJ: bestJ,
+    formulaTitle: '最终结果',
+    formula: `最大边长 maxSide = ${maxSide} ⇒ 面积 = ${maxSide} × ${maxSide} = ${maxSide * maxSide}`,
+    done: true,
+    note: `整个矩阵扫描完毕，过程中记录的最大边长 maxSide = ${maxSide}，答案 = 边长² = ${maxSide * maxSide}。这个 2×2 正方形以 (${bestI}, ${bestJ}) 为右下角，覆盖第 ${bestI - maxSide + 1}~${bestI} 行、第 ${bestJ - maxSide + 1}~${bestJ} 列（0 起编号）。每个格子只算一次且只读三个邻居，时间 O(m×n)；空间可用滚动数组优化到 O(n)。`
+  });
+
+  return steps;
 }
-function reset(){stepIdx=0; stopAuto();buildSteps();render();}
-function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
-function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
-function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}
-function toggleAuto(){
-  if(playing){stopAuto();}else{playing=true;document.getElementById('autoBtn').classList.add('active');document.getElementById('autoBtn').textContent='停止';
-    autoTimer=setInterval(()=>{if(stepIdx<steps.length-1){stepIdx++;render();}else{stopAuto();}},700);}
+
+function matrixCell(step, i, j) {
+  const cell = Demo.el('div', 'grid-cell');
+  cell.style.flexDirection = 'column';
+  cell.style.height = '46px';
+  cell.style.minWidth = '46px';
+  cell.style.fontSize = '15px';
+
+  const isCur = step.cur && step.cur[0] === i && step.cur[1] === j;
+  const inBest = step.best.some(p => p[0] === i && p[1] === j);
+  const inSrc = step.srcs.some(p => p[0] === i && p[1] === j);
+  const inSquare = step.done && step.maxSide > 0 &&
+    i <= step.bestI && i > step.bestI - step.maxSide &&
+    j <= step.bestJ && j > step.bestJ - step.maxSide;
+
+  if (inSquare) cell.classList.add('is-ok');
+  else if (isCur) cell.classList.add('is-active');
+  else if (inBest) cell.classList.add('is-ok');
+  else if (inSrc) cell.classList.add('is-warn');
+  else if (MATRIX[i][j] === '0') cell.classList.add('is-dim');
+  else if (!step.filled[i][j]) cell.classList.add('is-dim');
+
+  const orig = Demo.esc(MATRIX[i][j]);
+  if (MATRIX[i][j] === '0') {
+    cell.innerHTML = '<span style="color:var(--demo-muted)">' + orig + '</span>';
+  } else {
+    const v = step.filled[i][j] ? Demo.esc(step.dp[i][j]) : '·';
+    cell.innerHTML = '<span style="font-size:10px;color:var(--demo-muted);line-height:1">' + orig + '</span>' +
+      '<span style="line-height:1.1">' + v + '</span>';
+  }
+  return cell;
 }
-function stopAuto(){playing=false;clearInterval(autoTimer);document.getElementById('autoBtn').classList.remove('active');document.getElementById('autoBtn').textContent='自动播放';}
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight')nextStep();
-  else if(e.key==='ArrowLeft')prevStep();
-  else if(e.key===' '){e.preventDefault();toggleAuto();}
+
+function buildGrid(step) {
+  const grid = Demo.el('div', 'grid');
+  grid.style.gridTemplateColumns = 'repeat(' + C + ', 46px)';
+  for (let i = 0; i < R; i++) {
+    for (let j = 0; j < C; j++) grid.appendChild(matrixCell(step, i, j));
+  }
+  return grid;
+}
+
+Demo.create({
+  title: '150. 最大正方形 — 二维 DP，以 (i,j) 为右下角',
+  info: `输入：matrix = 4×5 的 0/1 矩阵（示例 1，输出应为 4）。dp[i][j] = 以 (i,j) 为右下角、只含 '1' 的最大正方形边长。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 340,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前计算的格子' },
+    { color: 'var(--demo-ok)', label: '被采用的转移来源 / 最终正方形' },
+    { color: 'var(--demo-warn)', label: '参与比较的上、左、左上' },
+    { color: 'var(--demo-muted)', label: '0 格或尚未计算' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const gridPanel = Demo.el('div', 'panel');
+    gridPanel.style.width = '100%';
+    gridPanel.appendChild(Demo.el('div', 'panel__title',
+      '矩阵（大字 = 原始 0/1，下方小字 = dp 值）'));
+    gridPanel.appendChild(buildGrid(step));
+    ctx.stage.appendChild(gridPanel);
+
+    const infoPanel = Demo.el('div', 'panel');
+    infoPanel.style.width = '100%';
+    infoPanel.style.textAlign = 'center';
+    infoPanel.appendChild(Demo.el('div', 'panel__title', Demo.esc(step.formulaTitle)));
+    infoPanel.appendChild(Demo.el('div', null, '<code>' + Demo.esc(step.formula) + '</code>'));
+    if (!step.done) {
+      infoPanel.appendChild(Demo.el('div', null,
+        '<span class="tag tag--warn">上方 = dp[i-1][j]</span> &nbsp;' +
+        '<span class="tag tag--info">左方 = dp[i][j-1]</span> &nbsp;' +
+        '<span class="tag tag--violet">左上 = dp[i-1][j-1]</span>'));
+    }
+    ctx.stage.appendChild(infoPanel);
+
+    const result = Demo.el('div', 'panel');
+    result.style.width = '100%';
+    result.style.textAlign = 'center';
+    result.innerHTML = step.done
+      ? `最大正方形边长 = <strong>${step.maxSide}</strong>，面积 = <strong>${step.maxSide * step.maxSide}</strong> &nbsp;<span class="tag tag--ok">答案 ${step.maxSide * step.maxSide}</span>`
+      : `当前已发现的最大边长 maxSide = <strong>${step.maxSide}</strong>`;
+    ctx.stage.appendChild(result);
+  }
 });
-buildSteps();render();
 </script>
 </body>
 </html>

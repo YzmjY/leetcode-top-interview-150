@@ -1,301 +1,179 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222; --sub-bg: #f5f5f5;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --s-color: #1976D2; --t-color: #E53935;
-    --ok-color: #388E3C;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
-      --sub-bg: #252540;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 16px 20px;
-  }
-  .container { max-width: 820px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
-  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
-    font-size: 14px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
-
-  .str-row { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 6px; }
-  .str-label { font-size: 12px; font-weight: bold; width: 30px; text-align: right; }
-  .str-cells { display: flex; gap: 3px; }
-  .scell {
-    width: 44px; height: 44px; border: 2px solid var(--cell-border); border-radius: 8px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-size: 20px; font-weight: bold; background: var(--cell-bg); color: var(--text);
-    transition: border-color 0.25s, background 0.25s, transform 0.15s;
-  }
-  .scell .sidx { font-size: 8px; color: var(--muted); }
-  .scell.hls { border-color: var(--s-color); background: rgba(25,118,210,0.12); transform: scale(1.06); z-index: 2; }
-  .scell.hlt { border-color: var(--t-color); background: rgba(229,57,53,0.12); transform: scale(1.06); z-index: 2; }
-  .scell.matched { border-color: var(--ok-color); background: rgba(56,142,60,0.12); }
-
-  .hist-panel {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 6px; text-align: center;
-  }
-  .hist-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
-  .hist-bar {
-    width: 32px; display: flex; flex-direction: column; align-items: center;
-    transition: height 0.3s;
-  }
-  .hist-bar-fill {
-    width: 28px; border-radius: 4px 4px 0 0;
-    transition: height 0.3s, background 0.3s;
-  }
-  .hist-bar-s { background: var(--s-color); }
-  .hist-bar-t { background: var(--t-color); }
-  .hist-label { font-size: 11px; font-weight: bold; margin-top: 2px; }
-  .hist-char { font-size: 13px; font-weight: bold; }
-
-  .result-row {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 6px; font-size: 13px; text-align: center;
-  }
-  .result-row .highlight { font-weight: bold; font-size: 15px; }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-</style>
+<title>42. 有效的字母异位词 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>有效的字母异位词 — 频率柱状图对比</h2>
-  <div class="sub-title">s="anagram", t="nagaram" &rarr; 两个字符串字母频率是否完全一致?</div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始统计</span>
-  </div>
-
-  <div class="str-row">
-    <span class="str-label" style="color:var(--s-color)">s:</span>
-    <div class="str-cells" id="sCells"></div>
-  </div>
-  <div class="str-row">
-    <span class="str-label" style="color:var(--t-color)">t:</span>
-    <div class="str-cells" id="tCells"></div>
-  </div>
-
-  <div class="hist-panel">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">频率对比</div>
-    <div class="hist-row" id="histRow"></div>
-  </div>
-
-  <div class="result-row">
-    <span style="color:var(--muted)">判定: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">&#x23EE; 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
-    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const s = 'anagram', t = 'nagaram';
-const n = s.length;
-const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
+const S = 'anagram';
+const T = 'nagaram';
 
-const steps = [];
-const freqS = {}, freqT = {};
-alphabet.forEach(ch => { freqS[ch] = 0; freqT[ch] = 0; });
+function buildSteps() {
+  const steps = [];
+  const cnt = {};
+  const letters = Array.from(new Set((S + T).split(''))).sort();
+  letters.forEach(function (ch) { cnt[ch] = 0; });
 
-function cloneFreq(f) { return {...f}; }
+  function snap(extra) {
+    const copy = {};
+    letters.forEach(function (ch) { copy[ch] = cnt[ch]; });
+    const step = { cnt: copy, note: extra.note };
+    Object.keys(extra).forEach(function (key) {
+      if (key !== 'note') step[key] = extra[key];
+    });
+    steps.push(step);
+  }
 
-function simulate() {
-  steps.push({
-    desc: '初始状态 · s="anagram", t="nagaram"',
-    phase: 'init',
-    freqS: cloneFreq(freqS), freqT: cloneFreq(freqT),
-    sHL: [], tHL: [],
-    result: 'init'
+  snap({
+    phase: 'init', i: -1, plus: '', minus: '', ok: null,
+    note: `先比较长度：s 有 ${S.length} 个字符，t 有 ${T.length} 个字符，${S.length} == ${T.length}，长度这一关通过（长度不等直接返回 false）。然后开一个 26 位的计数数组：s 里出现的字母加 1，t 里出现的字母减 1，最后只要所有位都回到 0，两个字符串的字符频次就完全相同。`
   });
 
-  // Count s
-  for (let i = 0; i < n; i++) {
-    freqS[s[i]]++;
-    const si = i + 1;
-    steps.push({
-      desc: '统计 s[' + i + ']=' + s[i] + ' &rarr; 频率表 [' + s[i] + ']=' + freqS[s[i]],
-      phase: 'count-s',
-      freqS: cloneFreq(freqS), freqT: cloneFreq(freqT),
-      sHL: [[i, 's']], tHL: [],
-      result: 'counting'
+  for (let i = 0; i < S.length; i++) {
+    const plus = S[i];
+    const minus = T[i];
+    cnt[plus] += 1;
+    cnt[minus] -= 1;
+    snap({
+      phase: 'pair', i: i, plus: plus, minus: minus, ok: null,
+      note: `第 ${i} 位：s[${i}] = "${plus}" 让 cnt['${plus}'] 加 1，t[${i}] = "${minus}" 让 cnt['${minus}'] 减 1。` +
+        (plus === minus
+          ? `这一步加、减的是同一个字母，差值没有变化。`
+          : `两个字母不同，差值${cnt[plus] === 0 && cnt[minus] === 0 ? '恰好互相抵消' : '暂时留在表里，等后续的字符来抵消'}。`) +
+        ` 目前的差值：${letters.map(function (ch) { return ch + ':' + cnt[ch]; }).join('，')}。`
     });
   }
 
-  // Count t
-  for (let i = 0; i < n; i++) {
-    freqT[t[i]]++;
-    steps.push({
-      desc: '统计 t[' + i + ']=' + t[i] + ' &rarr; 频率表 [' + t[i] + ']=' + freqT[t[i]],
-      phase: 'count-t',
-      freqS: cloneFreq(freqS), freqT: cloneFreq(freqT),
-      sHL: [], tHL: [[i, 't']],
-      result: 'counting'
-    });
-  }
+  const nonzero = letters.filter(function (ch) { return cnt[ch] !== 0; });
 
-  // Compare
-  const eq = alphabet.every(ch => freqS[ch] === freqT[ch]);
-  if (eq) {
-    steps.push({
-      desc: '对比完成! 所有字母频率一致 &rarr; 是字母异位词.',
-      phase: 'done',
-      freqS: cloneFreq(freqS), freqT: cloneFreq(freqT),
-      sHL: n > 0 ? [...Array(n)].map((_,i) => [i, 'matched']) : [],
-      tHL: n > 0 ? [...Array(n)].map((_,i) => [i, 'matched']) : [],
-      result: 'success'
-    });
-  } else {
-    steps.push({
-      desc: '对比发现不一致! 不是字母异位词.',
-      phase: 'done',
-      freqS: cloneFreq(freqS), freqT: cloneFreq(freqT),
-      sHL: [], tHL: [],
-      result: 'fail'
-    });
-  }
-}
-
-simulate();
-
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-// Build cells
-const sEl = document.getElementById('sCells');
-s.split('').forEach((ch, i) => {
-  const cell = document.createElement('div');
-  cell.className = 'scell'; cell.id = 'sc' + i;
-  cell.innerHTML = ch + '<span class="sidx">' + i + '</span>';
-  sEl.appendChild(cell);
-});
-const tEl = document.getElementById('tCells');
-t.split('').forEach((ch, i) => {
-  const cell = document.createElement('div');
-  cell.className = 'scell'; cell.id = 'tc' + i;
-  cell.innerHTML = ch + '<span class="sidx">' + i + '</span>';
-  tEl.appendChild(cell);
-});
-
-// Build histogram
-const histRow = document.getElementById('histRow');
-alphabet.forEach(ch => {
-  const bar = document.createElement('div');
-  bar.className = 'hist-bar';
-  bar.innerHTML = '<div class="hist-bar-fill" id="histS_' + ch + '" style="height:0;background:var(--s-color);"></div>' +
-    '<span class="hist-char" style="color:var(--s-color);font-size:10px;">s</span>' +
-    '<div class="hist-bar-fill" id="histT_' + ch + '" style="height:0;background:var(--t-color);"></div>' +
-    '<span class="hist-char" style="color:var(--t-color);font-size:10px;">t</span>' +
-    '<span class="hist-label" id="histLbl_' + ch + '">' + ch + '</span>';
-  histRow.appendChild(bar);
-});
-
-function render() {
-  const step = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = step.desc;
-
-  for (let i = 0; i < n; i++) {
-    document.getElementById('sc' + i).className = 'scell';
-    document.getElementById('tc' + i).className = 'scell';
-  }
-  if (step.sHL) step.sHL.forEach(([i, type]) => {
-    document.getElementById('sc' + i).className = 'scell ' + (type === 's' ? 'hls' : 'matched');
-  });
-  if (step.tHL) step.tHL.forEach(([i, type]) => {
-    document.getElementById('tc' + i).className = 'scell ' + (type === 't' ? 'hlt' : 'matched');
+  snap({
+    phase: 'verify', i: S.length, plus: '', minus: '', ok: nonzero.length === 0,
+    note: `两个字符串都扫完了，进入最后的检查循环：逐位查看计数数组是否全为 0。` +
+      (nonzero.length === 0
+        ? `本例中每个字母的加减次数都完全相等，数组全为 0。`
+        : `发现有 ${nonzero.length} 个字母没被抵消：${nonzero.map(function (ch) { return ch + '=' + cnt[ch]; }).join('，')}。`)
   });
 
-  const maxH = Math.max(...Object.values(step.freqS), ...Object.values(step.freqT), 1);
-  alphabet.forEach(ch => {
-    document.getElementById('histS_' + ch).style.height = (step.freqS[ch] / maxH * 40) + 'px';
-    document.getElementById('histT_' + ch).style.height = (step.freqT[ch] / maxH * 40) + 'px';
-    const eq = step.freqS[ch] === step.freqT[ch];
-    document.getElementById('histLbl_' + ch).style.color = eq ? 'var(--ok-color)' : '#E53935';
+  snap({
+    phase: 'done', i: S.length, plus: '', minus: '', ok: nonzero.length === 0,
+    note: nonzero.length === 0
+      ? `所有计数归零，说明 s 与 t 每个字符的出现次数完全相同，返回 true。这个做法只遍历两个字符串各一遍、再扫一遍 26 个格子，时间 O(n)、空间 O(1)。对比之下排序法要 O(n log n)，而进阶的 Unicode 版本只需把数组换成 map[rune]int，思路不变。`
+      : `存在非零计数，说明两个字符串的字符组成不同，返回 false。`
   });
 
-  const rt = document.getElementById('resultText');
-  if (step.result === 'success') { rt.textContent = 'true - 是异位词!'; rt.style.color = '#388E3C'; }
-  else if (step.result === 'fail') { rt.textContent = 'false - 不是!'; rt.style.color = '#E53935'; }
-  else if (step.result === 'init') { rt.textContent = '进行中...'; rt.style.color = '#1976D2'; }
-  else { rt.textContent = '统计中...'; rt.style.color = '#1976D2'; }
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+  return steps;
 }
 
-function goStep(n) {
-  current = Math.max(0, Math.min(n, steps.length - 1));
-  render();
+function stringRow(title, chars, activeIdx, doneCount, isPlus) {
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.appendChild(Demo.el('div', 'panel__title', title));
+  const row = Demo.el('div', 'row');
+  chars.split('').forEach(function (ch, idx) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(ch));
+    if (idx === activeIdx) cell.classList.add(isPlus ? 'is-active' : 'is-pink');
+    else if (idx < doneCount) cell.classList.add('is-ok');
+    col.appendChild(cell);
+    const ptr = Demo.el('div', 'ptr', String(idx));
+    if (idx !== activeIdx) ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    row.appendChild(col);
+  });
+  panel.appendChild(row);
+  return panel;
 }
 
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer); autoRunning = false;
-    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-    document.getElementById('playBtn').classList.remove('play-btn');
-  } else {
-    autoRunning = true;
-    document.getElementById('playBtn').textContent = '\u23F8 暂停';
-    document.getElementById('playBtn').style.background = '#1976D2';
-    document.getElementById('playBtn').style.color = '#fff';
-    document.getElementById('playBtn').classList.add('play-btn');
-    if (current >= steps.length - 1) goStep(0);
-    autoTimer = setInterval(function() {
-      if (current < steps.length - 1) goStep(current + 1);
-      else toggleAuto();
-    }, 1000);
+function diffTable(step, letters) {
+  const panel = Demo.el('div', 'panel');
+  panel.appendChild(Demo.el('div', 'panel__title', '差值数组：字母 → s 的频次 − t 的频次'));
+  let html = '<table class="map-table"><tr><th>字母</th><th>差值</th><th>状态</th></tr>';
+  letters.forEach(function (ch) {
+    const v = step.cnt[ch];
+    const active = (step.phase === 'pair' && (ch === step.plus || ch === step.minus));
+    const status = v === 0 ? '已抵消' : (v > 0 ? 's 多出 ' + v + ' 个' : 't 多出 ' + (-v) + ' 个');
+    html += '<tr' + (active ? ' class="is-active"' : '') + '>' +
+      '<td>' + Demo.esc(ch) + '</td>' +
+      '<td>' + (v > 0 ? '+' + v : String(v)) + '</td>' +
+      '<td>' + status + '</td></tr>';
+  });
+  html += '</table>';
+  panel.appendChild(Demo.el('div', null, html));
+  return panel;
+}
+
+function diffBars(step, letters) {
+  const panel = Demo.el('div', 'panel');
+  panel.appendChild(Demo.el('div', 'panel__title', '差值可视化：零高度表示已配平'));
+  const row = Demo.el('div', 'row');
+  const maxAbs = Math.max(1, letters.reduce(function (m, ch) { return Math.max(m, Math.abs(step.cnt[ch])); }, 0));
+  letters.forEach(function (ch) {
+    const col = Demo.el('div', 'col');
+    const bar = Demo.el('div', 'bar');
+    bar.style.width = '34px';
+    const fill = Demo.el('div', 'bar__fill');
+    const v = step.cnt[ch];
+    fill.style.width = (Math.abs(v) / maxAbs * 100) + '%';
+    fill.style.background = v >= 0 ? 'var(--demo-accent)' : 'var(--demo-pink)';
+    bar.appendChild(fill);
+    col.appendChild(bar);
+    const label = Demo.el('div', 'ptr', Demo.esc(ch));
+    if (step.phase === 'pair' && (ch === step.plus || ch === step.minus)) label.classList.add('ptr--ok');
+    else label.classList.add('ptr--dim');
+    col.appendChild(label);
+    row.appendChild(col);
+  });
+  panel.appendChild(row);
+  return panel;
+}
+
+Demo.create({
+  title: '42. 有效的字母异位词 — 一边加一边减，最后看是否归零',
+  info: `输入：s = "${S}"，t = "${T}"（示例 1，输出 true）。长度相同后，s 的字符 +1、t 的字符 −1，最后检查差值是否全为 0。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 420,
+  legend: [
+    { color: 'var(--demo-accent)', label: 's 读入的字母（+1）' },
+    { color: 'var(--demo-pink)', label: 't 读入的字母（−1）' },
+    { color: 'var(--demo-ok)', label: '已处理的位置 / 差值已抵消' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+    const letters = Array.from(new Set((S + T).split(''))).sort();
+
+    const plusActive = step.phase === 'pair' ? step.i : -1;
+    ctx.stage.appendChild(stringRow(`s = "${S}"`, S, plusActive, step.i < 0 ? 0 : step.i, true));
+    ctx.stage.appendChild(stringRow(`t = "${T}"`, T, plusActive, step.i < 0 ? 0 : step.i, false));
+
+    const mid = Demo.el('div', 'row');
+    mid.style.width = '100%';
+    mid.style.alignItems = 'flex-start';
+    mid.appendChild(diffTable(step, letters));
+    mid.appendChild(diffBars(step, letters));
+    ctx.stage.appendChild(mid);
+
+    const state = Demo.el('div', 'panel');
+    state.style.width = '100%';
+    state.style.textAlign = 'center';
+    if (step.phase === 'init') {
+      state.innerHTML = `<span class="tag tag--info">len(s) = ${S.length}</span> &nbsp;= &nbsp;<span class="tag tag--info">len(t) = ${T.length}</span> &nbsp;<span class="tag tag--ok">长度检查通过</span>`;
+    } else if (step.phase === 'pair') {
+      state.innerHTML = `s[${step.i}] = "${Demo.esc(step.plus)}" 计 <strong>+1</strong> &nbsp;｜&nbsp; t[${step.i}] = "${Demo.esc(step.minus)}" 计 <strong>−1</strong> &nbsp;<span class="tag tag--warn">统计中</span>`;
+    } else if (step.phase === 'verify') {
+      state.innerHTML = '计数器全为 0 才算异位词 &nbsp;<span class="tag tag--info">检查差值数组</span>';
+    } else {
+      state.innerHTML = step.ok
+        ? '每个字母的加减次数完全相等 &nbsp;<span class="tag tag--ok">返回 true</span>'
+        : '仍有字母未被抵消 &nbsp;<span class="tag tag--bad">返回 false</span>';
+    }
+    ctx.stage.appendChild(state);
   }
-}
-
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
 });
-
-render();
 </script>
 </body>
 </html>

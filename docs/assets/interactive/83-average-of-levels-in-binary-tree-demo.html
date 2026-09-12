@@ -1,115 +1,290 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>二叉树的层平均值</title>
-<style>
-:root{--bg:#fff;--text:#333;--muted:#888;--btn-bg:#f0f0f0;--btn-hover:#e0e0e0;--sub-bg:#f5f5f5;--cell-border:#d0d0d0;--header:#222}
-@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--text:#ddd;--muted:#aaa;--btn-bg:#333;--btn-hover:#444;--sub-bg:#252540;--cell-border:#444;--header:#ddd}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
-.container{max-width:760px;width:100%}
-h2{text-align:center;color:var(--header);font-size:17px;margin-bottom:4px}
-.info-bar{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:4px;font-size:14px}
-.step-num{font-weight:bold;font-size:22px;color:#1976D2;min-width:36px;text-align:center}
-.step-desc{color:var(--muted);font-size:12px;max-width:550px;text-align:center}
-svg{display:block;margin:0 auto;width:100%;height:340px}
-.controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px}
-button{padding:7px 15px;border:1px solid var(--cell-border);border-radius:6px;background:var(--btn-bg);color:var(--text);font-size:12px;cursor:pointer;transition:0.15s}
-button:hover{background:var(--btn-hover)}
-button:active{transform:scale(0.96)}
-button:disabled{opacity:0.35;cursor:default}
-button.play-btn{background:#1976D2;color:#fff;border-color:#1565C0}
-.avg-row{display:flex;gap:20px;justify-content:center;align-items:center;margin-top:6px;flex-wrap:wrap}
-.avg-item{background:var(--sub-bg);border-radius:8px;padding:8px 16px;text-align:center}
-.avg-item .label{font-size:11px;color:var(--muted)}
-.avg-item .value{font-size:18px;font-weight:bold;color:#1976D2}
-</style>
+<title>83. 二叉树的层平均值 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>二叉树的层平均值 — 逐层BFS计算均值</h2>
-<div class="info-bar">
-<span class="step-num" id="stepNum">0</span>
-<span class="step-desc" id="stepDesc">树：[3,9,20,null,null,15,7] · 均值 [3, 14.5, 11]</span>
-</div>
-<svg id="treeSvg" viewBox="0 0 720 320"></svg>
-<div class="avg-row" id="avgRow"></div>
-<div class="controls">
-<button onclick="goStep(0)">重置</button>
-<button onclick="goStep(cur-1)" id="prevBtn">上步</button>
-<button onclick="goStep(cur+1)" id="nextBtn">下步</button>
-<button class="play-btn" onclick="toggleAuto()" id="playBtn">自动播放</button>
-<button onclick="goStep(steps.length-1)">跳到最后</button>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const nodes=[{x:360,y:40,val:3},{x:220,y:140,val:9},{x:500,y:140,val:20},{x:360,y:250,val:15},{x:640,y:250,val:7}];
-const edges=[[0,1],[0,2],[2,3],[2,4]];
-const levels=[[0],[1,2],[3,4]];
-const avgs=[3,14.5,11];
+const DATA = [3, 9, 20, null, null, 15, 7];
+const GAP = 84;
 
-const steps=[
-{desc:'初始状态：树 [3,9,20,null,null,15,7]',hl:[],curLvl:-1,avgs:[]},
-{desc:'第1层 BFS：节点[3]，和=3，计数=1，平均=3.0',hl:[0],curLvl:0,avgs:[3]},
-{desc:'第2层 BFS：节点[9,20]，和=29，计数=2，平均=14.5',hl:[0,1,2],curLvl:1,avgs:[3,14.5]},
-{desc:'第3层 BFS：节点[15,7]，和=22，计数=2，平均=11.0',hl:[0,1,2,3,4],curLvl:2,avgs:[3,14.5,11]},
-{desc:'完成！层平均值 = [3, 14.5, 11]',hl:[0,1,2,3,4],curLvl:-1,avgs:[3,14.5,11]}
-];
+const NODES = [];
 
-let cur=0,autoTimer=null,autoRun=false;
-const svg=document.getElementById('treeSvg');
-
-function render(){
-const s=steps[cur];
-document.getElementById('stepNum').textContent=cur;
-document.getElementById('stepDesc').textContent=(cur===0?'初始状态 · ':'第'+cur+'步 · ')+s.desc;
-document.getElementById('prevBtn').disabled=cur<=0;
-document.getElementById('nextBtn').disabled=cur>=steps.length-1;
-
-let html='<defs><radialGradient id="gBlue"><stop offset="0%" stop-color="#42A5F5"/><stop offset="100%" stop-color="#1976D2"/></radialGradient><radialGradient id="gGr"><stop offset="0%" stop-color="#81C784"/><stop offset="100%" stop-color="#4CAF50"/></radialGradient></defs><rect width="720" height="320" fill="transparent"/>';
-for(const e of edges) {
-const a=nodes[e[0]],b=nodes[e[1]];
-const visited=s.hl.includes(e[0])&&s.hl.includes(e[1]);
-html+=`<line x1="${a.x}" y1="${a.y+24}" x2="${b.x}" y2="${b.y-24}" stroke="${visited?'#1976D2':'#ccc'}" stroke-width="${visited?2.5:2}"/>`;
-}
-const isComplete=cur===steps.length-1;
-for(let i=0;i<nodes.length;i++){
-const n=nodes[i];const isHL=s.hl.includes(i);
-if(isComplete){
-html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="url(#gGr)" stroke="#2E7D32" stroke-width="3"/>`;
-html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">${n.val}</text>`;
-}else if(isHL){
-html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="url(#gBlue)" stroke="#0D47A1" stroke-width="2.5"/>`;
-html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">${n.val}</text>`;
-}else{
-html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="var(--sub-bg)" stroke="var(--cell-border)" stroke-width="2"/>`;
-html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="var(--text)" font-size="14">${n.val}</text>`;
-}
-}
-svg.innerHTML=html;
-
-// Averages display
-let avgHtml='';
-for(let i=0;i<3;i++){
-const a=avgs[i];
-avgHtml+=`<div class="avg-item"><div class="label">第${i+1}层</div><div class="value" style="color:${s.avgs.includes(a)&&(cur===steps.length-1||s.curLvl===i||s.curLvl>i)?'#1976D2':'var(--muted)'}">${s.avgs.includes(a)?a:'?'}</div></div>`;
-}
-document.getElementById('avgRow').innerHTML=avgHtml;
+function buildTree(arr) {
+  const nodes = arr.map((v, i) => (v == null ? null : { val: v, id: i, left: null, right: null }));
+  nodes.forEach(n => { if (n) NODES[n.id] = n; });
+  if (!nodes.length || !nodes[0]) return null;
+  const queue = [nodes[0]];
+  let next = 1;
+  while (queue.length > 0 && next < nodes.length) {
+    const node = queue.shift();
+    node.left = next < nodes.length ? (nodes[next++] || null) : null;
+    if (node.left) queue.push(node.left);
+    node.right = next < nodes.length ? (nodes[next++] || null) : null;
+    if (node.right) queue.push(node.right);
+  }
+  return nodes[0];
 }
 
-function goStep(n){cur=Math.max(0,Math.min(n,steps.length-1));render()}
-function toggleAuto(){
-if(autoRun){clearInterval(autoTimer);autoRun=false;document.getElementById('playBtn').textContent='自动播放';}
-else{document.getElementById('playBtn').textContent='暂停';autoRun=true;if(cur>=steps.length-1)goStep(0);
-autoTimer=setInterval(()=>{if(cur<steps.length-1)goStep(cur+1);else toggleAuto()},900);}
+const ROOT = buildTree(DATA);
+
+function layout(root) {
+  const pos = [];
+  let order = 0;
+  let maxDepth = 0;
+  (function walk(node, depth) {
+    if (!node) return;
+    walk(node.left, depth + 1);
+    pos[node.id] = { x: 0, y: 0, order: order, depth: depth };
+    order += 1;
+    if (depth > maxDepth) maxDepth = depth;
+    walk(node.right, depth + 1);
+  })(root, 0);
+  const width = 660;
+  const startX = (width - (order - 1) * GAP) / 2;
+  pos.forEach(p => {
+    p.x = startX + p.order * GAP;
+    p.y = 46 + p.depth * 84;
+  });
+  return { pos: pos, width: width, height: 46 + maxDepth * 84 + 46, maxDepth: maxDepth };
 }
-document.addEventListener('keydown',e=>{
-if(e.key==='ArrowRight')goStep(cur+1);if(e.key==='ArrowLeft')goStep(cur-1);
-if(e.key===' '){e.preventDefault();toggleAuto();}
+
+const LAYOUT = layout(ROOT);
+
+function labelOf(id) {
+  return NODES[id] ? NODES[id].val : '?';
+}
+
+function fmt(v) {
+  return Number.isInteger(v) ? String(v) : v.toFixed(1);
+}
+
+function buildSteps() {
+  const steps = [];
+  const queue = [];
+  const processed = [];
+  const avgs = [];
+  let levelIndex = 0;
+  let levelSize = 0;
+  let levelDepth = -1;
+  let levelSum = 0;
+  let levelCount = 0;
+  let cur = null;
+  let curLevel = 0;
+  let lastAvg = null;
+
+  function snap(note, extra) {
+    const step = {
+      queue: queue.map(n => n.id),
+      processed: processed.slice(),
+      avgs: avgs.slice(),
+      levelIndex: levelIndex,
+      levelSize: levelSize,
+      levelDepth: levelDepth,
+      levelSum: levelSum,
+      levelCount: levelCount,
+      cur: cur,
+      curLevel: curLevel,
+      lastAvg: lastAvg,
+      note: note
+    };
+    if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+    steps.push(step);
+  }
+
+  queue.push(ROOT);
+  snap('初始状态：根节点 3 入队。层序遍历逐层处理，对每一层累加节点值、统计节点个数，再用「和 / 个数」得到该层平均值。');
+
+  while (queue.length > 0) {
+    levelSize = queue.length;
+    levelDepth = LAYOUT.pos[queue[0].id].depth;
+    levelSum = 0;
+    levelCount = 0;
+    cur = null;
+    snap('第 ' + levelIndex + ' 层开始：队列中此刻正是同一层的 ' + levelSize + ' 个节点，记下 levelSize = ' + levelSize +
+      '，并把累加器清零（sum = 0, count = 0）。');
+
+    for (let i = 0; i < levelSize; i++) {
+      const node = queue.shift();
+      cur = node.id;
+      curLevel = i;
+      levelSum += node.val;
+      levelCount += 1;
+      const kids = [];
+      if (node.left) { queue.push(node.left); kids.push(node.left.val); }
+      if (node.right) { queue.push(node.right); kids.push(node.right.val); }
+      processed.push(node.id);
+      snap('本层第 ' + (i + 1) + '/' + levelSize + ' 个出队：节点 ' + node.val + '。累加后 sum = ' + levelSum +
+        ', count = ' + levelCount +
+        (kids.length ? '；把子节点 ' + kids.join('、') + ' 入队，留给下一层。' : '；它没有子节点。'));
+    }
+
+    const avg = levelSum / levelCount;
+    avgs.push(avg);
+    lastAvg = avg;
+    snap('第 ' + levelIndex + ' 层结束：sum = ' + levelSum + ', count = ' + levelCount + '，平均值 = ' + levelSum + ' / ' +
+      levelCount + ' = ' + fmt(avg) + '，加入结果。然后开始下一层。');
+    levelIndex += 1;
+    levelSum = 0;
+    levelCount = 0;
+    cur = null;
+  }
+
+  levelDepth = -1;
+  snap('队列为空，所有层都处理完了。逐层平均值 = [' + avgs.map(fmt).join(', ') + ']。每个节点只出队一次，时间 O(n)，空间 O(w)（w 为最大层宽）。',
+    { done: true });
+  return steps;
+}
+
+function treeSvg(step) {
+  const L = LAYOUT;
+  let out = '';
+
+  if (step.levelDepth >= 0) {
+    const y = 46 + step.levelDepth * 84;
+    out += '<rect x="8" y="' + (y - 34) + '" width="' + (L.width - 16) + '" height="68" rx="10" style="fill:var(--demo-accent-soft)"/>';
+  }
+
+  NODES.forEach(node => {
+    if (!node) return;
+    ['left', 'right'].forEach(side => {
+      const child = node[side];
+      if (!child) return;
+      const p = L.pos[node.id];
+      const q = L.pos[child.id];
+      out += '<line x1="' + p.x + '" y1="' + (p.y + 24) + '" x2="' + q.x + '" y2="' + (q.y - 24) +
+        '" style="stroke:var(--demo-border);stroke-width:2"/>';
+    });
+  });
+
+  NODES.forEach(node => {
+    if (!node) return;
+    const p = L.pos[node.id];
+    let fill = 'var(--demo-subtle)';
+    let stroke = 'var(--demo-border)';
+    let text = 'var(--demo-text)';
+    let ring = null;
+    if (step.levelDepth >= 0 && L.pos[node.id].depth === step.levelDepth) {
+      fill = 'var(--demo-warn-soft)';
+      stroke = 'var(--demo-warn)';
+      text = 'var(--demo-warn)';
+    }
+    if (step.processed.indexOf(node.id) >= 0) { fill = 'var(--demo-ok-soft)'; stroke = 'var(--demo-ok)'; text = 'var(--demo-ok)'; }
+    if (step.queue.indexOf(node.id) >= 0) { fill = 'var(--demo-info-soft)'; stroke = 'var(--demo-info)'; text = 'var(--demo-info)'; }
+    if (step.cur === node.id) {
+      fill = 'var(--demo-accent)';
+      stroke = 'var(--demo-accent)';
+      text = 'var(--demo-card)';
+      ring = 'var(--demo-warn)';
+    }
+    if (ring) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="29" style="fill:none;stroke:' + ring + ';stroke-width:3"/>';
+    out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="24" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2.5"/>';
+    out += '<text x="' + p.x + '" y="' + (p.y + 6) + '" text-anchor="middle" style="fill:' + text +
+      ';font:600 16px sans-serif">' + node.val + '</text>';
+  });
+
+  return '<div style="width:100%"><svg viewBox="0 0 ' + L.width + ' ' + L.height +
+    '" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+}
+
+Demo.create({
+  title: '83. 二叉树的层平均值 — BFS 逐层求和再平均',
+  info: 'root = [3,9,20,null,null,15,7]，期望输出 [3, 14.5, 11]。每层单独累加 sum 与 count，再用 sum / count 得到平均值。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 480,
+  legend: [
+    { color: 'var(--demo-warn)', label: '当前层的节点' },
+    { color: 'var(--demo-accent)', label: '本步出队的节点' },
+    { color: 'var(--demo-ok)', label: '已处理完的节点' },
+    { color: 'var(--demo-info)', label: '队列中待处理' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const wrap = Demo.el('div');
+    wrap.style.width = '100%';
+    wrap.innerHTML = treeSvg(step);
+    ctx.stage.appendChild(wrap);
+
+    const row = Demo.el('div', 'row');
+    row.style.width = '100%';
+    row.style.alignItems = 'flex-end';
+
+    const queuePanel = Demo.el('div', 'panel');
+    queuePanel.appendChild(Demo.el('div', 'panel__title', '队列（队首在左）'));
+    const qrow = Demo.el('div', 'row');
+    if (step.queue.length === 0) {
+      qrow.appendChild(Demo.el('span', 'ptr ptr--dim', '（空）'));
+    } else {
+      step.queue.forEach((id, k) => {
+        const cell = Demo.el('div', 'cell cell--sm', Demo.esc(labelOf(id)));
+        cell.classList.add(k === 0 ? 'is-active' : 'is-info');
+        qrow.appendChild(cell);
+      });
+    }
+    queuePanel.appendChild(qrow);
+
+    const accPanel = Demo.el('div', 'panel');
+    accPanel.appendChild(Demo.el('div', 'panel__title', step.done ? '累加器（所有层已完成）' : '第 ' + step.levelIndex + ' 层累加器'));
+    accPanel.appendChild(Demo.el('div', null,
+      'sum = <strong>' + step.levelSum + '</strong> &nbsp; count = <strong>' + step.levelCount + '</strong>'));
+    accPanel.appendChild(Demo.el('div', null,
+      step.levelCount > 0
+        ? '目前平均值 = ' + step.levelSum + ' / ' + step.levelCount + ' = <strong>' + fmt(step.levelSum / step.levelCount) + '</strong>'
+        : '尚未累加任何节点'));
+    accPanel.appendChild(Demo.el('div', null, step.done
+      ? '<span class="tag tag--ok">全部层处理完毕</span>'
+      : '<span class="tag tag--info">' + (step.levelSize > 0 ? '本层 ' + step.levelSize + ' 个节点' : '准备开始') + '</span>'));
+
+    row.appendChild(queuePanel);
+    row.appendChild(accPanel);
+    ctx.stage.appendChild(row);
+
+    const chart = Demo.el('div', 'panel');
+    chart.style.width = '100%';
+    chart.appendChild(Demo.el('div', 'panel__title', '每层平均值'));
+    if (step.avgs.length === 0) {
+      chart.appendChild(Demo.el('div', 'ptr ptr--dim', '（还没有完成的层）'));
+    } else {
+      const maxAvg = Math.max.apply(null, step.avgs);
+      step.avgs.forEach((avg, k) => {
+        const line = Demo.el('div', 'col');
+        line.style.width = '100%';
+        line.style.alignItems = 'stretch';
+        const isLast = k === step.avgs.length - 1;
+        line.appendChild(Demo.el('div', 'panel__title',
+          '第 ' + k + ' 层' + (isLast && !step.done ? '（刚算完）' : '') + '：平均值 ' + fmt(avg)));
+        const bar = Demo.el('div', 'bar');
+        const fill = Demo.el('div', 'bar__fill');
+        fill.style.width = (maxAvg > 0 ? (avg / maxAvg) * 100 : 0) + '%';
+        if (isLast || step.done) fill.style.background = 'var(--demo-ok)';
+        bar.appendChild(fill);
+        bar.appendChild(Demo.el('div', 'bar__label', fmt(avg)));
+        line.appendChild(bar);
+        chart.appendChild(line);
+      });
+    }
+    ctx.stage.appendChild(chart);
+
+    const status = Demo.el('div', 'panel');
+    status.style.width = '100%';
+    status.style.textAlign = 'center';
+    if (step.done) {
+      status.innerHTML = '最终结果 = <code>[' + step.avgs.map(fmt).join(', ') + ']</code>（LeetCode 允许 10^-5 以内的误差）';
+    } else if (step.cur != null) {
+      status.innerHTML = '当前节点 <strong>' + labelOf(step.cur) + '</strong> 计入本层：' + step.levelSum +
+        ' / ' + step.levelCount + ' = ' + fmt(step.levelSum / step.levelCount);
+    } else {
+      status.innerHTML = '从队首开始逐个出队并累加。';
+    }
+    ctx.stage.appendChild(status);
+  }
 });
-render();
 </script>
 </body>
 </html>

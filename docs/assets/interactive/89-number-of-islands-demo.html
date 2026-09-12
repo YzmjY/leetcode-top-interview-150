@@ -3,202 +3,155 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>89. 岛屿数量 - Number of Islands</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
-.container{background:#fff;border-radius:8px;padding:20px;width:720px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
-h2{font-size:16px;margin-bottom:12px;color:#333}
-.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-button{border:none;border-radius:8px;padding:8px 16px;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s;color:#fff;font-weight:500}
-button:disabled{opacity:.4;cursor:not-allowed}
-.btn-reset{background:#6c757d}
-.btn-prev{background:#0d6efd}
-.btn-next{background:#0d6efd}
-.btn-auto{background:#198754}
-.btn-end{background:#dc3545}
-button:hover:not(:disabled){filter:brightness(1.15)}
-.info-panel{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:#555;background:#f0f4f8;border-radius:8px;padding:10px 14px}
-.step-badge{background:#0d6efd;color:#fff;border-radius:20px;padding:2px 12px;font-weight:600;font-size:12px}
-.info-text{flex:1;margin-left:12px}
-.vis-area{background:#fafafa;border-radius:8px;position:relative;height:460px;overflow:hidden;border:1px solid #e0e0e0}
-canvas{display:block}
-.hint{font-size:12px;color:#999;text-align:center;margin-top:8px}
-@media(prefers-color-scheme:dark){
-body{background:#1a1a2e}
-.container{background:#16213e;box-shadow:0 2px 12px rgba(0,0,0,.4)}
-h2{color:#e0e0e0}
-.info-panel{background:#1a1a3e;color:#ccc}
-.vis-area{background:#0f0f23;border-color:#2a2a4a}
-.hint{color:#777}
-}
-</style>
+<title>89. 岛屿数量 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>89. 岛屿数量 (Number of Islands) — DFS 逐岛标记</h2>
-<div class="controls">
-<button class="btn-reset" onclick="reset()">⟳ 重置</button>
-<button class="btn-prev" onclick="prevStep()">◀ 上步</button>
-<button class="btn-next" onclick="nextStep()">下步 ▶</button>
-<button class="btn-auto" id="btnAuto" onclick="toggleAuto()">▶ 自动播放</button>
-<button class="btn-end" onclick="jumpEnd()">▶▶ 跳到最后</button>
-</div>
-<div class="info-panel">
-<span class="step-badge" id="stepBadge">步骤 0/10</span>
-<span class="info-text" id="infoText">初始网格: 4行×5列, 陆地为1, 水域为0</span>
-</div>
-<div class="vis-area"><canvas id="cvs"></canvas></div>
-<div class="hint">键盘: ← → 切换步骤 | 空格 自动播放</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const grid=[
-  ['1','1','0','0','0'],
-  ['1','1','0','0','0'],
-  ['0','0','1','0','0'],
-  ['0','0','0','1','1']
+const GRID = [
+  ['1', '1', '0', '0', '0'],
+  ['1', '1', '0', '0', '0'],
+  ['0', '0', '1', '0', '0'],
+  ['0', '0', '0', '1', '1']
 ];
-const R=4,C=5;
-const ISLAND_COLORS=['#4da6ff','#5cd65c','#ff944d'];
+const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+const ISLAND_CLASS = ['is-info', 'is-violet', 'is-pink'];
 
-let state=[],visited=[],islandColor=[];
-let currentStep=0,totalSteps=10,autoTimer=null;
+function buildSteps() {
+  const R = GRID.length;
+  const C = GRID[0].length;
+  const mark = GRID.map(row => row.map(() => 0));
+  const stack = [];
+  const steps = [];
+  let count = 0;
 
-function resetAll(){
-  visited=Array.from({length:R},()=>Array(C).fill(false));
-  islandColor=Array.from({length:R},()=>Array(C).fill(-1));
-  state=Array.from({length:R},()=>Array(C).fill('unvisited'));
-}
-resetAll();
-let steps=[];
-
-function buildSteps(){
-  steps=[];
-  let rv=Array.from({length:R},()=>Array(C).fill(false));
-  let ic=Array.from({length:R},()=>Array(C).fill(-1));
-  let st=Array.from({length:R},()=>Array(C).fill('unvisited'));
-  steps.push({visited:rv.map(r=>[...r]),islandColor:ic.map(r=>[...r]),state:st.map(r=>[...r]),info:'初始网格: 4行×5列, 1=陆地, 0=水域',highlight:[]});
-
-  let islandIdx=0;
-  for(let i=0;i<R;i++){
-    for(let j=0;j<C;j++){
-      if(grid[i][j]==='1'&&!rv[i][j]){
-        st[i][j]='current';
-        steps.push({visited:rv.map(r=>[...r]),islandColor:ic.map(r=>[...r]),state:st.map(r=>[...r]),info:`发现新岛屿 #${islandIdx+1}, 从 (${i},${j}) 开始DFS`,highlight:[[i,j]]});
-        st[i][j]='visited';
-        rv[i][j]=true;ic[i][j]=islandIdx;
-        let stack=[[i,j]];
-        while(stack.length){
-          let [r,c]=stack.pop();
-          for(let [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
-            let nr=r+dr,nc=c+dc;
-            if(nr>=0&&nr<R&&nc>=0&&nc<C&&grid[nr][nc]==='1'&&!rv[nr][nc]){
-              rv[nr][nc]=true;ic[nr][nc]=islandIdx;
-              st[nr][nc]='current';
-              steps.push({visited:rv.map(r=>[...r]),islandColor:ic.map(r=>[...r]),state:st.map(r=>[...r]),info:`DFS探索 (${nr},${nc}) — 属于岛屿 #${islandIdx+1}`,highlight:[[nr,nc]]});
-              stack.push([nr,nc]);
-              st[nr][nc]='visited';
-            }
-          }
-        }
-        steps.push({visited:rv.map(r=>[...r]),islandColor:ic.map(r=>[...r]),state:st.map(r=>[...r]),info:`岛屿 #${islandIdx+1} 标记完成`,highlight:[]});
-        islandIdx++;
-      }
-    }
+  function snap(note, extra) {
+    const step = {
+      mark: mark.map(row => row.slice()),
+      stack: stack.map(p => p.slice()),
+      count: count,
+      note: note
+    };
+    if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+    steps.push(step);
   }
-  steps.push({visited:rv.map(r=>[...r]),islandColor:ic.map(r=>[...r]),state:st.map(r=>[...r]),info:`扫描完成! 共发现 ${islandIdx} 个岛屿`,highlight:[],final:true});
-}
-buildSteps();
-totalSteps=steps.length;
 
-const cvs=document.getElementById('cvs');
-const ctx=cvs.getContext('2d');
+  snap('初始状态：4×5 网格，1 是陆地、0 是水域。外层用行优先顺序扫描，遇到「还没被标记过的陆地」就说明发现了一座新岛屿。');
 
-function resizeCanvas(){
-  let area=cvs.parentElement;
-  cvs.width=area.clientWidth;
-  cvs.height=area.clientHeight;
-}
-resizeCanvas();
-window.addEventListener('resize',()=>{resizeCanvas();drawStep(currentStep);});
+  for (let i = 0; i < R; i++) {
+    for (let j = 0; j < C; j++) {
+      if (GRID[i][j] !== '1' || mark[i][j] !== 0) continue;
 
-const CELL=60,OFFX=80,OFFY=40;
+      count += 1;
+      mark[i][j] = count;
+      stack.push([i, j]);
+      snap('扫描到 (' + i + ',' + j + ') 是尚未标记的陆地：岛屿数量 +1（第 ' + count + ' 个岛屿），把它压入栈作为 DFS 起点。已被标记的陆地会被外层扫描跳过。', { active: [i, j] });
 
-function drawStep(idx){
-  idx=Math.max(0,Math.min(totalSteps-1,idx));
-  currentStep=idx;
-  let s=steps[idx];
-  ctx.clearRect(0,0,cvs.width,cvs.height);
-  visited=s.visited;islandColor=s.islandColor;state=s.state;
+      while (stack.length > 0) {
+        const cur = stack.pop();
+        snap('弹出栈顶 (' + cur[0] + ',' + cur[1] + ')：它在入栈时已被标记为岛屿 ' + count + '（相当于原地把 1 改成 0，充当 visited），现在检查它的上下左右四个邻居。', { active: cur });
 
-  for(let i=0;i<R;i++){
-    for(let j=0;j<C;j++){
-      let x=OFFX+j*(CELL+6),y=OFFY+i*(CELL+6);
-      if(grid[i][j]==='1'){
-        if(islandColor[i][j]>=0){
-          ctx.fillStyle=ISLAND_COLORS[islandColor[i][j]];
-        }else{
-          ctx.fillStyle='#555';
+        for (const d of DIRS) {
+          const nr = cur[0] + d[0];
+          const nc = cur[1] + d[1];
+          if (nr < 0 || nr >= R || nc < 0 || nc >= C) continue;
+          if (GRID[nr][nc] !== '1' || mark[nr][nc] !== 0) continue;
+
+          mark[nr][nc] = count;
+          stack.push([nr, nc]);
+          snap('邻居 (' + nr + ',' + nc + ') 也是陆地且尚未标记 → 归入岛屿 ' + count + ' 并压栈，稍后继续向外扩散。', { active: cur, added: [nr, nc] });
         }
-      }else{
-        ctx.fillStyle='#e8f0fe';
       }
-      ctx.fillRect(x,y,CELL,CELL);
-      if((s.highlight||[]).some(([r,c])=>r===i&&c===j)){
-        ctx.strokeStyle='#ff0';ctx.lineWidth=3;
-        ctx.strokeRect(x-2,y-2,CELL+4,CELL+4);
-      }
-      ctx.strokeStyle='#999';ctx.lineWidth=1;
-      ctx.strokeRect(x,y,CELL,CELL);
-      ctx.fillStyle=grid[i][j]==='1'?(islandColor[i][j]>=0?'#fff':'#ccc'):'#666';
-      ctx.font='bold 18px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText(grid[i][j],x+CELL/2,y+CELL/2);
+
+      snap('栈已空：与 (' + i + ',' + j + ') 相连的整片陆地都标记为岛屿 ' + count + ' 了，回到外层扫描继续找下一座岛。', {});
     }
   }
 
-  let legendX=OFFX+C*(CELL+6)+20,legendY=OFFY;
-  ctx.fillStyle='#333';ctx.font='13px sans-serif';ctx.textAlign='left';
-  ctx.fillText('图例:',legendX,legendY);
-  for(let k=0;k<3;k++){
-    ctx.fillStyle=ISLAND_COLORS[k];
-    ctx.fillRect(legendX,legendY+20+k*28,20,20);
-    ctx.fillStyle='#333';ctx.fillText(`岛屿${k+1}`,legendX+26,legendY+34+k*28);
-  }
-  ctx.fillStyle='#e8f0fe';
-  ctx.fillRect(legendX,legendY+20+3*28,20,20);
-  ctx.strokeStyle='#999';ctx.strokeRect(legendX,legendY+20+3*28,20,20);
-  ctx.fillStyle='#333';ctx.fillText('水域',legendX+26,legendY+34+3*28);
-
-  document.getElementById('stepBadge').textContent=`步骤 ${idx+1}/${totalSteps}`;
-  document.getElementById('infoText').textContent=s.info;
-
-  let btns=document.querySelectorAll('button');
-  btns.forEach(b=>b.disabled=false);
-  if(idx===0){document.querySelector('.btn-prev').disabled=true;}
-  if(idx===totalSteps-1){document.querySelector('.btn-next').disabled=true;document.querySelector('.btn-end').disabled=true;document.querySelector('.btn-auto').disabled=true;}
+  snap('扫描完成，岛屿数量 = ' + count + '。每个格子最多入栈一次，时间 O(m×n)；最坏情况（全是陆地）栈的深度为 O(m×n)。', { done: true });
+  return steps;
 }
 
-function nextStep(){if(currentStep<totalSteps-1){drawStep(currentStep+1);}}
-function prevStep(){if(currentStep>0){drawStep(currentStep-1);}}
-function reset(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}resetAll();buildSteps();totalSteps=steps.length;drawStep(0);}
-function jumpEnd(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}drawStep(totalSteps-1);}
-function toggleAuto(){
-  if(autoTimer){
-    clearInterval(autoTimer);autoTimer=null;
-    document.getElementById('btnAuto').textContent='▶ 自动播放';
-  }else{
-    document.getElementById('btnAuto').textContent='⏸ 暂停';
-    autoTimer=setInterval(()=>{
-      if(currentStep<totalSteps-1){nextStep();}else{clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}
-    },800);
+Demo.create({
+  title: '89. 岛屿数量 — DFS 逐岛标记',
+  info: 'grid = 4×5，示例 2 的输出应为 3。用栈模拟 DFS，把每座岛的连通陆地一次性标记掉。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 300,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前处理的格子' },
+    { color: 'var(--demo-info)', label: '岛屿 1' },
+    { color: 'var(--demo-violet)', label: '岛屿 2' },
+    { color: 'var(--demo-pink)', label: '岛屿 3' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const gridPanel = Demo.el('div', 'panel');
+    gridPanel.style.width = '100%';
+    gridPanel.appendChild(Demo.el('div', 'panel__title', '网格（1 = 陆地，0 = 水域）'));
+
+    const grid = Demo.el('div', 'grid');
+    grid.style.gridTemplateColumns = 'repeat(' + GRID[0].length + ', 46px)';
+    grid.style.justifyContent = 'center';
+
+    const active = step.active;
+    const added = step.added;
+    for (let r = 0; r < GRID.length; r++) {
+      for (let c = 0; c < GRID[r].length; c++) {
+        const cell = Demo.el('div', 'cell cell--sm', Demo.esc(GRID[r][c]));
+        if (GRID[r][c] === '0') {
+          cell.classList.add('cell--empty');
+        } else if (step.mark[r][c] > 0) {
+          cell.classList.add(ISLAND_CLASS[(step.mark[r][c] - 1) % ISLAND_CLASS.length]);
+        }
+        const isActive = active && active[0] === r && active[1] === c;
+        const isAdded = added && added[0] === r && added[1] === c;
+        if (isActive || isAdded) cell.classList.add('is-active');
+        grid.appendChild(cell);
+      }
+    }
+    gridPanel.appendChild(grid);
+    ctx.stage.appendChild(gridPanel);
+
+    const row = Demo.el('div', 'row');
+    row.style.width = '100%';
+    row.style.alignItems = 'flex-end';
+
+    const stackPanel = Demo.el('div', 'panel');
+    stackPanel.appendChild(Demo.el('div', 'panel__title', 'DFS 栈（栈顶在下方）'));
+    const stackBox = Demo.el('div', 'stack');
+    if (step.stack.length === 0) {
+      stackBox.appendChild(Demo.el('div', 'stack__item', '（空）'));
+    } else {
+      step.stack.forEach((p, k) => {
+        const item = Demo.el('div', 'stack__item', '(' + p[0] + ',' + p[1] + ')');
+        if (k === step.stack.length - 1) item.classList.add('is-active');
+        stackBox.appendChild(item);
+      });
+    }
+    stackPanel.appendChild(stackBox);
+
+    let markedCells = 0;
+    for (let r = 0; r < step.mark.length; r++) {
+      for (let c = 0; c < step.mark[r].length; c++) {
+        if (step.mark[r][c] > 0) markedCells += 1;
+      }
+    }
+
+    const statusPanel = Demo.el('div', 'panel');
+    statusPanel.appendChild(Demo.el('div', 'panel__title', '状态'));
+    statusPanel.appendChild(Demo.el('div', null, '岛屿数量：<strong>' + step.count + '</strong>'));
+    statusPanel.appendChild(Demo.el('div', null, '已标记陆地格：' + markedCells));
+    statusPanel.appendChild(Demo.el('div', null, step.done
+      ? '<span class="tag tag--ok">扫描结束</span>'
+      : '<span class="tag tag--info">栈中待扩散：' + step.stack.length + ' 格</span>'));
+
+    row.appendChild(stackPanel);
+    row.appendChild(statusPanel);
+    ctx.stage.appendChild(row);
   }
-}
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight'){e.preventDefault();nextStep();}
-  else if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}
-  else if(e.key===' '){e.preventDefault();toggleAuto();}
 });
-drawStep(0);
 </script>
 </body>
 </html>

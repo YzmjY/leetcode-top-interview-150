@@ -1,285 +1,195 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222; --sub-bg: #f5f5f5;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --s-color: #1976D2; --t-color: #E53935;
-    --ok-color: #388E3C;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
-      --sub-bg: #252540;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 16px 20px;
-  }
-  .container { max-width: 800px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
-  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
-    font-size: 14px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
-
-  .str-row { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 6px; }
-  .str-label { font-size: 12px; font-weight: bold; width: 40px; text-align: right; }
-  .str-cells { display: flex; gap: 4px; }
-  .scell {
-    width: 48px; height: 48px; border: 2px solid var(--cell-border); border-radius: 8px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-size: 22px; font-weight: bold; background: var(--cell-bg); color: var(--text);
-    transition: border-color 0.25s, background 0.25s, transform 0.15s;
-  }
-  .scell .sidx { font-size: 9px; color: var(--muted); }
-  .scell.hls { border-color: var(--s-color); background: rgba(25,118,210,0.12); transform: scale(1.06); z-index: 2; }
-  .scell.hlt { border-color: var(--t-color); background: rgba(229,57,53,0.12); transform: scale(1.06); z-index: 2; }
-  .scell.matched { border-color: var(--ok-color); background: rgba(56,142,60,0.12); }
-
-  .mapping-panel {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 6px; text-align: center; font-size: 13px;
-  }
-  .map-table { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
-  .map-cell {
-    min-width: 60px; padding: 4px 8px; border: 2px solid var(--cell-border); border-radius: 8px;
-    text-align: center; font-size: 14px; font-weight: bold; background: var(--cell-bg);
-  }
-  .map-cell .map-dir { font-size: 10px; color: var(--muted); }
-  .map-cell.hl { border-color: var(--s-color); background: rgba(25,118,210,0.12); }
-
-  .result-row {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 6px; font-size: 13px; text-align: center;
-  }
-  .result-row .highlight { font-weight: bold; font-size: 15px; }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-</style>
+<title>40. 同构字符串 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>同构字符串 — 双向映射演示</h2>
-  <div class="sub-title">s="egg", t="add" &rarr; s→t 和 t→s 均一一对应, 是同构字符串</div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
-  </div>
-
-  <div class="str-row">
-    <span class="str-label" style="color:var(--s-color)">s:</span>
-    <div class="str-cells" id="sCells"></div>
-  </div>
-  <div class="str-row">
-    <span class="str-label" style="color:var(--t-color)">t:</span>
-    <div class="str-cells" id="tCells"></div>
-  </div>
-
-  <div class="mapping-panel">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">映射表</div>
-    <div class="map-table">
-      <span class="map-cell" id="mapSt"><span class="map-dir">s→t</span><br><span style="font-size:16px;font-family:monospace;" id="mapStVal">{}</span></span>
-      <span class="map-cell" id="mapTs"><span class="map-dir">t→s</span><br><span style="font-size:16px;font-family:monospace;" id="mapTsVal">{}</span></span>
-    </div>
-  </div>
-
-  <div class="result-row">
-    <span style="color:var(--muted)">判定: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">&#x23EE; 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
-    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const s = 'egg', t = 'add';
-const n = s.length;
+const S = 'paper';
+const T = 'title';
 
-const steps = [];
+function buildSteps() {
+  const steps = [];
+  const s2t = {};
+  const t2s = {};
+  let failed = false;
+  let failAt = -1;
 
-function simulate() {
-  const mapSt = {}, mapTs = {};
+  function snap(extra) {
+    const step = {
+      s2t: Object.assign({}, s2t),
+      t2s: Object.assign({}, t2s),
+      note: extra.note
+    };
+    Object.keys(extra).forEach(function (key) {
+      if (key !== 'note') step[key] = extra[key];
+    });
+    steps.push(step);
+  }
 
-  steps.push({
-    desc: '初始状态 · s="egg", t="add"',
-    phase: 'init', idx: -1,
-    mapSt: {}, mapTs: {}, sHL: [], tHL: [],
-    result: 'init'
+  snap({
+    phase: 'init', i: -1, sc: '', tc: '', mappedT: null, mappedS: null,
+    conflictST: false, conflictTS: false,
+    note: `两张哈希表都为空：s2t 记 s 的字符映射到哪个 t 字符，t2s 记反向映射。同构要求「不同字符不能映射到同一个字符」（靠 s2t 检查），也要求「同一个字符不能映射到不同字符」（靠两张表双向检查），所以两张表缺一不可。接下来逐位读入 s 和 t。`
   });
 
-  for (let i = 0; i < n; i++) {
-    const sc = s[i], tc = t[i];
-    steps.push({
-      desc: '第' + i + '步: s[' + i + ']=' + sc + ', t[' + i + ']=' + tc,
-      phase: 'check', idx: i,
-      mapSt: {...mapSt}, mapTs: {...mapTs},
-      sHL: [[i, 's']], tHL: [[i, 't']],
-      result: 'checking'
+  for (let i = 0; i < S.length; i++) {
+    const sc = S[i];
+    const tc = T[i];
+    const hasT = Object.prototype.hasOwnProperty.call(s2t, sc);
+    const hasS = Object.prototype.hasOwnProperty.call(t2s, tc);
+    const mappedT = hasT ? s2t[sc] : null;
+    const mappedS = hasS ? t2s[tc] : null;
+    const conflictST = hasT && mappedT !== tc;
+    const conflictTS = hasS && mappedS !== sc;
+
+    snap({
+      phase: conflictST || conflictTS ? 'fail' : 'probe', i: i, sc: sc, tc: tc,
+      mappedT: mappedT, mappedS: mappedS, conflictST: conflictST, conflictTS: conflictTS,
+      note: `读入第 ${i} 位：s[${i}] = "${sc}"，t[${i}] = "${tc}"。先查 s2t["${sc}"]，再查 t2s["${tc}"]：` +
+        (conflictST
+          ? `s2t 里已有 "${sc}" → "${mappedT}"，与本次要求的 "${tc}" 冲突，说明同一个 s 字符被要求映射成两个不同字符，返回 false。`
+          : (conflictTS
+            ? `t2s 里已有 "${tc}" → "${mappedS}"，与本次的 "${sc}" 冲突，说明两个不同的 s 字符被要求映射到同一个 t 字符，返回 false。`
+            : (hasT
+              ? `s2t["${sc}"] = "${mappedT}"，正好等于 t[${i}]；`
+              : `s2t 中没有 "${sc}" 的记录；`) +
+              (hasS ? `t2s["${tc}"] = "${mappedS}"，正好等于 s[${i}]。两个方向都一致，映射无需改动。` : `t2s 中也没有 "${tc}" 的记录，是一对全新的字符。`)))
     });
 
-    if (mapSt[sc] !== undefined && mapSt[sc] !== tc) {
-      steps.push({
-        desc: '冲突! s→t: ' + sc + '→' + mapSt[sc] + ' 已有映射, 现在要映射到 ' + tc + ' &rarr; false',
-        phase: 'fail', idx: i,
-        mapSt: {...mapSt}, mapTs: {...mapTs},
-        sHL: [[i, 's']], tHL: [[i, 't']],
-        result: 'fail'
-      });
-      return;
-    }
-    if (mapTs[tc] !== undefined && mapTs[tc] !== sc) {
-      steps.push({
-        desc: '冲突! t→s: ' + tc + '→' + mapTs[tc] + ' 已有映射, 现在要映射到 ' + sc + ' &rarr; false',
-        phase: 'fail', idx: i,
-        mapSt: {...mapSt}, mapTs: {...mapTs},
-        sHL: [[i, 's']], tHL: [[i, 't']],
-        result: 'fail'
-      });
-      return;
-    }
+    if (conflictST || conflictTS) { failed = true; failAt = i; break; }
 
-    mapSt[sc] = tc;
-    mapTs[tc] = sc;
-    steps.push({
-      desc: '添加映射: s→t: ' + sc + '→' + tc + ', t→s: ' + tc + '→' + sc,
-      phase: 'mapped', idx: i,
-      mapSt: {...mapSt}, mapTs: {...mapTs},
-      sHL: [[i, 'matched']], tHL: [[i, 'matched']],
-      result: 'checking'
+    const isNew = !hasT && !hasS;
+    s2t[sc] = tc;
+    t2s[tc] = sc;
+
+    snap({
+      phase: 'apply', i: i, sc: sc, tc: tc, mappedT: tc, mappedS: sc,
+      conflictST: false, conflictTS: false, isNew: isNew,
+      note: isNew
+        ? `建立双向映射：s2t["${sc}"] = "${tc}"，t2s["${tc}"] = "${sc}"。两个方向同时写入，后面再遇到 "${sc}" 或 "${tc}" 时就能立刻判断是否自洽。`
+        : `"${sc}" → "${tc}" 这对映射已经存在且完全一致，重复写入不改变任何内容，继续下一位。`
     });
   }
 
-  steps.push({
-    desc: '所有字符检查完毕! 双向映射一一对应 &rarr; 是同构字符串.',
-    phase: 'done', idx: -1,
-    mapSt: {...mapSt}, mapTs: {...mapTs},
-    sHL: [[0,'matched'],[1,'matched'],[2,'matched']],
-    tHL: [[0,'matched'],[1,'matched'],[2,'matched']],
-    result: 'success'
+  snap({
+    phase: 'done', i: failed ? failAt : S.length, sc: '', tc: '',
+    mappedT: null, mappedS: null, conflictST: false, conflictTS: false, ok: !failed,
+    note: failed
+      ? `在第 ${failAt} 位发现了矛盾的映射，直接返回 false。整个算法只扫描一次字符串，每次查表都是 O(1)，所以时间 O(n)、空间 O(1)（大小固定的字符表）。`
+      : `${S.length} 位字符全部检查完毕，每一步的两张表都自洽，说明 s 与 t 同构，返回 true。注意映射必须是双向一一对应：只用 s→t 一张表会漏掉「两个 s 字符映射到同一个 t 字符」这种非法情况，例如 s = "ab"、t = "aa"。`
   });
+
+  return steps;
 }
 
-simulate();
+function pairPanel(step) {
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.appendChild(Demo.el('div', 'panel__title', '按位读入：上面是 s 的字符，下面是 t 的字符'));
 
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
+  const row = Demo.el('div', 'row');
+  for (let i = 0; i < S.length; i++) {
+    const col = Demo.el('div', 'col');
+    const isCur = step.i === i;
+    const isPast = i < step.i;
 
-// Build cells
-const sEl = document.getElementById('sCells');
-s.split('').forEach((ch, i) => {
-  const cell = document.createElement('div');
-  cell.className = 'scell';
-  cell.id = 'sc' + i;
-  cell.innerHTML = ch + '<span class="sidx">[' + i + ']</span>';
-  sEl.appendChild(cell);
-});
-const tEl = document.getElementById('tCells');
-t.split('').forEach((ch, i) => {
-  const cell = document.createElement('div');
-  cell.className = 'scell';
-  cell.id = 'tc' + i;
-  cell.innerHTML = ch + '<span class="sidx">[' + i + ']</span>';
-  tEl.appendChild(cell);
-});
-
-function render() {
-  const s = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = s.desc;
-
-  document.getElementById('mapStVal').textContent = '{' + Object.entries(s.mapSt).map(([k,v]) => k+'→'+v).join(', ') + '}';
-  document.getElementById('mapTsVal').textContent = '{' + Object.entries(s.mapTs).map(([k,v]) => k+'→'+v).join(', ') + '}';
-
-  // Reset
-  for (let i = 0; i < n; i++) {
-    document.getElementById('sc' + i).className = 'scell';
-    document.getElementById('tc' + i).className = 'scell';
+    const cellS = Demo.el('div', 'cell', Demo.esc(S[i]));
+    const cellT = Demo.el('div', 'cell', Demo.esc(T[i]));
+    const badHere = step.phase === 'fail' || (step.phase === 'done' && step.ok === false && i === step.i);
+    if (isCur && badHere) {
+      cellS.classList.add('is-bad');
+      cellT.classList.add('is-bad');
+    } else if (isCur) {
+      cellS.classList.add('is-active');
+      cellT.classList.add('is-active');
+    } else if (isPast) {
+      cellS.classList.add('is-ok');
+      cellT.classList.add('is-ok');
+    } else {
+      cellS.classList.add('cell--dim');
+      cellT.classList.add('cell--dim');
+    }
+    col.appendChild(cellS);
+    col.appendChild(Demo.el('div', 'arrow', '↓'));
+    col.appendChild(cellT);
+    const ptr = Demo.el('div', 'ptr', String(i));
+    if (!isCur) ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    row.appendChild(col);
   }
-
-  if (s.sHL) s.sHL.forEach(([i, type]) => {
-    document.getElementById('sc' + i).className = 'scell ' + (type === 's' ? 'hls' : 'matched');
-  });
-  if (s.tHL) s.tHL.forEach(([i, type]) => {
-    document.getElementById('tc' + i).className = 'scell ' + (type === 't' ? 'hlt' : 'matched');
-  });
-
-  const rt = document.getElementById('resultText');
-  if (s.result === 'success') { rt.textContent = 'true - 同构!'; rt.style.color = '#388E3C'; }
-  else if (s.result === 'fail') { rt.textContent = 'false - 不同构!'; rt.style.color = '#E53935'; }
-  else if (s.result === 'init') { rt.textContent = '进行中...'; rt.style.color = '#1976D2'; }
-  else { rt.textContent = '检查中...'; rt.style.color = '#1976D2'; }
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+  panel.appendChild(row);
+  return panel;
 }
 
-function goStep(n) {
-  current = Math.max(0, Math.min(n, steps.length - 1));
-  render();
-}
-
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer); autoRunning = false;
-    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-    document.getElementById('playBtn').classList.remove('play-btn');
+function mapTable(title, map, order, curKey) {
+  const panel = Demo.el('div', 'panel');
+  panel.appendChild(Demo.el('div', 'panel__title', title));
+  let html = '<table class="map-table"><tr><th>字符</th><th>映射到</th></tr>';
+  if (order.length === 0) {
+    html += '<tr><td colspan="2">（空）</td></tr>';
   } else {
-    autoRunning = true;
-    document.getElementById('playBtn').textContent = '\u23F8 暂停';
-    document.getElementById('playBtn').style.background = '#1976D2';
-    document.getElementById('playBtn').style.color = '#fff';
-    document.getElementById('playBtn').classList.add('play-btn');
-    if (current >= steps.length - 1) goStep(0);
-    autoTimer = setInterval(function() {
-      if (current < steps.length - 1) goStep(current + 1);
-      else toggleAuto();
-    }, 1000);
+    order.forEach(function (key) {
+      html += '<tr' + (key === curKey ? ' class="is-active"' : '') + '>' +
+        '<td>' + Demo.esc(key) + '</td><td>' + Demo.esc(map[key]) + '</td></tr>';
+    });
   }
+  html += '</table>';
+  panel.appendChild(Demo.el('div', null, html));
+  return panel;
 }
 
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
-});
+Demo.create({
+  title: '40. 同构字符串 — 双向映射表缺一不可',
+  info: `输入：s = "${S}"，t = "${T}"（示例 3，输出 true）。s2t 与 t2s 是两张方向相反的表，每次读入一对字符都要两个方向各查一次。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 380,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前读入的一对字符' },
+    { color: 'var(--demo-ok)', label: '已检查通过 / 已建立的映射' },
+    { color: 'var(--demo-danger)', label: '映射冲突' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
 
-render();
+    ctx.stage.appendChild(pairPanel(step));
+
+    const row = Demo.el('div', 'row');
+    row.style.width = '100%';
+    row.style.alignItems = 'flex-start';
+
+    const orderS = Object.keys(step.s2t);
+    const orderT = Object.keys(step.t2s);
+    row.appendChild(mapTable('s2t：s 的字符 → t 的字符', step.s2t, orderS, step.phase === 'init' || step.phase === 'done' ? null : step.sc));
+    row.appendChild(mapTable('t2s：t 的字符 → s 的字符', step.t2s, orderT, step.phase === 'init' || step.phase === 'done' ? null : step.tc));
+    ctx.stage.appendChild(row);
+
+    const state = Demo.el('div', 'panel');
+    state.style.width = '100%';
+    state.style.textAlign = 'center';
+    if (step.phase === 'init') {
+      state.innerHTML = '两张表都是空的，开始逐位比较 &nbsp;<span class="tag tag--warn">准备就绪</span>';
+    } else if (step.phase === 'probe') {
+      const st = step.mappedT === null ? 's2t 无记录' : `s2t["${Demo.esc(step.sc)}"] = "${Demo.esc(step.mappedT)}" 一致`;
+      const ts = step.mappedS === null ? 't2s 无记录' : `t2s["${Demo.esc(step.tc)}"] = "${Demo.esc(step.mappedS)}" 一致`;
+      state.innerHTML = `<span class="tag tag--info">${st}</span> &nbsp; <span class="tag tag--info">${ts}</span>`;
+    } else if (step.phase === 'apply') {
+      state.innerHTML = `<span class="tag tag--ok">${Demo.esc(step.sc)} ⇄ ${Demo.esc(step.tc)}</span> 双向映射已记录`;
+    } else if (step.phase === 'fail') {
+      state.innerHTML = `<span class="tag tag--bad">映射矛盾，返回 false</span>`;
+    } else {
+      state.innerHTML = step.ok
+        ? `全部 ${S.length} 位检查通过 &nbsp;<span class="tag tag--ok">返回 true</span>`
+        : `发现冲突 &nbsp;<span class="tag tag--bad">返回 false</span>`;
+    }
+    ctx.stage.appendChild(state);
+  }
+});
 </script>
 </body>
 </html>

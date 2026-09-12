@@ -2,232 +2,244 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>96. 最小基因变化 - Minimum Genetic Mutation</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
-.container{background:#fff;border-radius:8px;padding:20px;width:780px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
-h2{font-size:16px;margin-bottom:12px;color:#333}
-.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-button{border:none;border-radius:8px;padding:8px 16px;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s;color:#fff;font-weight:500}
-button:disabled{opacity:.4;cursor:not-allowed}
-.btn-reset{background:#6c757d}
-.btn-prev{background:#0d6efd}
-.btn-next{background:#0d6efd}
-.btn-auto{background:#198754}
-.btn-end{background:#dc3545}
-button:hover:not(:disabled){filter:brightness(1.15)}
-.info-panel{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:#555;background:#f0f4f8;border-radius:8px;padding:10px 14px}
-.step-badge{background:#0d6efd;color:#fff;border-radius:20px;padding:2px 12px;font-weight:600;font-size:12px}
-.info-text{flex:1;margin-left:12px}
-.vis-area{background:#fafafa;border-radius:8px;position:relative;height:480px;overflow:hidden;border:1px solid #e0e0e0}
-canvas{display:block}
-.hint{font-size:12px;color:#999;text-align:center;margin-top:8px}
-@media(prefers-color-scheme:dark){
-body{background:#1a1a2e}
-.container{background:#16213e;box-shadow:0 2px 12px rgba(0,0,0,.4)}
-h2{color:#e0e0e0}
-.info-panel{background:#1a1a3e;color:#ccc}
-.vis-area{background:#0f0f23;border-color:#2a2a4a}
-.hint{color:#777}
-}
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>96. 最小基因变化 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>96. 最小基因变化 (Minimum Genetic Mutation) — BFS 搜索</h2>
-<div class="controls">
-<button class="btn-reset" onclick="reset()">⟳ 重置</button>
-<button class="btn-prev" onclick="prevStep()">◀ 上步</button>
-<button class="btn-next" onclick="nextStep()">下步 ▶</button>
-<button class="btn-auto" id="btnAuto" onclick="toggleAuto()">▶ 自动播放</button>
-<button class="btn-end" onclick="jumpEnd()">▶▶ 跳到最后</button>
-</div>
-<div class="info-panel">
-<span class="step-badge" id="stepBadge">步骤 1/6</span>
-<span class="info-text" id="infoText">start="AACCGGTT", end="AACCGGTA", bank=["AACCGGTA"]</span>
-</div>
-<div class="vis-area"><canvas id="cvs"></canvas></div>
-<div class="hint">键盘: ← → 切换步骤 | 空格 自动播放</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const start='AACCGGTT',end='AACCGGTA';
-const bank=['AACCGGTA'];
-const GENES=['A','C','G','T'];
-const L=start.length;
+const START = 'AACCGGTT';
+const END = 'AAACGGTA';
+const BANK = ['AACCGGTA', 'AACCGCTA', 'AAACGGTA'];
+const BASES = ['A', 'C', 'G', 'T'];
+const LEN = START.length;
 
-let steps=[],currentStep=0,totalSteps=0,autoTimer=null;
+function buildSteps() {
+  const bankSet = new Set(BANK);
+  const steps = [];
+  const dist = {};
+  const parent = {};
+  dist[START] = 0;
+  parent[START] = null;
+  const visited = new Set([START]);
+  const queue = [START];
+  const processed = new Set();
+  let answer = -1;
 
-function diffOne(a,b){
-  let diff=0;
-  for(let i=0;i<L;i++)if(a[i]!==b[i])diff++;
-  return diff;
-}
-
-function buildSteps(){
-  steps=[];
-  steps.push({info:`起始基因: ${start}  目标基因: ${end}  基因库: [${bank.join(',')}]`,phase:'intro',geneStates:{},highlight:[],queue:[],distance:{},geneChars:start.split('').map((ch,i)=>({ch,diff:0}))});
-
-  // Check if end in bank
-  if(!bank.includes(end)){
-    steps.push({info:`目标基因 ${end} 不在基因库中! 返回-1`,phase:'fail'});
-    return;
+  function snap(note, extra) {
+    const step = {
+      queue: queue.slice(),
+      visited: Array.from(visited),
+      processed: Array.from(processed),
+      dist: Object.keys(dist).map(k => ({ gene: k, d: dist[k] })),
+      note: note
+    };
+    if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+    steps.push(step);
   }
 
-  // Build neighbors
-  let bankSet=new Set(bank);
-  let neighbors={};
-  for(let g of bankSet){neighbors[g]=[];}
-  neighbors[start]=[];
-  // For each gene, find all valid 1-step mutations in bank
-  let allGenes=[start,...bank];
-  for(let g of allGenes){
-    for(let b of bank){
-      if(diffOne(g,b)===1&&g!==b)neighbors[g].push(b);
-    }
+  snap('初始：start = "' + START + '"，end = "' + END + '"，bank = ' + JSON.stringify(BANK) + '。' +
+    '把 bank 放进哈希集合——一次变化只能把某个位置换成 A/C/G/T，而且结果必须落在集合里，否则这次变化不合法。从 start 开始 BFS。',
+    { cur: START, index: -1, d: 0 });
+
+  if (!bankSet.has(END)) {
+    snap('end 不在基因库中，任何合法变化都到不了它 → 直接返回 -1。', { cur: START, index: -1, done: true, answer: -1 });
+    return steps;
   }
 
-  steps.push({info:'预计算邻接关系: AACCGGTT 与 AACCGGTA 相差1个字符, 可达!',phase:'neighbors',geneStates:{},highlight:[],queue:[],distance:{},graph:neighbors});
+  while (queue.length > 0) {
+    const cur = queue.shift();
+    processed.add(cur);
 
-  // BFS
-  let visited=new Set([start]);
-  let queue=[start];
-  let distance={start:0};
-  let bfsSteps=[];
-
-  steps.push({info:'BFS初始化: 起点 ' + start + ', 距离=0, 加入队列',phase:'bfs',geneStates:{[start]:'current'},highlight:[start],queue:[...queue],distance:{...distance},geneChars:start.split('').map((ch,i)=>({ch,diff:0}))});
-
-  while(queue.length>0){
-    let cur=queue.shift();
-    if(cur===end){
-      steps.push({info:`找到目标! ${end}, 最小突变次数=${distance[cur]}`,phase:'found',geneStates:{[cur]:'found'},highlight:[cur],queue:[...queue],distance:{...distance},geneChars:end.split('').map((ch,i)=>({ch,diff:0})),done:true});
-      return;
+    if (cur === END) {
+      answer = dist[cur];
+      const path = [];
+      let p = cur;
+      while (p != null) { path.unshift(p); p = parent[p]; }
+      snap('出队 "' + END + '" 正好就是目标 end → 返回最少变化次数 ' + answer + '。最短路径：' + path.join(' → ') + '。',
+        { cur: cur, index: -1, d: answer, done: true, answer: answer, path: path });
+      break;
     }
-    for(let nxt of (neighbors[cur]||[])){
-      if(!visited.has(nxt)){
-        visited.add(nxt);
-        distance[nxt]=distance[cur]+1;
-        queue.push(nxt);
-        // Compare chars
-        let geneChars=nxt.split('').map((ch,i)=>({ch,diff:ch!==start[i]?1:0}));
-        steps.push({info:`从 ${cur} 突变到 ${nxt} (差1个字符), 距离=${distance[nxt]}, 入队`,phase:'bfs',geneStates:{[cur]:'visited',[nxt]:'current'},highlight:[nxt],queue:[...queue],distance:{...distance},geneChars});
+
+    snap('出队 "' + cur + '"（距离 ' + dist[cur] + '）：它有 ' + LEN + ' 个位置，每个位置都尝试换成另外 3 种碱基，' +
+      '逐个检查结果是否在基因库里、是否已经访问过。',
+      { cur: cur, index: -1, d: dist[cur] });
+
+    for (let j = 0; j < LEN; j++) {
+      const cands = [];
+      for (let b = 0; b < BASES.length; b++) {
+        const g = BASES[b];
+        if (g === cur[j]) continue;
+        const next = cur.slice(0, j) + g + cur.slice(j + 1);
+        const inBank = bankSet.has(next);
+        const seen = visited.has(next);
+        const enqueued = inBank && !seen;
+        if (enqueued) {
+          visited.add(next);
+          dist[next] = dist[cur] + 1;
+          parent[next] = cur;
+          queue.push(next);
+        }
+        cands.push({ g: g, next: next, inBank: inBank, seen: seen, enqueued: enqueued });
       }
-    }
-    if(!(cur in (steps[steps.length-1].geneStates||{}))){
-      // no neighbors, just mark visited
-    }
-  }
-  steps.push({info:'BFS完成, 无法到达目标! 返回-1',phase:'fail'});
-}
-buildSteps();totalSteps=steps.length;
 
-const cvs=document.getElementById('cvs');
-const ctx=cvs.getContext('2d');
-function resizeCanvas(){cvs.width=cvs.parentElement.clientWidth;cvs.height=cvs.parentElement.clientHeight;}
-resizeCanvas();
-window.addEventListener('resize',()=>{resizeCanvas();draw();});
-
-const CHAR_SIZE=40,GAP=6,OFFX=40,OFFY=40;
-
-function draw(){
-  let s=steps[currentStep];
-  ctx.clearRect(0,0,cvs.width,cvs.height);
-
-  // Draw start gene
-  ctx.fillStyle='#333';ctx.font='bold 15px sans-serif';ctx.textAlign='left';
-  ctx.fillText('起始基因:',OFFX,OFFY-8);
-  for(let i=0;i<L;i++){
-    let x=OFFX+160+i*(CHAR_SIZE+GAP),y=OFFY-8;
-    ctx.fillStyle='#5b9bd5';ctx.strokeStyle='#3a7abd';ctx.lineWidth=2;
-    ctx.fillRect(x,y,CHAR_SIZE,CHAR_SIZE);
-    ctx.strokeRect(x,y,CHAR_SIZE,CHAR_SIZE);
-    ctx.fillStyle='#fff';ctx.font='bold 18px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(start[i],x+CHAR_SIZE/2,y+CHAR_SIZE/2);
-  }
-
-  // Draw end/target gene
-  let endY=OFFY+80;
-  ctx.fillStyle='#333';ctx.font='bold 15px sans-serif';ctx.textAlign='left';
-  ctx.fillText('目标基因:',OFFX,endY-8);
-  for(let i=0;i<L;i++){
-    let x=OFFX+160+i*(CHAR_SIZE+GAP),y=endY-8;
-    let isDiff=end[i]!==start[i];
-    ctx.fillStyle=isDiff?'#ff6b00':'#28a745';ctx.strokeStyle='#333';
-    ctx.fillRect(x,y,CHAR_SIZE,CHAR_SIZE);
-    ctx.strokeRect(x,y,CHAR_SIZE,CHAR_SIZE);
-    ctx.fillStyle='#fff';ctx.font='bold 18px monospace';
-    ctx.fillText(end[i],x+CHAR_SIZE/2,y+CHAR_SIZE/2);
-  }
-
-  // Current mutation
-  let mutY=endY+100;
-  if(s.geneChars){
-    ctx.fillStyle='#333';ctx.font='bold 15px sans-serif';ctx.textAlign='left';
-    ctx.fillText('突变展示:',OFFX,mutY-8);
-    for(let i=0;i<L;i++){
-      let x=OFFX+160+i*(CHAR_SIZE+GAP),y=mutY-8;
-      let diff=s.geneChars[i].diff;
-      let fill=diff?'#dc3545':'#fff';
-      ctx.fillStyle=fill;ctx.strokeStyle=diff?'#dc3545':'#999';
-      ctx.fillRect(x,y,CHAR_SIZE,CHAR_SIZE);
-      ctx.strokeRect(x,y,CHAR_SIZE,CHAR_SIZE);
-      ctx.fillStyle=diff?'#fff':'#333';ctx.font='bold 18px monospace';
-      ctx.fillText(s.geneChars[i].ch,x+CHAR_SIZE/2,y+CHAR_SIZE/2);
-      if(diff){
-        ctx.strokeStyle='#dc3545';ctx.lineWidth=3;
-        ctx.strokeRect(x-2,y-2,CHAR_SIZE+4,CHAR_SIZE+4);
+      const fresh = cands.filter(c => c.enqueued);
+      let note = '把第 ' + (j + 1) + ' 位（下标 ' + j + '，当前是 "' + cur[j] + '"）换成 ' +
+        cands.map(c => '"' + c.g + '"').join('、') + '，得到 ' + cands.map(c => c.next).join('、') + '：';
+      if (fresh.length) {
+        note += fresh.map(c => '"' + c.next + '"').join('、') + ' 在基因库中且没访问过 → 入队，距离变为 ' + (dist[cur] + 1) + '。';
+      } else {
+        note += '这些结果要么不在基因库里，要么已经入队/处理过，所以没有新基因入队——BFS 保证每个基因只处理一次。';
       }
+      snap(note, { cur: cur, index: j, d: dist[cur], cands: cands });
     }
   }
 
-  // BFS queue display
-  let qy=mutY+70;
-  if(s.queue&&s.queue.length>0){
-    ctx.fillStyle='#333';ctx.font='13px sans-serif';ctx.textAlign='left';
-    ctx.fillText('BFS队列: ['+s.queue.join(', ')+']',OFFX,qy);
+  if (answer < 0) {
+    snap('队列已空仍然没有到达 end → 返回 -1。', { cur: START, index: -1, done: true, answer: -1 });
   }
+  return steps;
+}
 
-  // Distance info
-  if(s.distance){
-    let entries=Object.entries(s.distance);
-    if(entries.length>0){
-      ctx.fillStyle='#333';ctx.font='13px sans-serif';ctx.textAlign='left';
-      ctx.fillText('距离: '+entries.map(([k,v])=>k+':'+v).join(', '),OFFX,qy+25);
+function geneRow(step, opts) {
+  const o = opts || {};
+  const row = Demo.el('div', 'row');
+  for (let i = 0; i < LEN; i++) {
+    const cell = Demo.el('div', 'cell', Demo.esc(step.cur[i]));
+    if (o.activeIndex === i) cell.classList.add('is-active');
+    else if (o.markEnd && step.cur[i] === END[i]) cell.classList.add('is-ok');
+    row.appendChild(cell);
+  }
+  return row;
+}
+
+function candidateColumn(cand, curChar) {
+  const col = Demo.el('div', 'col');
+  const cell = Demo.el('div', 'cell cell--sm', Demo.esc(cand.g));
+  col.appendChild(cell);
+  col.appendChild(Demo.el('div', 'ptr', '↓'));
+  const gene = Demo.el('div', 'ptr', cand.next);
+  gene.style.fontSize = '10px';
+  if (cand.enqueued) gene.classList.add('ptr--ok');
+  else if (!cand.inBank) gene.classList.add('ptr--bad');
+  else gene.classList.add('ptr--warn');
+  col.appendChild(gene);
+
+  if (cand.g === curChar) {
+    cell.classList.add('cell--dim');
+    col.appendChild(Demo.el('div', 'tag tag--warn', '原字符，跳过'));
+  } else if (cand.enqueued) {
+    cell.classList.add('is-ok');
+    col.appendChild(Demo.el('div', 'tag tag--ok', '入队'));
+  } else if (!cand.inBank) {
+    cell.classList.add('is-bad');
+    col.appendChild(Demo.el('div', 'tag tag--bad', '不在基因库'));
+  } else {
+    cell.classList.add('is-warn');
+    col.appendChild(Demo.el('div', 'tag tag--warn', '已访问'));
+  }
+  return col;
+}
+
+Demo.create({
+  title: '96. 最小基因变化 — 逐位枚举 + BFS 最短路',
+  info: 'start = "' + START + '"，end = "' + END + '"，bank = ' + JSON.stringify(BANK) + '，每条基因长 8，正确输出为 2。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 480,
+  legend: [
+    { color: 'var(--demo-accent)', label: '正在替换的位置' },
+    { color: 'var(--demo-ok)', label: '该位置已与 end 相同 / 新基因入队' },
+    { color: 'var(--demo-danger)', label: '变化结果不在基因库' },
+    { color: 'var(--demo-warn)', label: '结果已访问过' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const genePanel = Demo.el('div', 'panel');
+    genePanel.style.width = '100%';
+    genePanel.appendChild(Demo.el('div', 'panel__title',
+      step.index < 0 ? '当前基因（绿色表示该位与 end 相同）' : '当前基因：正在尝试替换下标 ' + step.index));
+    const geneWrap = Demo.el('div', 'row');
+    geneWrap.appendChild(geneRow(step, { activeIndex: step.index, markEnd: true }));
+    geneWrap.appendChild(Demo.el('div', 'ptr', '距离 ' + (step.d == null ? 0 : step.d)));
+    genePanel.appendChild(geneWrap);
+    ctx.stage.appendChild(genePanel);
+
+    if (step.cands) {
+      const candPanel = Demo.el('div', 'panel');
+      candPanel.style.width = '100%';
+      candPanel.appendChild(Demo.el('div', 'panel__title',
+        '把下标 ' + step.index + ' 的 "' + step.cur[step.index] + '" 换成其它碱基（每个候选下面写着变化后的整条基因）'));
+      const row = Demo.el('div', 'row');
+      step.cands.forEach(c => row.appendChild(candidateColumn(c, step.cur[step.index])));
+      candPanel.appendChild(row);
+      ctx.stage.appendChild(candPanel);
     }
+
+    if (step.path) {
+      const pathPanel = Demo.el('div', 'panel');
+      pathPanel.style.width = '100%';
+      pathPanel.appendChild(Demo.el('div', 'panel__title', '最短变化路径'));
+      const row = Demo.el('div', 'row');
+      step.path.forEach((g, k) => {
+        if (k > 0) row.appendChild(Demo.el('div', 'arrow', '→'));
+        const cell = Demo.el('div', 'cell', Demo.esc(g));
+        cell.classList.add(k === step.path.length - 1 ? 'is-ok' : 'is-active');
+        row.appendChild(cell);
+      });
+      pathPanel.appendChild(row);
+      ctx.stage.appendChild(pathPanel);
+    }
+
+    const bottom = Demo.el('div', 'row');
+    bottom.style.width = '100%';
+    bottom.style.alignItems = 'flex-start';
+
+    const bankPanel = Demo.el('div', 'panel');
+    bankPanel.style.flex = '1';
+    bankPanel.appendChild(Demo.el('div', 'panel__title', '基因库 bank 中每个基因的状态'));
+    BANK.forEach(g => {
+      const row = Demo.el('div', 'row');
+      row.style.justifyContent = 'flex-start';
+      const gene = Demo.el('div', 'ptr', g);
+      gene.style.textAlign = 'left';
+      row.appendChild(gene);
+      if (step.processed.indexOf(g) >= 0) {
+        row.appendChild(Demo.el('span', 'tag tag--info', '已出队'));
+      } else if (step.queue.indexOf(g) >= 0) {
+        const d = step.dist.filter(x => x.gene === g)[0];
+        row.appendChild(Demo.el('span', 'tag tag--ok', '在队列 d=' + (d ? d.d : '?')));
+      } else {
+        row.appendChild(Demo.el('span', 'tag', '未访问'));
+      }
+      bankPanel.appendChild(row);
+    });
+
+    const queuePanel = Demo.el('div', 'panel');
+    queuePanel.style.flex = '1';
+    queuePanel.appendChild(Demo.el('div', 'panel__title', 'BFS 队列'));
+    const queueRow = Demo.el('div', 'row');
+    queueRow.style.justifyContent = 'flex-start';
+    if (step.queue.length === 0) {
+      queueRow.appendChild(Demo.el('span', 'tag tag--ok', '队列已空'));
+    } else {
+      step.queue.forEach(g => {
+        const d = step.dist.filter(x => x.gene === g)[0];
+        queueRow.appendChild(Demo.el('span', 'tag', g + ' (d=' + (d ? d.d : '?') + ')'));
+      });
+    }
+    queuePanel.appendChild(queueRow);
+    queuePanel.appendChild(Demo.el('div', null, step.done
+      ? '<span class="tag tag--ok">返回 ' + step.answer + '</span>'
+      : '<span class="tag tag--info">继续按层扩展</span>'));
+
+    bottom.appendChild(bankPanel);
+    bottom.appendChild(queuePanel);
+    ctx.stage.appendChild(bottom);
   }
-
-  // Bank info
-  ctx.fillStyle='#666';ctx.font='13px sans-serif';ctx.textAlign='left';
-  ctx.fillText('基因库: ['+bank.join(', ')+'] | 字符集: [A,C,G,T]',OFFX,qy+50);
-
-  if(s.done){
-    ctx.fillStyle='#28a745';ctx.font='bold 18px sans-serif';
-    ctx.fillText('✓ 找到最短突变路径! 次数='+(s.distance[end]||0),OFFX,qy+90);
-  }
-
-  document.getElementById('stepBadge').textContent=`步骤 ${currentStep+1}/${totalSteps}`;
-  document.getElementById('infoText').textContent=s.info;
-  let btns=document.querySelectorAll('button');
-  btns.forEach(b=>b.disabled=false);
-  if(currentStep===0)document.querySelector('.btn-prev').disabled=true;
-  if(currentStep===totalSteps-1){document.querySelector('.btn-next').disabled=true;document.querySelector('.btn-end').disabled=true;document.querySelector('.btn-auto').disabled=true;}
-}
-
-function nextStep(){if(currentStep<totalSteps-1){currentStep++;draw();}}
-function prevStep(){if(currentStep>0){currentStep--;draw();}}
-function reset(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=0;draw();}
-function jumpEnd(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=totalSteps-1;draw();}
-function toggleAuto(){
-  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}
-  else{document.getElementById('btnAuto').textContent='⏸ 暂停';autoTimer=setInterval(()=>{if(currentStep<totalSteps-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}},1000);}
-}
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight'){e.preventDefault();nextStep();}
-  else if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}
-  else if(e.key===' '){e.preventDefault();toggleAuto();}
 });
-draw();
 </script>
 </body>
 </html>

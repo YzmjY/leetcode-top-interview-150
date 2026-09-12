@@ -44,15 +44,36 @@
 
 ## 题目分析
 
-**算法思路：** 利用数组有序的性质，使用对撞双指针。初始化 `left = 0`，`right = n - 1`：
+**算法思路：** 数组有序是本题最重要的性质。暴力枚举所有数对是 O(n²)；而有序让「和的大小」随指针移动单调变化——`left` 右移和变大，`right` 左移和变小。于是可以从两端向中间逼近，每次移动都能排除掉一整批不可能的组合。
 
-- 如果 `numbers[left] + numbers[right] == target`，找到答案
-- 如果和小于 `target`，说明需要更大的值，`left++`
-- 如果和大于 `target`，说明需要更小的值，`right--`
+**算法步骤：**
 
-**时间复杂度：** O(n)，每个元素最多被访问一次。
+1. `left = 0`，`right = n - 1`。
+2. 当 `left < right` 时，令 `sum = numbers[left] + numbers[right]`：
+   - `sum == target`：找到答案，返回 `[left+1, right+1]`（题目要求 1-based 下标）；
+   - `sum < target`：需要更大的和，`left++`；
+   - `sum > target`：需要更小的和，`right--`。
+3. 题目保证有唯一解，循环内必然返回。
 
-**空间复杂度：** O(1)。
+**为什么正确（排除法证明）：** 每次移动都能排除掉一整批组合。
+
+- 若 `numbers[left] + numbers[right] < target`：对任何 `k < right`，都有 `numbers[k] <= numbers[right]`，于是 `numbers[left] + numbers[k] <= numbers[left] + numbers[right] < target`。也就是说，`left` 与 `right` 左侧的任何下标都无法凑出 target，`left` 可以永久排除，放心 `left++`。
+- 若 `numbers[left] + numbers[right] > target`：对任何 `k > left`，`numbers[k] >= numbers[left]`，所以 `numbers[k] + numbers[right] >= numbers[left] + numbers[right] > target`，`right` 与右侧任何下标也无法凑出 target，排除 `right`，放心 `right--`。
+
+被排除的组合都包含当前被丢弃的端点且都满足不了 target，因此不会误删答案；由于解存在，指针最终一定会在解处停下。
+
+**不变量：** 区间 `[left, right]` 内始终包含至少一组解（解的两个下标都在区间内）。
+
+**时间复杂度：** O(n)。每轮至少移动一个指针，两个指针合计移动不超过 n 次；无需二分，也不需要额外扫描。
+
+**空间复杂度：** O(1)。只用了两个指针和常数个变量，符合题目「常量级额外空间」的要求。
+
+**易错点：**
+
+- 返回的是 **1-based** 下标，别忘记 `+1`。
+- 数组是**非递减**的，可能相等。`numbers[left] == numbers[right]` 时移动哪一侧都可以，但每轮必须有一个指针移动，否则会死循环。
+- 不要排序后再找：本题数组本身有序且要求返回原下标，排序会破坏下标对应关系。
+- 题目只保证唯一解，所以找到即可返回；若要「返回所有解」，就不能提前返回。
 
 
 ### 交互演示

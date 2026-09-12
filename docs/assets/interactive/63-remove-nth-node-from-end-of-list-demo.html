@@ -3,164 +3,183 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>63. 删除链表倒数第N个结点 - 可视化演示</title>
-<style>
-:root {
-  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
-  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
-  --btn-active-text: #fff; --node-bg: #e9ecef;
-  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
-  --step-bg: #e7f5ff;
-}
-@media (prefers-color-scheme: dark) {
-:root {
-  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
-  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
-  --btn-active-text: #fff; --node-bg: #2a2a4a; --step-bg: #1a2a3a;
-}
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, "Microsoft YaHei", sans-serif;
-  background: var(--bg); color: var(--text);
-  display: flex; justify-content: center; padding: 20px;
-}
-.container {
-  width: 100%; max-width: 950px; height: 500px;
-  background: var(--card-bg); border-radius: 8px;
-  border: 1px solid var(--border); padding: 16px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.step-panel {
-  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
-  display: flex; justify-content: space-between; align-items: center; font-size: 14px;
-}
-.step-num { font-weight: 700; color: var(--btn-active); }
-.step-desc { flex: 1; margin-left: 16px; }
-.svg-area { flex: 1; display: flex; justify-content: center; align-items: center; }
-.controls {
-  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-}
-.controls button {
-  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--btn-bg); color: var(--text); cursor: pointer;
-  font-size: 13px; font-family: inherit; transition: all 0.15s;
-}
-.controls button:hover { background: var(--btn-hover); }
-.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
-</style>
+<title>63. 删除链表的倒数第 N 个结点 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <div class="step-panel">
-    <span class="step-num" id="stepNum">步骤 0 / 0</span>
-    <span class="step-desc" id="stepDesc">初始状态</span>
-  </div>
-  <div class="svg-area"><svg id="svg" viewBox="0 0 900 240"></svg></div>
-  <div class="controls">
-    <button onclick="reset()">重置</button>
-    <button onclick="prevStep()">上步</button>
-    <button onclick="nextStep()">下步</button>
-    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button onclick="goEnd()">跳到最后</button>
-  </div>
-</div>
+<script src="demo.js"></script>
 <script>
-// List: 1->2->3->4->5, n=2 (remove 4)
-const vals = [1, 2, 3, 4, 5];
-const n = 2;
-const pos = [{x:50,y:110},{x:200,y:110},{x:350,y:110},{x:500,y:110},{x:650,y:110}];
-const R = 22;
-const steps = [];
-let stepIdx = -1;
+const VALUES = [1, 2, 3, 4, 5];
+const N = 2;
+// 链表节点 id：0 是 dummy 哨兵，1..5 对应 VALUES，用来做可视化查找
+const NODE_VALS = [null].concat(VALUES);
+
+function valText(id) {
+  return id === 0 ? 'dummy' : String(NODE_VALS[id]);
+}
 
 function buildSteps() {
-  steps.length = 0;
-  steps.push({ vals: [...vals], fast: -1, slow: -1, removed: -1, desc: '初始状态: [1,2,3,4,5], n=2 (删除倒数第2个=4)', phase: 0 });
+  // 真实链表：dummy → 1 → 2 → 3 → 4 → 5 → nil，next 存的是节点 id
+  const nodes = [{ id: 0, val: null, next: 1 }];
+  VALUES.forEach(function (v, i) {
+    nodes.push({ id: i + 1, val: v, next: i + 1 < VALUES.length ? i + 2 : null });
+  });
 
-  // Fast pointer advances n steps
-  steps.push({ vals: [...vals], fast: 1, slow: -1, removed: -1, desc: '快指针先走1步: fast指向节点2', phase: 1 });
-  steps.push({ vals: [...vals], fast: 2, slow: -1, removed: -1, desc: '快指针再走1步: fast指向节点3 (共走n=2步)', phase: 1 });
+  const steps = [];
+  let fast = 0;
+  let slow = 0;
+  let removed = null;
 
-  // Both move together
-  steps.push({ vals: [...vals], fast: 3, slow: 0, removed: -1, desc: '快慢指针同时前进: fast→4, slow→1', phase: 2 });
-  steps.push({ vals: [...vals], fast: 4, slow: 1, removed: -1, desc: '继续前进: fast→5, slow→2', phase: 2 });
-
-  // fast reaches end
-  steps.push({ vals: [...vals], fast: -1, slow: 2, removed: 3, desc: '快指针到达末尾(null)，慢指针指向待删除节点的前驱(3)，删除节点4', phase: 3 });
-
-  // Result
-  const result = [1, 2, 3, 5];
-  steps.push({ vals: [...result], fast: -1, slow: -1, removed: -1, desc: '完成！删除倒数第2个节点后: 1->2->3->5', phase: 4 });
-}
-
-function renderSVG() {
-  const st = steps[Math.min(stepIdx, steps.length - 1)];
-  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
-  document.getElementById('stepDesc').textContent = st.desc;
-
-  const svg = document.getElementById('svg');
-  let html = `<defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="var(--text-secondary)"/>
-    </marker>
-  </defs>`;
-
-  // Use original positions but map to current vals
-  const displayVals = st.vals;
-  // Arrows
-  for (let i = 0; i < displayVals.length - 1; i++) {
-    html += `<line x1="${pos[i].x + R + 2}" y1="${pos[i].y}" x2="${pos[i+1].x - R - 2}" y2="${pos[i+1].y}" stroke="var(--text-secondary)" stroke-width="2" marker-end="url(#arrow)"/>`;
+  function chain() {
+    const out = [];
+    let p = 0;
+    while (p !== null) { out.push(p); p = nodes[p].next; }
+    return out;
   }
 
-  // Nodes
-  for (let i = 0; i < displayVals.length; i++) {
-    const isFast = st.fast === i;
-    const isSlow = st.slow === i;
-    const isRemoved = st.removed === i;
-    let stroke = 'var(--blue)', fill = 'var(--node-bg)';
-    if (isFast) { stroke = 'var(--red)'; fill = 'rgba(250,82,82,0.1)'; }
-    if (isSlow) { stroke = 'var(--green)'; fill = 'rgba(64,192,87,0.1)'; }
-    if (isRemoved) { stroke = 'var(--red)'; fill = 'rgba(250,82,82,0.15)'; }
-
-    html += `<circle cx="${pos[i].x}" cy="${pos[i].y}" r="${R}" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>
-      <text x="${pos[i].x}" y="${pos[i].y + 5}" text-anchor="middle" font-size="14" font-weight="700" fill="var(--text)" font-family="Consolas,monospace">${displayVals[i]}</text>`;
-
-    if (isFast) html += `<text x="${pos[i].x}" y="${pos[i].y - 36}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--red)">fast</text>`;
-    if (isSlow) html += `<text x="${pos[i].x}" y="${pos[i].y - 36}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--green)">slow</text>`;
-    if (isRemoved) html += `<line x1="${pos[i].x - R}" y1="${pos[i].y - R}" x2="${pos[i].x + R}" y2="${pos[i].y + R}" stroke="var(--red)" stroke-width="2"/><line x1="${pos[i].x + R}" y1="${pos[i].y - R}" x2="${pos[i].x - R}" y2="${pos[i].y + R}" stroke="var(--red)" stroke-width="2"/>`;
+  function name(id) {
+    return id === null ? 'nil（越界）' : (id === 0 ? 'dummy' : '节点 ' + nodes[id].val);
   }
 
-  // Legend
-  html += `<rect x="10" y="170" width="260" height="50" rx="8" fill="var(--btn-bg)" stroke="var(--border)"/>
-    <text x="30" y="190" font-size="12"><tspan fill="var(--red)" font-weight="700">fast</tspan> 领先 n=2 步 | <tspan fill="var(--green)" font-weight="700">slow</tspan> 落后 n 步</text>
-    <text x="30" y="208" font-size="12" fill="var(--text-secondary)">fast到末尾时 slow恰好指向待删节点的前驱</text>`;
+  function push(note, extra) {
+    const step = { chain: chain(), fast: fast, slow: slow, removed: removed, note: note };
+    if (extra) Object.keys(extra).forEach(function (k) { step[k] = extra[k]; });
+    steps.push(step);
+  }
 
-  svg.innerHTML = html;
-  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
+  push('初始化：新建 dummy 哨兵，dummy.Next = head；fast 与 slow 都从 dummy 出发。dummy 的作用是让「删除头节点」和「删除中间节点」共用同一套代码，不必单独讨论 n = 链表长度的情况。');
+
+  for (let i = 1; i <= N + 1; i++) {
+    fast = nodes[fast].next;
+    push('第一趟：fast 独自先走 n + 1 = ' + (N + 1) + ' 步，现在走完第 ' + i + ' 步，落在 ' + name(fast) +
+      '。slow 仍停在 dummy 不动——这一步只是把 fast 与 slow 的间距拉开并固定为 ' + (N + 1) + ' 个节点。');
+  }
+
+  while (fast !== null) {
+    fast = nodes[fast].next;
+    slow = nodes[slow].next;
+    push('第二趟：fast 与 slow 同步前进，fast → ' + name(fast) + '，slow → ' + name(slow) +
+      '。两者间距始终是 ' + (N + 1) + '，所以 fast 一旦越界，slow 必然停在倒数第 ' + (N + 1) + ' 个节点，也就是待删节点的前驱。');
+  }
+
+  const victim = nodes[slow].next;
+  nodes[slow].next = nodes[victim].next;
+  removed = victim;
+  push('fast 已经越界（nil），间距「用尽」。此时 slow 停在 ' + name(slow) + '，正是待删节点 ' + name(victim) +
+    ' 的前驱。执行 slow.Next = slow.Next.Next，让 ' + name(slow) + ' 直接指向 ' + name(nodes[slow].next) + '，' + name(victim) + ' 被摘除。', { phase: 'remove' });
+
+  const result = chain().slice(1).map(function (id) { return nodes[id].val; });
+  push('删除完成，全程只扫描了一次链表（fast 走完全程，slow 最多同步走完）。返回 dummy.Next，得到 [' + result.join(', ') +
+    ']。空间上只多了 dummy、fast、slow 三个指针，所以是 O(1)。', { done: true });
+
+  return steps;
 }
 
-function reset() { stepIdx = 0; stopAuto(); renderSVG(); }
-function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; renderSVG(); }
-function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; renderSVG(); }
-function goEnd() { stopAuto(); stepIdx = steps.length - 1; renderSVG(); }
+function nodeCol(id, step, forcedClass) {
+  const col = Demo.el('div', 'col');
+  const node = Demo.el('div', 'll-node', Demo.esc(valText(id)));
+  const labels = [];
+  if (id === step.fast) labels.push('fast');
+  if (id === step.slow) labels.push('slow');
 
-let autoRunning = false, autoTimer = null;
-function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
-function startAuto() { autoRunning = true; renderSVG(); autoStep(); }
-function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); renderSVG(); }
-function autoStep() {
-  if (!autoRunning) return;
-  if (stepIdx < steps.length - 1) { stepIdx++; renderSVG(); autoTimer = setTimeout(autoStep, 900); }
-  else stopAuto();
+  if (forcedClass) node.classList.add(forcedClass);
+  else if (labels.indexOf('fast') >= 0) node.classList.add('is-active');
+  else if (labels.indexOf('slow') >= 0) node.classList.add('is-ok');
+  if (id === 0) node.style.borderStyle = 'dashed';
+
+  col.appendChild(node);
+
+  const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : '&nbsp;');
+  if (!labels.length) ptr.classList.add('ptr--dim');
+  else if (labels.indexOf('slow') >= 0 && labels.indexOf('fast') < 0) ptr.classList.add('ptr--ok');
+  col.appendChild(ptr);
+  return col;
 }
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') nextStep();
-  else if (e.key === 'ArrowLeft') prevStep();
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+
+function arrowCol() {
+  const col = Demo.el('div', 'col');
+  col.appendChild(Demo.el('div', 'arrow', '→'));
+  col.appendChild(Demo.el('div', 'ptr ptr--dim', '&nbsp;'));
+  return col;
+}
+
+function listRow(chain, step) {
+  const row = Demo.el('div', 'row');
+  chain.forEach(function (id) {
+    row.appendChild(nodeCol(id, step));
+    row.appendChild(arrowCol());
+  });
+  const nilCol = Demo.el('div', 'col');
+  const nilNode = Demo.el('div', 'll-node', 'nil');
+  nilNode.style.borderStyle = 'dashed';
+  nilNode.style.color = 'var(--demo-muted)';
+  nilCol.appendChild(nilNode);
+  nilCol.appendChild(Demo.el('div', 'ptr ptr--dim', '&nbsp;'));
+  row.appendChild(nilCol);
+  return row;
+}
+
+Demo.create({
+  title: '63. 删除链表的倒数第 N 个结点 — dummy + 快慢双指针，一趟扫描',
+  info: '输入：head = [1, 2, 3, 4, 5]，n = 2（要删除倒数第 2 个结点 4）。fast 先走 n + 1 步把间距定好，之后 fast 与 slow 同步前进。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 300,
+  legend: [
+    { color: 'var(--demo-accent)', label: 'fast 快指针' },
+    { color: 'var(--demo-ok)', label: 'slow 慢指针' },
+    { color: 'var(--demo-danger)', label: '被摘除的结点' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const listPanel = Demo.el('div', 'panel');
+    listPanel.style.width = '100%';
+    listPanel.appendChild(Demo.el('div', 'panel__title',
+      '链表 dummy → head → … → nil（结点下方的标签表示哪个指针正指向它）'));
+    listPanel.appendChild(listRow(step.chain, step));
+    ctx.stage.appendChild(listPanel);
+
+    const status = Demo.el('div', 'row');
+    status.appendChild(Demo.el('span', 'tag', 'fast → ' + (step.fast === null ? 'nil' : valText(step.fast))));
+    status.appendChild(Demo.el('span', 'tag tag--ok', 'slow → ' + valText(step.slow)));
+    status.appendChild(Demo.el('span', 'tag tag--info', '间距 = n + 1 = ' + (N + 1)));
+    if (step.removed !== null) status.appendChild(Demo.el('span', 'tag tag--bad', '已摘除结点 ' + valText(step.removed)));
+    ctx.stage.appendChild(status);
+
+    if (step.removed !== null) {
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.appendChild(Demo.el('div', 'panel__title', '被摘除的结点（已经不在链表上，slow.Next 直接跳过了它）'));
+      const row = Demo.el('div', 'row');
+      const node = Demo.el('div', 'll-node', Demo.esc(valText(step.removed)));
+      node.style.borderColor = 'var(--demo-danger)';
+      node.style.background = 'var(--demo-danger-soft)';
+      node.style.color = 'var(--demo-danger)';
+      node.style.textDecoration = 'line-through';
+      row.appendChild(node);
+      row.appendChild(Demo.el('span', 'tag tag--bad', 'slow.Next = slow.Next.Next'));
+      panel.appendChild(row);
+      ctx.stage.appendChild(panel);
+    } else {
+      const hint = Demo.el('div', 'panel');
+      hint.style.width = '100%';
+      hint.style.textAlign = 'center';
+      hint.innerHTML = '目标：让 slow 停在倒数第 n + 1 个结点上。' +
+        '当前 fast 与 slow 之间隔了 <strong>' + (N + 1) + '</strong> 个结点，' +
+        '所以 fast 走完整个链表越界时，slow 正好到位。';
+      ctx.stage.appendChild(hint);
+    }
+
+    if (step.done) {
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.appendChild(Demo.el('div', 'panel__title', '结果链表'));
+      panel.appendChild(listRow(step.chain, { fast: null, slow: null }));
+      ctx.stage.appendChild(panel);
+    }
+  }
 });
-buildSteps();
-reset();
 </script>
 </body>
 </html>

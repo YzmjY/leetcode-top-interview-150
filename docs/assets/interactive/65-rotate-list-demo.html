@@ -3,159 +3,177 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>65. 旋转链表 - 可视化演示</title>
-<style>
-:root {
-  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
-  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
-  --btn-active-text: #fff; --node-bg: #e9ecef;
-  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
-  --step-bg: #e7f5ff;
-}
-@media (prefers-color-scheme: dark) {
-:root {
-  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
-  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
-  --btn-active-text: #fff; --node-bg: #2a2a4a; --step-bg: #1a2a3a;
-}
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, "Microsoft YaHei", sans-serif;
-  background: var(--bg); color: var(--text);
-  display: flex; justify-content: center; padding: 20px;
-}
-.container {
-  width: 100%; max-width: 950px; height: 500px;
-  background: var(--card-bg); border-radius: 8px;
-  border: 1px solid var(--border); padding: 16px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.step-panel {
-  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
-  display: flex; justify-content: space-between; align-items: center; font-size: 14px;
-}
-.step-num { font-weight: 700; color: var(--btn-active); }
-.step-desc { flex: 1; margin-left: 16px; }
-.svg-area { flex: 1; display: flex; justify-content: center; align-items: center; }
-.controls {
-  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-}
-.controls button {
-  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--btn-bg); color: var(--text); cursor: pointer;
-  font-size: 13px; font-family: inherit; transition: all 0.15s;
-}
-.controls button:hover { background: var(--btn-hover); }
-.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
-</style>
+<title>65. 旋转链表 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <div class="step-panel">
-    <span class="step-num" id="stepNum">步骤 0 / 0</span>
-    <span class="step-desc" id="stepDesc">初始状态</span>
-  </div>
-  <div class="svg-area"><svg id="svg" viewBox="0 0 900 240"></svg></div>
-  <div class="controls">
-    <button onclick="reset()">重置</button>
-    <button onclick="prevStep()">上步</button>
-    <button onclick="nextStep()">下步</button>
-    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button onclick="goEnd()">跳到最后</button>
-  </div>
-</div>
+<script src="demo.js"></script>
 <script>
-// List: 1->2->3->4->5, k=2 -> 4->5->1->2->3
-const k = 2;
-const orig = [1, 2, 3, 4, 5];
-const pos = [{x:50,y:110},{x:200,y:110},{x:350,y:110},{x:500,y:110},{x:650,y:110}];
-const R = 22;
-const steps = [];
-let stepIdx = -1;
+const VALS = [1, 2, 3, 4, 5];
+const K = 2;
 
 function buildSteps() {
-  steps.length = 0;
-  steps.push({ vals: [...orig], desc: '初始状态: 1->2->3->4->5, k=2', breakAt: -1, phase: 0 });
+  // 真实链表：1 → 2 → 3 → 4 → 5 → nil，next 存节点对象
+  const nodes = VALS.map(function (v, i) { return { id: i, val: v, next: null }; });
+  for (let i = 0; i < nodes.length - 1; i++) nodes[i].next = nodes[i + 1];
 
-  // Step 1: find length = 5, tail connects to head (make circle)
-  steps.push({ vals: [...orig], desc: '第1步：遍历得到长度=5，尾节点5指向头节点1，形成环', breakAt: -1, phase: 1, circular: true });
+  const steps = [];
+  let order = nodes.map(function (node) { return node.id; });
+  let n = 1;
+  let k = null;
+  let tail = nodes[0];
+  let newTail = null;
+  let newHead = null;
+  let ring = false;
 
-  // Step 2: break at position len-k = 5-2 = 3 (0-indexed: index 2, node 3)
-  // After break: 4->5->1->2->3
-  const rotated = [4, 5, 1, 2, 3];
-  steps.push({ vals: [...rotated], desc: '第2步：在位置 5-2=3 处断开(节点3之后断开)，新头为节点4', breakAt: 2, phase: 2 });
-  steps.push({ vals: [...rotated], desc: '完成！旋转k=2后: 4->5->1->2->3', breakAt: -1, phase: 3 });
+  function push(note, extra) {
+    const step = {
+      order: order.slice(), n: n, k: k, ring: ring,
+      tail: tail ? tail.id : null,
+      newTail: newTail ? newTail.id : null,
+      newHead: newHead ? newHead.id : null,
+      note: note
+    };
+    if (extra) Object.keys(extra).forEach(function (key) { step[key] = extra[key]; });
+    steps.push(step);
+  }
+
+  push('初始化：head 指向节点 1。向右旋转 k = ' + K + ' 位，等价于「把倒数第 k 个节点变成新头」。n 和 k 的关系决定了断点在哪，所以第一步先求链表长度。');
+
+  while (tail.next !== null) {
+    tail = tail.next;
+    n += 1;
+    push('统计长度：tail 顺着 next 前进到节点 ' + tail.val + '，当前计数 n = ' + n + '。');
+  }
+  push('tail 已经走到链表末尾（tail.Next = nil），长度 n = ' + n + '，tail 停在节点 ' + tail.val + '。');
+
+  k = K % n;
+  push('先取模消掉整圈：k = ' + K + ' % n = ' + K + ' % ' + n + ' = ' + k +
+    '。因为向右旋转 n 次等于没转，而本题 k 可以大到 2×10^9，取模后真正要移动的步数一定小于 n。');
+
+  if (k === 0) {
+    push('k = 0，等于不旋转，直接返回 head 即可。', { done: true });
+    return steps;
+  }
+
+  tail.next = nodes[0];
+  ring = true;
+  push('把尾节点 ' + tail.val + ' 的 Next 指向头节点 ' + nodes[0].val + '，链表暂时变成一个环。成环是为了能顺着 next 从任意位置继续走，从而一趟定位断点。');
+
+  newTail = nodes[0];
+  for (let i = 1; i <= n - k - 1; i++) {
+    newTail = newTail.next;
+    push('找新尾节点：从 head 出发走第 ' + i + ' 步（共需 n - k - 1 = ' + (n - k - 1) + ' 步），当前落在节点 ' + newTail.val +
+      '。倒数第 k 个节点是倒数第 k + 1 个节点的后继，所以新尾节点要从 head 数第 n - k 个。');
+  }
+
+  newHead = newTail.next;
+  push('newTail 停在节点 ' + newTail.val + '，它的后继节点 ' + newHead.val + ' 就是旋转后的新头节点（原链表的倒数第 k = ' + k + ' 个节点）。');
+
+  newTail.next = null;
+  ring = false;
+  order = [];
+  let p = newHead;
+  while (p !== null) { order.push(p.id); p = p.next; }
+  push('断开环：newTail.Next = nil。链表变成 ' + order.map(function (id) { return nodes[id].val; }).join(' → ') +
+    '，正好是把每个节点向右移动 k = ' + k + ' 位的结果。全程只遍历了两趟（求长度、找断点），时间 O(n)，空间 O(1)。', { done: true });
+
+  return steps;
 }
 
-function renderSVG() {
-  const st = steps[Math.min(stepIdx, steps.length - 1)];
-  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
-  document.getElementById('stepDesc').textContent = st.desc;
-
-  const svg = document.getElementById('svg');
-  let html = `<defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="var(--text-secondary)"/>
-    </marker>
-    <marker id="arrowR" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="var(--red)"/>
-    </marker>
-  </defs>`;
-
-  // Arrows
-  for (let i = 0; i < st.vals.length - 1; i++) {
-    const isBreak = st.breakAt === i;
-    html += `<line x1="${pos[i].x + R + 2}" y1="${pos[i].y}" x2="${pos[i+1].x - R - 2}" y2="${pos[i+1].y}" stroke="${isBreak ? 'var(--red)' : 'var(--text-secondary)'}" stroke-width="${isBreak ? 3 : 2}" stroke-dasharray="${isBreak ? '6,3' : ''}" marker-end="url(#arrow)"/>`;
-  }
-
-  // Circular arrow (phase 1)
-  if (st.circular) {
-    const last = st.vals.length - 1;
-    html += `<path d="M${pos[last].x + R},${pos[last].y} Q${pos[last].x + R + 60},${pos[last].y} ${pos[last].x + R + 60},${pos[last].y - 40} L${pos[0].x - R - 60},${pos[last].y - 40} Q${pos[0].x - R - 60},${pos[0].y} ${pos[0].x - R},${pos[0].y}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrow)"/>`;
-    html += `<text x="${(pos[0].x + pos[last].x) / 2}" y="${pos[last].y - 50}" text-anchor="middle" font-size="12" fill="var(--orange)" font-weight="600">尾接首形成环</text>`;
-  }
-
-  // Break marker
-  if (st.breakAt >= 0 && st.breakAt < st.vals.length - 1) {
-    html += `<text x="${(pos[st.breakAt].x + pos[st.breakAt+1].x) / 2}" y="${pos[st.breakAt].y - 36}" text-anchor="middle" font-size="12" fill="var(--red)" font-weight="700">✂ 断开</text>`;
-  }
-
-  // Nodes
-  for (let i = 0; i < st.vals.length; i++) {
-    const isNewHead = st.phase >= 2 && i === 0;
-    const stroke = isNewHead ? 'var(--green)' : 'var(--blue)';
-    const fill = isNewHead ? 'rgba(64,192,87,0.15)' : 'var(--node-bg)';
-    html += `<circle cx="${pos[i].x}" cy="${pos[i].y}" r="${R}" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>
-      <text x="${pos[i].x}" y="${pos[i].y + 5}" text-anchor="middle" font-size="14" font-weight="700" fill="var(--text)" font-family="Consolas,monospace">${st.vals[i]}</text>`;
-    if (isNewHead) html += `<text x="${pos[i].x}" y="${pos[i].y - 36}" text-anchor="middle" font-size="12" fill="var(--green)" font-weight="700">新头</text>`;
-  }
-
-  svg.innerHTML = html;
-  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
+function arrowCol(label) {
+  const col = Demo.el('div', 'col');
+  col.appendChild(Demo.el('div', 'arrow', label || '→'));
+  col.appendChild(Demo.el('div', 'ptr ptr--dim', '&nbsp;'));
+  return col;
 }
 
-function reset() { stepIdx = 0; stopAuto(); renderSVG(); }
-function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; renderSVG(); }
-function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; renderSVG(); }
-function goEnd() { stopAuto(); stepIdx = steps.length - 1; renderSVG(); }
+function listRow(step, allOk) {
+  const row = Demo.el('div', 'row');
+  step.order.forEach(function (id) {
+    const col = Demo.el('div', 'col');
+    const node = Demo.el('div', 'll-node', Demo.esc(String(VALS[id])));
+    const labels = [];
 
-let autoRunning = false, autoTimer = null;
-function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
-function startAuto() { autoRunning = true; renderSVG(); autoStep(); }
-function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); renderSVG(); }
-function autoStep() {
-  if (!autoRunning) return;
-  if (stepIdx < steps.length - 1) { stepIdx++; renderSVG(); autoTimer = setTimeout(autoStep, 900); }
-  else stopAuto();
+    if (allOk) {
+      node.classList.add('is-ok');
+    } else if (id === step.newHead) {
+      node.classList.add('is-ok');
+    } else if (id === step.newTail) {
+      node.classList.add('is-active');
+    }
+    if (id === step.newHead) labels.push('newHead');
+    else if (id === step.newTail) labels.push('newTail');
+    else if (id === step.tail) labels.push('tail');
+
+    col.appendChild(node);
+    const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : '&nbsp;');
+    if (!labels.length) ptr.classList.add('ptr--dim');
+    else if (labels.indexOf('newTail') >= 0) ptr.classList.add('ptr--bad');
+    else if (labels.indexOf('newHead') >= 0) ptr.classList.add('ptr--ok');
+    col.appendChild(ptr);
+    row.appendChild(col);
+    row.appendChild(arrowCol());
+  });
+
+  const nilCol = Demo.el('div', 'col');
+  const nilNode = Demo.el('div', 'll-node', 'nil');
+  nilNode.style.borderStyle = 'dashed';
+  nilNode.style.color = 'var(--demo-muted)';
+  nilCol.appendChild(nilNode);
+  nilCol.appendChild(Demo.el('div', 'ptr ptr--dim', '&nbsp;'));
+  row.appendChild(nilCol);
+  return row;
 }
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') nextStep();
-  else if (e.key === 'ArrowLeft') prevStep();
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+
+Demo.create({
+  title: '65. 旋转链表 — 首尾相接成环，在正确位置断开',
+  info: '输入：head = [1, 2, 3, 4, 5]，k = 2。向右旋转 2 位后应为 [4, 5, 1, 2, 3]；关键是先求长度取模，再在环上找新尾节点断开。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 340,
+  legend: [
+    { color: 'var(--demo-accent)', label: 'newTail 新尾节点（断点）' },
+    { color: 'var(--demo-ok)', label: 'newHead 新头节点' },
+    { color: 'var(--demo-muted)', label: 'tail 原尾节点' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const listPanel = Demo.el('div', 'panel');
+    listPanel.style.width = '100%';
+    listPanel.appendChild(Demo.el('div', 'panel__title',
+      '链表（当前显示顺序）' + (step.ring ? '，此刻还在环上' : '')));
+    listPanel.appendChild(listRow(step, step.done));
+    ctx.stage.appendChild(listPanel);
+
+    if (step.ring) {
+      const ringRow = Demo.el('div', 'row');
+      ringRow.appendChild(Demo.el('div', 'arrow', '⟲'));
+      ringRow.appendChild(Demo.el('span', 'tag tag--info',
+        '环已形成：尾节点 → 头节点（' + VALS[step.tail] + ' → ' + VALS[step.order[0]] + '）'));
+      ctx.stage.appendChild(ringRow);
+    }
+
+    const status = Demo.el('div', 'row');
+    status.appendChild(Demo.el('span', 'tag tag--info', '链表长度 n = ' + step.n));
+    status.appendChild(Demo.el('span', 'tag',
+      '取模后 k = ' + (step.k === null ? '待计算' : step.k)));
+    if (step.tail !== null) status.appendChild(Demo.el('span', 'tag tag--violet', 'tail → 节点 ' + VALS[step.tail]));
+    if (step.newTail !== null) status.appendChild(Demo.el('span', 'tag tag--bad', 'newTail → 节点 ' + VALS[step.newTail]));
+    if (step.newHead !== null) status.appendChild(Demo.el('span', 'tag tag--ok', 'newHead → 节点 ' + VALS[step.newHead]));
+    if (step.done) status.appendChild(Demo.el('span', 'tag tag--ok', '结果 ' + step.order.map(function (id) { return VALS[id]; }).join(' → ')));
+    ctx.stage.appendChild(status);
+
+    const hint = Demo.el('div', 'panel');
+    hint.style.width = '100%';
+    hint.style.textAlign = 'center';
+    hint.innerHTML = step.ring && !step.done
+      ? '环上找断点：从 head 数 <strong>n - k</strong> 个节点，它就是新尾节点；<strong>newTail.Next</strong> 就是新头节点。'
+      : '思路：求长度 n → k = k % n → 尾接首成环 → 从 head 走 n - k - 1 步到新尾节点 → 断开环返回新头节点。';
+    ctx.stage.appendChild(hint);
+  }
 });
-buildSteps();
-reset();
 </script>
 </body>
 </html>

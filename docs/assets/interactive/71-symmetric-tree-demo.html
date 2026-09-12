@@ -1,104 +1,304 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>对称二叉树</title>
-<style>
-:root{--bg:#fff;--text:#333;--muted:#888;--btn-bg:#f0f0f0;--btn-hover:#e0e0e0;--sub-bg:#f5f5f5;--cell-border:#d0d0d0;--header:#222}
-@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--text:#ddd;--muted:#aaa;--btn-bg:#333;--btn-hover:#444;--sub-bg:#252540;--cell-border:#444;--header:#ddd}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
-.container{max-width:780px;width:100%}
-h2{text-align:center;color:var(--header);font-size:18px;margin-bottom:8px}
-.info-bar{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:6px;font-size:14px}
-.step-num{font-weight:bold;font-size:24px;color:#1976D2;min-width:40px;text-align:center}
-.step-desc{color:var(--muted);font-size:13px;max-width:550px;text-align:center}
-svg{display:block;margin:0 auto;width:100%;height:440px}
-.controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
-button{padding:8px 18px;border:1px solid var(--cell-border);border-radius:6px;background:var(--btn-bg);color:var(--text);font-size:13px;cursor:pointer;transition:0.15s}
-button:hover{background:var(--btn-hover)}
-button:active{transform:scale(0.96)}
-button:disabled{opacity:0.35;cursor:default}
-button.play-btn{background:#1976D2;color:#fff;border-color:#1565C0}
-</style>
+<title>71. 对称二叉树 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>对称二叉树 — 高亮对称位置节点对</h2>
-<div class="info-bar">
-<span class="step-num" id="stepNum">0</span>
-<span class="step-desc" id="stepDesc">树结构：[1,2,2,3,4,4,3] · 左右对称节点逐对检查</span>
-</div>
-<svg id="treeSvg" viewBox="0 0 750 420"></svg>
-<div class="controls">
-<button onclick="goStep(0)">重置</button>
-<button onclick="goStep(cur-1)" id="prevBtn">上步</button>
-<button onclick="goStep(cur+1)" id="nextBtn">下步</button>
-<button class="play-btn" onclick="toggleAuto()" id="playBtn">自动播放</button>
-<button onclick="goStep(steps.length-1)">跳到最后</button>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const nodes=[{x:375,y:50,val:1},{x:220,y:150,val:2},{x:530,y:150,val:2},{x:140,y:270,val:3},{x:300,y:270,val:4},{x:450,y:270,val:4},{x:610,y:270,val:3}];
-const edges=[[0,1],[0,2],[1,3],[1,4],[2,5],[2,6]];
-const pairs=[[1,2],[3,6],[4,5]];
+const LEVELS = [1, 2, 2, 3, 4, 4, 3];
 
-const steps=[
-{desc:'初始状态：树 [1,2,2,3,4,4,3] · 检查是否轴对称',hl:[],pair:-1},
-{desc:'步骤1：检查对称对 (2,2) — 值相等，继续递归',hl:[1,2],pair:0},
-{desc:'步骤2：检查对称对 (3,3) — 值相等(外侧)',hl:[3,6],pair:1},
-{desc:'步骤3：检查对称对 (4,4) — 值相等(内侧)',hl:[4,5],pair:2},
-{desc:'完成！二叉树是轴对称的',hl:[1,2,3,6,4,5],pair:-1}
-];
+const SLOTS = [];
+const SLOT_BY_ID = {};
+const NODES = {};
+(function build() {
+  function rec(i, id, depth) {
+    if (i >= LEVELS.length) return;
+    SLOTS.push({ id: id, i: i, depth: depth, val: LEVELS[i] });
+    SLOT_BY_ID[id] = SLOTS[SLOTS.length - 1];
+    if (LEVELS[i] === null) return;
+    NODES[id] = { id: id, val: LEVELS[i] };
+    rec(2 * i + 1, id + 'L', depth + 1);
+    rec(2 * i + 2, id + 'R', depth + 1);
+  }
+  rec(0, 'R', 0);
+})();
 
-let cur=0,autoTimer=null,autoRun=false;
-const svg=document.getElementById('treeSvg');
-
-function render(){
-const s=steps[cur];
-document.getElementById('stepNum').textContent=cur;
-document.getElementById('stepDesc').textContent=(cur===0?'初始状态 · ':'第'+cur+'步 · ')+s.desc;
-document.getElementById('prevBtn').disabled=cur<=0;
-document.getElementById('nextBtn').disabled=cur>=steps.length-1;
-
-let html='<defs><radialGradient id="gBlue"><stop offset="0%" stop-color="#42A5F5"/><stop offset="100%" stop-color="#1976D2"/></radialGradient><radialGradient id="gOr"><stop offset="0%" stop-color="#FFB74D"/><stop offset="100%" stop-color="#FF9800"/></radialGradient></defs>';
-html+='<rect width="750" height="420" fill="transparent"/>';
-for(const e of edges) {
-const a=nodes[e[0]],b=nodes[e[1]];
-html+=`<line x1="${a.x}" y1="${a.y+24}" x2="${b.x}" y2="${b.y-24}" stroke="#ccc" stroke-width="2"/>`;
-}
-// Draw symmetric axis
-html+=`<line x1="375" y1="40" x2="375" y2="310" stroke="#1976D2" stroke-dasharray="6,4" stroke-width="1" opacity="0.4"/>`;
-for(let i=0;i<nodes.length;i++){
-const n=nodes[i];const isHL=s.hl.includes(i);
-const isPair=s.pair>=0&&pairs[s.pair].includes(i);
-if(isHL||isPair){
-const fill=isPair?'url(#gOr)':'url(#gBlue)';
-html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="${fill}" stroke="#0D47A1" stroke-width="2.5"/>`;
-html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">${n.val}</text>`;
-}else if(s.pair===-1&&cur===steps.length-1){
-html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="#E8F5E9" stroke="#4CAF50" stroke-width="2"/>`;
-html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="#2E7D32" font-size="14" font-weight="bold">${n.val}</text>`;
-}else{
-html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="var(--sub-bg)" stroke="var(--cell-border)" stroke-width="2"/>`;
-html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="var(--text)" font-size="14">${n.val}</text>`;
-}
-}
-svg.innerHTML=html;
+function describe(id) {
+  const node = NODES[id];
+  if (node) return '节点 ' + node.val;
+  const parent = NODES[id.slice(0, -1)];
+  const side = id.charAt(id.length - 1) === 'L' ? '左' : '右';
+  return '节点 ' + parent.val + ' 的' + side + '孩子（null）';
 }
 
-function goStep(n){cur=Math.max(0,Math.min(n,steps.length-1));render()}
-function toggleAuto(){
-if(autoRun){clearInterval(autoTimer);autoRun=false;document.getElementById('playBtn').textContent='自动播放';}
-else{document.getElementById('playBtn').textContent='暂停';autoRun=true;if(cur>=steps.length-1)goStep(0);
-autoTimer=setInterval(()=>{if(cur<steps.length-1)goStep(cur+1);else toggleAuto()},900);}
+function buildSteps() {
+  const steps = [];
+  const stack = [];
+  const pairs = [];
+  const visited = [];
+
+  function snap(extra) {
+    const step = {
+      l: extra.l, r: extra.r, phase: extra.phase, note: extra.note,
+      stack: stack.slice(), pairs: pairs.map(function (p) { return { l: p.l, r: p.r, res: p.res }; }),
+      visited: visited.slice()
+    };
+    Object.keys(extra).forEach(function (k) { step[k] = extra[k]; });
+    steps.push(step);
+  }
+
+  snap({
+    l: null, r: null, phase: 'init',
+    note: '初始状态：root = [1,2,2,3,4,4,3]。根节点自身一定在对称轴上，所以问题转化为：根的左子树与右子树是否互为镜像，即比较 (left, right) 这一对。'
+  });
+
+  function mirror(lId, rId) {
+    const L = NODES[lId];
+    const R = NODES[rId];
+
+    if (!L && !R) {
+      visited.push(lId); visited.push(rId);
+      pairs.push({ l: lId, r: rId, res: true });
+      snap({
+        l: lId, r: rId, phase: 'bothNull', ret: true,
+        note: '取到 ' + describe(lId) + ' 与 ' + describe(rId) + '：两边同时为空，这一对位置结构一致，视为镜像，返回 true。'
+      });
+      return true;
+    }
+
+    if (!L || !R) {
+      if (L) visited.push(lId); else visited.push(rId);
+      pairs.push({ l: lId, r: rId, res: false });
+      snap({
+        l: lId, r: rId, phase: 'oneNull', ret: false,
+        note: '一边是 ' + describe(lId) + '，另一边是 ' + describe(rId) + '：一个空一个不空，结构就不镜像，直接返回 false。'
+      });
+      return false;
+    }
+
+    visited.push(lId); visited.push(rId);
+
+    if (L.val !== R.val) {
+      pairs.push({ l: lId, r: rId, res: false });
+      snap({
+        l: lId, r: rId, phase: 'valueDiff', ret: false,
+        note: '镜像位置上的两个节点值不同：' + L.val + ' ≠ ' + R.val + '，不满足镜像条件，返回 false。'
+      });
+      return false;
+    }
+
+    stack.push({ l: lId, r: rId });
+    snap({
+      l: lId, r: rId, phase: 'equal',
+      note: '镜像位置的两个节点值相等（都是 ' + L.val + '）。接下来要检查它们的孩子：外侧是「左的左 vs 右的右」，内侧是「左的右 vs 右的左」，两对都必须镜像。'
+    });
+
+    const outer = mirror(lId + 'L', rId + 'R');
+    if (!outer) {
+      stack.pop();
+      pairs.push({ l: lId, r: rId, res: false });
+      snap({
+        l: lId, r: rId, phase: 'fail', ret: false,
+        note: '外侧那一对不镜像，整对 (' + L.val + ', ' + R.val + ') 就是 false；同理 isSymmetric 会一路把 false 传回根。'
+      });
+      return false;
+    }
+
+    snap({
+      l: lId, r: rId, phase: 'outerOk',
+      note: '外侧（' + describe(lId + 'L') + ' 与 ' + describe(rId + 'R') + '）通过，继续检查内侧。'
+    });
+
+    const inner = mirror(lId + 'R', rId + 'L');
+    stack.pop();
+    pairs.push({ l: lId, r: rId, res: outer && inner });
+    snap({
+      l: lId, r: rId, phase: 'return', ret: outer && inner,
+      note: '节点 ' + L.val + ' 与节点 ' + R.val + '：外侧 ' + outer + '，内侧 ' + inner +
+        '，两者都成立才是镜像，返回 ' + (outer && inner) + '。'
+    });
+    return outer && inner;
+  }
+
+  const answer = mirror('RL', 'RR');
+
+  snap({
+    l: null, r: null, phase: 'done', ret: answer,
+    note: '根节点的左右子树互为镜像，isSymmetric 返回 ' + answer + '，这棵树' + (answer ? '是' : '不是') +
+      '轴对称的。每个节点最多被访问一次，时间 O(n)；递归栈深度为树高，空间 O(h)。'
+  });
+
+  return steps;
 }
-document.addEventListener('keydown',e=>{
-if(e.key==='ArrowRight')goStep(cur+1);if(e.key==='ArrowLeft')goStep(cur-1);
-if(e.key===' '){e.preventDefault();toggleAuto();}
+
+function treeSvg(step) {
+  const W = 680;
+  const pos = {};
+  SLOTS.forEach(function (s) {
+    const span = Math.pow(2, s.depth);
+    const idxInLevel = s.i - (span - 1);
+    pos[s.id] = { x: 60 + (W - 120) * (idxInLevel + 0.5) / span, y: 55 + s.depth * 95 };
+  });
+
+  const isLeftNode = function (id) { return id.charAt(1) === 'L'; };
+
+  let out = '';
+  out += '<line x1="' + (W / 2) + '" y1="18" x2="' + (W / 2) + '" y2="320" style="stroke:var(--demo-info);stroke-width:1.5;stroke-dasharray:6 5"/>';
+  out += '<text x="' + (W / 2) + '" y="14" text-anchor="middle" style="fill:var(--demo-info);font:700 12px sans-serif">对称轴</text>';
+  out += '<text x="150" y="14" text-anchor="middle" style="fill:var(--demo-accent);font:700 12px sans-serif">左子树</text>';
+  out += '<text x="530" y="14" text-anchor="middle" style="fill:var(--demo-pink);font:700 12px sans-serif">右子树</text>';
+
+  SLOTS.forEach(function (s) {
+    if (s.val === null) return;
+    [s.id + 'L', s.id + 'R'].forEach(function (childId) {
+      const child = SLOT_BY_ID[childId];
+      if (!child) return;
+      const a = pos[s.id];
+      const b = pos[childId];
+      const touched = step.visited.indexOf(s.id) >= 0 && step.visited.indexOf(childId) >= 0;
+      out += '<line x1="' + a.x + '" y1="' + (a.y + 26) + '" x2="' + b.x + '" y2="' + (b.y - 26) +
+        '" style="stroke:' + (touched ? 'var(--demo-ok)' : 'var(--demo-border)') + ';stroke-width:' + (touched ? 2.5 : 2) + '"/>';
+    });
+  });
+
+  const lId = step.l;
+  const rId = step.r;
+  if (lId && rId && NODES[lId] && NODES[rId]) {
+    const a = pos[lId];
+    const b = pos[rId];
+    const y = Math.min(a.y, b.y) - 40;
+    out += '<path d="M' + a.x + ' ' + (a.y - 27) + ' Q' + (W / 2) + ' ' + y + ' ' + b.x + ' ' + (b.y - 27) +
+      '" style="fill:none;stroke:var(--demo-warn);stroke-width:2;stroke-dasharray:6 4"/>';
+    out += '<text x="' + (W / 2) + '" y="' + (y - 6) + '" text-anchor="middle" style="fill:var(--demo-warn);font:700 12px sans-serif">比较这一对</text>';
+  }
+
+  SLOTS.forEach(function (s) {
+    const p = pos[s.id];
+    if (s.val === null) return;
+    const isCurL = lId === s.id;
+    const isCurR = rId === s.id;
+    const seen = step.visited.indexOf(s.id) >= 0;
+    const fill = isCurL ? 'var(--demo-accent)' : isCurR ? 'var(--demo-pink)'
+      : seen ? 'var(--demo-ok)' : 'var(--demo-subtle)';
+    const stroke = isCurL ? 'var(--demo-accent)' : isCurR ? 'var(--demo-pink)'
+      : seen ? 'var(--demo-ok)' : 'var(--demo-border)';
+    const text = (isCurL || isCurR || seen) ? 'var(--demo-card)' : 'var(--demo-text)';
+    out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="24" style="fill:' + fill + ';stroke:' + stroke +
+      ';stroke-width:' + ((isCurL || isCurR) ? 3.5 : 2) + (seen || isCurL || isCurR ? '' : ';opacity:0.45') + '"/>';
+    out += '<text x="' + p.x + '" y="' + (p.y + 7) + '" text-anchor="middle" style="fill:' + text +
+      ';font:700 18px sans-serif">' + s.val + '</text>';
+    if (isCurL || isCurR) {
+      out += '<text x="' + p.x + '" y="' + (p.y - 33) + '" text-anchor="middle" style="fill:var(--demo-warn);font:700 12px sans-serif">' +
+        (isLeftNode(s.id) ? '左' : '右') + '</text>';
+    }
+  });
+
+  return '<div style="width:100%"><svg viewBox="0 0 ' + W + ' 330" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+}
+
+Demo.create({
+  title: '71. 对称二叉树 — 镜像递归 isMirror(左, 右)',
+  info: '示例 1：root = [1,2,2,3,4,4,3]，输出 true。镜像的含义：两个节点的值相等，且「左的左 vs 右的右」「左的右 vs 右的左」都互为镜像。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 520,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前比较对的左侧节点' },
+    { color: 'var(--demo-pink)', label: '当前比较对的右侧节点' },
+    { color: 'var(--demo-ok)', label: '已确认镜像的位置' },
+    { color: 'var(--demo-info)', label: '对称轴' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const treePanel = Demo.el('div', 'panel');
+    treePanel.style.width = '100%';
+    treePanel.appendChild(Demo.el('div', 'panel__title', '二叉树 root = [1,2,2,3,4,4,3]（以根为对称轴）'));
+    const wrap = Demo.el('div');
+    wrap.style.width = '100%';
+    wrap.innerHTML = treeSvg(step);
+    treePanel.appendChild(wrap);
+    ctx.stage.appendChild(treePanel);
+
+    const row = Demo.el('div', 'row');
+    row.style.width = '100%';
+    row.style.alignItems = 'flex-start';
+
+    const pairPanel = Demo.el('div', 'panel');
+    pairPanel.appendChild(Demo.el('div', 'panel__title', '当前比较对（镜像位置）'));
+    const pairRow = Demo.el('div', 'row');
+    if (step.l && step.r) {
+      pairRow.appendChild(Demo.el('div', 'cell is-active', NODES[step.l] ? String(NODES[step.l].val) : 'null'));
+      pairRow.appendChild(Demo.el('div', 'arrow', '⟷'));
+      pairRow.appendChild(Demo.el('div', 'cell is-pink', NODES[step.r] ? String(NODES[step.r].val) : 'null'));
+    } else {
+      pairRow.appendChild(Demo.el('div', 'cell cell--empty', '—'));
+      pairRow.appendChild(Demo.el('div', 'arrow', '⟷'));
+      pairRow.appendChild(Demo.el('div', 'cell cell--empty', '—'));
+    }
+    pairPanel.appendChild(pairRow);
+    const verdict = Demo.el('div', 'row');
+    let tagText, tagClass;
+    if (step.phase === 'init') { tagText = '准备从根的左右孩子开始比较'; tagClass = 'tag'; }
+    else if (step.phase === 'done') { tagText = step.ret ? '结论：轴对称' : '结论：不对称'; tagClass = step.ret ? 'tag--ok' : 'tag--bad'; }
+    else if (step.phase === 'bothNull') { tagText = '两边都空，视为镜像'; tagClass = 'tag--ok'; }
+    else if (step.phase === 'oneNull') { tagText = '一边空一边非空 → false'; tagClass = 'tag--bad'; }
+    else if (step.phase === 'valueDiff') { tagText = '值不同 → false'; tagClass = 'tag--bad'; }
+    else if (step.phase === 'fail') { tagText = '外侧不镜像 → false'; tagClass = 'tag--bad'; }
+    else if (step.phase === 'equal') { tagText = '值相等，继续比较孩子'; tagClass = 'tag--ok'; }
+    else if (step.phase === 'outerOk') { tagText = '外侧通过，继续检查内侧'; tagClass = 'tag--ok'; }
+    else { tagText = step.ret === false ? '这一对不镜像 ✗' : '这一对镜像 ✓'; tagClass = step.ret === false ? 'tag--bad' : 'tag--ok'; }
+    verdict.appendChild(Demo.el('span', tagClass, tagText));
+    pairPanel.appendChild(verdict);
+
+    const stackPanel = Demo.el('div', 'panel');
+    stackPanel.appendChild(Demo.el('div', 'panel__title', '待检查的镜像对（栈顶 = 当前）'));
+    const box = Demo.el('div', 'stack');
+    if (!step.stack.length) {
+      box.appendChild(Demo.el('div', 'stack__item', '（空）'));
+    } else {
+      step.stack.forEach(function (frame, k) {
+        const item = Demo.el('div', 'stack__item', '(' + NODES[frame.l].val + ', ' + NODES[frame.r].val + ')');
+        if (k === step.stack.length - 1) item.classList.add('is-active');
+        box.appendChild(item);
+      });
+    }
+    stackPanel.appendChild(box);
+
+    const tablePanel = Demo.el('div', 'panel');
+    tablePanel.appendChild(Demo.el('div', 'panel__title', '已判定完的比较对'));
+    let html = '<table class="map-table"><tr><th>左</th><th>右</th><th>结果</th></tr>';
+    if (!step.pairs.length) {
+      html += '<tr><td colspan="3">（暂无）</td></tr>';
+    } else {
+      step.pairs.forEach(function (p, k) {
+        const active = k === step.pairs.length - 1 && step.phase !== 'done';
+        html += '<tr' + (active ? ' class="is-active"' : '') + '><td>' +
+          (NODES[p.l] ? NODES[p.l].val : 'null') + '</td><td>' + (NODES[p.r] ? NODES[p.r].val : 'null') + '</td><td>' +
+          (p.res ? '镜像 ✓' : '不镜像 ✗') + '</td></tr>';
+      });
+    }
+    html += '</table>';
+    tablePanel.appendChild(Demo.el('div', null, html));
+
+    row.appendChild(pairPanel);
+    row.appendChild(stackPanel);
+    row.appendChild(tablePanel);
+    ctx.stage.appendChild(row);
+
+    const result = Demo.el('div', 'panel',
+      step.phase === 'done'
+        ? 'isSymmetric(root) = <strong>' + step.ret + '</strong> &nbsp;<span class="tag ' + (step.ret ? 'tag--ok' : 'tag--bad') + '">' + (step.ret ? '轴对称' : '不对称') + '</span>'
+        : '根节点自己永远在对称轴上，只需要比较根的左子树与右子树这一对。');
+    result.style.width = '100%';
+    result.style.textAlign = 'center';
+    ctx.stage.appendChild(result);
+  }
 });
-render();
 </script>
 </body>
 </html>

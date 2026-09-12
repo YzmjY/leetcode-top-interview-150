@@ -1,279 +1,146 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --add-color: #388E3C; --sub-color: #E65100;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd;
-      --btn-bg: #333; --btn-hover: #444;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 20px;
-  }
-  .container { max-width: 680px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 10px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 12px;
-    margin-bottom: 8px; font-size: 13px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 22px; color: #1976D2; min-width: 35px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 12px; max-width: 420px; }
-
-  .chars-row {
-    display: flex; justify-content: center; gap: 10px; margin-bottom: 8px;
-  }
-  .char-cell {
-    width: 64px; height: 80px;
-    border: 2px solid var(--cell-border);
-    border-radius: 8px; background: var(--cell-bg);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    transition: border-color 0.25s, background 0.25s, transform 0.15s;
-    position: relative;
-  }
-  .char-cell .roman {
-    font-size: 28px; font-weight: bold; color: var(--text);
-  }
-  .char-cell .arabic {
-    font-size: 11px; color: var(--muted);
-  }
-  .char-cell.active { transform: scale(1.1); }
-  .char-cell.add { border-color: var(--add-color); background: #E8F5E9; }
-  .char-cell.sub { border-color: var(--sub-color); background: #FFF3E0; }
-  .char-cell.pending { border-color: var(--cell-border); background: var(--cell-bg); opacity: 0.5; }
-  @media (prefers-color-scheme: dark) {
-    .char-cell.add { background: #1a3e1a; }
-    .char-cell.sub { background: #3e2a1a; }
-  }
-
-  .op-row {
-    display: flex; justify-content: center; gap: 10px; margin-bottom: 4px;
-  }
-  .op-cell {
-    width: 64px; text-align: center; font-size: 13px; font-weight: bold;
-    min-height: 20px;
-  }
-  .op-add { color: var(--add-color); }
-  .op-sub { color: var(--sub-color); }
-
-  .compare-row {
-    display: flex; justify-content: center; gap: 10px; margin-bottom: 6px;
-  }
-  .compare-cell {
-    width: 64px; text-align: center; font-size: 10px; color: var(--muted);
-  }
-
-  .result-bar {
-    background: #F5F5F5; border-radius: 8px; padding: 8px 16px;
-    margin-bottom: 8px; text-align: center; font-family: monospace; font-size: 14px;
-  }
-  @media (prefers-color-scheme: dark) { .result-bar { background: #2a2a3e; } }
-  .result-bar .big {
-    font-size: 28px; font-weight: bold; color: #1976D2;
-    transition: all 0.3s;
-  }
-
-  .phase-badge {
-    display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px;
-    font-weight: bold;
-  }
-  .badge-add { background: #E8F5E9; color: #2E7D32; }
-  .badge-sub { background: #FFF3E0; color: #E65100; }
-  .badge-init { background: #eee; color: #666; }
-  @media (prefers-color-scheme: dark) {
-    .badge-add { background: #1a3e1a; color: #81C784; }
-    .badge-sub { background: #3e2a1a; color: #FFB74D; }
-    .badge-init { background: #444; color: #ccc; }
-  }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>17. 罗马数字转整数 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>罗马数字转整数 — 逐步交互演示</h2>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">/ 7 步 · 点击「下一步」开始</span>
-    <span class="phase-badge badge-init" id="phaseBdg">初始</span>
-  </div>
-
-  <div class="chars-row" id="charsRow"></div>
-  <div class="compare-row" id="compareRow"></div>
-  <div class="op-row" id="opRow"></div>
-
-  <div class="result-bar">
-    累计结果: <span class="big" id="resultVal">0</span>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">自动播放</button>
-    <button onclick="goStep(totalSteps)" id="endBtn">跳到最后</button>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const s = 'MCMXCIV';
-const vals = { M:1000, C:100, X:10, I:1, V:5, L:50, D:500 };
-const chars = s.split('');
-const n = chars.length;
-const totalSteps = n; // 7 steps for 7 chars
+const S = 'MCMXCIV';
+const VALUES = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
 
-const steps = [];
-let result = 0;
+function buildSteps() {
+  const chars = S.split('');
+  const n = chars.length;
+  const signs = new Array(n).fill('');
+  const steps = [];
+  let result = 0;
 
-steps.push({
-  activeIdx: -1, result: 0,
-  ops: chars.map(() => ''),
-  desc: '初始化: s = "MCMXCIV", result = 0'
-});
-
-for (let i = 0; i < n; i++) {
-  const cur = vals[chars[i]];
-  const next = i < n - 1 ? vals[chars[i + 1]] : 0;
-  const isSub = cur < next;
-  const delta = isSub ? -cur : cur;
-  result += delta;
-  const ops = chars.map(() => '');
-  ops[i] = isSub ? '-' : '+';
   steps.push({
-    activeIdx: i, result,
-    ops: [...ops],
-    desc: isSub
-      ? chars[i] + '(' + cur + ') < ' + chars[i+1] + '(' + next + '), 减法: result += (-' + cur + ') = ' + result
-      : (next === 0
-        ? chars[i] + '(' + cur + ') 是最后一个字符, 加法: result += ' + cur + ' = ' + result
-        : chars[i] + '(' + cur + ') > ' + chars[i+1] + '(' + next + '), 加法: result += ' + cur + ' = ' + result),
-    isSub
+    i: -1, result: 0, signs: signs.slice(), curVal: null, nextVal: null,
+    delta: 0, op: '', done: false,
+    note: `初始化：s = "${S}"，result = 0。从左到右逐个处理字符，每次把当前字符的数值和它右边相邻字符的数值比较一次，决定这一位是加还是减。`
   });
-}
 
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
+  for (let i = 0; i < n; i++) {
+    const curVal = VALUES[chars[i]];
+    const nextVal = i < n - 1 ? VALUES[chars[i + 1]] : 0;
+    const isSub = curVal < nextVal;
+    const delta = isSub ? -curVal : curVal;
+    result += delta;
+    signs[i] = isSub ? '-' : '+';
 
-// Build chars
-const charsRow = document.getElementById('charsRow');
-const opRow = document.getElementById('opRow');
-const compareRow = document.getElementById('compareRow');
-for (let i = 0; i < n; i++) {
-  const ch = document.createElement('div');
-  ch.className = 'char-cell';
-  ch.dataset.idx = i;
-  ch.innerHTML = '<span class="roman">' + chars[i] + '</span><span class="arabic">' + vals[chars[i]] + '</span>';
-  charsRow.appendChild(ch);
-
-  const op = document.createElement('div');
-  op.className = 'op-cell';
-  op.dataset.idx = i;
-  opRow.appendChild(op);
-
-  const cp = document.createElement('div');
-  cp.className = 'compare-cell';
-  cp.dataset.idx = i;
-  if (i < n - 1) {
-    cp.textContent = vals[chars[i]] + (vals[chars[i]] < vals[chars[i+1]] ? ' < ' : ' > ') + vals[chars[i+1]];
-  } else {
-    cp.textContent = vals[chars[i]] + ' (末尾)';
-  }
-  compareRow.appendChild(cp);
-}
-
-function render() {
-  const st = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = current === 0
-    ? '/ ' + totalSteps + ' 步 · 点击「下一步」开始'
-    : '第 ' + current + ' 步 · ' + st.desc;
-  document.getElementById('resultVal').textContent = st.result;
-
-  const bdg = document.getElementById('phaseBdg');
-  if (current === 0) { bdg.textContent = '初始'; bdg.className = 'phase-badge badge-init'; }
-  else if (st.isSub) { bdg.textContent = '减法'; bdg.className = 'phase-badge badge-sub'; }
-  else { bdg.textContent = '加法'; bdg.className = 'phase-badge badge-add'; }
-
-  document.querySelectorAll('.char-cell').forEach(el => {
-    el.classList.remove('active','add','sub','pending');
-    const i = parseInt(el.dataset.idx);
-    if (i < st.activeIdx) {
-      el.classList.add(st.ops[i] === '-' ? 'sub' : 'add');
-    } else if (i === st.activeIdx) {
-      el.classList.add('active', st.ops[i] === '-' ? 'sub' : 'add');
-    } else if (current === 0) {
-      el.classList.add('pending');
+    let note;
+    if (i === n - 1) {
+      note = `s[${i}] = '${chars[i]}'（${curVal}）已是最后一个字符，没有右邻居，按加法处理：result += ${curVal}，result = ${result}。`;
+    } else if (isSub) {
+      note = `比较 s[${i}] = '${chars[i]}'（${curVal}）与 s[${i + 1}] = '${chars[i + 1]}'（${nextVal}）：${curVal} < ${nextVal}，触发减法特例（如 IV、IX），所以这一位要减去：result += (-${curVal})，result = ${result}。`;
+    } else {
+      note = `比较 s[${i}] = '${chars[i]}'（${curVal}）与 s[${i + 1}] = '${chars[i + 1]}'（${nextVal}）：${curVal} ≥ ${nextVal}，不构成减法特例，正常累加：result += ${curVal}，result = ${result}。`;
     }
-  });
 
-  document.querySelectorAll('.op-cell').forEach(el => {
-    const i = parseInt(el.dataset.idx);
-    if (st.ops[i] === '+') { el.textContent = '+'; el.className = 'op-cell op-add'; }
-    else if (st.ops[i] === '-') { el.textContent = '-'; el.className = 'op-cell op-sub'; }
-    else { el.textContent = ''; el.className = 'op-cell'; }
-  });
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= totalSteps;
-  document.getElementById('endBtn').disabled = current >= totalSteps;
-}
-
-function goStep(n) {
-  current = Math.max(0, Math.min(n, totalSteps));
-  render();
-}
-
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer); autoRunning = false;
-    document.getElementById('playBtn').textContent = '自动播放';
-    document.getElementById('playBtn').style.background = '#1976D2';
-  } else {
-    autoRunning = true;
-    if (current >= totalSteps) goStep(0);
-    autoTimer = setInterval(() => {
-      if (current < totalSteps) goStep(current + 1);
-      else { clearInterval(autoTimer); autoRunning = false;
-        document.getElementById('playBtn').textContent = '自动播放'; }
-    }, 750);
+    steps.push({
+      i: i, result: result, signs: signs.slice(), curVal: curVal, nextVal: nextVal,
+      delta: delta, op: isSub ? '-' : '+', done: false, note: note
+    });
   }
+
+  steps.push({
+    i: n, result: result, signs: signs.slice(), curVal: null, nextVal: null,
+    delta: 0, op: '', done: true,
+    note: `字符串扫描完毕，只遍历了一次，没有使用额外与 n 相关的空间。最终整数结果 result = ${result}，与示例输出一致。`
+  });
+
+  return steps;
 }
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
-});
+function charColumn(ch, idx, step) {
+  const col = Demo.el('div', 'col');
+  const cell = Demo.el('div', 'cell cell--lg', Demo.esc(ch));
 
-render();
+  const processed = idx < step.i || step.done;
+  const current = idx === step.i;
+  const neighbour = !step.done && step.i >= 0 && (idx === step.i + 1);
+
+  if (current) cell.classList.add('is-active');
+  else if (processed) cell.classList.add(step.signs[idx] === '-' ? 'is-warn' : 'is-ok');
+  else if (neighbour) cell.classList.add('is-info');
+  col.appendChild(cell);
+
+  const value = VALUES[ch];
+  const valuePtr = Demo.el('div', 'ptr', String(value));
+  if (current) valuePtr.classList.add('ptr--info');
+  else if (neighbour) valuePtr.classList.add('ptr--info');
+  else valuePtr.classList.add('ptr--dim');
+  col.appendChild(valuePtr);
+
+  const op = Demo.el('div', 'ptr');
+  if (idx <= step.i || step.done) {
+    op.textContent = step.signs[idx] === '-' ? '−' + value : '+' + value;
+    op.classList.add(step.signs[idx] === '-' ? 'ptr--warn' : 'ptr--ok');
+  } else {
+    op.textContent = '待定';
+    op.classList.add('ptr--dim');
+  }
+  col.appendChild(op);
+
+  return col;
+}
+
+Demo.create({
+  title: '17. 罗马数字转整数 — 相邻比较，小值在左则做减法',
+  info: `输入：s = "${S}"（示例 5）。I=1、V=5、X=10、L=50、C=100、D=500、M=1000。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 300,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前处理的字符' },
+    { color: 'var(--demo-info)', label: '右边的比较对象' },
+    { color: 'var(--demo-ok)', label: '已累加（加法位）' },
+    { color: 'var(--demo-warn)', label: '已减去（减法位）' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title',
+      step.done ? '扫描结束：每一位的处理方式都已确定' : '从左到右扫描罗马数字（方块内是字符，下面依次是权值与该位运算）'));
+
+    const row = Demo.el('div', 'row');
+    S.split('').forEach(function (ch, idx) {
+      row.appendChild(charColumn(ch, idx, step));
+    });
+    panel.appendChild(row);
+    ctx.stage.appendChild(panel);
+
+    const expr = Demo.el('div', 'panel');
+    expr.style.width = '100%';
+    expr.style.textAlign = 'center';
+    if (step.done) {
+      expr.innerHTML = '每一位的加减号：' +
+        S.split('').map(function (ch, idx) {
+          return Demo.esc(step.signs[idx]) + VALUES[ch];
+        }).join(' &nbsp; ') +
+        ' &nbsp;=&nbsp; <strong>' + step.result + '</strong>' +
+        ' &nbsp;<span class="tag tag--ok">完成</span>';
+    } else if (step.i < 0) {
+      expr.innerHTML = '尚未开始比较：result 初始为 <strong>0</strong>';
+    } else {
+      const ch = S[step.i];
+      const nextCh = step.i + 1 < S.length ? S[step.i + 1] : null;
+      const cmp = nextCh === null
+        ? `s[${step.i}] = '${ch}' 是末尾字符`
+        : `${step.curVal} ${step.curVal < step.nextVal ? '&lt;' : '≥'} ${step.nextVal}`;
+      expr.innerHTML = `当前判定：${Demo.esc(cmp)} → 这一位 ${step.op === '-' ? '减去' : '加上'} ${step.curVal}` +
+        ` &nbsp;|&nbsp; result = <strong>${step.result}</strong>`;
+    }
+    ctx.stage.appendChild(expr);
+  }
+});
 </script>
 </body>
 </html>

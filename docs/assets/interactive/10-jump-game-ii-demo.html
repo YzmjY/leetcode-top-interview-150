@@ -1,352 +1,201 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --jump-blue: #1976D2; --range-green: #388E3C;
-    --active-orange: #FF9800; --landing-purple: #7B1FA2;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd;
-      --btn-bg: #333; --btn-hover: #444;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 20px;
-  }
-  .container { max-width: 620px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 12px; }
-
-  .progress-wrap {
-    margin-bottom: 14px; padding: 0 20px;
-  }
-  .progress-label {
-    font-size: 11px; color: var(--muted); margin-bottom: 2px;
-    display: flex; justify-content: space-between;
-  }
-  .progress-track {
-    height: 10px; background: var(--cell-bg);
-    border-radius: 5px; overflow: hidden;
-    position: relative;
-  }
-  .progress-fill {
-    height: 100%; background: linear-gradient(90deg, #1976D2, #42A5F5);
-    border-radius: 5px; transition: width 0.4s;
-  }
-
-  .cell-grid {
-    display: flex; justify-content: center; gap: 8px; margin-bottom: 10px;
-  }
-  .cell {
-    width: 72px; height: 72px;
-    background: var(--cell-bg);
-    border: 2px solid var(--cell-border);
-    border-radius: 8px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-size: 22px; font-weight: bold; color: var(--text);
-    position: relative;
-    transition: border-color 0.25s, background 0.25s, transform 0.15s;
-  }
-  .cell .sub {
-    font-size: 9px; font-weight: normal; color: var(--muted);
-    margin-top: 1px;
-  }
-  .cell .step-tag {
-    position: absolute; top: -7px; right: -7px;
-    background: #1976D2; color: #fff;
-    font-size: 9px; font-weight: bold; width: 20px; height: 20px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; transform: scale(0.5);
-    transition: opacity 0.25s, transform 0.25s;
-  }
-  .cell .step-tag.show { opacity: 1; transform: scale(1); }
-  .cell .jump-tag {
-    position: absolute; bottom: -9px; left: 50%; transform: translateX(-50%);
-    background: var(--landing-purple); color: #fff;
-    font-size: 9px; font-weight: bold; padding: 1px 6px;
-    border-radius: 8px;
-    opacity: 0; transition: opacity 0.3s;
-    white-space: nowrap;
-  }
-  .cell .jump-tag.show { opacity: 1; }
-  .cell.in-range { border-color: var(--range-green); background: rgba(56,142,60,0.08); }
-  .cell.active { border-color: var(--active-orange); transform: scale(1.06); background: rgba(255,152,0,0.1); }
-  .cell.landing { border-color: var(--landing-purple); background: rgba(123,31,162,0.1); }
-  .cell.jump-from { border-color: var(--jump-blue); background: rgba(25,118,210,0.1); }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    margin-bottom: 6px; font-size: 14px;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; }
-
-  .state-row {
-    display: flex; justify-content: center; gap: 20px;
-    background: rgba(25,118,210,0.06); border-radius: 8px;
-    padding: 8px 14px; margin-bottom: 10px; font-size: 13px;
-  }
-  .state-item { text-align: center; }
-  .state-val { font-size: 18px; font-weight: bold; color: var(--jump-blue); }
-  .state-val.jump { color: var(--landing-purple); }
-  .state-label { font-size: 11px; color: var(--muted); }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-
-  .legend {
-    display: flex; gap: 16px; justify-content: center; margin-top: 10px;
-    font-size: 12px; color: var(--muted); flex-wrap: wrap;
-  }
-  .legend-item { display: flex; align-items: center; gap: 5px; }
-  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10. 跳跃游戏 II - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>跳跃游戏 II — 逐步交互演示</h2>
-
-  <div class="progress-wrap">
-    <div class="progress-label">
-      <span>当前跳跃可覆盖范围</span>
-      <span id="rangeLabel">0..0</span>
-    </div>
-    <div class="progress-track" id="progressTrack">
-      <div class="progress-fill" id="progressFill" style="width:0%"></div>
-    </div>
-  </div>
-
-  <div class="cell-grid" id="cellGrid"></div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">/ 4 步 · 点击「下一步」开始</span>
-  </div>
-
-  <div class="state-row">
-    <div class="state-item">
-      <div class="state-val" id="jumpsVal">0</div>
-      <div class="state-label">跳跃次数</div>
-    </div>
-    <div class="state-item">
-      <div class="state-val" id="farthestVal">0</div>
-      <div class="state-label">当前最远可达</div>
-    </div>
-    <div class="state-item">
-      <div class="state-val" id="curEndVal">0</div>
-      <div class="state-label">当前跳的边界</div>
-    </div>
-    <div class="state-item">
-      <div class="state-val jump" id="nextLandVal">--</div>
-      <div class="state-label">下一跳最优落点</div>
-    </div>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">⏮ 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">◀ 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 ▶</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">▶ 自动播放</button>
-    <button onclick="goStep(totalSteps)" title="跳到最终状态">⏭ 跳到最后</button>
-  </div>
-
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div> 当前扫描</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#388E3C"></div> 当前跳可达范围</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#7B1FA2"></div> 跳跃落脚点</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#1976D2"></div> 跳跃起点</div>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const nums = [2, 3, 1, 1, 4];
-const n = nums.length;
-const totalSteps = 4; // 0:init, 1:i=0, 2:i=1, 3:i=2
+const NUMS = [2, 3, 1, 1, 4];
 
-const steps = [];
-{
-  steps.push({ i: -1, val: null, jumps: 0, farthest: 0, curEnd: 0, nextLand: -1, isJump: false, desc: '初始化' });
-
-  let jumps = 0, farthest = 0, curEnd = 0, nextLand = -1, bestVal = -1;
-
+/* 把跳跃看成 BFS：layer[i] = 从 0 到 i 的最少跳跃次数（-1 表示不可达） */
+function bfsLayers(nums) {
+  const n = nums.length;
+  const layer = [];
+  for (let i = 0; i < n; i++) layer.push(-1);
+  layer[0] = 0;
   for (let i = 0; i < n; i++) {
-    // Find best landing spot within current range
-    if (i + nums[i] > bestVal) {
-      bestVal = i + nums[i];
-      nextLand = i;
-    }
-    farthest = Math.max(farthest, i + nums[i]);
-
-    let isJump = false;
-    if (i === curEnd && i < n - 1) {
-      jumps++;
-      curEnd = farthest;
-      isJump = true;
-    }
-
-    let desc;
-    if (isJump) {
-      desc = `i=${i} 到达边界 → 跳跃! jumps=${jumps}, curEnd=${curEnd}, 落脚点=索引${nextLand} (值${nums[nextLand]})`;
-    } else {
-      desc = `i=${i} nums[${i}]=${nums[i]} · farthest=max(${farthest - nums[i] === i ? farthest - nums[i] : farthest > i + nums[i] ? farthest : farthest},${i}+${nums[i]})=${farthest}`;
-    }
-
-    steps.push({ i, val: nums[i], jumps, farthest, curEnd, nextLand, isJump, desc });
-    if (curEnd >= n - 1 && i < n - 1) {
-      // We've reached the end, add one final summary step
+    if (layer[i] < 0) continue;
+    const to = Math.min(n - 1, i + nums[i]);
+    for (let j = i + 1; j <= to; j++) {
+      if (layer[j] < 0) layer[j] = layer[i] + 1;
     }
   }
+  return layer;
 }
 
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
+function buildSteps() {
+  const nums = NUMS;
+  const n = nums.length;
+  const layers = bfsLayers(nums);
+  const steps = [];
 
-// Build cells
-const cellGrid = document.getElementById('cellGrid');
-const cells = [];
-nums.forEach((val, i) => {
-  const div = document.createElement('div');
-  div.className = 'cell';
-  const reach = i + val;
-  div.innerHTML = `${val}<span class="sub">跳至${reach}</span><span class="step-tag"></span><span class="jump-tag"></span>`;
-  div.dataset.idx = i;
-  cellGrid.appendChild(div);
-  cells.push(div);
-});
+  let jumps = 0, curEnd = 0, curFarthest = 0;
 
-function render() {
-  const s = steps[current];
-
-  // Reset
-  cells.forEach((cell, i) => {
-    cell.classList.remove('in-range', 'active', 'landing', 'jump-from');
-    const tag = cell.querySelector('.step-tag');
-    tag.classList.remove('show');
-    tag.textContent = '';
-    const jtag = cell.querySelector('.jump-tag');
-    jtag.classList.remove('show');
-    jtag.textContent = '';
+  steps.push({
+    nums: nums, layers: layers, i: -1, jumps: jumps, curEnd: curEnd, curFarthest: curFarthest,
+    jumped: false, done: false,
+    note: '初始化：jumps = 0，curEnd = 0，curFarthest = 0。把跳跃看成逐层扩散——curEnd 是当前这一跳最多覆盖到的下标（本层右边界），curFarthest 是这一层里所有位置再跳一步能触达的最远处。站在最后一个下标上不需要再跳，所以循环只扫到 n - 2。'
   });
 
-  // Active
-  if (s.i >= 0) {
-    cells[s.i].classList.add('active');
-  }
+  for (let i = 0; i < n - 1; i++) {
+    const prevFarthest = curFarthest;
+    const cand = i + nums[i];
+    if (cand > curFarthest) curFarthest = cand;
 
-  // Range: 0..curEnd
-  if (current > 0) {
-    const prevStep = steps[current - 1];
-    // Show range for prev step's curEnd
-    const rangeEnd = current > 1 ? steps[current - 1].curEnd : s.curEnd;
-    for (let i = 0; i <= rangeEnd && i < n; i++) {
-      cells[i].classList.add('in-range');
+    let scanNote = `扫描 i = ${i}：nums[${i}] = ${nums[i]}，从这里再跳一步最远能到 i + nums[${i}] = ${i} + ${nums[i]} = ${cand}。`;
+    scanNote += cand > prevFarthest
+      ? `比原来的 curFarthest = ${prevFarthest} 更远，说明这一层里有个「跳板」能把下一层的边界推得更远，更新 curFarthest = ${cand}。`
+      : `没有超过原来的 curFarthest = ${prevFarthest}，这个跳板对下一层没有帮助，curFarthest 保持不变。`;
+
+    steps.push({
+      nums: nums, layers: layers, i: i, jumps: jumps, curEnd: curEnd, curFarthest: curFarthest,
+      jumped: false, done: false,
+      note: scanNote
+    });
+
+    if (i === curEnd) {
+      const oldEnd = curEnd;
+      jumps += 1;
+      curEnd = curFarthest;
+      const covers = curEnd >= n - 1;
+
+      let note = `i = ${i} 正好走到当前这一跳的边界 curEnd = ${oldEnd}：这个区间里所有落脚点都已考察完，已经没有别的选择，必须再跳一次。jumps 从 ${jumps - 1} 增加到 ${jumps}，新边界 curEnd = curFarthest = ${curEnd}。`;
+      note += covers
+        ? ` curEnd = ${curEnd} ≥ n - 1 = ${n - 1}，这一跳已经把终点罩住了，算法提前结束，不需要再往后扫。`
+        : ` 终点 n - 1 = ${n - 1} 还没被覆盖，继续考察下一层。`;
+
+      steps.push({
+        nums: nums, layers: layers, i: i, jumps: jumps, curEnd: curEnd, curFarthest: curFarthest,
+        jumped: true, done: false,
+        note: note
+      });
+
+      if (covers) break;
     }
   }
 
-  // Jump source and landing
-  if (s.isJump) {
-    // The jump source is at s.i
-    cells[s.i].classList.add('jump-from');
-    if (s.nextLand >= 0 && s.nextLand !== s.i) {
-      cells[s.nextLand].classList.add('landing');
-      const jtag = cells[s.nextLand].querySelector('.jump-tag');
-      jtag.textContent = '落脚点';
-      jtag.classList.add('show');
-    }
-  }
+  steps.push({
+    nums: nums, layers: layers, i: n - 1, jumps: jumps, curEnd: curEnd, curFarthest: curFarthest,
+    jumped: false, done: true,
+    note: `结论：共跳跃 ${jumps} 次。一次跳跃覆盖的下标构成一层，层数就是最少跳跃次数，所以数组里每个下标所需的跳数（下面每格的小字）与层数完全一致：` +
+      nums.map(function (v, k) { return k + '→' + layers[k] + '跳'; }).join('，') +
+      `。整个算法只扫描一遍数组，时间 O(n)，只用三个变量，空间 O(1)。`
+  });
 
-  // Show landing spots from previous jumps
-  for (let k = 1; k < current; k++) {
-    const sk = steps[k];
-    if (sk.isJump && sk.nextLand >= 0) {
-      const jtag = cells[sk.nextLand].querySelector('.jump-tag');
-      jtag.textContent = '第' + sk.jumps + '跳';
-      jtag.classList.add('show');
-    }
-  }
-
-  // Step tags
-  for (let t = 0; t < current && t < cells.length; t++) {
-    const tag = cells[t].querySelector('.step-tag');
-    tag.textContent = t + 1;
-    tag.classList.add('show');
-  }
-
-  // Progress bar
-  const pct = Math.min(100, Math.round((s.farthest / (n - 1)) * 100));
-  document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('rangeLabel').textContent = '0..' + (current > 0 ? steps[current - 1].curEnd : 0);
-
-  // Info
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = s.desc;
-  document.getElementById('jumpsVal').textContent = s.jumps;
-  document.getElementById('farthestVal').textContent = s.farthest;
-  document.getElementById('curEndVal').textContent = s.curEnd;
-  document.getElementById('nextLandVal').textContent = s.nextLand >= 0 ? s.nextLand + ' (值' + nums[s.nextLand] + ')' : '--';
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= totalSteps;
+  return steps;
 }
 
-function goStep(n) {
-  current = Math.max(0, Math.min(n, totalSteps));
-  render();
-}
+function arrayRow(step) {
+  const nums = step.nums;
+  const n = nums.length;
+  const row = Demo.el('div', 'row');
 
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer);
-    autoRunning = false;
-    document.getElementById('playBtn').textContent = '▶ 自动播放';
-    document.getElementById('playBtn').classList.remove('play-btn');
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-  } else {
-    document.getElementById('playBtn').textContent = '⏸ 暂停';
-    document.getElementById('playBtn').classList.add('play-btn');
-    document.getElementById('playBtn').style.background = '#1976D2';
-    document.getElementById('playBtn').style.color = '#fff';
-    autoRunning = true;
-    if (current >= totalSteps) goStep(0);
-    autoTimer = setInterval(() => {
-      if (current < totalSteps) goStep(current + 1);
-      else toggleAuto();
-    }, 700);
+  for (let idx = 0; idx < n; idx++) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(nums[idx]));
+
+    const inRange = idx <= step.curEnd;
+    const unreached = idx > step.curFarthest;
+
+    if (idx === step.i) cell.classList.add('is-active');
+    else if (unreached && !step.done) cell.classList.add('cell--dim');
+    else if (inRange) cell.classList.add('is-info');
+
+    if (idx === step.curFarthest && !step.done) cell.classList.add('is-warn');
+    if (idx === step.curEnd && !step.done && idx !== step.i) cell.classList.add('is-violet');
+    if (step.done) cell.classList.add('is-ok');
+
+    col.appendChild(cell);
+
+    const labels = [];
+    if (idx === step.i && !step.done) labels.push('i');
+    if (idx === step.curFarthest && !step.done) labels.push('curFarthest');
+    if (idx === step.curEnd && !step.done && idx !== step.i) labels.push('curEnd');
+
+    const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : '');
+    if (labels.length === 0) ptr.classList.add('ptr--dim');
+    else if (labels.indexOf('i') >= 0) ptr.classList.add('ptr--info');
+    else if (labels.indexOf('curFarthest') >= 0) ptr.classList.add('ptr--warn');
+    else ptr.classList.add('ptr--violet');
+    col.appendChild(ptr);
+
+    const layer = step.layers[idx];
+    const lptr = Demo.el('div', 'ptr', layer < 0 ? '不可达' : '第 ' + layer + ' 跳');
+    if (layer < 0) lptr.classList.add('ptr--dim');
+    else if (layer === 1) lptr.classList.add('ptr--info');
+    else if (layer === 2) lptr.classList.add('ptr--ok');
+    col.appendChild(lptr);
+
+    row.appendChild(col);
   }
+  return row;
 }
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+Demo.create({
+  title: '10. 跳跃游戏 II — 按层贪心，求最少跳跃次数',
+  info: '输入：nums = [2,3,1,1,4]（示例 1）。curEnd 划定当前这一跳的区间，curFarthest 记录该区间里跳板能触达的最远位置。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 320,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前扫描的 i' },
+    { color: 'var(--demo-info)', label: '当前这一跳可覆盖的区间（≤ curEnd）' },
+    { color: 'var(--demo-violet)', label: '本跳边界 curEnd' },
+    { color: 'var(--demo-warn)', label: '本层能触达的最远处 curFarthest' }
+  ],
+  render: function (step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const n = step.nums.length;
+
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title',
+      step.done ? '数组 nums（每个下标下面是到达它所需的最少跳跃次数）' : '数组 nums（正在考察本跳区间内的跳板）'));
+    panel.appendChild(arrayRow(step));
+    ctx.stage.appendChild(panel);
+
+    const state = Demo.el('div', 'row');
+    const vars = [
+      ['已跳次数 jumps', String(step.jumps)],
+      ['本跳边界 curEnd', String(step.curEnd)],
+      ['最远可达 curFarthest', String(step.curFarthest)]
+    ];
+    vars.forEach(function (it) {
+      const box = Demo.el('div', 'panel');
+      box.appendChild(Demo.el('div', 'panel__title', Demo.esc(it[0])));
+      box.appendChild(Demo.el('div', 'tag', Demo.esc(it[1])));
+      state.appendChild(box);
+    });
+    ctx.stage.appendChild(state);
+
+    const barPanel = Demo.el('div', 'panel');
+    barPanel.style.width = '100%';
+    barPanel.appendChild(Demo.el('div', 'panel__title', '目的地覆盖进度'));
+    const bar = Demo.el('div', 'bar');
+    bar.style.width = '100%';
+    const fill = Demo.el('div', 'bar__fill');
+    const covered = Math.min(n, step.curEnd + 1);
+    fill.style.width = Math.round((covered / n) * 100) + '%';
+    if (step.done) fill.style.background = 'var(--demo-ok)';
+    bar.appendChild(fill);
+    bar.appendChild(Demo.el('div', 'bar__label',
+      step.done ? '最少跳跃 ' + step.jumps + ' 次' : 'curEnd = ' + step.curEnd + ' / 目标 ' + (n - 1)));
+    barPanel.appendChild(bar);
+
+    const tags = Demo.el('div', 'row');
+    tags.appendChild(Demo.el('span', 'tag ' + (step.done ? 'tag--ok' : 'tag--info'),
+      step.done ? '答案 jumps = ' + step.jumps : '扫描中'));
+    if (step.jumped) tags.appendChild(Demo.el('span', 'tag tag--violet', '触发第 ' + step.jumps + ' 次跳跃'));
+    barPanel.appendChild(tags);
+
+    ctx.stage.appendChild(barPanel);
+  }
 });
-
-render();
 </script>
 </body>
 </html>

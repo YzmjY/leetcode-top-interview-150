@@ -3,203 +3,223 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>N皇后II - 回溯可视化</title>
-<style>
-:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#555;--border:#dee2e6;--accent:#7c3aed;--accent2:#a78bfa;--hover:#ede9fe;--green:#22c55e;--orange:#f59e0b;--blue:#3b82f6;--red:#ef4444;--btn-bg:#e5e7eb;--btn-txt:#374151;--cell:#fff;--cell-border:#d4d4d8;--cell-dark:#f1f5f9;--queen:#7c3aed;--attack:#fee2e2}
-.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--cell:#1e293b;--cell-border:#475569;--cell-dark:#334155;--queen:#a78bfa;--attack:#450a0a}
-@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--cell:#1e293b;--cell-border:#475569;--cell-dark:#334155;--queen:#a78bfa;--attack:#450a0a}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
-.container{width:100%;max-width:700px;background:var(--card);border-radius:8px;border:1px solid var(--border);padding:20px 24px}
-h2{font-size:1.1rem;font-weight:600;margin-bottom:6px;color:var(--accent)}
-.info-panel{display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:.85rem;color:var(--text2);flex-wrap:wrap}
-.info-panel .step{background:var(--accent);color:#fff;padding:3px 10px;border-radius:8px;font-weight:600;font-size:.8rem}
-.info-panel .desc{flex:1;min-width:200px}
-.board-area{display:flex;justify-content:center;align-items:center;height:420px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg)}
-.board{display:grid;grid-template-columns:repeat(4,64px);grid-template-rows:repeat(4,64px);gap:2px}
-.board .cell{width:64px;height:64px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:2rem;border:1px solid var(--cell-border);background:var(--cell);transition:all .15s;cursor:default;position:relative}
-.board .cell:nth-child(odd){background:var(--cell)}
-.board .cell:nth-child(even){background:var(--cell-dark)}
-.board .cell.attack{background:var(--attack)}
-.board .cell.has-queen{background:var(--accent);border-color:var(--accent2)}
-.board .cell.placed{animation:pop .3s}
-@keyframes pop{0%{transform:scale(.8)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
-.info-extra{display:flex;gap:16px;margin-top:8px;font-size:.8rem;color:var(--text2);align-items:center}
-.info-extra .found{color:var(--green);font-weight:700}
-.results-bar{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;min-height:24px}
-.results-bar .tag{background:var(--res-bg);border:1px solid var(--res-border);color:var(--green);padding:2px 8px;border-radius:6px;font-size:.75rem;font-family:monospace}
-.controls{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
-.controls button{background:var(--btn-bg);color:var(--btn-txt);border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:inherit;transition:all .15s}
-.controls button:hover{background:var(--hover);border-color:var(--accent)}
-.controls button:active{transform:scale(.96)}
-.controls button.playing{background:var(--accent);color:#fff;border-color:var(--accent)}
-.legend{display:flex;gap:14px;margin-top:6px;font-size:.72rem;color:var(--text2);flex-wrap:wrap}
-.legend span{display:flex;align-items:center;gap:4px}
-.legend .dot{width:10px;height:10px;border-radius:3px}
-</style>
+<title>105. N 皇后 II - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>105. N皇后II (n=4)</h2>
-<div class="info-panel">
-  <span class="step" id="stepLabel">步骤 1/20</span>
-  <span class="desc" id="stepDesc">开始在4x4棋盘上放置皇后</span>
-</div>
-<div class="board-area">
-  <div class="board" id="board"></div>
-</div>
-<div class="info-extra">
-  <span>已放置: <strong id="placedCount" style="color:var(--accent)">0</strong>/4</span>
-  <span>找到解法: <span class="found" id="foundCount">0</span></span>
-  <span style="color:var(--accent)" id="actionDesc"></span>
-</div>
-<div class="results-bar" id="resultsBar"></div>
-<div class="controls">
-  <button onclick="reset()">重置</button>
-  <button onclick="prevStep()">上步</button>
-  <button onclick="nextStep()">下步</button>
-  <button id="playBtn" onclick="togglePlay()">自动播放</button>
-  <button onclick="jumpEnd()">最后</button>
-</div>
-<div class="legend">
-  <span><span class="dot" style="background:var(--accent)"></span>皇后</span>
-  <span><span class="dot" style="background:var(--attack)"></span>攻击范围</span>
-  <span><span class="dot" style="background:var(--green)"></span>找到完整解法</span>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const N=4;
-const steps=[];
-const results=[];
-const board=Array.from({length:N},()=>Array(N).fill(0));
+const N = 4;
 
-function isSafe(board,row,col){
-  for(let i=0;i<row;i++)if(board[i][col]===1)return false;
-  for(let i=row-1,j=col-1;i>=0&&j>=0;i--,j--)if(board[i][j]===1)return false;
-  for(let i=row-1,j=col+1;i>=0&&j<N;i--,j++)if(board[i][j]===1)return false;
-  return true;
-}
+function buildSteps() {
+  const steps = [];
+  const board = [];
+  for (let i = 0; i < N; i++) board.push(new Array(N).fill(0));
 
-function genSteps(row){
-  if(row===N){
-    const config=board.map(r=>r.map(c=>c).join('')).join('|');
-    results.push(config);
-    steps.push({type:'found',row:N,col:-1,board:board.map(r=>[...r])});
-    return;
-  }
-  steps.push({type:'row_start',row,col:-1,board:board.map(r=>[...r])});
-  for(let col=0;col<N;col++){
-    const safe=isSafe(board,row,col);
-    steps.push({type:'check',row,col,safe,board:board.map(r=>[...r])});
-    if(safe){
-      board[row][col]=1;
-      steps.push({type:'place',row,col,board:board.map(r=>[...r])});
-      genSteps(row+1);
-      board[row][col]=0;
-      steps.push({type:'remove',row,col,board:board.map(r=>[...r])});
+  const cols = new Array(N).fill(false);
+  const diag1 = new Array(2 * N - 1).fill(false);
+  const diag2 = new Array(2 * N - 1).fill(false);
+  let count = 0;
+
+  function queens() {
+    const list = [];
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) if (board[r][c]) list.push([r, c]);
     }
+    return list;
   }
-  steps.push({type:'row_end',row,col:-1,board:board.map(r=>[...r])});
-}
-genSteps(0);
 
-let curStep=0,playId=null;
+  function snap(extra) {
+    return {
+      board: board.map(row => row.slice()),
+      cols: cols.slice(),
+      diag1: diag1.slice(),
+      diag2: diag2.slice(),
+      count,
+      attempt: extra.attempt == null ? null : extra.attempt,
+      conflict: extra.conflict == null ? [] : extra.conflict,
+      conflictIdx: extra.conflictIdx == null ? null : extra.conflictIdx,
+      phase: extra.phase,
+      note: extra.note
+    };
+  }
 
-function renderBoard(b){
-  const boardEl=document.getElementById('board');
-  boardEl.innerHTML='';
-  for(let r=0;r<N;r++){
-    for(let c=0;c<N;c++){
-      const cell=document.createElement('div');
-      cell.className='cell';
-      if(b[r][c]===1)cell.classList.add('has-queen');
-      if(b[r][c]===2)cell.classList.add('attack');
-      if(b[r][c]===1)cell.textContent='Q';
-      // alternate bg
-      if((r+c)%2===1)cell.style.background='var(--cell-dark)';
-      else cell.style.background='var(--cell)';
-      if(b[r][c]===2)cell.style.background='var(--attack)';
-      if(b[r][c]===1)cell.style.background='var(--accent)';
-      boardEl.appendChild(cell);
+  steps.push(snap({
+    phase: 'init',
+    note: `初始化：n = ${N}，棋盘为空，cols / diag1 / diag2 全部为 false。回溯按行放置，放好第 row 行才处理 row + 1 行，所以「不同行」这条约束天然满足，只需要用三个布尔数组检查列和两条对角线。`
+  }));
+
+  function backtrack(row) {
+    if (row === N) {
+      count++;
+      steps.push(snap({
+        phase: 'solution',
+        note: `row 走到 ${N}，说明 ${N} 个皇后全部放下且互不攻击，找到一个合法解，解法数 count = ${count}。然后返回上一层，继续尝试其它摆法。`
+      }));
+      return;
     }
-  }
-}
 
-function getAttackZones(b){
-  const zones=b.map(r=>[...r]);
-  for(let r=0;r<N;r++){
-    for(let c=0;c<N;c++){
-      if(b[r][c]===1){
-        // row
-        for(let cc=0;cc<N;cc++)if(zones[r][cc]===0)zones[r][cc]=2;
-        // col
-        for(let rr=0;rr<N;rr++)if(zones[rr][c]===0)zones[rr][c]=2;
-        // diag
-        for(let i=1;r-i>=0&&c-i>=0;i++)if(zones[r-i][c-i]===0)zones[r-i][c-i]=2;
-        for(let i=1;r-i>=0&&c+i<N;i++)if(zones[r-i][c+i]===0)zones[r-i][c+i]=2;
-        for(let i=1;r+i<N&&c-i>=0;i++)if(zones[r+i][c-i]===0)zones[r+i][c-i]=2;
-        for(let i=1;r+i<N&&c+i<N;i++)if(zones[r+i][c+i]===0)zones[r+i][c+i]=2;
+    for (let col = 0; col < N; col++) {
+      const d1 = row - col + N - 1;
+      const d2 = row + col;
+
+      let reason = null;
+      if (cols[col]) reason = { type: 'col', label: `第 ${col} 列已被占用（cols[${col}] = true）` };
+      else if (diag1[d1]) reason = { type: 'diag1', label: `正对角线索引 d1 = row − col + n − 1 = ${d1} 已被占用（diag1[${d1}] = true）` };
+      else if (diag2[d2]) reason = { type: 'diag2', label: `反对角线索引 d2 = row + col = ${d2} 已被占用（diag2[${d2}] = true）` };
+
+      if (reason) {
+        const conflictCells = [];
+        queens().forEach(([r, c]) => {
+          if (reason.type === 'col' && c === col) conflictCells.push([r, c]);
+          if (reason.type === 'diag1' && r - c === row - col) conflictCells.push([r, c]);
+          if (reason.type === 'diag2' && r + c === row + col) conflictCells.push([r, c]);
+        });
+        steps.push(snap({
+          attempt: [row, col], conflict: conflictCells, phase: 'conflict',
+          note: `尝试在第 ${row} 行第 ${col} 列放皇后：${reason.label}，与已放下的皇后冲突，这一列直接 continue 跳过，不做任何标记。`
+        }));
+        continue;
       }
+
+      board[row][col] = 1;
+      cols[col] = true;
+      diag1[d1] = true;
+      diag2[d2] = true;
+      steps.push(snap({
+        attempt: [row, col], conflictIdx: { cols: col, diag1: d1, diag2: d2 }, phase: 'place',
+        note: `第 ${row} 行第 ${col} 列与所有已放的皇后都不冲突（cols[${col}]、diag1[${d1}]、diag2[${d2}] 都是 false）：放下皇后，并把这三个位置标记为 true，然后递归处理第 ${row + 1} 行。`
+      }));
+
+      backtrack(row + 1);
+
+      board[row][col] = 0;
+      cols[col] = false;
+      diag1[d1] = false;
+      diag2[d2] = false;
+      steps.push(snap({
+        attempt: [row, col], conflictIdx: { cols: col, diag1: d1, diag2: d2 }, phase: 'remove',
+        note: `第 ${row} 行第 ${col} 列的分支已经探索完：撤销皇后，复位 cols[${col}]、diag1[${d1}]、diag2[${d2}]，回到第 ${row} 行尝试下一列。`
+      }));
     }
   }
-  return zones;
+
+  backtrack(0);
+
+  steps.push(snap({
+    phase: 'done',
+    note: `回溯结束，n = ${N} 时共有 ${count} 个不同的解法。搜索树的每条路径都对应一种摆法，冲突检查用三个布尔数组做到 O(1)，所以整体复杂度约为 O(n!)。`
+  }));
+
+  return steps;
 }
 
-function updateUI(){
-  const step=steps[curStep];
-  document.getElementById('stepLabel').textContent='步骤 '+(curStep+1)+'/'+steps.length;
-  let desc='',action='';
-  if(step.type==='row_start'){desc='进入第'+(step.row+1)+'行, 尝试放置皇后';action='';}
-  else if(step.type==='check'){desc='检查位置 ('+(step.row+1)+','+(step.col+1)+') '+(step.safe?'安全':'不安全(对角线/同列冲突)');action=step.safe?'安全':'冲突!';}
-  else if(step.type==='place'){desc='在第'+(step.row+1)+'行第'+(step.col+1)+'列放置皇后';action='放置皇后';}
-  else if(step.type==='remove'){desc='回溯: 撤销第'+(step.row+1)+'行皇后';action='撤销';}
-  else if(step.type==='found'){desc='找到完整解法!';action='找到解法!';}
-  else if(step.type==='row_end'){desc='第'+(step.row+1)+'行所有位置已尝试完毕';action='本行完成';}
-  else desc='开始搜索';
-  document.getElementById('stepDesc').textContent=desc;
-  document.getElementById('actionDesc').textContent=action;
-  // count placed queens
-  let placed=0;
-  step.board.forEach(r=>r.forEach(c=>{if(c===1)placed++;}));
-  document.getElementById('placedCount').textContent=placed;
-  // found solutions
-  const found=new Set();
-  for(let i=0;i<=curStep;i++){if(steps[i].type==='found')found.add(steps[i].board.map(r=>r.map(c=>c).join('')).join('|'));}
-  document.getElementById('foundCount').textContent=found.size;
-  const bar=document.getElementById('resultsBar');
-  bar.innerHTML=[...found].map(s=>'<span class="tag">解法</span>').join('');
-  // render board with attack zones
-  const display=step.board.map(r=>[...r]);
-  if(step.type==='place'||step.type==='check'){
-    const zones=getAttackZones(display);
-    for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(zones[r][c]===2&&display[r][c]===0)display[r][c]=2;
-  }
-  if(step.type==='found'){
-    const zones=getAttackZones(display);
-    for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(zones[r][c]===2&&display[r][c]===0)display[r][c]=2;
-  }
-  renderBoard(display);
+function attackedSet(queens) {
+  const set = {};
+  queens.forEach(([r, c]) => {
+    for (let i = 0; i < N; i++) set[r + ',' + i] = true;
+    for (let i = 0; i < N; i++) set[i + ',' + c] = true;
+    for (let k = -N; k <= N; k++) {
+      const r1 = r + k, c1 = c + k;
+      if (r1 >= 0 && r1 < N && c1 >= 0 && c1 < N) set[r1 + ',' + c1] = true;
+      const r2 = r + k, c2 = c - k;
+      if (r2 >= 0 && r2 < N && c2 >= 0 && c2 < N) set[r2 + ',' + c2] = true;
+    }
+  });
+  return set;
 }
-function reset(){curStep=0;stopPlay();updateUI();}
-function nextStep(){if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();}
-function prevStep(){if(curStep>0){curStep--;updateUI();}}
-function jumpEnd(){curStep=steps.length-1;stopPlay();updateUI();}
-function stopPlay(){if(playId){clearInterval(playId);playId=null;document.getElementById('playBtn').classList.remove('playing');document.getElementById('playBtn').textContent='自动播放';}}
-function togglePlay(){if(playId){stopPlay();return;}if(curStep>=steps.length-1)curStep=0;document.getElementById('playBtn').classList.add('playing');document.getElementById('playBtn').textContent='暂停';playId=setInterval(()=>{if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();},650);}
-document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}else if(e.key==='ArrowRight'){e.preventDefault();nextStep();}else if(e.key===' '){e.preventDefault();togglePlay();}});
-// build initial board
-function initBoard(){
-  const el=document.getElementById('board');
-  el.innerHTML='';
-  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
-    const cell=document.createElement('div');
-    cell.className='cell';
-    if((r+c)%2===1)cell.style.background='var(--cell-dark)';
-    el.appendChild(cell);
+
+function boardView(step) {
+  const queens = [];
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) if (step.board[r][c]) queens.push([r, c]);
   }
+  const attacked = attackedSet(queens);
+  const conflictKeys = {};
+  step.conflict.forEach(([r, c]) => { conflictKeys[r + ',' + c] = true; });
+
+  const grid = Demo.el('div', 'grid');
+  grid.style.gridTemplateColumns = 'repeat(' + N + ', 46px)';
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const cell = Demo.el('div', 'grid-cell', step.board[r][c] ? '♛' : '');
+      const isAttempt = step.attempt && step.attempt[0] === r && step.attempt[1] === c;
+      if (conflictKeys[r + ',' + c]) {
+        cell.classList.add('is-bad');
+      } else if (isAttempt && step.phase === 'conflict') {
+        cell.classList.add('is-bad');
+      } else if (step.board[r][c]) {
+        cell.classList.add(isAttempt ? 'is-active' : 'is-ok');
+      } else if (isAttempt) {
+        cell.classList.add('is-active');
+      } else if (attacked[r + ',' + c]) {
+        cell.classList.add('is-dim');
+      }
+      cell.style.fontSize = '20px';
+      grid.appendChild(cell);
+    }
+  }
+  return grid;
 }
-initBoard();
-updateUI();
+
+function markerRow(label, arr, activeIdx, tone) {
+  const row = Demo.el('div', 'row');
+  const tag = Demo.el('div', 'ptr ' + tone, label);
+  tag.style.minWidth = '58px';
+  row.appendChild(tag);
+  arr.forEach((v, i) => {
+    const cell = Demo.el('div', 'cell cell--sm', v ? 'T' : '·');
+    if (v) cell.classList.add('is-ok');
+    else cell.classList.add('cell--dim');
+    if (activeIdx === i) {
+      cell.classList.remove('is-ok');
+      cell.classList.add('is-active');
+    }
+    row.appendChild(cell);
+  });
+  return row;
+}
+
+Demo.create({
+  title: '105. N 皇后 II — 按行放置 + 列/对角线标记',
+  info: `输入：n = ${N}。每行放一个皇后，用 cols、diag1（row−col+n−1）、diag2（row+col）三个标记数组做 O(1) 冲突检查。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  legend: [
+    { color: 'var(--demo-accent)', label: '本步尝试 / 刚放下的格子' },
+    { color: 'var(--demo-ok)', label: '已放下的皇后' },
+    { color: 'var(--demo-danger)', label: '冲突的格子' },
+    { color: 'var(--demo-muted)', label: '被已有皇后攻击的格子' }
+  ],
+  stageHeight: 420,
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const top = Demo.el('div', 'row');
+    top.appendChild(boardView(step));
+
+    const side = Demo.el('div', 'col');
+    const statePanel = Demo.el('div', 'panel');
+    statePanel.appendChild(Demo.el('div', 'panel__title', '冲突标记数组（T = true）'));
+    const hi = step.conflictIdx || {};
+    statePanel.appendChild(markerRow('cols', step.cols, hi.cols == null ? null : hi.cols, 'ptr--violet'));
+    statePanel.appendChild(markerRow('diag1', step.diag1, hi.diag1 == null ? null : hi.diag1, 'ptr--info'));
+    statePanel.appendChild(markerRow('diag2', step.diag2, hi.diag2 == null ? null : hi.diag2, 'ptr--pink'));
+    side.appendChild(statePanel);
+    side.appendChild(Demo.el('span', 'tag tag--ok', '已找到解法数 count = ' + step.count));
+    top.appendChild(side);
+    ctx.stage.appendChild(top);
+
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.style.textAlign = 'center';
+    panel.appendChild(Demo.el('div', null,
+      '<span class="tag">正在处理第 ' + (step.phase === 'done' ? N + '（已结束）' : (step.attempt ? step.attempt[0] : 0)) + ' 行</span>' +
+      ' &nbsp; <span class="tag tag--info">d1 = row − col + n − 1 = ' + (step.attempt ? step.attempt[0] - step.attempt[1] + N - 1 : '—') + '</span>' +
+      ' &nbsp; <span class="tag tag--info">d2 = row + col = ' + (step.attempt ? step.attempt[0] + step.attempt[1] : '—') + '</span>'));
+    ctx.stage.appendChild(panel);
+  }
+});
 </script>
 </body>
 </html>

@@ -49,25 +49,42 @@
 
 ### 算法思路
 
-旋转排序数组中的最小值也就是**旋转点**（分界点）。关键思路是：
+**关键观察**：旋转后的数组由两段升序数组拼成，最小值恰好是第二段的开头（也就是旋转点）。整个数组「先增后降」至多一次，因此可以通过比较 `mid` 与某个边界来判断最小值在哪一侧。
 
-- 取 `mid`，比较 `nums[mid]` 和 `nums[right]`：
-  - 如果 `nums[mid] < nums[right]`，说明右半部分 `[mid, right]` 是有序的，最小值在左半部分（包括 mid）。
-  - 如果 `nums[mid] > nums[right]`，说明最小值在右半部分（mid 不可能是最小值）。
-- 不断收缩区间，最终 `left` 指向最小值。
+**与右端点比较**（本代码采用的方式）：
 
-这里的关键是比较 `nums[mid]` 和 `nums[right]`（而非 `nums[left]`），因为 `nums[right]` 可以明确作为旋转状态的参考。
+- 取 `mid = left + (right-left)/2`，比较 `nums[mid]` 与 `nums[right]`：
+  - 若 `nums[mid] < nums[right]`，则 `[mid, right]` 这一段是升序的，`nums[mid]` 是这一段的最小值。既然 `nums[mid]` 本身在候选区间内、且它右边没有更小的元素，最小值一定在 `[left, mid]` 中（**包括 mid**），令 `right = mid`。
+  - 若 `nums[mid] > nums[right]`，说明从 `mid` 到 `right` 存在「下降」，旋转点（最小值）落在 `(mid, right]` 内，`mid` 不可能是最小值，令 `left = mid + 1`。
+- 区间不断收缩，最终 `left == right` 指向最小值。
+
+**为什么正确（不变量论证）**：维护不变量「最小值在 `[left, right]` 内」。
+
+- 初始区间是整个数组，成立。
+- `nums[mid] < nums[right]` 时，`[mid, right]` 升序 ⇒ `nums[mid]` 是该段最小值 ⇒ `[mid+1, right]` 内任何元素都 `≥ nums[mid]`，而 `nums[mid]` 已被 `[left, mid]` 覆盖，故最小值一定在 `[left, mid]`，令 `right = mid` 保持不变量。
+- `nums[mid] > nums[right]` 时，`nums[right]` 比 `nums[mid]` 小，说明下降点在 `mid` 右侧，最小值必在 `(mid, right]`，令 `left = mid + 1` 保持不变量。
+- 循环终止时 `left == right`，区间只剩一个元素，它就是最小值。
+
+**为什么比较 `nums[right]` 而不是 `nums[left]`？** 因为 `nums[right]` 与旋转状态的关系更明确：`nums[mid] < nums[right]` 说明右端到中点这段已经回到升序，断点只可能在左侧。若改与 `nums[left]` 比较，在数组未旋转或断点位置特殊时无法单凭一侧判断，需要额外分情况。
 
 ### 复杂度分析
 
-- **时间复杂度**：O(log n)。
+- **时间复杂度**：O(log n)，每轮区间减半。
 - **空间复杂度**：O(1)。
 
 ### 关键点
 
 - 比较 `nums[mid]` 与 `nums[right]` 来判断有序性。
-- 当 `nums[mid] > nums[right]` 时，最小值一定在右边。
-- 当数组没有旋转（完全有序）时，算法也能正确返回 `nums[0]`。
+- 当 `nums[mid] > nums[right]` 时，最小值一定在右边（且 `mid` 自身可排除）。
+- 当数组没有旋转（完全有序）时，`nums[mid] < nums[right]` 始终成立，`right` 一路收缩到 0，最终返回 `nums[0]`。
+
+### 易错点 / 边界情况
+
+- **循环条件是 `left < right`**，返回 `nums[left]`；若用 `left <= right` 且返回 `nums[left]`，收缩到单元素后可能再一步越界。
+- **必须比较 `right` 而不是 `left`**：写成 `nums[mid] > nums[left]` 会在很多旋转情况下给出错误方向。
+- **单元素数组**：循环不执行，返回 `nums[0]`。
+- **旋转 n 次等价于未旋转**：数组完全升序，返回 `nums[0]`。
+- **元素互异**保证 `nums[mid] != nums[right]`（`mid < right`），不会出现需要单独处理的相等情形；若允许重复，则该判据需要改写。
 
 
 ### 交互演示

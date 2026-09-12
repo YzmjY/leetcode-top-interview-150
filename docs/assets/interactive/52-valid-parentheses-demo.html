@@ -3,210 +3,171 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>52. 有效的括号 - 可视化演示</title>
-<style>
-:root {
-  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
-  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
-  --btn-active-text: #fff; --stack-bg: #f1f3f5; --char-bg: #e9ecef;
-  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
-  --step-bg: #e7f5ff;
-}
-@media (prefers-color-scheme: dark) {
-:root {
-  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
-  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
-  --btn-active-text: #fff; --stack-bg: #1e1e3a; --char-bg: #2a2a4a;
-  --step-bg: #1a2a3a;
-}
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, "Microsoft YaHei", sans-serif;
-  background: var(--bg); color: var(--text);
-  display: flex; justify-content: center; padding: 20px;
-}
-.container {
-  width: 100%; max-width: 900px; height: 500px;
-  background: var(--card-bg); border-radius: 8px;
-  border: 1px solid var(--border); padding: 16px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.step-panel {
-  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: 14px;
-}
-.step-num { font-weight: 700; color: var(--btn-active); }
-.step-desc { flex: 1; margin-left: 16px; }
-.main-area { display: flex; gap: 16px; flex: 1; min-height: 0; }
-.char-grid {
-  flex: 0 0 420px; display: flex; flex-wrap: wrap; gap: 6px;
-  align-content: flex-start; overflow-y: auto;
-}
-.char-cell {
-  width: 44px; height: 44px; border-radius: 8px; background: var(--char-bg);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px; font-weight: 700; font-family: "Consolas", "Courier New", monospace;
-  border: 2px solid var(--border); transition: all 0.3s;
-}
-.char-cell.push { border-color: var(--blue); color: var(--blue); background: rgba(34,139,230,0.1); }
-.char-cell.pop { border-color: var(--green); color: var(--green); background: rgba(64,192,87,0.1); }
-.char-cell.error { border-color: var(--red); color: var(--red); background: rgba(250,82,82,0.1); }
-.char-cell.current { transform: scale(1.12); box-shadow: 0 0 8px rgba(13,110,253,0.4); }
-.stack-panel {
-  flex: 1; background: var(--stack-bg); border-radius: 8px; padding: 12px;
-  border: 1px solid var(--border); display: flex; flex-direction: column;
-}
-.stack-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
-.stack-items { flex: 1; display: flex; flex-direction: column-reverse; gap: 4px; overflow-y: auto; }
-.stack-item {
-  height: 32px; border-radius: 6px; background: var(--btn-bg);
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-family: "Consolas", monospace; font-size: 16px;
-  border: 1px solid var(--border); transition: all 0.3s;
-}
-.stack-item.enter { background: rgba(34,139,230,0.15); border-color: var(--blue); }
-.stack-item.leave { background: rgba(64,192,87,0.15); border-color: var(--green); }
-.controls {
-  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-}
-.controls button {
-  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--btn-bg); color: var(--text); cursor: pointer;
-  font-size: 13px; font-family: inherit; transition: all 0.15s;
-}
-.controls button:hover { background: var(--btn-hover); }
-.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
-.result-badge {
-  padding: 2px 10px; border-radius: 8px; font-weight: 700; font-size: 14px;
-}
-.result-badge.ok { background: rgba(64,192,87,0.15); color: var(--green); }
-.result-badge.fail { background: rgba(250,82,82,0.15); color: var(--red); }
-</style>
+<title>52. 有效的括号 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <div class="step-panel">
-    <span class="step-num" id="stepNum">步骤 0 / 6</span>
-    <span class="step-desc" id="stepDesc">初始状态</span>
-    <span class="result-badge" id="resultBadge"></span>
-  </div>
-  <div class="main-area">
-    <div class="char-grid" id="charGrid"></div>
-    <div class="stack-panel">
-      <div class="stack-label">栈 (顶部在上)</div>
-      <div class="stack-items" id="stackItems"></div>
-    </div>
-  </div>
-  <div class="controls">
-    <button onclick="reset()">重置</button>
-    <button onclick="prevStep()">上步</button>
-    <button onclick="nextStep()">下步</button>
-    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button onclick="goEnd()">跳到最后</button>
-  </div>
-</div>
+<script src="demo.js"></script>
 <script>
-const s = "()[]{}";
-const pairs = { '(': ')', '[': ']', '{': '}' };
-const steps = [];
-let stack = [];
-let stepIdx = -1;
+const S = '()[]{}';
+const PAIRS = { ')': '(', ']': '[', '}': '{' };
 
 function buildSteps() {
-  steps.length = 0;
-  stack = [];
-  steps.push({ idx: -1, stack: [...stack], desc: '初始状态', cells: Array(s.length).fill('default'), action: '' });
-  for (let i = 0; i < s.length; i++) {
-    const ch = s[i];
-    const cells = Array(s.length).fill('default');
-    cells[i] = 'current';
-    if ('([{'.includes(ch)) {
-      stack.push(ch);
-      cells[i] = 'current push';
-      steps.push({ idx: i, stack: [...stack], desc: `第 ${i + 1} 个字符 '${ch}' — 左括号，入栈`, cells: [...cells], action: 'push' });
-    } else {
-      const top = stack[stack.length - 1];
-      if (top && pairs[top] === ch) {
-        stack.pop();
-        cells[i] = 'current pop';
-        steps.push({ idx: i, stack: [...stack], desc: `第 ${i + 1} 个字符 '${ch}' — 匹配栈顶 '${top}'，弹出`, cells: [...cells], action: 'pop' });
-      } else {
-        cells[i] = 'current error';
-        steps.push({ idx: i, stack: [...stack], desc: `第 ${i + 1} 个字符 '${ch}' — 不匹配！`, cells: [...cells], action: 'error' });
+  const stack = [];
+  const steps = [];
+
+  function snap(o) {
+    steps.push({
+      i: o.i,
+      ch: o.ch == null ? null : o.ch,
+      stack: stack.slice(),
+      phase: o.phase,
+      action: o.action,
+      note: o.note
+    });
+  }
+
+  snap({
+    i: 0, ch: null, phase: 'init', action: '初始化',
+    note: '初始状态：栈为空，i = 0 指向字符串第一个字符。map 里登记了「右括号 → 对应的左括号」，这样遇到右括号时能一眼看出该弹出哪个左括号。'
+  });
+
+  for (let i = 0; i < S.length; i++) {
+    const ch = S[i];
+    if (PAIRS[ch]) {
+      const want = PAIRS[ch];
+      if (stack.length === 0) {
+        snap({
+          i: i, ch: ch, phase: 'fail-empty', action: '返回 false',
+          note: '遇到右括号 ' + ch + '，但栈是空的，没有任何未闭合的左括号可以配对它 → 直接返回 false。'
+        });
+        return steps;
       }
+      const top = stack[stack.length - 1];
+      if (top !== want) {
+        snap({
+          i: i, ch: ch, phase: 'fail-mismatch', action: '返回 false',
+          note: '遇到右括号 ' + ch + '，栈顶是 ' + top + '，而它需要的是 ' + want + '，类型不匹配 → 直接返回 false。'
+        });
+        return steps;
+      }
+      stack.pop();
+      snap({
+        i: i, ch: ch, phase: 'pop', action: '弹出栈顶',
+        note: '遇到右括号 ' + ch + '：它需要的左括号是 ' + want + '，栈顶恰好是 ' + want + '，配对成功 → 弹出栈顶。剩余栈内容：' + (stack.length ? stack.join(' ') : '（空）') + '。'
+      });
+    } else {
+      stack.push(ch);
+      snap({
+        i: i, ch: ch, phase: 'push', action: '入栈',
+        note: '字符 ' + ch + ' 是左括号，先记下它，压入栈中等待配对。栈自下而上的内容：' + stack.join(' ') + '。'
+      });
     }
   }
-  const ok = stack.length === 0 && !steps.some(st => st.action === 'error');
-  const lastCells = Array(s.length).fill('default');
-  steps.push({ idx: s.length, stack: [...stack], desc: ok ? '栈为空，所有括号正确匹配！结果为 true' : '栈非空或存在不匹配，结果为 false', cells: lastCells, action: ok ? 'ok' : 'fail' });
-}
 
-function render() {
-  const st = steps[Math.min(stepIdx, steps.length - 1)];
-  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
-  document.getElementById('stepDesc').textContent = st.desc;
-  const badge = document.getElementById('resultBadge');
-  if (stepIdx === steps.length - 1) {
-    badge.className = 'result-badge ' + (st.action === 'ok' ? 'ok' : 'fail');
-    badge.textContent = st.action === 'ok' ? 'TRUE' : 'FALSE';
-  } else { badge.className = 'result-badge'; badge.textContent = ''; }
-
-  const grid = document.getElementById('charGrid');
-  grid.innerHTML = '';
-  s.split('').forEach((c, i) => {
-    const div = document.createElement('div');
-    div.className = 'char-cell ' + (st.cells[i] || 'default');
-    div.textContent = c;
-    grid.appendChild(div);
+  snap({
+    i: S.length, ch: null, phase: 'done', action: '返回 true',
+    note: '字符串扫描完毕，栈里还有 ' + stack.length + ' 个元素。'
+      + (stack.length === 0
+        ? '栈为空，说明每个左括号都按后进先出的顺序被正确的右括号闭合了 → 返回 true。'
+        : '栈不为空，说明还有左括号没被闭合 → 返回 false。')
   });
 
-  const si = document.getElementById('stackItems');
-  si.innerHTML = '';
-  st.stack.forEach((item, i) => {
-    const div = document.createElement('div');
-    div.className = 'stack-item';
-    if (stepIdx > 0) {
-      const prevStack = steps[stepIdx - 1].stack;
-      if (st.action === 'push' && i === st.stack.length - 1 && i >= prevStack.length) div.className += ' enter';
-      if (st.action === 'pop' && prevStack.length > st.stack.length && i === prevStack.length - 1) return;
+  return steps;
+}
+
+function render(step, idx, ctx) {
+  ctx.stage.innerHTML = '';
+
+  const charPanel = Demo.el('div', 'panel');
+  charPanel.style.width = '100%';
+  charPanel.appendChild(Demo.el('div', 'panel__title', '字符串 s（只含括号）'));
+  const charRow = Demo.el('div', 'row');
+  for (let k = 0; k < S.length; k++) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(S[k]));
+    if (step.i === k && step.ch != null) {
+      cell.classList.add(step.phase === 'pop' ? 'is-ok' : (step.phase.indexOf('fail') === 0 ? 'is-bad' : 'is-active'));
+    } else if (step.i > k || step.phase === 'done') {
+      cell.classList.add('is-info');
     }
-    div.textContent = item;
-    si.appendChild(div);
-  });
-  if (st.stack.length === 0) {
-    const empty = document.createElement('div');
-    empty.textContent = '(空)'; empty.style.cssText = 'color:var(--text-secondary);text-align:center;';
-    si.appendChild(empty);
+    col.appendChild(cell);
+    const ptr = Demo.el('div', 'ptr', step.i === k ? 'i' : String(k));
+    if (step.i !== k) ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    charRow.appendChild(col);
   }
+  charPanel.appendChild(charRow);
+  ctx.stage.appendChild(charPanel);
 
-  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
+  const row = Demo.el('div', 'row');
+  row.style.width = '100%';
+  row.style.alignItems = 'flex-start';
+
+  const stackPanel = Demo.el('div', 'panel');
+  stackPanel.appendChild(Demo.el('div', 'panel__title', '栈（自下而上入栈，上方为栈顶）'));
+  const stackBox = Demo.el('div', 'stack');
+  if (step.stack.length === 0) {
+    stackBox.appendChild(Demo.el('div', 'stack__item', '（空）'));
+  } else {
+    step.stack.forEach(function (c, k) {
+      const item = Demo.el('div', 'stack__item', Demo.esc(c));
+      if (k === step.stack.length - 1 && (step.phase === 'pop' || step.phase.indexOf('fail') === 0)) {
+        item.classList.add('is-active');
+      }
+      stackBox.appendChild(item);
+    });
+  }
+  stackPanel.appendChild(stackBox);
+  if (step.phase === 'pop') {
+    stackPanel.appendChild(Demo.el('div', 'ptr ptr--ok', '刚弹出：' + Demo.esc(step.ch)));
+  } else if (step.phase === 'push') {
+    stackPanel.appendChild(Demo.el('div', 'ptr', '刚入栈：' + Demo.esc(step.ch)));
+  }
+  row.appendChild(stackPanel);
+
+  const infoPanel = Demo.el('div', 'panel');
+  infoPanel.appendChild(Demo.el('div', 'panel__title', '本次操作'));
+  infoPanel.appendChild(Demo.el('div', null, '<span class="tag'
+    + (step.phase === 'init' ? ' tag--warn' : (step.phase.indexOf('fail') === 0 ? ' tag--bad' : ' tag--info')) + '">'
+    + Demo.esc(step.action) + '</span>'));
+  infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">当前字符：<code>'
+    + (step.ch == null ? '—' : Demo.esc(step.ch)) + '</code></div>'));
+  infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:6px">栈大小：<code>' + step.stack.length + '</code></div>'));
+  infoPanel.appendChild(Demo.el('div', null, step.phase === 'done'
+    ? '<div style="margin-top:8px">' + (step.stack.length === 0
+      ? '<span class="tag tag--ok">结果 true</span>'
+      : '<span class="tag tag--bad">结果 false</span>') + '</div>'
+    : ''));
+  row.appendChild(infoPanel);
+
+  ctx.stage.appendChild(row);
+
+  const mapPanel = Demo.el('div', 'panel');
+  mapPanel.style.width = '100%';
+  let t = '<table class="map-table" style="margin:0 auto"><tr><th>右括号</th><th>需要的左括号</th></tr>';
+  [')', ']', '}'].forEach(function (r) {
+    const active = step.ch === r;
+    t += '<tr' + (active ? ' class="is-active"' : '') + '><td>' + r + '</td><td>' + PAIRS[r] + '</td></tr>';
+  });
+  t += '</table>';
+  mapPanel.innerHTML = '<div class="panel__title">配对映射表 map</div>' + t;
+  ctx.stage.appendChild(mapPanel);
 }
 
-function reset() { stepIdx = 0; stopAuto(); render(); }
-function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; render(); }
-function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; render(); }
-function goEnd() { stopAuto(); stepIdx = steps.length - 1; render(); }
-
-let autoRunning = false, autoTimer = null;
-function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
-function startAuto() { autoRunning = true; render(); autoStep(); }
-function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); render(); }
-function autoStep() {
-  if (!autoRunning) return;
-  if (stepIdx < steps.length - 1) { stepIdx++; render(); autoTimer = setTimeout(autoStep, 800); }
-  else stopAuto();
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') nextStep();
-  else if (e.key === 'ArrowLeft') prevStep();
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+Demo.create({
+  title: '52. 有效的括号 — 栈 + 括号映射表',
+  info: '输入：s = "()[]{}"（示例 2），期望输出 true。左括号入栈；遇到右括号就检查栈顶是否为对应的左括号，匹配则弹出，否则立即返回 false；最终栈必须为空。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 360,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前字符（左括号，入栈）' },
+    { color: 'var(--demo-ok)', label: '配对成功，弹出栈顶' },
+    { color: 'var(--demo-danger)', label: '不匹配 / 栈为空，返回 false' }
+  ],
+  render: render
 });
-
-buildSteps();
-reset();
 </script>
 </body>
 </html>

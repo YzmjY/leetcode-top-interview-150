@@ -1,239 +1,184 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222; --sub-bg: #f5f5f5;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --calc-color: #1976D2; --ok-color: #388E3C;
-    --cycle-color: #FF9800;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
-      --sub-bg: #252540;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 16px 20px;
-  }
-  .container { max-width: 780px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
-  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
-    font-size: 14px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
-
-  .calc-chain { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; margin-bottom: 8px; }
-  .calc-node {
-    padding: 8px 14px; border: 2px solid var(--cell-border); border-radius: 8px;
-    font-size: 16px; font-weight: bold; background: var(--cell-bg); color: var(--text);
-    font-family: monospace;
-    transition: border-color 0.25s, background 0.25s;
-  }
-  .calc-node.cur { border-color: var(--calc-color); background: rgba(25,118,210,0.12); }
-  .calc-node.old { opacity: 0.5; }
-  .calc-arrow { font-size: 18px; color: var(--muted); font-weight: bold; }
-
-  .chain-history {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 6px; max-height: 160px; overflow-y: auto;
-    font-size: 13px; font-family: monospace;
-  }
-  .chain-entry { margin-bottom: 3px; color: var(--text); }
-  .chain-entry .highlight { color: var(--calc-color); font-weight: bold; }
-
-  .result-row {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 6px; font-size: 13px; text-align: center;
-  }
-  .result-row .highlight { font-weight: bold; font-size: 15px; }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-</style>
+<title>45. 快乐数 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>快乐数 — 平方和计算过程演示</h2>
-  <div class="sub-title">n=19 &rarr; 1²+9²=82 &rarr; 8²+2²=68 &rarr; ... &rarr; 1 (是快乐数!)</div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
-  </div>
-
-  <div class="calc-chain" id="calcChain"></div>
-
-  <div class="chain-history" id="chainHistory">
-    <div style="color:var(--muted);text-align:center;">计算过程将在此显示</div>
-  </div>
-
-  <div class="result-row">
-    <span style="color:var(--muted)">判定: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">&#x23EE; 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
-    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const startN = 19;
-// Pre-compute the chain
-const chain = [];
-let n = startN;
-while (n !== 1) {
+const N = 19;
+
+function squareSum(n) {
   const digits = String(n).split('').map(Number);
-  const squares = digits.map(d => d + '\u00B2');
-  const sum = digits.reduce((a, b) => a + b * b, 0);
-  chain.push({ n, digits, squares, sum, expr: squares.join('+') + '=' + sum });
-  n = sum;
+  const parts = digits.map(function (d) { return d * d; });
+  const sum = parts.reduce(function (a, b) { return a + b; }, 0);
+  return { digits: digits, parts: parts, sum: sum };
 }
-// Add final 1
-chain.push({ n: 1, digits: [1], squares: ['1'], sum: 1, expr: '1' });
 
-const steps = [];
+function buildSteps() {
+  const steps = [];
+  const seen = [];
+  const chain = [N];
+  let n = N;
+  let ok = null;
 
-function simulate() {
   steps.push({
-    desc: '初始状态 · n=19, 开始计算平方和',
-    phase: 'init', chainSoFar: [], result: 'init'
+    phase: 'init', n: n, seen: [], chain: chain.slice(), digits: [], parts: [], sum: null,
+    note: `从 n = ${N} 出发。哈希集合 seen 用来记录所有出现过的数；每算出一个新数，先看它是否已经在 seen 里——如果重复出现，说明计算过程进入了循环，永远到不了 1，就可以直接判定不是快乐数。`
   });
 
-  for (let i = 0; i < chain.length; i++) {
-    const c = chain[i];
+  while (n !== 1) {
+    const inSeen = seen.indexOf(n) >= 0;
+    if (inSeen) {
+      ok = false;
+      steps.push({
+        phase: 'cycle', n: n, seen: seen.slice(), chain: chain.slice(), digits: [], parts: [], sum: null,
+        note: `${n} 已经在 seen 集合中出现过，说明平方和序列从这里开始进入循环，永远无法到达 1，返回 false。这就是「无限循环」在算法里的精确含义：同一个数第二次出现。`
+      });
+      break;
+    }
+
+    seen.push(n);
     steps.push({
-      desc: '第' + (i+1) + '步: n=' + c.n + ', 各位数字: [' + c.digits.join(',') + '], 平方和: ' + c.expr,
-      phase: 'calc', chainSoFar: chain.slice(0, i + 1), curN: c.n,
-      result: c.n === 1 ? 'happy' : 'calculating'
+      phase: 'record', n: n, seen: seen.slice(), chain: chain.slice(), digits: [], parts: [], sum: null,
+      note: `当前数 ${n} 不在 seen 里，把它加入集合（现在集合里有 ${seen.length} 个数）。然后计算它每位数字的平方和，得到下一次的 n。`
+    });
+
+    const info = squareSum(n);
+    const prev = n;
+    n = info.sum;
+    chain.push(n);
+
+    steps.push({
+      phase: 'square', from: prev, n: n, seen: seen.slice(), chain: chain.slice(),
+      digits: info.digits, parts: info.parts, sum: info.sum,
+      note: `把 ${prev} 拆成各位数字 ${info.digits.join('、')}，分别平方后相加：${info.parts.join(' + ')} = ${info.sum}，所以下一个 n = ${info.sum}。` +
+        (n === 1 ? ` 这一步得到 1，循环条件 n != 1 不再成立，跳出去返回 true。` : ` 继续对 ${n} 重复同样的操作。`)
     });
   }
+
+  if (ok === null) ok = n === 1;
 
   steps.push({
-    desc: '最终得到 1! n=19 是快乐数 (无循环).',
-    phase: 'done', chainSoFar: [...chain], curN: 1,
-    result: 'happy'
+    phase: 'done', n: n, seen: seen.slice(), chain: chain.slice(), digits: [], parts: [], sum: null, ok: ok,
+    note: ok
+      ? `最终得到 1，说明 ${N} 是快乐数，返回 true。整条平方和序列是 ${chain.join(' → ')}。集合方法的时间复杂度是 O(log n)（每次要把数拆成位数），空间 O(log n)。还有个进阶写法：用快慢指针判圈，把空间降到 O(1)。`
+      : `计算进入循环 ${chain.slice(chain.indexOf(n)).join(' → ')}，永远到不了 1，返回 false。注意边界：不是快乐数时序列一定在有限步内出现重复，所以循环检测不会无限跑下去。`
   });
+
+  return steps;
 }
 
-simulate();
+function chainPanel(step) {
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.appendChild(Demo.el('div', 'panel__title', '平方和序列（每一步得到的新数接在右边）'));
+  const row = Demo.el('div', 'row');
+  step.chain.forEach(function (value, idx) {
+    if (idx > 0) row.appendChild(Demo.el('div', 'arrow', '→'));
+    const cell = Demo.el('div', 'cell', Demo.esc(value));
+    const isLast = idx === step.chain.length - 1;
+    if (isLast && step.phase !== 'init') cell.classList.add(step.phase === 'cycle' ? 'is-bad' : 'is-active');
+    else if (isLast && step.phase === 'init') cell.classList.add('is-active');
+    else cell.classList.add('is-ok');
+    row.appendChild(cell);
+  });
+  panel.appendChild(row);
+  return panel;
+}
 
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
+function computePanel(step) {
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.appendChild(Demo.el('div', 'panel__title', '本步在做：各位数字平方后相加'));
 
-const calcChainEl = document.getElementById('calcChain');
-const chainHistoryEl = document.getElementById('chainHistory');
-
-function render() {
-  const s = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = s.desc;
-
-  // Render chain history
-  chainHistoryEl.innerHTML = '';
-  if (s.chainSoFar.length === 0) {
-    chainHistoryEl.innerHTML = '<div style="color:var(--muted);text-align:center;">计算过程将在此显示</div>';
+  const row = Demo.el('div', 'row');
+  if (step.phase === 'square') {
+    step.digits.forEach(function (d, idx) {
+      if (idx > 0) row.appendChild(Demo.el('div', 'arrow', '+'));
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(d + '²'));
+      row.appendChild(cell);
+    });
+    row.appendChild(Demo.el('div', 'arrow', '='));
+    row.appendChild(Demo.el('div', 'cell cell--sm is-ok', Demo.esc(step.parts.join(' + '))));
+    row.appendChild(Demo.el('div', 'arrow', '='));
+    const cellSum = Demo.el('div', 'cell', Demo.esc(step.sum));
+    cellSum.classList.add('is-active');
+    row.appendChild(cellSum);
+  } else if (step.phase === 'record') {
+    row.appendChild(Demo.el('span', 'tag tag--info', `把 ${step.n} 记入 seen 集合`));
+  } else if (step.phase === 'cycle') {
+    row.appendChild(Demo.el('span', 'tag tag--bad', `${step.n} 重复出现，检测到循环`));
   } else {
-    s.chainSoFar.forEach((c, i) => {
-      const div = document.createElement('div');
-      div.className = 'chain-entry';
-      div.innerHTML = 'n=' + c.n + ' &rarr; ' + c.expr;
-      if (i === s.chainSoFar.length - 1 && (s.result === 'calculating' || s.result === 'happy')) {
-        div.innerHTML = '<span class="highlight">n=' + c.n + '</span> &rarr; ' + c.expr;
-      }
-      chainHistoryEl.appendChild(div);
+    row.appendChild(Demo.el('span', 'tag tag--ok', 'n = 1，过程结束'));
+  }
+  panel.appendChild(row);
+  return panel;
+}
+
+function seenPanel(step) {
+  const panel = Demo.el('div', 'panel');
+  panel.appendChild(Demo.el('div', 'panel__title', '哈希集合 seen：出现过的数'));
+  const row = Demo.el('div', 'row');
+  if (step.seen.length === 0) {
+    row.appendChild(Demo.el('span', 'tag tag--info', '（空）'));
+  } else {
+    step.seen.forEach(function (value) {
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(value));
+      if (value === step.n) cell.classList.add(step.phase === 'cycle' ? 'is-bad' : 'is-active');
+      else cell.classList.add('is-info');
+      row.appendChild(cell);
     });
   }
+  panel.appendChild(row);
+  return panel;
+}
 
-  // Render calc chain as visual nodes
-  calcChainEl.innerHTML = '';
-  if (s.chainSoFar.length > 0) {
-    s.chainSoFar.forEach((c, i) => {
-      const node = document.createElement('div');
-      node.className = 'calc-node ' + (i === s.chainSoFar.length - 1 ? 'cur' : 'old');
-      node.textContent = c.n;
-      calcChainEl.appendChild(node);
-      if (i < s.chainSoFar.length - 1) {
-        const arrow = document.createElement('span');
-        arrow.className = 'calc-arrow';
-        arrow.textContent = '\u2192';
-        calcChainEl.appendChild(arrow);
-      }
-    });
+Demo.create({
+  title: '45. 快乐数 — 哈希集合检测平方和循环',
+  info: `输入：n = ${N}（示例 1，输出 true）。反复把 n 替换成各位数字的平方和，同时用集合 seen 记住出现过的数，一旦重复就说明进入了死循环。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 360,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前得到的数' },
+    { color: 'var(--demo-ok)', label: '已经走过的数' },
+    { color: 'var(--demo-danger)', label: '重复出现，检测到循环' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    ctx.stage.appendChild(chainPanel(step));
+
+    const row = Demo.el('div', 'row');
+    row.style.width = '100%';
+    row.style.alignItems = 'flex-start';
+    const compute = computePanel(step);
+    compute.style.flex = '1';
+    row.appendChild(compute);
+    row.appendChild(seenPanel(step));
+    ctx.stage.appendChild(row);
+
+    const state = Demo.el('div', 'panel');
+    state.style.width = '100%';
+    state.style.textAlign = 'center';
+    if (step.phase === 'init') {
+      state.innerHTML = `n = ${N}，序列刚刚开始 &nbsp;<span class="tag tag--warn">seen 为空</span>`;
+    } else if (step.phase === 'square') {
+      state.innerHTML = `${step.from} → ${step.sum} &nbsp;<span class="tag tag--info">继续迭代</span>`;
+    } else if (step.phase === 'record') {
+      state.innerHTML = `${step.n} 不在集合中，安全 &nbsp;<span class="tag tag--ok">加入 seen</span>`;
+    } else if (step.phase === 'cycle') {
+      state.innerHTML = `${step.n} 重复出现，序列进入循环 &nbsp;<span class="tag tag--bad">返回 false</span>`;
+    } else {
+      state.innerHTML = `n = 1，是快乐数 &nbsp;<span class="tag tag--ok">返回 true</span>`;
+    }
+    ctx.stage.appendChild(state);
   }
-
-  const rt = document.getElementById('resultText');
-  if (s.result === 'happy') { rt.textContent = 'true - 是快乐数!'; rt.style.color = '#388E3C'; }
-  else if (s.result === 'init') { rt.textContent = '进行中...'; rt.style.color = '#1976D2'; }
-  else { rt.textContent = '计算中...'; rt.style.color = '#1976D2'; }
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
-}
-
-function goStep(n) {
-  current = Math.max(0, Math.min(n, steps.length - 1));
-  render();
-}
-
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer); autoRunning = false;
-    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-    document.getElementById('playBtn').classList.remove('play-btn');
-  } else {
-    autoRunning = true;
-    document.getElementById('playBtn').textContent = '\u23F8 暂停';
-    document.getElementById('playBtn').style.background = '#1976D2';
-    document.getElementById('playBtn').style.color = '#fff';
-    document.getElementById('playBtn').classList.add('play-btn');
-    if (current >= steps.length - 1) goStep(0);
-    autoTimer = setInterval(function() {
-      if (current < steps.length - 1) goStep(current + 1);
-      else toggleAuto();
-    }, 1200);
-  }
-}
-
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
 });
-
-render();
 </script>
 </body>
 </html>

@@ -1,305 +1,199 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222; --sub-bg: #f5f5f5;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --p-color: #1976D2; --w-color: #E53935;
-    --ok-color: #388E3C;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
-      --sub-bg: #252540;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 16px 20px;
-  }
-  .container { max-width: 840px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
-  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
-    font-size: 14px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
-
-  .rows { display: flex; flex-direction: column; gap: 6px; align-items: center; margin-bottom: 6px; }
-  .row { display: flex; align-items: center; gap: 8px; }
-  .row-label { font-size: 12px; font-weight: bold; width: 70px; text-align: right; }
-  .item-cells { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
-  .icell {
-    min-width: 52px; height: 48px; border: 2px solid var(--cell-border); border-radius: 8px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-size: 16px; font-weight: bold; background: var(--cell-bg); color: var(--text);
-    transition: border-color 0.25s, background 0.25s, transform 0.15s;
-  }
-  .icell .iidx { font-size: 9px; color: var(--muted); }
-  .icell.hlp { border-color: var(--p-color); background: rgba(25,118,210,0.12); transform: scale(1.06); z-index: 2; }
-  .icell.hlw { border-color: var(--w-color); background: rgba(229,57,53,0.12); transform: scale(1.06); z-index: 2; }
-  .icell.matched { border-color: var(--ok-color); background: rgba(56,142,60,0.12); }
-
-  .map-panel {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 6px; text-align: center; font-size: 13px;
-  }
-  .map-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
-  .map-entry {
-    padding: 4px 10px; border: 2px solid var(--cell-border); border-radius: 8px;
-    font-size: 14px; font-weight: bold; background: var(--cell-bg);
-    font-family: monospace;
-  }
-  .map-entry.hl { border-color: var(--p-color); background: rgba(25,118,210,0.12); }
-
-  .result-row {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 6px; font-size: 13px; text-align: center;
-  }
-  .result-row .highlight { font-weight: bold; font-size: 15px; }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-</style>
+<title>41. 单词规律 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>单词规律 — Pattern 映射演示</h2>
-  <div class="sub-title">pattern="abba", s="dog cat cat dog" &rarr; 检查 pattern 字符到单词的双向映射</div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
-  </div>
-
-  <div class="rows">
-    <div class="row">
-      <span class="row-label" style="color:var(--p-color)">pattern:</span>
-      <div class="item-cells" id="pCells"></div>
-    </div>
-    <div class="row">
-      <span class="row-label" style="color:var(--w-color)">words:</span>
-      <div class="item-cells" id="wCells"></div>
-    </div>
-  </div>
-
-  <div class="map-panel">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">映射表</div>
-    <div class="map-row" id="mapRow"><span style="color:var(--muted);font-size:12px;">{}</span></div>
-  </div>
-
-  <div class="result-row">
-    <span style="color:var(--muted)">判定: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">&#x23EE; 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
-    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const pattern = 'abba';
-const words = ['dog', 'cat', 'cat', 'dog'];
-const n = 4;
+const PATTERN = 'abba';
+const S = 'dog cat cat dog';
 
-const steps = [];
+function buildSteps() {
+  const words = S.split(' ');
+  const steps = [];
+  const p2w = {};
+  const w2p = {};
+  let failed = false;
+  let failAt = -1;
 
-function simulate() {
-  const p2w = {}, w2p = {};
+  function snap(extra) {
+    const step = {
+      p2w: Object.assign({}, p2w),
+      w2p: Object.assign({}, w2p),
+      note: extra.note
+    };
+    Object.keys(extra).forEach(function (key) {
+      if (key !== 'note') step[key] = extra[key];
+    });
+    steps.push(step);
+  }
 
-  steps.push({
-    desc: '初始状态 · pattern="abba", s="dog cat cat dog"',
-    phase: 'init', idx: -1,
-    p2w: {}, w2p: {}, pHL: [], wHL: [],
-    result: 'init'
+  snap({
+    phase: 'length', i: -1, pch: '', word: '', mappedW: null, mappedP: null,
+    conflictPW: false, conflictWP: false,
+    note: `先把 s 按空格切成单词数组：["${words.join('", "')}"]，共 ${words.length} 个。pattern 有 ${PATTERN.length} 个字母。长度不等时一定无法一一对应，所以第一步就是比较两个长度：${PATTERN.length} == ${words.length}，通过，继续往下。`
   });
 
-  for (let i = 0; i < n; i++) {
-    const pc = pattern[i], wd = words[i];
-    steps.push({
-      desc: '第' + i + '步: pattern[' + i + ']=' + pc + ', word[' + i + ']=' + wd,
-      phase: 'check', idx: i,
-      p2w: {...p2w}, w2p: {...w2p},
-      pHL: [[i, 'p']], wHL: [[i, 'w']],
-      result: 'checking'
+  for (let i = 0; i < PATTERN.length; i++) {
+    const pch = PATTERN[i];
+    const word = words[i];
+    const hasW = Object.prototype.hasOwnProperty.call(p2w, pch);
+    const hasP = Object.prototype.hasOwnProperty.call(w2p, word);
+    const mappedW = hasW ? p2w[pch] : null;
+    const mappedP = hasP ? w2p[word] : null;
+    const conflictPW = hasW && mappedW !== word;
+    const conflictWP = hasP && mappedP !== pch;
+
+    snap({
+      phase: conflictPW || conflictWP ? 'fail' : 'probe', i: i, pch: pch, word: word,
+      mappedW: mappedW, mappedP: mappedP, conflictPW: conflictPW, conflictWP: conflictWP,
+      note: `读入第 ${i} 组：pattern[${i}] = "${pch}"，words[${i}] = "${word}"。两条方向都要查：` +
+        (conflictPW
+          ? `p2w 里已经有 "${pch}" → "${mappedW}"，现在却要求它对应 "${word}"，同一个模式字母对应了两个不同单词，返回 false。`
+          : (conflictWP
+            ? `w2p 里已经有 "${word}" → "${mappedP}"，现在却要求它对应 "${pch}"，两个不同模式字母对应了同一个单词，返回 false。`
+            : (hasW
+              ? `p2w["${pch}"] = "${mappedW}"，与当前单词一致；`
+              : `p2w 中没有 "${pch}" 的记录；`) +
+              (hasP ? `w2p["${word}"] = "${mappedP}"，与当前模式字母一致，两组映射自洽。` : `w2p 中也没有 "${word}" 的记录，是一组全新的配对。`)))
     });
 
-    if (p2w[pc] !== undefined && p2w[pc] !== wd) {
-      steps.push({
-        desc: '冲突! ' + pc + '→' + p2w[pc] + ' 已有映射, 现在要映射到 ' + wd + ' &rarr; false',
-        phase: 'fail', idx: i,
-        p2w: {...p2w}, w2p: {...w2p},
-        pHL: [[i, 'p']], wHL: [[i, 'w']],
-        result: 'fail'
-      });
-      return;
-    }
-    if (w2p[wd] !== undefined && w2p[wd] !== pc) {
-      steps.push({
-        desc: '冲突! ' + wd + '→' + w2p[wd] + ' 已有映射, 现在要映射到 ' + pc + ' &rarr; false',
-        phase: 'fail', idx: i,
-        p2w: {...p2w}, w2p: {...w2p},
-        pHL: [[i, 'p']], wHL: [[i, 'w']],
-        result: 'fail'
-      });
-      return;
-    }
+    if (conflictPW || conflictWP) { failed = true; failAt = i; break; }
 
-    if (p2w[pc] === undefined) {
-      p2w[pc] = wd;
-      w2p[wd] = pc;
-      steps.push({
-        desc: '新映射: ' + pc + '→' + wd + ' (双向)',
-        phase: 'mapped', idx: i,
-        p2w: {...p2w}, w2p: {...w2p},
-        pHL: [[i, 'matched']], wHL: [[i, 'matched']],
-        result: 'checking'
-      });
+    const isNew = !hasW && !hasP;
+    p2w[pch] = word;
+    w2p[word] = pch;
+
+    snap({
+      phase: 'apply', i: i, pch: pch, word: word, mappedW: word, mappedP: pch,
+      conflictPW: false, conflictWP: false, isNew: isNew,
+      note: isNew
+        ? `写入双向映射：p2w["${pch}"] = "${word}"，w2p["${word}"] = "${pch}"。这两张表就是题目说的「双向连接的映射规律」。`
+        : `"${pch}" ⇄ "${word}" 已经记录过且完全一致，重复写入并不改变内容，继续下一组。`
+    });
+  }
+
+  snap({
+    phase: 'done', i: failed ? failAt : PATTERN.length, pch: '', word: '',
+    mappedW: null, mappedP: null, conflictPW: false, conflictWP: false, ok: !failed,
+    note: failed
+      ? `在第 ${failAt} 组发现映射矛盾，返回 false。可见「单词数量相同」只是必要条件，真正的判据是双向映射全程自洽。`
+      : `4 组配对全部检查完毕，两张映射表始终自洽，说明 s 遵循 pattern 的规律，返回 true。注意 "abba" 这种模式要求第 0、3 位是同一个单词，第 1、2 位是另一个相同单词，只满足「单词个数相同」是不够的。`
+  });
+
+  return steps;
+}
+
+function pairPanel(step) {
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.appendChild(Demo.el('div', 'panel__title', '按位配对：pattern 的字母 ↔ s 的单词'));
+
+  const row = Demo.el('div', 'row');
+  const words = S.split(' ');
+  for (let i = 0; i < PATTERN.length; i++) {
+    const col = Demo.el('div', 'col');
+    const isCur = step.i === i;
+    const isPast = i < step.i;
+    const badHere = step.phase === 'fail' || (step.phase === 'done' && step.ok === false && i === step.i);
+
+    const inner = Demo.el('div', 'row');
+    const cellP = Demo.el('div', 'cell', Demo.esc(PATTERN[i]));
+    const cellW = Demo.el('div', 'cell', Demo.esc(words[i]));
+    if (isCur && badHere) {
+      cellP.classList.add('is-bad');
+      cellW.classList.add('is-bad');
+    } else if (isCur) {
+      cellP.classList.add('is-active');
+      cellW.classList.add('is-active');
+    } else if (isPast) {
+      cellP.classList.add('is-ok');
+      cellW.classList.add('is-ok');
+    } else if (!isCur) {
+      cellP.classList.add('cell--dim');
+      cellW.classList.add('cell--dim');
+    }
+    inner.appendChild(cellP);
+    inner.appendChild(Demo.el('div', 'arrow', '↔'));
+    inner.appendChild(cellW);
+    col.appendChild(inner);
+
+    const ptr = Demo.el('div', 'ptr', '第 ' + i + ' 组');
+    if (!isCur) ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    row.appendChild(col);
+  }
+  panel.appendChild(row);
+  return panel;
+}
+
+function mapTable(title, map, order, curKey) {
+  const panel = Demo.el('div', 'panel');
+  panel.appendChild(Demo.el('div', 'panel__title', title));
+  let html = '<table class="map-table"><tr><th>键</th><th>映射到</th></tr>';
+  if (order.length === 0) {
+    html += '<tr><td colspan="2">（空）</td></tr>';
+  } else {
+    order.forEach(function (key) {
+      html += '<tr' + (key === curKey ? ' class="is-active"' : '') + '>' +
+        '<td>' + Demo.esc(key) + '</td><td>' + Demo.esc(map[key]) + '</td></tr>';
+    });
+  }
+  html += '</table>';
+  panel.appendChild(Demo.el('div', null, html));
+  return panel;
+}
+
+Demo.create({
+  title: '41. 单词规律 — 字符与单词的双向映射',
+  info: `输入：pattern = "${PATTERN}"，s = "${S}"（示例 1，输出 true）。先比长度，再用 p2w 和 w2p 两张表逐组检查。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 380,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前检查的一组配对' },
+    { color: 'var(--demo-ok)', label: '已检查通过 / 已建立的映射' },
+    { color: 'var(--demo-danger)', label: '映射冲突' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    ctx.stage.appendChild(pairPanel(step));
+
+    const row = Demo.el('div', 'row');
+    row.style.width = '100%';
+    row.style.alignItems = 'flex-start';
+    const curP = step.phase === 'probe' || step.phase === 'apply' || step.phase === 'fail' ? step.pch : null;
+    const curW = step.phase === 'probe' || step.phase === 'apply' || step.phase === 'fail' ? step.word : null;
+    row.appendChild(mapTable('p2w：pattern 字母 → 单词', step.p2w, Object.keys(step.p2w), curP));
+    row.appendChild(mapTable('w2p：单词 → pattern 字母', step.w2p, Object.keys(step.w2p), curW));
+    ctx.stage.appendChild(row);
+
+    const state = Demo.el('div', 'panel');
+    state.style.width = '100%';
+    state.style.textAlign = 'center';
+    if (step.phase === 'length') {
+      state.innerHTML = `<span class="tag tag--info">pattern 长度 ${PATTERN.length}</span> &nbsp; = &nbsp; <span class="tag tag--info">单词个数 ${S.split(' ').length}</span> &nbsp;<span class="tag tag--ok">长度检查通过</span>`;
+    } else if (step.phase === 'probe') {
+      const pw = step.mappedW === null ? 'p2w 无记录' : `p2w["${Demo.esc(step.pch)}"] = "${Demo.esc(step.mappedW)}" 一致`;
+      const wp = step.mappedP === null ? 'w2p 无记录' : `w2p["${Demo.esc(step.word)}"] = "${Demo.esc(step.mappedP)}" 一致`;
+      state.innerHTML = `<span class="tag tag--info">${pw}</span> &nbsp; <span class="tag tag--info">${wp}</span>`;
+    } else if (step.phase === 'apply') {
+      state.innerHTML = `<span class="tag tag--ok">${Demo.esc(step.pch)} ⇄ ${Demo.esc(step.word)}</span> 双向映射已记录`;
+    } else if (step.phase === 'fail') {
+      state.innerHTML = '<span class="tag tag--bad">映射矛盾，返回 false</span>';
     } else {
-      steps.push({
-        desc: '映射一致: ' + pc + '→' + wd + ' 与已有映射匹配!',
-        phase: 'mapped', idx: i,
-        p2w: {...p2w}, w2p: {...w2p},
-        pHL: [[i, 'matched']], wHL: [[i, 'matched']],
-        result: 'checking'
-      });
+      state.innerHTML = step.ok
+        ? `全部 ${PATTERN.length} 组配对检查通过 &nbsp;<span class="tag tag--ok">返回 true</span>`
+        : '发现矛盾 &nbsp;<span class="tag tag--bad">返回 false</span>';
     }
+    ctx.stage.appendChild(state);
   }
-
-  steps.push({
-    desc: '所有位置检查完毕! pattern 与 s 符合单词规律.',
-    phase: 'done', idx: -1,
-    p2w: {...p2w}, w2p: {...w2p},
-    pHL: [[0,'matched'],[1,'matched'],[2,'matched'],[3,'matched']],
-    wHL: [[0,'matched'],[1,'matched'],[2,'matched'],[3,'matched']],
-    result: 'success'
-  });
-}
-
-simulate();
-
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-const pEl = document.getElementById('pCells');
-pattern.split('').forEach((ch, i) => {
-  const cell = document.createElement('div');
-  cell.className = 'icell';
-  cell.id = 'pc' + i;
-  cell.innerHTML = ch + '<span class="iidx">[' + i + ']</span>';
-  pEl.appendChild(cell);
 });
-const wEl = document.getElementById('wCells');
-words.forEach((wd, i) => {
-  const cell = document.createElement('div');
-  cell.className = 'icell';
-  cell.id = 'wc' + i;
-  cell.innerHTML = wd + '<span class="iidx">[' + i + ']</span>';
-  wEl.appendChild(cell);
-});
-
-function render() {
-  const s = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = s.desc;
-
-  // Map display
-  const mapRow = document.getElementById('mapRow');
-  mapRow.innerHTML = '';
-  const entries = Object.entries(s.p2w);
-  if (entries.length === 0) {
-    mapRow.innerHTML = '<span style="color:var(--muted);font-size:12px;">{}</span>';
-  } else {
-    entries.forEach(([k, v]) => {
-      const el = document.createElement('span');
-      el.className = 'map-entry';
-      el.textContent = k + '→' + v;
-      mapRow.appendChild(el);
-    });
-  }
-
-  for (let i = 0; i < n; i++) {
-    document.getElementById('pc' + i).className = 'icell';
-    document.getElementById('wc' + i).className = 'icell';
-  }
-  if (s.pHL) s.pHL.forEach(([i, t]) => {
-    document.getElementById('pc' + i).className = 'icell ' + (t === 'p' ? 'hlp' : 'matched');
-  });
-  if (s.wHL) s.wHL.forEach(([i, t]) => {
-    document.getElementById('wc' + i).className = 'icell ' + (t === 'w' ? 'hlw' : 'matched');
-  });
-
-  const rt = document.getElementById('resultText');
-  if (s.result === 'success') { rt.textContent = 'true - 符合规律!'; rt.style.color = '#388E3C'; }
-  else if (s.result === 'fail') { rt.textContent = 'false - 不符合!'; rt.style.color = '#E53935'; }
-  else if (s.result === 'init') { rt.textContent = '进行中...'; rt.style.color = '#1976D2'; }
-  else { rt.textContent = '检查中...'; rt.style.color = '#1976D2'; }
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
-}
-
-function goStep(n) {
-  current = Math.max(0, Math.min(n, steps.length - 1));
-  render();
-}
-
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer); autoRunning = false;
-    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-    document.getElementById('playBtn').classList.remove('play-btn');
-  } else {
-    autoRunning = true;
-    document.getElementById('playBtn').textContent = '\u23F8 暂停';
-    document.getElementById('playBtn').style.background = '#1976D2';
-    document.getElementById('playBtn').style.color = '#fff';
-    document.getElementById('playBtn').classList.add('play-btn');
-    if (current >= steps.length - 1) goStep(0);
-    autoTimer = setInterval(function() {
-      if (current < steps.length - 1) goStep(current + 1);
-      else toggleAuto();
-    }, 1000);
-  }
-}
-
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
-});
-
-render();
 </script>
 </body>
 </html>

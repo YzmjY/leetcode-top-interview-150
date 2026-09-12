@@ -38,23 +38,42 @@
 
 ### 算法思路
 
-本题是二分查找中 **lowerBound** 的经典应用：寻找第一个 **大于等于** target 的位置。
+**关键观察**：如果 target 不存在，它会插在「所有小于 target 的元素之后、所有大于等于 target 的元素之前」。也就是说，插入位置恰好等于**第一个大于等于 target 的下标**（数组中严格小于 target 的元素个数）。这正是二分查找里的 **lowerBound**。题目要求 O(log n)，lowerBound 的标准二分即可。
 
-- 使用左闭右开区间 `[left, right)`，初始 `left = 0, right = len(nums)`。
-- 当 `nums[mid] < target` 时，mid 及其左边都小于 target，`left = mid + 1`。
-- 当 `nums[mid] >= target` 时，mid 可能是答案，`right = mid`。
-- 循环结束后，`left` 就是第一个 **大于等于** target 的位置，即插入位置。
+**算法步骤**（左闭右开区间 `[left, right)`）：
+
+1. 初始化 `left = 0, right = len(nums)`，表示答案在 `[left, right]` 内。注意 `right` 取 `len(nums)` 而不是 `len(nums)-1`，因为答案可能是「插到末尾」。
+2. 当 `left < right` 时，取 `mid = left + (right-left)/2`。
+3. 若 `nums[mid] < target`：`mid` 及其左边都不可能成为答案，令 `left = mid + 1`。
+4. 否则（`nums[mid] >= target`）：`mid` 有可能是答案，但它右边还可能更早的元素满足条件，令 `right = mid`。
+5. 循环结束时有 `left == right`，该位置就是答案。
+
+**不变量**：循环的每一轮开始前都满足「`nums[0..left-1]` 全部 `< target`」且「`nums[right..n-1]` 全部 `>= target`」，因此答案一定落在 `[left, right]` 中。第 3、4 步分别把不满足条件的半边排除，不变量得以保持。循环终止时 `left == right`，区间收缩为一个点，必为答案。
+
+### 为什么正确
+
+- 循环结束时 `left == right` 记作 `pos`，由不变量：`nums[pos-1] < target`（若 `pos > 0`），`nums[pos] >= target`（若 `pos < n`）。这正是「第一个大于等于 target」的定义，也就是 target 应插入的位置。
+- 若 `target` 存在于数组中，`pos` 就是它第一次出现的下标，符合「找到目标值返回其索引」。
 
 ### 复杂度分析
 
-- **时间复杂度**：O(log n)，标准的二分查找。
+- **时间复杂度**：O(log n)，每轮区间长度减半。
 - **空间复杂度**：O(1)，只使用了常数级别的额外空间。
 
 ### 关键点
 
 - 区间定义 `[left, right)`，所以 `right = len(nums)`。
 - 循环条件为 `left < right`，退出时 `left == right`。
+- `right = mid` 而不是 `mid - 1`，因为 `mid` 本身可能是答案。
 - 该模板天然处理了 target 大于所有元素的情况（返回 `len(nums)`）。
+
+### 易错点 / 边界情况
+
+- **target 小于所有元素**：`right` 会一路收缩到 0，返回 0。
+- **target 大于所有元素**：`left` 会一路加到 `n`，返回 `n`（`right` 初值必须是 `n`，否则这一情况无法表达）。
+- **不能用 `nums[mid] <= target` 收缩左边**：那样求到的是 upperBound，target 存在时会返回它之后的位置。
+- **单元素数组**：`[1]` 配合 target `0/1/2` 分别返回 `0/0/1`，模板都能覆盖。
+- **题目约束保证了数组无重复且 target 范围与元素同量级**，无需担心 `target+1` 之类的越界写法（本解法也没用到）。
 
 
 ### 交互演示

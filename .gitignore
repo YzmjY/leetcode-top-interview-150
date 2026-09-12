@@ -1,6 +1,9 @@
 # MkDocs build output
 site/
 
+# 仓库内校验工具（本地使用，不纳入版本库）
+verify/
+
 # Python
 __pycache__/
 *.py[cod]

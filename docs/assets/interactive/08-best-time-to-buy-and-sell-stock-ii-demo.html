@@ -1,388 +1,138 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --bar-bg: #e0e0e0;
-    --buy-blue: #1976D2; --sell-green: #388E3C;
-    --profit-gold: #FF9800;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd;
-      --btn-bg: #333; --btn-hover: #444;
-      --bar-bg: #333;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 20px;
-  }
-  .container { max-width: 640px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 10px; }
-
-  .chart-area {
-    display: flex; justify-content: center; align-items: flex-end;
-    gap: 16px; height: 160px; margin-bottom: 6px;
-    padding: 0 8px;
-    position: relative;
-  }
-  .bar-wrap {
-    display: flex; flex-direction: column; align-items: center;
-    width: 52px;
-  }
-  .bar {
-    width: 36px; border-radius: 6px 6px 0 0;
-    background: var(--bar-bg);
-    transition: background 0.3s;
-    position: relative;
-  }
-  .bar .step-tag {
-    position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
-    background: #1976D2; color: #fff;
-    font-size: 8px; font-weight: bold; width: 18px; height: 18px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; transition: opacity 0.25s;
-  }
-  .bar .step-tag.show { opacity: 1; }
-  .bar-label { font-size: 12px; font-weight: bold; margin-top: 4px; color: var(--text); }
-  .bar-day { font-size: 10px; color: var(--muted); }
-
-  .trade-arrow {
-    position: absolute; height: 2px; background: var(--sell-green);
-    transition: opacity 0.3s; opacity: 0;
-  }
-  .trade-arrow.show { opacity: 1; }
-  .trade-arrow::after {
-    content: ''; position: absolute; right: -6px; top: -4px;
-    border: 5px solid transparent; border-left: 8px solid var(--sell-green);
-  }
-
-  .cell-grid {
-    display: flex; justify-content: center; gap: 6px; margin-bottom: 8px;
-  }
-  .cell {
-    width: 62px; height: 42px;
-    background: var(--cell-bg);
-    border: 2px solid var(--cell-border);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 17px; font-weight: bold; color: var(--text);
-    position: relative;
-    transition: border-color 0.25s, background 0.25s, transform 0.15s;
-  }
-  .cell .step-tag {
-    position: absolute; top: -7px; right: -7px;
-    background: #1976D2; color: #fff;
-    font-size: 9px; font-weight: bold; width: 20px; height: 20px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; transform: scale(0.5);
-    transition: opacity 0.25s, transform 0.25s;
-  }
-  .cell .step-tag.show { opacity: 1; transform: scale(1); }
-  .cell.buy { border-color: var(--buy-blue); background: rgba(25,118,210,0.1); }
-  .cell.sell { border-color: var(--sell-green); background: rgba(56,142,60,0.1); }
-  .cell.active { border-color: var(--profit-gold); transform: scale(1.06); }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    margin-bottom: 6px; font-size: 14px;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; }
-
-  .trade-log {
-    display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
-    margin-bottom: 8px; min-height: 28px;
-    font-size: 13px;
-  }
-  .trade-chip {
-    background: rgba(56,142,60,0.12); border: 1px solid var(--sell-green);
-    border-radius: 12px; padding: 2px 10px;
-    font-weight: bold; color: var(--sell-green);
-  }
-  .total-profit {
-    text-align: center; font-size: 15px; font-weight: bold; margin-bottom: 8px;
-    color: var(--text);
-  }
-  .total-profit .val { color: var(--sell-green); font-size: 20px; }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-
-  .legend {
-    display: flex; gap: 20px; justify-content: center; margin-top: 10px;
-    font-size: 12px; color: var(--muted);
-  }
-  .legend-item { display: flex; align-items: center; gap: 5px; }
-  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8. 买卖股票的最佳时机 II - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>买卖股票的最佳时机 II — 逐步交互演示</h2>
-
-  <div class="chart-area" id="chartArea"></div>
-
-  <div class="cell-grid" id="cellGrid"></div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">/ 8 步 · 点击「下一步」开始</span>
-  </div>
-
-  <div class="trade-log" id="tradeLog">
-    <span style="color:var(--muted)">已完成交易: 暂无</span>
-  </div>
-  <div class="total-profit">累计利润: <span class="val" id="totalProfit">0</span></div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">⏮ 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">◀ 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 ▶</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">▶ 自动播放</button>
-    <button onclick="goStep(totalSteps)" title="跳到最终状态">⏭ 跳到最后</button>
-  </div>
-
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#1976D2"></div> 买入点</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#388E3C"></div> 卖出点</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div> 当前关注日</div>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const prices = [7, 1, 5, 3, 6, 4];
-const totalSteps = 8; // 0:init, 1-7: processing + end
+const PRICES = [7, 1, 5, 3, 6, 4];
 
-// Simulate greedy: buy at valley, sell at peak
-const steps = [];
-{
-  steps.push({ day: -1, price: null, buyIdx: -1, sellIdx: -1, profit: 0, trades: [], desc: '初始化' });
-  let buyIdx = -1;
-  let totalProfit = 0;
+function buildSteps() {
+  const n = PRICES.length;
+  const maxPrice = Math.max.apply(null, PRICES);
+  const best = PRICES.reduce(function (sum, p, i) {
+    return i > 0 && p > PRICES[i - 1] ? sum + (p - PRICES[i - 1]) : sum;
+  }, 0);
+
+  const steps = [];
   const trades = [];
+  let total = 0;
 
-  for (let i = 0; i < prices.length; i++) {
-    if (buyIdx === -1) {
-      // Looking for a valley to buy
-      if (i < prices.length - 1 && prices[i] < prices[i + 1]) {
-        buyIdx = i;
-        steps.push({ day: i, price: prices[i], buyIdx, sellIdx: -1, profit: totalProfit, trades: [...trades], desc: `发现谷底 第${i+1}天价格${prices[i]} → 潜在买入` });
-      } else {
-        steps.push({ day: i, price: prices[i], buyIdx: -1, sellIdx: -1, profit: totalProfit, trades: [...trades], desc: `第${i+1}天价格${prices[i]} · 价格在下跌/平盘，不操作` });
-      }
+  steps.push({
+    day: 0, total, trades: [], maxPrice, best, phase: 'init',
+    note: `初始化：累计利润 totalProfit = 0。本题可以交易任意多次（同时最多持有一股），贪心策略是：只要今天比昨天高，就当作「昨天买入、今天卖出」，把这段正差价全部收下。`
+  });
+
+  for (let i = 1; i < n; i++) {
+    const diff = PRICES[i] - PRICES[i - 1];
+    if (diff > 0) {
+      total += diff;
+      trades.push({ from: i - 1, to: i, diff: diff });
+      steps.push({
+        day: i, total, trades: trades.slice(), maxPrice, best, diff, phase: 'buy',
+        note: `第 ${i} 天（${PRICES[i - 1]}）→ 第 ${i + 1} 天（${PRICES[i]}）：价格涨了 ${diff}，做一笔「昨天买、今天卖」的交易赚 ${diff}，累计利润 totalProfit = ${total}。`
+      });
     } else {
-      // Holding, looking for a peak to sell
-      if (i < prices.length - 1 && prices[i] > prices[i + 1]) {
-        // Peak found, sell
-        const p = prices[i] - prices[buyIdx];
-        totalProfit += p;
-        trades.push({ buy: buyIdx, sell: i, profit: p });
-        steps.push({ day: i, price: prices[i], buyIdx, sellIdx: i, profit: totalProfit, trades: [...trades], desc: `发现峰顶 第${i+1}天价格${prices[i]} → 卖出! 赚${p} (${prices[buyIdx]}→${prices[i]})` });
-        buyIdx = -1; // Reset after selling
-      } else if (i === prices.length - 1 && buyIdx >= 0 && prices[i] > prices[buyIdx]) {
-        // Last day, sell if profitable
-        const p = prices[i] - prices[buyIdx];
-        totalProfit += p;
-        trades.push({ buy: buyIdx, sell: i, profit: p });
-        steps.push({ day: i, price: prices[i], buyIdx, sellIdx: i, profit: totalProfit, trades: [...trades], desc: `最后一天 第${i+1}天价格${prices[i]} → 卖出! 赚${p} (${prices[buyIdx]}→${prices[i]})` });
-        buyIdx = -1;
-      } else {
-        steps.push({ day: i, price: prices[i], buyIdx, sellIdx: -1, profit: totalProfit, trades: [...trades], desc: `第${i+1}天价格${prices[i]} · 持有中 (买入价=${prices[buyIdx]})` });
-      }
-    }
-  }
-}
-
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-// Build chart
-const chartArea = document.getElementById('chartArea');
-const bars = [];
-const maxPrice = Math.max(...prices);
-prices.forEach((p, i) => {
-  const wrap = document.createElement('div');
-  wrap.className = 'bar-wrap';
-  wrap.innerHTML = `
-    <div class="bar" style="height:${(p/maxPrice*130)}px">
-      <span class="step-tag"></span>
-    </div>
-    <span class="bar-label">${p}</span>
-    <span class="bar-day">第${i+1}天</span>
-  `;
-  chartArea.appendChild(wrap);
-  bars.push(wrap.querySelector('.bar'));
-});
-
-// Build cells
-const cellGrid = document.getElementById('cellGrid');
-const cells = [];
-prices.forEach((p, i) => {
-  const div = document.createElement('div');
-  div.className = 'cell';
-  div.innerHTML = `${p}<span class="step-tag"></span>`;
-  cellGrid.appendChild(div);
-  cells.push(div);
-});
-
-// Trade arrows (SVG overlays on chart)
-const arrowsEl = document.createElement('div');
-arrowsEl.style.cssText = 'position:absolute; top:0; left:0; right:0; bottom:0; pointer-events:none;';
-chartArea.style.position = 'relative';
-chartArea.appendChild(arrowsEl);
-
-function render() {
-  const s = steps[current];
-
-  // Reset
-  bars.forEach((b, i) => {
-    b.style.background = 'var(--bar-bg)';
-    b.style.border = 'none';
-    const tag = b.querySelector('.step-tag');
-    tag.classList.remove('show');
-    tag.textContent = '';
-  });
-  cells.forEach((cell, i) => {
-    cell.classList.remove('buy', 'sell', 'active');
-    const tag = cell.querySelector('.step-tag');
-    tag.classList.remove('show');
-    tag.textContent = '';
-  });
-  arrowsEl.innerHTML = '';
-
-  // Draw confirmed trades
-  if (s.trades.length > 0) {
-    const barWraps = chartArea.querySelectorAll('.bar-wrap');
-    const chartRect = chartArea.getBoundingClientRect();
-    s.trades.forEach((tr, ti) => {
-      const buyEl = barWraps[tr.buy].querySelector('.bar');
-      const sellEl = barWraps[tr.sell].querySelector('.bar');
-      const buyRect = buyEl.getBoundingClientRect();
-      const sellRect = sellEl.getBoundingClientRect();
-      const y = Math.min(buyRect.top, sellRect.top) - chartRect.top + 8 + ti * 10;
-      const x1 = buyRect.left - chartRect.left + buyRect.width / 2;
-      const x2 = sellRect.left - chartRect.left + sellRect.width / 2;
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('width', '100%'); svg.setAttribute('height', '100%');
-      svg.style.cssText = 'position:absolute; top:0; left:0;';
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', x1); line.setAttribute('y1', y);
-      line.setAttribute('x2', x2); line.setAttribute('y2', y);
-      line.setAttribute('stroke', '#388E3C'); line.setAttribute('stroke-width', '2');
-      line.setAttribute('stroke-dasharray', '4,2');
-      svg.appendChild(line);
-      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('x', (x1 + x2) / 2); text.setAttribute('y', y - 4);
-      text.setAttribute('text-anchor', 'middle'); text.setAttribute('fill', '#388E3C');
-      text.setAttribute('font-size', '10'); text.setAttribute('font-weight', 'bold');
-      text.textContent = '+' + tr.profit;
-      svg.appendChild(text);
-      arrowsEl.appendChild(svg);
-    });
-  }
-
-  // Current buy/sell
-  if (s.buyIdx >= 0) {
-    bars[s.buyIdx].style.background = '#1976D2';
-    cells[s.buyIdx].classList.add('buy');
-  }
-  if (s.sellIdx >= 0 && s.sellIdx !== s.buyIdx) {
-    bars[s.sellIdx].style.background = '#388E3C';
-    cells[s.sellIdx].classList.add('sell');
-  }
-  if (s.day >= 0) {
-    bars[s.day].style.border = '3px solid #FF9800';
-    cells[s.day].classList.add('active');
-  }
-
-  // Step tags
-  for (let i = 0; i < current; i++) {
-    if (i < cells.length) {
-      const tag = cells[i].querySelector('.step-tag');
-      tag.textContent = i + 1;
-      tag.classList.add('show');
+      steps.push({
+        day: i, total, trades: trades.slice(), maxPrice, best, diff, phase: 'flat',
+        note: `第 ${i} 天（${PRICES[i - 1]}）→ 第 ${i + 1} 天（${PRICES[i]}）：没有上涨（差价 ${diff}），买入只会亏，所以不交易，累计利润保持 ${total}。`
+      });
     }
   }
 
-  // Info
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = s.desc;
-  document.getElementById('totalProfit').textContent = s.profit;
+  steps.push({
+    day: null, total, trades: trades.slice(), maxPrice, best, phase: 'done', done: true,
+    note: `扫描结束，最大总利润 = ${total}，由 ${trades.length} 笔交易累加得到。为什么贪心正确：一段连续上涨 a < b < c 满足 (c − a) = (b − a) + (c − b)，把一次持有拆成多次短线交易收益完全相同；而下跌区间只会带来负收益，跳过即可。因此「所有相邻正差价之和」既是答案的上界，又能被这个策略真正实现。`
+  });
 
-  // Trade log
-  const tradeLog = document.getElementById('tradeLog');
-  if (s.trades.length === 0) {
-    tradeLog.innerHTML = '<span style="color:var(--muted)">已完成交易: 暂无</span>';
-  } else {
-    tradeLog.innerHTML = '<span style="color:var(--muted)">已完成交易: </span>' +
-      s.trades.map(t =>
-        `<span class="trade-chip">买${prices[t.buy]}→卖${prices[t.sell]} 赚${t.profit}</span>`
-      ).join(' ');
+  return steps;
+}
+
+function renderChart(step) {
+  const row = Demo.el('div', 'row');
+  PRICES.forEach((value, idx) => {
+    const col = Demo.el('div', 'col');
+
+    let cls = 'cell cell--sm';
+    if (step.day === idx) cls += ' is-active';
+    else if (step.day != null && idx === step.day - 1) {
+      cls += step.phase === 'buy' ? ' is-ok' : ' is-warn';
+    }
+    col.appendChild(Demo.el('div', cls, Demo.esc(value)));
+
+    const track = Demo.el('div', 'bar');
+    track.style.width = '26px';
+    track.style.height = '110px';
+    const fill = Demo.el('div', 'bar__fill');
+    fill.style.inset = 'auto 0 0 0';
+    fill.style.width = '100%';
+    fill.style.height = Math.round((value / step.maxPrice) * 100) + '%';
+    fill.style.background = 'var(--demo-muted)';
+    if (step.day === idx) fill.style.background = 'var(--demo-accent)';
+    else if (step.day != null && idx === step.day - 1 && step.phase === 'buy') {
+      fill.style.background = 'var(--demo-ok)';
+    }
+    track.appendChild(fill);
+    col.appendChild(track);
+
+    const labels = [];
+    if (step.day === idx) labels.push('今天');
+    if (step.day != null && idx === step.day - 1) labels.push('昨天');
+    const ptr = Demo.el('div', 'ptr', labels.join(' ') || ('第' + (idx + 1) + '天'));
+    if (!labels.length) ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+
+    row.appendChild(col);
+  });
+  return row;
+}
+
+Demo.create({
+  title: '8. 买卖股票的最佳时机 II — 累加所有上涨差价',
+  info: `prices = [${PRICES.join(', ')}]，可交易任意多次（同一天也可先买后卖），求最大总利润。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  legend: [
+    { color: 'var(--demo-accent)', label: '今天（卖出/评估）' },
+    { color: 'var(--demo-ok)', label: '昨天买入，形成正收益' },
+    { color: 'var(--demo-warn)', label: '下跌：不交易' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    ctx.stage.appendChild(renderChart(step));
+
+    const bar = Demo.el('div', 'bar');
+    bar.style.width = '300px';
+    const fill = Demo.el('div', 'bar__fill');
+    fill.style.width = (step.best ? Math.round((step.total / step.best) * 100) : 0) + '%';
+    bar.appendChild(fill);
+    bar.appendChild(Demo.el('div', 'bar__label', '累计利润 totalProfit = ' + step.total));
+    const profitPanel = Demo.el('div', 'panel');
+    profitPanel.appendChild(bar);
+    ctx.stage.appendChild(profitPanel);
+
+    const logPanel = Demo.el('div', 'panel');
+    let log = '<span class="tag">已完成交易</span>&nbsp; ';
+    if (!step.trades.length) {
+      log += '暂无（还没有出现上涨区间）';
+    } else {
+      log += step.trades.map(function (t) {
+        return '<span class="tag tag--ok">第 ' + (t.from + 1) + ' 天买入 ' + PRICES[t.from] +
+          ' → 第 ' + (t.to + 1) + ' 天卖出 ' + PRICES[t.to] + '，赚 ' + t.diff + '</span>';
+      }).join(' ');
+    }
+    if (step.phase === 'done') {
+      log += '&nbsp;&nbsp;<span class="tag tag--violet">答案：' + step.total + '</span>';
+    }
+    logPanel.innerHTML = log;
+    ctx.stage.appendChild(logPanel);
   }
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= totalSteps;
-}
-
-function goStep(n) {
-  current = Math.max(0, Math.min(n, totalSteps));
-  render();
-}
-
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer);
-    autoRunning = false;
-    document.getElementById('playBtn').textContent = '▶ 自动播放';
-    document.getElementById('playBtn').classList.remove('play-btn');
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-  } else {
-    document.getElementById('playBtn').textContent = '⏸ 暂停';
-    document.getElementById('playBtn').classList.add('play-btn');
-    document.getElementById('playBtn').style.background = '#1976D2';
-    document.getElementById('playBtn').style.color = '#fff';
-    autoRunning = true;
-    if (current >= totalSteps) goStep(0);
-    autoTimer = setInterval(() => {
-      if (current < totalSteps) goStep(current + 1);
-      else toggleAuto();
-    }, 700);
-  }
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
 });
-
-render();
 </script>
 </body>
 </html>

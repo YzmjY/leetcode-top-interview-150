@@ -1,475 +1,197 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --sub-bg: #f5f5f5;
-    --window-bg: rgba(25,118,210,0.18);
-    --window-border: rgba(25,118,210,0.45);
-    --highlight-blue: #1976D2;
-    --highlight-green: #388E3C;
-    --highlight-red: #D32F2F;
-    --hash-bg: #fafafa;
-    --hash-border: #d0d0d0;
-    --step-circle-bg: #1976D2;
-    --step-circle-color: #fff;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd;
-      --btn-bg: #333; --btn-hover: #444;
-      --sub-bg: #252540;
-      --window-bg: rgba(66,165,245,0.22);
-      --window-border: rgba(66,165,245,0.50);
-      --highlight-blue: #42A5F5;
-      --highlight-green: #66BB6A;
-      --highlight-red: #EF5350;
-      --hash-bg: #1e1e30;
-      --hash-border: #444;
-      --step-circle-bg: #42A5F5;
-      --step-circle-color: #1a1a2e;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 16px 20px;
-  }
-  .container { max-width: 920px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
-  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 6px;
-    font-size: 14px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: var(--highlight-blue); min-width: 36px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 620px; text-align: center; }
-
-  .state-row {
-    display: flex; justify-content: center; gap: 16px;
-    background: var(--sub-bg); border-radius: 8px;
-    padding: 10px 16px; margin-bottom: 8px; font-size: 13px;
-    flex-wrap: wrap;
-  }
-  .state-item { text-align: center; min-width: 64px; }
-  .state-val { font-size: 20px; font-weight: bold; font-family: monospace; }
-  .state-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .sv-l .state-val { color: var(--highlight-blue); }
-  .sv-r .state-val { color: #FF9800; }
-  .sv-max .state-val { color: var(--highlight-green); }
-
-  .main-row {
-    display: flex; gap: 12px; align-items: flex-start; justify-content: center;
-    flex-wrap: wrap; margin-bottom: 6px;
-  }
-
-  /* Grid area */
-  .grid-area {
-    display: flex; justify-content: center; gap: 5px; flex-wrap: wrap;
-  }
-  .cell-wrap { position: relative; display: flex; flex-direction: column; align-items: center; }
-  .cell {
-    width: 48px; height: 44px; border-radius: 8px;
-    background: var(--cell-bg); border: 2px solid var(--cell-border);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px; font-weight: bold; color: var(--text);
-    transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
-    position: relative; z-index: 1;
-  }
-  .cell.in-window {
-    background: var(--window-bg); border-color: var(--window-border);
-  }
-  .cell.duplicate {
-    background: rgba(211,47,47,0.18); border-color: rgba(211,47,47,0.55);
-  }
-  .cell.step-highlight {
-    border-color: var(--highlight-blue); box-shadow: 0 0 8px rgba(25,118,210,0.35);
-  }
-  .step-circle {
-    position: absolute; top: -10px; right: -10px;
-    width: 22px; height: 22px; border-radius: 50%;
-    background: var(--step-circle-bg); color: var(--step-circle-color);
-    font-size: 11px; font-weight: bold; display: flex;
-    align-items: center; justify-content: center;
-    z-index: 5; transition: opacity 0.2s;
-    opacity: 0; pointer-events: none;
-  }
-  .step-circle.visible { opacity: 1; }
-  .cell-idx { font-size: 11px; color: var(--muted); margin-top: 3px; text-align: center; }
-
-  /* Pointer row */
-  .pointer-row {
-    display: flex; justify-content: center; gap: 5px;
-    min-height: 22px; flex-wrap: wrap;
-  }
-  .pointer-slot {
-    width: 48px; text-align: center; font-size: 10px; font-weight: bold; color: var(--muted);
-  }
-
-  /* Hash panel */
-  .hash-panel {
-    background: var(--hash-bg); border: 1px solid var(--hash-border);
-    border-radius: 8px; padding: 8px 12px; min-width: 130px;
-  }
-  .hash-panel h4 {
-    font-size: 12px; color: var(--muted); margin-bottom: 6px; text-align: center;
-  }
-  .hash-row {
-    display: flex; align-items: center; gap: 8px; padding: 3px 0;
-    font-size: 13px; font-family: monospace;
-  }
-  .hash-char { font-weight: bold; min-width: 18px; color: var(--text); }
-  .hash-count { color: var(--highlight-blue); font-size: 15px; font-weight: bold; }
-  .hash-bar-bg {
-    flex: 1; height: 8px; background: var(--cell-border); border-radius: 4px; overflow: hidden;
-    min-width: 30px;
-  }
-  .hash-bar-fill {
-    height: 100%; background: var(--highlight-blue); border-radius: 4px; transition: width 0.3s;
-  }
-  .hash-row.dup .hash-count { color: var(--highlight-red); }
-  .hash-row.dup .hash-bar-fill { background: var(--highlight-red); }
-
-  .result-row {
-    background: var(--sub-bg); border-radius: 8px; padding: 10px 14px;
-    margin-bottom: 10px; font-size: 13px; text-align: center; color: var(--text);
-  }
-  .result-row .highlight { color: var(--highlight-green); font-weight: bold; font-size: 15px; }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: var(--highlight-blue); color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-
-  .legend {
-    display: flex; gap: 18px; justify-content: center; margin-top: 10px;
-    font-size: 12px; color: var(--muted); flex-wrap: wrap;
-  }
-  .legend-item { display: flex; align-items: center; gap: 5px; }
-  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
-
-  @media (max-width: 700px) {
-    .cell { width: 38px; height: 36px; font-size: 16px; }
-    .cell-idx { font-size: 9px; }
-    .pointer-slot { width: 38px; font-size: 8px; }
-    .grid-area { gap: 3px; }
-    .pointer-row { gap: 3px; }
-    .hash-panel { min-width: 100px; padding: 6px 8px; }
-  }
-</style>
+<title>31. 无重复字符的最长子串 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>无重复字符的最长子串 — 滑动窗口交互演示</h2>
-  <div class="sub-title">s = "abcabcbb" → 最长无重复子串长度 = 3 ("abc")</div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
-  </div>
-
-  <div class="state-row">
-    <div class="state-item sv-l">
-      <div class="state-val" id="leftVal">0</div>
-      <div class="state-label">left 索引</div>
-    </div>
-    <div class="state-item sv-r">
-      <div class="state-val" id="rightVal">0</div>
-      <div class="state-label">right 索引</div>
-    </div>
-    <div class="state-item">
-      <div class="state-val" id="curLenVal">0</div>
-      <div class="state-label">当前窗口长度</div>
-    </div>
-    <div class="state-item sv-max">
-      <div class="state-val" id="maxLenVal">0</div>
-      <div class="state-label">最大长度</div>
-    </div>
-    <div class="state-item" style="min-width:100px;">
-      <div class="state-val" id="winContentVal" style="font-size:15px;">""</div>
-      <div class="state-label">窗口内容</div>
-    </div>
-  </div>
-
-  <div class="main-row">
-    <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
-      <div class="grid-area" id="gridArea"></div>
-      <div class="pointer-row" id="pointerRow"></div>
-    </div>
-    <div class="hash-panel" id="hashPanel">
-      <h4>窗口字符频率</h4>
-      <div id="hashContent"></div>
-    </div>
-  </div>
-
-  <div class="result-row" id="resultBar">
-    <span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight">进行中...</span>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">&#x23EE; 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
-    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
-  </div>
-
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:rgba(25,118,210,0.3)"></div>无重复窗口</div>
-    <div class="legend-item"><div class="legend-dot" style="background:rgba(211,47,47,0.3)"></div>重复字符</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--highlight-blue)"></div>当前操作元素</div>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const s = 'abcabcbb';
-const chars = s.split('');
+const S = 'abcabcbb';
+const CHARS = S.split('');
+const DISTINCT = Array.from(new Set(CHARS)).sort();
 
-const steps = [];
-(function simulate() {
-  steps.push({
-    left: 0, right: -1, curLen: 0, maxLen: 0,
-    winChars: [], freq: {}, desc: '初始状态 · left=0, right=0 · 使用HashSet跟踪窗口内字符',
-    action: 'init', dupChar: null
-  });
-
-  let left = 0, maxLen = 0, maxLeft = 0;
-  const freq = {};
-
-  for (let right = 0; right < chars.length; right++) {
-    const ch = chars[right];
-    freq[ch] = (freq[ch] || 0) + 1;
-
-    if (freq[ch] === 1) {
-      // New char, no duplicate
-      const curLen = right - left + 1;
-      const isNewMax = curLen > maxLen;
-      if (isNewMax) { maxLen = curLen; maxLeft = left; }
-      steps.push({
-        left, right, curLen, maxLen,
-        winChars: chars.slice(left, right + 1),
-        freq: { ...freq },
-        desc: `right 右移到 ${right}: 加入 "${ch}", 无重复 → 窗口 "${chars.slice(left, right + 1).join('')}" 长度=${curLen}` + (isNewMax ? ` ← 新最大长度!` : ''),
-        action: 'expand', dupChar: null, isNewMax
-      });
-    } else {
-      // Duplicate found
-      steps.push({
-        left, right, curLen: right - left + 1, maxLen,
-        winChars: chars.slice(left, right + 1),
-        freq: { ...freq },
-        desc: `right 右移到 ${right}: 加入 "${ch}", 但 "${ch}" 重复! count["${ch}"]=${freq[ch]} → 需缩小窗口`,
-        action: 'duplicate', dupChar: ch, isNewMax: false
-      });
-
-      // Shrink until no duplicate
-      while (freq[ch] > 1) {
-        const removed = chars[left];
-        freq[removed]--;
-        left++;
-        steps.push({
-          left, right, curLen: right - left + 1, maxLen,
-          winChars: chars.slice(left, right + 1),
-          freq: { ...freq },
-          desc: `left 右移到 ${left}: 移除 "${removed}", count["${removed}"]=${freq[removed] || 0} → 窗口 "${chars.slice(left, right + 1).join('')}"`,
-          action: 'shrink', dupChar: freq[ch] > 1 ? ch : null, isNewMax: false
-        });
-      }
-
-      // Check if this is still better
-      const finalLen = right - left + 1;
-      const isNewMaxAfter = finalLen > maxLen;
-      if (isNewMaxAfter) { maxLen = finalLen; maxLeft = left; }
-      if (isNewMaxAfter) {
-        steps[steps.length - 1].maxLen = maxLen;
-        steps[steps.length - 1].isNewMax = true;
-        steps[steps.length - 1].desc += ` ← 新最大长度=${maxLen}!`;
-      }
-    }
-  }
+function buildSteps() {
+  const steps = [];
+  const charIndex = {};
+  let left = 0, maxLen = 0, bestL = 0;
 
   steps.push({
-    left: -1, right: -1, curLen: 0, maxLen,
-    winChars: [],
-    freq: {},
-    desc: `算法完成! right 到达字符串末尾 → 最长无重复子串长度 = ${maxLen}` + (maxLen > 0 ? ` (子串 "${s.slice(maxLeft, maxLeft + maxLen)}")` : ''),
-    action: 'done', dupChar: null, isNewMax: false
-  });
-})();
-
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-const gridArea = document.getElementById('gridArea');
-const pointerRow = document.getElementById('pointerRow');
-const cells = [];
-const pointers = [];
-
-chars.forEach((ch, i) => {
-  const wrap = document.createElement('div');
-  wrap.className = 'cell-wrap';
-  wrap.innerHTML = `
-    <div class="step-circle" id="sc${i}"></div>
-    <div class="cell" id="cell${i}">${ch}</div>
-    <div class="cell-idx">[${i}]</div>
-  `;
-  gridArea.appendChild(wrap);
-  cells.push({ el: wrap.querySelector('.cell'), circle: wrap.querySelector('.step-circle') });
-
-  const ptr = document.createElement('div');
-  ptr.className = 'pointer-slot';
-  ptr.id = 'ptr' + i;
-  pointerRow.appendChild(ptr);
-  pointers.push(ptr);
-});
-
-const allUniqueChars = [...new Set(chars)].sort();
-
-function renderHashPanel(freq) {
-  const container = document.getElementById('hashContent');
-  let html = '';
-  const maxCount = Math.max(1, ...Object.values(freq));
-  allUniqueChars.forEach(ch => {
-    const count = freq[ch] || 0;
-    const isDup = count > 1;
-    const widthPct = (count / maxCount) * 100;
-    html += `<div class="hash-row${isDup ? ' dup' : ''}">
-      <span class="hash-char">${ch}</span>
-      <span class="hash-count">${count}</span>
-      <div class="hash-bar-bg"><div class="hash-bar-fill" style="width:${widthPct}%"></div></div>
-    </div>`;
-  });
-  container.innerHTML = html || '<div style="color:var(--muted);font-size:12px;text-align:center;">空窗口</div>';
-}
-
-function render() {
-  const step = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = step.desc;
-  document.getElementById('leftVal').textContent = step.left >= 0 ? step.left : '--';
-  document.getElementById('rightVal').textContent = step.right >= 0 ? step.right : '--';
-  document.getElementById('curLenVal').textContent = step.curLen;
-  document.getElementById('maxLenVal').textContent = step.maxLen;
-  document.getElementById('winContentVal').textContent = step.winChars.length > 0 ? '"' + step.winChars.join('') + '"' : '""';
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
-
-  const rText = document.getElementById('resultText');
-  if (current >= steps.length - 1) {
-    rText.textContent = '最长无重复子串长度 = ' + step.maxLen;
-    rText.style.color = 'var(--highlight-green)';
-  } else {
-    rText.textContent = '进行中...';
-    rText.style.color = 'var(--highlight-blue)';
-  }
-
-  // Reset cells
-  cells.forEach(c => {
-    c.el.classList.remove('in-window', 'duplicate', 'step-highlight');
-    c.circle.classList.remove('visible');
-    c.circle.textContent = '';
+    left: 0, right: -1, charIndex: {}, curLen: 0, maxLen: 0, bestL: 0,
+    phase: 'init', ch: '', dupAt: -1, prevLeft: 0, jumpTo: -1, prevMax: 0, improved: false,
+    note: `初始化：left = 0，right = -1（空窗口）。charIndex 是一张「字符 → 它最后出现的位置」的哈希表，现在为空；maxLen = 0。整个算法维持一条不变量：窗口 s[left..right] 内没有任何重复字符。`
   });
 
-  // Reset pointers
-  pointers.forEach(p => { p.textContent = ''; p.style.color = ''; p.style.fontWeight = ''; });
+  for (let right = 0; right < CHARS.length; right++) {
+    const ch = CHARS[right];
+    const seen = Object.prototype.hasOwnProperty.call(charIndex, ch) ? charIndex[ch] : -1;
+    const duplicated = seen >= left;
+    const prevLeft = left;
+    const jumpTo = duplicated ? seen + 1 : left;
 
-  // Highlight window
-  if (step.action !== 'init' && step.action !== 'done' && step.left >= 0 && step.right >= 0) {
-    for (let i = step.left; i <= step.right && i < chars.length; i++) {
-      cells[i].el.classList.add('in-window');
+    steps.push({
+      left: prevLeft, right: right, charIndex: Object.assign({}, charIndex),
+      curLen: right - prevLeft + 1, maxLen: maxLen, bestL: bestL,
+      phase: 'probe', ch: ch, dupAt: duplicated ? seen : -1, prevLeft: prevLeft,
+      jumpTo: jumpTo, prevMax: maxLen, improved: false,
+      note: `右指针来到 ${right}，读入字符 "${ch}"。查 charIndex：` +
+        (duplicated
+          ? `它上次出现在索引 ${seen}，而这个位置 ≥ left = ${prevLeft}，也就是说它此刻就在窗口里——出现重复，窗口不再合法。于是把左边界跳到 ${seen} + 1 = ${jumpTo}，即跳过上一次出现的那个 "${ch}"，窗口变成 s[${jumpTo}..${right}]，重新恢复无重复。之所以能直接跳而不是一格一格挪，是因为窗口本来就没有重复字符，要消掉这次的重复只需要干掉上一次那个 "${ch}"。`
+          : (seen < 0
+            ? `charIndex 里没有它的记录，说明它还是第一次出现，不构成重复，left 保持 ${prevLeft}。`
+            : `它上次出现在索引 ${seen}，但 ${seen} < left = ${prevLeft}，已经落在窗口之外了，不构成重复，left 保持 ${prevLeft}。`))
+    });
+
+    if (duplicated) left = seen + 1;
+    charIndex[ch] = right;
+    const curLen = right - left + 1;
+    const prevMax = maxLen;
+    const improved = curLen > maxLen;
+    if (improved) {
+      maxLen = curLen;
+      bestL = left;
     }
+
+    steps.push({
+      left: left, right: right, charIndex: Object.assign({}, charIndex),
+      curLen: curLen, maxLen: maxLen, bestL: bestL,
+      phase: 'update', ch: ch, dupAt: -1, prevLeft: left, jumpTo: -1,
+      prevMax: prevMax, improved: improved,
+      note: `更新哈希表：charIndex["${ch}"] = ${right}（记成它最后出现的位置，供以后比较）。此时窗口是 s[${left}..${right}] = "${CHARS.slice(left, right + 1).join('')}"，长度 = ${right} − ${left} + 1 = ${curLen}。和历史最长比较：` +
+        (improved
+          ? `${curLen} > ${prevMax}，刷新 maxLen = ${curLen}，最长子串的起点暂记为 ${left}。`
+          : `${curLen} ≤ ${prevMax}，答案不变。`)
+    });
   }
 
-  // Highlight duplicate
-  if (step.dupChar && step.right >= 0 && step.right < chars.length) {
-    cells[step.right].el.classList.add('duplicate');
-  }
+  const answer = maxLen > 0 ? S.slice(bestL, bestL + maxLen) : '';
 
-  // Step highlight on the most recently modified index
-  if (step.action === 'expand' && step.right >= 0 && step.right < chars.length) {
-    cells[step.right].el.classList.add('step-highlight');
-    cells[step.right].circle.textContent = current;
-    cells[step.right].circle.classList.add('visible');
-  } else if (step.action === 'shrink' && step.left > 0 && step.left - 1 < chars.length) {
-    cells[step.left - 1].el.classList.add('step-highlight');
-    cells[step.left - 1].circle.textContent = current;
-    cells[step.left - 1].circle.classList.add('visible');
-  } else if (step.action === 'duplicate' && step.right >= 0 && step.right < chars.length) {
-    cells[step.right].circle.textContent = current;
-    cells[step.right].circle.classList.add('visible');
-  }
+  steps.push({
+    left: CHARS.length, right: CHARS.length - 1, charIndex: Object.assign({}, charIndex),
+    curLen: 0, maxLen: maxLen, bestL: bestL,
+    phase: 'done', ch: '', dupAt: -1, prevLeft: 0, jumpTo: -1, prevMax: maxLen, improved: false,
+    note: maxLen > 0
+      ? `right 已经越过字符串末尾，扫描结束。全程记录的最大长度是 maxLen = ${maxLen}，对应子串 s[${bestL}..${bestL + maxLen - 1}] = "${answer}"。正确性：right 每前进一步，要么窗口直接变长，要么 left 跳到重复字符上次出现的下一个位置，窗口内始终保持无重复；而每个下标最多被 left 扫过一次，所以总时间是 O(n)。`
+      : `字符串为空，最长无重复子串长度为 0。`
+  });
 
-  // Pointers
-  if (step.left >= 0 && step.left < chars.length) {
-    pointers[step.left].textContent = 'left';
-    pointers[step.left].style.color = 'var(--highlight-blue)';
-    pointers[step.left].style.fontWeight = 'bold';
-  }
-  if (step.right >= 0 && step.right < chars.length && step.right !== step.left) {
-    pointers[step.right].textContent = 'right';
-    pointers[step.right].style.color = '#FF9800';
-    pointers[step.right].style.fontWeight = 'bold';
-  }
-
-  // Hash panel
-  renderHashPanel(step.freq);
+  return steps;
 }
 
-function goStep(n) {
-  current = Math.max(0, Math.min(n, steps.length - 1));
-  render();
+function arrayRow(step) {
+  const row = Demo.el('div', 'row');
+  const done = step.phase === 'done';
+
+  CHARS.forEach(function (ch, idx) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(ch));
+
+    if (done) {
+      if (step.maxLen > 0 && idx >= step.bestL && idx <= step.bestL + step.maxLen - 1) cell.classList.add('is-ok');
+      else cell.classList.add('cell--dim');
+    } else if (idx === step.right) {
+      cell.classList.add(step.dupAt >= 0 ? 'is-bad' : 'is-active');
+    } else if (idx === step.dupAt) {
+      cell.classList.add('is-warn');
+    } else if (idx >= step.left && idx <= step.right) {
+      cell.classList.add('is-info');
+    }
+    col.appendChild(cell);
+
+    const labels = [];
+    if (!done) {
+      if (idx === step.left) labels.push('left');
+      if (idx === step.right) labels.push('right');
+      if (idx === step.dupAt) labels.push('重复');
+    }
+    const ptr = Demo.el('div', 'ptr', labels.length ? Demo.esc(labels.join(' ')) : String(idx));
+    if (!labels.length) ptr.classList.add('ptr--dim');
+    else if (labels.indexOf('重复') >= 0) ptr.classList.add('ptr--warn');
+    col.appendChild(ptr);
+    row.appendChild(col);
+  });
+
+  return row;
 }
 
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer);
-    autoRunning = false;
-    document.getElementById('playBtn').innerHTML = '&#x25B6; 自动播放';
-    document.getElementById('playBtn').classList.remove('play-btn');
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-  } else {
-    autoRunning = true;
-    document.getElementById('playBtn').innerHTML = '&#x23F8; 暂停';
-    document.getElementById('playBtn').classList.add('play-btn');
-    document.getElementById('playBtn').style.background = 'var(--highlight-blue)';
-    document.getElementById('playBtn').style.color = '#fff';
-    if (current >= steps.length - 1) goStep(0);
-    autoTimer = setInterval(() => {
-      if (current < steps.length - 1) goStep(current + 1);
-      else toggleAuto();
-    }, 1100);
+function indexTable(step) {
+  const done = step.phase === 'done';
+  const winL = done ? step.bestL : step.left;
+  const winR = done ? step.bestL + step.maxLen - 1 : step.right;
+  const colTitle = done ? '在答案中' : '相对窗口';
+  const rows = DISTINCT.map(function (ch) {
+    const seen = Object.prototype.hasOwnProperty.call(step.charIndex, ch) ? step.charIndex[ch] : null;
+    const inWindow = seen !== null && seen >= winL && seen <= winR;
+    return `<tr class="${!done && ch === step.ch ? 'is-active' : ''}">` +
+      `<td>${Demo.esc(ch)}</td>` +
+      `<td>${seen === null ? '—' : seen}</td>` +
+      `<td>${seen === null ? '未出现' : (inWindow ? (done ? '是' : '在窗口内') : (done ? '否' : '在窗口外'))}</td>` +
+      `</tr>`;
+  }).join('');
+  return Demo.el('table', 'map-table',
+    `<tr><th>字符</th><th>最后出现位置</th><th>${colTitle}</th></tr>${rows}`);
+}
+
+Demo.create({
+  title: '31. 无重复字符的最长子串 — 窗口左界跳到重复字符的下一位',
+  info: `输入：s = "${S}"（示例 1，输出 3，对应子串 "abc"）。charIndex 记录每个字符最后出现的位置，窗口 s[left..right] 始终保持无重复。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 360,
+  legend: [
+    { color: 'var(--demo-accent)', label: 'right 刚读入的字符' },
+    { color: 'var(--demo-info)', label: '当前无重复窗口 s[left..right]' },
+    { color: 'var(--demo-warn)', label: '重复字符上次出现的位置' },
+    { color: 'var(--demo-danger)', label: '检测到重复' },
+    { color: 'var(--demo-ok)', label: '最长子串（最终答案）' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const arrayPanel = Demo.el('div', 'panel');
+    arrayPanel.style.width = '100%';
+    arrayPanel.appendChild(Demo.el('div', 'panel__title',
+      step.phase === 'done' ? '字符串 s（扫描结束）' : `字符串 s（正在读入 s[${step.right}]）`));
+    arrayPanel.appendChild(arrayRow(step));
+    ctx.stage.appendChild(arrayPanel);
+
+    const mid = Demo.el('div', 'row');
+    const tablePanel = Demo.el('div', 'panel');
+    tablePanel.appendChild(Demo.el('div', 'panel__title', '哈希表 charIndex：字符 → 最后出现位置'));
+    tablePanel.appendChild(indexTable(step));
+    mid.appendChild(tablePanel);
+
+    const infoPanel = Demo.el('div', 'panel');
+    infoPanel.appendChild(Demo.el('div', 'panel__title', '窗口状态'));
+    const infoRow = Demo.el('div', 'row');
+    infoRow.appendChild(Demo.el('span', 'tag tag--info',
+      step.right >= step.left && step.phase !== 'done'
+        ? '窗口 = "' + CHARS.slice(step.left, step.right + 1).join('') + '"'
+        : '窗口 = ""'));
+    infoPanel.appendChild(infoRow);
+    const tagRow2 = Demo.el('div', 'row');
+    tagRow2.style.marginTop = '6px';
+    tagRow2.appendChild(Demo.el('span', 'tag tag--violet', Demo.esc('maxLen = ' + step.maxLen)));
+    if (step.phase === 'probe' && step.dupAt >= 0) {
+      tagRow2.appendChild(Demo.el('span', 'tag tag--bad',
+        Demo.esc('left：' + step.prevLeft + ' → ' + step.jumpTo)));
+    }
+    infoPanel.appendChild(tagRow2);
+    mid.appendChild(infoPanel);
+    ctx.stage.appendChild(mid);
+
+    const result = Demo.el('div', 'panel',
+      `left = <strong>${step.phase === 'done' ? '—' : step.left}</strong> ｜ right = <strong>${step.phase === 'init' ? '−1' : step.right}</strong> ｜ 当前窗口长度 = <strong>${step.right >= step.left ? step.right - step.left + 1 : 0}</strong> ｜ maxLen = <strong>${step.maxLen}</strong>` +
+      (step.phase === 'done'
+        ? ` &nbsp;<span class="tag tag--ok">答案 = ${step.maxLen}${step.maxLen > 0 ? '（"' + S.slice(step.bestL, step.bestL + step.maxLen) + '"）' : ''}</span>`
+        : ''));
+    result.style.width = '100%';
+    result.style.textAlign = 'center';
+    ctx.stage.appendChild(result);
   }
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
 });
-
-render();
 </script>
 </body>
 </html>

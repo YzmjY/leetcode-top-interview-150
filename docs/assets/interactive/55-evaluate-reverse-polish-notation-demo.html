@@ -3,209 +3,158 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>55. 逆波兰表达式求值 - 可视化演示</title>
-<style>
-:root {
-  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
-  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
-  --btn-active-text: #fff; --stack-bg: #f1f3f5; --tok-bg: #e9ecef;
-  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
-  --step-bg: #e7f5ff;
-}
-@media (prefers-color-scheme: dark) {
-:root {
-  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
-  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
-  --btn-active-text: #fff; --stack-bg: #1e1e3a; --tok-bg: #2a2a4a; --step-bg: #1a2a3a;
-}
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, "Microsoft YaHei", sans-serif;
-  background: var(--bg); color: var(--text);
-  display: flex; justify-content: center; padding: 20px;
-}
-.container {
-  width: 100%; max-width: 900px; height: 500px;
-  background: var(--card-bg); border-radius: 8px;
-  border: 1px solid var(--border); padding: 16px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.step-panel {
-  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
-  display: flex; justify-content: space-between; align-items: center; font-size: 14px;
-}
-.step-num { font-weight: 700; color: var(--btn-active); }
-.step-desc { flex: 1; margin-left: 16px; }
-.main-area { display: flex; gap: 16px; flex: 1; min-height: 0; }
-.tok-grid {
-  flex: 0 0 340px; display: flex; flex-wrap: wrap; gap: 6px;
-  align-content: flex-start; overflow-y: auto;
-}
-.tok-cell {
-  width: 52px; height: 44px; border-radius: 8px; background: var(--tok-bg);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 16px; font-weight: 700; font-family: "Consolas", monospace;
-  border: 2px solid var(--border); transition: all 0.3s;
-}
-.tok-cell.num { border-color: var(--blue); color: var(--blue); background: rgba(34,139,230,0.08); }
-.tok-cell.op { border-color: var(--orange); color: var(--orange); background: rgba(253,126,20,0.08); }
-.tok-cell.current { transform: scale(1.12); box-shadow: 0 0 10px rgba(13,110,253,0.5); }
-.tok-cell.done { border-color: var(--green); color: var(--green); opacity: 0.6; }
-.stack-panel {
-  flex: 1; background: var(--stack-bg); border-radius: 8px; padding: 12px;
-  border: 1px solid var(--border); display: flex; flex-direction: column;
-}
-.stack-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
-.stack-items { flex: 1; display: flex; flex-direction: column-reverse; gap: 4px; overflow-y: auto; }
-.stack-item {
-  height: 34px; border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-family: "Consolas", monospace; font-size: 16px;
-  border: 1px solid var(--border); background: var(--tok-bg); transition: all 0.3s;
-}
-.stack-item.pushed { border-color: var(--blue); background: rgba(34,139,230,0.1); }
-.stack-item.popping { border-color: var(--red); background: rgba(250,82,82,0.1); }
-.stack-item.result { border-color: var(--green); background: rgba(64,192,87,0.12); }
-.result-line {
-  padding: 6px 12px; background: var(--stack-bg); border-radius: 8px; border: 1px solid var(--border);
-  font-size: 14px; font-weight: 700; color: var(--green);
-}
-.controls {
-  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-}
-.controls button {
-  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--btn-bg); color: var(--text); cursor: pointer;
-  font-size: 13px; font-family: inherit; transition: all 0.15s;
-}
-.controls button:hover { background: var(--btn-hover); }
-.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
-</style>
+<title>55. 逆波兰表达式求值 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <div class="step-panel">
-    <span class="step-num" id="stepNum">步骤 0 / 0</span>
-    <span class="step-desc" id="stepDesc">初始状态</span>
-  </div>
-  <div class="main-area">
-    <div class="tok-grid" id="tokGrid"></div>
-    <div class="stack-panel">
-      <div class="stack-label">计算栈</div>
-      <div class="stack-items" id="stackItems"></div>
-      <div class="result-line" style="margin-top:8px;"><strong>结果: </strong><span id="resultVal"></span></div>
-    </div>
-  </div>
-  <div class="controls">
-    <button onclick="reset()">重置</button>
-    <button onclick="prevStep()">上步</button>
-    <button onclick="nextStep()">下步</button>
-    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button onclick="goEnd()">跳到最后</button>
-  </div>
-</div>
+<script src="demo.js"></script>
 <script>
-const tokens = ["2","1","+","3","*"];
-const steps = [];
-let stack = [];
-let stepIdx = -1;
+const TOKENS = ['4', '13', '5', '/', '+'];
+const OPERATORS = ['+', '-', '*', '/'];
+
+function isNumber(token) {
+  return OPERATORS.indexOf(token) < 0;
+}
+
+function calc(op, a, b) {
+  if (op === '+') return a + b;
+  if (op === '-') return a - b;
+  if (op === '*') return a * b;
+  return Math.trunc(a / b);
+}
 
 function buildSteps() {
-  steps.length = 0;
-  stack = [];
-  const cells = Array(tokens.length).fill('default');
-  steps.push({ stack: [...stack], cells: [...cells], desc: '初始状态：准备处理表达式', opType: '' });
+  const stack = [];
+  const steps = [];
 
-  for (let i = 0; i < tokens.length; i++) {
-    const t = tokens[i];
-    const cells = Array(tokens.length).fill('default');
-    for (let j = 0; j < i; j++) cells[j] = 'done';
-    cells[i] = 'current ' + ('+-*/'.includes(t) ? 'op' : 'num');
+  function snap(o) {
+    steps.push({
+      k: o.k,
+      token: o.token,
+      stack: stack.slice(),
+      a: o.a == null ? null : o.a,
+      b: o.b == null ? null : o.b,
+      result: o.result == null ? null : o.result,
+      phase: o.phase,
+      note: o.note
+    });
+  }
 
-    if ('+-*/'.includes(t)) {
-      const b = stack.pop();
-      const a = stack.pop();
-      let result;
-      if (t === '+') result = a + b;
-      else if (t === '-') result = a - b;
-      else if (t === '*') result = a * b;
-      else result = Math.trunc(a / b);
-      stack.push(result);
-      steps.push({
-        stack: [...stack], cells: [...cells],
-        desc: `遇到运算符 '${t}'：弹出 ${a} 和 ${b}，计算 ${a} ${t} ${b} = ${result}，入栈`,
-        opType: 'calc', a, b, result
+  snap({
+    k: -1, token: null, phase: 'init',
+    note: '初始状态：栈为空，准备从左到右扫描 tokens。逆波兰（后缀）表达式中运算符写在两个操作数之后，所以遇到运算符时，栈顶的两个数就是它的左右操作数。'
+  });
+
+  for (let k = 0; k < TOKENS.length; k++) {
+    const token = TOKENS[k];
+    if (isNumber(token)) {
+      const value = parseInt(token, 10);
+      stack.push(value);
+      snap({
+        k: k, token: token, phase: 'push',
+        note: 'token "' + token + '" 是数字，直接压入栈（压入 ' + value + '）。栈自下而上：' + stack.join(', ') + '。'
       });
     } else {
-      const num = parseInt(t);
-      stack.push(num);
-      steps.push({ stack: [...stack], cells: [...cells], desc: `遇到数字 ${num}，入栈`, opType: 'push' });
+      const a = stack[stack.length - 2];
+      const b = stack[stack.length - 1];
+      stack.length -= 2;
+      const result = calc(token, a, b);
+      stack.push(result);
+      snap({
+        k: k, token: token, a: a, b: b, result: result, phase: 'op',
+        note: 'token "' + token + '" 是运算符：弹出栈顶两个数，先弹出的是右操作数 b = ' + b + '，再弹出的是左操作数 a = ' + a + '（顺序不能反，减法和除法尤其重要）。计算 '
+          + a + ' ' + token + ' ' + b + ' = ' + result
+          + (token === '/' ? '（Go 与本题要求都是向零截断，' + a + ' / ' + b + ' 取整为 ' + result + '）' : '')
+          + '，把结果压回栈。栈自下而上：' + stack.join(', ') + '。'
+      });
     }
   }
 
-  const finalCells = Array(tokens.length).fill('done');
-  steps.push({ stack: [...stack], cells: finalCells, desc: `计算完成！最终结果: ${stack[0]}`, opType: 'end' });
+  snap({
+    k: TOKENS.length, token: null, phase: 'done',
+    note: 'token 全部处理完，栈中只剩一个元素 ' + stack[stack.length - 1] + '，它就是整个表达式的值。每个 token 至多入栈、出栈各一次，时间 O(n)、空间 O(n)。'
+  });
+
+  return steps;
 }
 
-function render() {
-  const st = steps[Math.min(stepIdx, steps.length - 1)];
-  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
-  document.getElementById('stepDesc').textContent = st.desc;
-  document.getElementById('resultVal').textContent = stepIdx === steps.length - 1 ? st.stack[0] : (st.stack.length > 0 ? '计算中...' : '');
+function render(step, idx, ctx) {
+  ctx.stage.innerHTML = '';
 
-  const grid = document.getElementById('tokGrid');
-  grid.innerHTML = '';
-  tokens.forEach((t, i) => {
-    const div = document.createElement('div');
-    div.className = 'tok-cell ' + (st.cells[i] || 'default');
-    div.textContent = t;
-    grid.appendChild(div);
+  const tokenPanel = Demo.el('div', 'panel');
+  tokenPanel.style.width = '100%';
+  tokenPanel.appendChild(Demo.el('div', 'panel__title', 'tokens（逆波兰表达式）'));
+  const tokenRow = Demo.el('div', 'row');
+  TOKENS.forEach(function (token, k) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(token));
+    if (k === step.k) cell.classList.add(isNumber(token) ? 'is-active' : 'is-violet');
+    else if (k < step.k || step.phase === 'done') cell.classList.add('cell--dim');
+    col.appendChild(cell);
+    const ptr = Demo.el('div', 'ptr', k === step.k ? 'token' : String(k));
+    if (k !== step.k) ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    tokenRow.appendChild(col);
   });
+  tokenPanel.appendChild(tokenRow);
+  ctx.stage.appendChild(tokenPanel);
 
-  const si = document.getElementById('stackItems');
-  si.innerHTML = '';
-  st.stack.forEach((v, i) => {
-    const div = document.createElement('div');
-    div.className = 'stack-item';
-    if (stepIdx > 0) {
-      const prevStack = steps[stepIdx - 1].stack;
-      if (st.opType === 'push' && i === st.stack.length - 1 && st.stack.length > prevStack.length) div.className += ' pushed';
-      if (st.opType === 'calc' && i === st.stack.length - 1) div.className += ' result';
-    }
-    div.textContent = v;
-    si.appendChild(div);
-  });
-  if (st.stack.length === 0) {
-    const empty = document.createElement('div');
-    empty.textContent = '(空)'; empty.style.cssText = 'color:var(--text-secondary);text-align:center;';
-    si.appendChild(empty);
+  const mainRow = Demo.el('div', 'row');
+  mainRow.style.width = '100%';
+  mainRow.style.alignItems = 'flex-start';
+
+  const stackPanel = Demo.el('div', 'panel');
+  stackPanel.appendChild(Demo.el('div', 'panel__title', '操作数栈（自下而上，上方为栈顶）'));
+  const stackBox = Demo.el('div', 'stack');
+  if (step.stack.length === 0) {
+    stackBox.appendChild(Demo.el('div', 'stack__item', '（空）'));
+  } else {
+    step.stack.forEach(function (v, k) {
+      const item = Demo.el('div', 'stack__item', Demo.esc(v));
+      if (k === step.stack.length - 1) item.classList.add('is-active');
+      stackBox.appendChild(item);
+    });
   }
+  stackPanel.appendChild(stackBox);
+  mainRow.appendChild(stackPanel);
 
-  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
+  const infoPanel = Demo.el('div', 'panel');
+  infoPanel.style.flex = '1';
+  infoPanel.appendChild(Demo.el('div', 'panel__title', '本步计算'));
+  if (step.phase === 'op') {
+    infoPanel.appendChild(Demo.el('div', null,
+      '<span class="tag tag--violet">运算符 ' + Demo.esc(step.token) + '</span>'));
+    infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">弹出的两个操作数：左 a = <code>' + step.a
+      + '</code>，右 b = <code>' + step.b + '</code></div>'));
+    infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:6px"><code>' + step.a + ' ' + Demo.esc(step.token) + ' ' + step.b
+      + ' = ' + step.result + '</code> <span class="tag tag--ok">压回 ' + step.result + '</span></div>'));
+  } else if (step.phase === 'push') {
+    infoPanel.appendChild(Demo.el('div', null, '<span class="tag tag--info">数字入栈 ' + Demo.esc(step.token) + '</span>'));
+    infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">栈大小变为 <code>' + step.stack.length + '</code></div>'));
+  } else if (step.phase === 'done') {
+    infoPanel.appendChild(Demo.el('div', null, '<span class="tag tag--ok">表达式结果 = ' + step.stack[0] + '</span>'));
+    infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">对应中缀：(4 + (13 / 5)) = 6</div>'));
+  } else {
+    infoPanel.appendChild(Demo.el('div', null, '<span class="tag tag--warn">等待处理</span>'));
+  }
+  mainRow.appendChild(infoPanel);
+
+  ctx.stage.appendChild(mainRow);
 }
 
-function reset() { stepIdx = 0; stopAuto(); render(); }
-function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; render(); }
-function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; render(); }
-function goEnd() { stopAuto(); stepIdx = steps.length - 1; render(); }
-
-let autoRunning = false, autoTimer = null;
-function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
-function startAuto() { autoRunning = true; render(); autoStep(); }
-function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); render(); }
-function autoStep() {
-  if (!autoRunning) return;
-  if (stepIdx < steps.length - 1) { stepIdx++; render(); autoTimer = setTimeout(autoStep, 900); }
-  else stopAuto();
-}
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') nextStep();
-  else if (e.key === 'ArrowLeft') prevStep();
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+Demo.create({
+  title: '55. 逆波兰表达式求值 — 操作数栈一次扫描',
+  info: '输入（示例 2）：tokens = ["4","13","5","/","+"]，对应中缀 (4 + (13 / 5))。整数除法向零截断，13 / 5 = 2，最终结果 6。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 340,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前 token：数字，入栈' },
+    { color: 'var(--demo-violet)', label: '当前 token：运算符，弹两个数计算' },
+    { color: 'var(--demo-ok)', label: '刚压回栈的结果' }
+  ],
+  render: render
 });
-buildSteps();
-reset();
 </script>
 </body>
 </html>

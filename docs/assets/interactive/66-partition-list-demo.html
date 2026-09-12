@@ -3,178 +3,215 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>66. 分隔链表 - 可视化演示</title>
-<style>
-:root {
-  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
-  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
-  --btn-active-text: #fff; --node-bg: #e9ecef;
-  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
-  --step-bg: #e7f5ff;
-}
-@media (prefers-color-scheme: dark) {
-:root {
-  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
-  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
-  --btn-active-text: #fff; --node-bg: #2a2a4a; --step-bg: #1a2a3a;
-}
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, "Microsoft YaHei", sans-serif;
-  background: var(--bg); color: var(--text);
-  display: flex; justify-content: center; padding: 20px;
-}
-.container {
-  width: 100%; max-width: 950px; height: 500px;
-  background: var(--card-bg); border-radius: 8px;
-  border: 1px solid var(--border); padding: 16px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.step-panel {
-  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
-  display: flex; justify-content: space-between; align-items: center; font-size: 14px;
-}
-.step-num { font-weight: 700; color: var(--btn-active); }
-.step-desc { flex: 1; margin-left: 16px; }
-.svg-area { flex: 1; display: flex; justify-content: center; align-items: center; }
-.controls {
-  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-}
-.controls button {
-  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--btn-bg); color: var(--text); cursor: pointer;
-  font-size: 13px; font-family: inherit; transition: all 0.15s;
-}
-.controls button:hover { background: var(--btn-hover); }
-.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
-</style>
+<title>66. 分隔链表 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <div class="step-panel">
-    <span class="step-num" id="stepNum">步骤 0 / 0</span>
-    <span class="step-desc" id="stepDesc">初始状态</span>
-  </div>
-  <div class="svg-area"><svg id="svg" viewBox="0 0 900 280"></svg></div>
-  <div class="controls">
-    <button onclick="reset()">重置</button>
-    <button onclick="prevStep()">上步</button>
-    <button onclick="nextStep()">下步</button>
-    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button onclick="goEnd()">跳到最后</button>
-  </div>
-</div>
+<script src="demo.js"></script>
 <script>
-// [1,4,3,2,5,2], x=3 -> [1,2,2,4,3,5]
-const x = 3;
-const orig = [1, 4, 3, 2, 5, 2];
-const pos = [{x:30,y:60},{x:160,y:60},{x:290,y:60},{x:420,y:60},{x:550,y:60},{x:680,y:60}];
-const posSmall = [{x:30,y:150},{x:160,y:150},{x:290,y:150}];
-const posLarge = [{x:30,y:230},{x:160,y:230},{x:290,y:230},{x:420,y:230},{x:550,y:230},{x:680,y:230}];
-const R = 22;
-const steps = [];
-let stepIdx = -1;
+const VALS = [1, 4, 3, 2, 5, 2];
+const X = 3;
+const ORIG = VALS.map(function (v, i) { return i; });
 
 function buildSteps() {
-  steps.length = 0;
-  let small = [], large = [];
-  const hl = -1;
+  // 真实链表：1 → 4 → 3 → 2 → 5 → 2 → nil，next 存节点对象
+  const nodes = VALS.map(function (v, i) { return { id: i, val: v, next: null }; });
+  for (let i = 0; i < nodes.length - 1; i++) nodes[i].next = nodes[i + 1];
 
-  steps.push({ small: [], large: [], hl: -1, desc: '初始状态: [1,4,3,2,5,2], x=3', phase: 0, curr: -1 });
+  const smallDummy = { id: -1, val: null, next: null };
+  const largeDummy = { id: -2, val: null, next: null };
+  let small = smallDummy;
+  let large = largeDummy;
+  let head = nodes[0];
 
-  for (let i = 0; i < orig.length; i++) {
-    if (orig[i] < x) { small.push(orig[i]); }
-    else { large.push(orig[i]); }
-    const desc = `处理节点${orig[i]}: ${orig[i] < x ? `< 3，放入小链表` : '>= 3，放入大链表'}`;
-    steps.push({ small: [...small], large: [...large], hl: i, desc, phase: 1, curr: i });
+  const steps = [];
+  const smallIds = [];
+  const largeIds = [];
+
+  function walkIds(start) {
+    const out = [];
+    let p = start;
+    while (p !== null) { out.push(p.id); p = p.next; }
+    return out;
   }
 
-  const result = [...small, ...large];
-  steps.push({ small: [...small], large: [...large], hl: -1, desc: '连接小链表和大链表', phase: 2, curr: -1 });
-  steps.push({ small: [...small], large: [...large], hl: -1, desc: `完成！结果: [${result.join(',')}] (小的在前，大的在后)`, phase: 3, curr: -1 });
+  function push(note, extra) {
+    const step = {
+      rest: head ? walkIds(head) : [],
+      small: [smallDummy.id].concat(smallIds),
+      large: [largeDummy.id].concat(largeIds),
+      cur: head ? head.id : null,
+      smallTail: small.id,
+      largeTail: large.id,
+      merged: null,
+      done: false,
+      note: note
+    };
+    if (extra) Object.keys(extra).forEach(function (k) { step[k] = extra[k]; });
+    steps.push(step);
+  }
+
+  push('初始化：smallDummy 与 largeDummy 两个哨兵分别作为「小于 x」和「大于等于 x」两条链的表头，small / large 指向各自链尾；head 从原链表头开始逐个考察。');
+
+  while (head !== null) {
+    const nxt = head.next;
+    if (head.val < X) {
+      small.next = head;
+      small = head;
+      smallIds.push(head.id);
+      push('考察节点 ' + head.val + '：' + head.val + ' < x = ' + X + ' → 挂到 small 链尾，small 后移一步指向它。节点在原链表中的相对顺序被原样保留。', { side: 'small' });
+    } else {
+      large.next = head;
+      large = head;
+      largeIds.push(head.id);
+      push('考察节点 ' + head.val + '：' + head.val + ' ≥ x = ' + X + ' → 挂到 large 链尾，large 后移一步指向它。', { side: 'large' });
+    }
+    head = nxt;
+  }
+
+  push('原链表遍历结束，每个节点都被分到了两条链之一，且各自的相对顺序保持不变。此时 large 链尾的 Next 还指向原链表里的某个节点，是个悬空的旧指针。');
+
+  large.next = null;
+  push('先切断 large 链尾的旧指针：large.Next = nil。如果不断开，拼接后大链会连回小链的节点，形成环导致死循环。');
+
+  small.next = largeDummy.next;
+  const merged = walkIds(smallDummy);
+  push('拼接：small 链尾的 Next 指向 largeDummy.Next，两条链合成一条。返回 smallDummy.Next，得到 [' +
+    merged.filter(function (id) { return id >= 0; }).map(function (id) { return VALS[id]; }).join(', ') +
+    ']。一次遍历 O(n)，只用了常数个指针，没有新建节点。', { done: true, merged: merged });
+
+  return steps;
 }
 
-function renderSVG() {
-  const st = steps[Math.min(stepIdx, steps.length - 1)];
-  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
-  document.getElementById('stepDesc').textContent = st.desc;
-
-  const svg = document.getElementById('svg');
-  let html = `<defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="var(--text-secondary)"/>
-    </marker>
-    <marker id="arrowB" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="var(--blue)"/>
-    </marker>
-    <marker id="arrowG" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="var(--green)"/>
-    </marker>
-  </defs>`;
-
-  // Original row
-  html += `<text x="10" y="35" font-size="13" font-weight="700" fill="var(--orange)">原链表 (x=3)</text>`;
-  for (let i = 0; i < orig.length; i++) {
-    const hl = st.curr === i;
-    html += `<circle cx="${pos[i].x}" cy="${pos[i].y}" r="${R}" fill="${hl ? 'rgba(253,126,20,0.2)' : 'var(--node-bg)'}" stroke="${hl ? 'var(--orange)' : 'var(--blue)'}" stroke-width="${hl ? 3 : 2}"/>
-      <text x="${pos[i].x}" y="${pos[i].y + 5}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text)" font-family="Consolas,monospace">${orig[i]}</text>`;
-    if (i < orig.length - 1) html += `<line x1="${pos[i].x+R}" y1="${pos[i].y}" x2="${pos[i+1].x-R}" y2="${pos[i+1].y}" stroke="var(--blue)" stroke-width="2" marker-end="url(#arrowB)"/>`;
-  }
-
-  // Small list
-  html += `<text x="10" y="125" font-size="13" font-weight="700" fill="var(--green)">小链表 (< x)</text>`;
-  const small = st.small;
-  for (let i = 0; i < small.length; i++) {
-    const p = posSmall[Math.min(i, posSmall.length - 1)];
-    html += `<circle cx="${p.x}" cy="${p.y}" r="${R}" fill="rgba(64,192,87,0.08)" stroke="var(--green)" stroke-width="2"/>
-      <text x="${p.x}" y="${p.y + 5}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text)" font-family="Consolas,monospace">${small[i]}</text>`;
-    if (i < small.length - 1) html += `<line x1="${p.x+R}" y1="${p.y}" x2="${posSmall[Math.min(i+1,posSmall.length-1)].x-R}" y2="${posSmall[Math.min(i+1,posSmall.length-1)].y}" stroke="var(--green)" stroke-width="2" marker-end="url(#arrowG)"/>`;
-  }
-
-  // Large list
-  html += `<text x="10" y="210" font-size="13" font-weight="700" fill="var(--red)">大链表 (>= x)</text>`;
-  const large = st.large;
-  for (let i = 0; i < large.length; i++) {
-    const p = posLarge[Math.min(i, posLarge.length - 1)];
-    html += `<circle cx="${p.x}" cy="${p.y}" r="${R}" fill="rgba(250,82,82,0.08)" stroke="var(--red)" stroke-width="2"/>
-      <text x="${p.x}" y="${p.y + 5}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text)" font-family="Consolas,monospace">${large[i]}</text>`;
-    if (i < large.length - 1) html += `<line x1="${p.x+R}" y1="${p.y}" x2="${posLarge[Math.min(i+1,posLarge.length-1)].x-R}" y2="${posLarge[Math.min(i+1,posLarge.length-1)].y}" stroke="var(--red)" stroke-width="2"/>`;
-  }
-
-  // Connection arrow when phase >= 2
-  if (st.phase >= 2 && small.length > 0 && large.length > 0) {
-    const sp = posSmall[Math.min(small.length - 1, posSmall.length - 1)];
-    const lp = posLarge[0];
-    html += `<path d="M${sp.x + R},${sp.y} Q${(sp.x + lp.x)/2},${sp.y + 40} ${lp.x - R},${lp.y}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow)"/>`;
-    html += `<text x="${(sp.x + lp.x)/2 + 40}" y="${sp.y + 55}" font-size="11" fill="var(--orange)" font-weight="600">连接</text>`;
-  }
-
-  svg.innerHTML = html;
-  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
+function arrowCol() {
+  const col = Demo.el('div', 'col');
+  col.appendChild(Demo.el('div', 'arrow', '→'));
+  col.appendChild(Demo.el('div', 'ptr ptr--dim', '&nbsp;'));
+  return col;
 }
 
-function reset() { stepIdx = 0; stopAuto(); renderSVG(); }
-function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; renderSVG(); }
-function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; renderSVG(); }
-function goEnd() { stopAuto(); stepIdx = steps.length - 1; renderSVG(); }
+function nodeCol(id, opts) {
+  const o = opts || {};
+  const col = Demo.el('div', 'col');
+  const isDummy = id < 0;
+  const node = Demo.el('div', 'll-node', isDummy ? 'dummy' : Demo.esc(String(VALS[id])));
+  if (isDummy) {
+    node.style.borderStyle = 'dashed';
+    node.style.color = 'var(--demo-muted)';
+    node.style.fontSize = '12px';
+  }
+  if (o.className) node.classList.add(o.className);
+  if (o.style) Object.keys(o.style).forEach(function (k) { node.style[k] = o.style[k]; });
+  col.appendChild(node);
 
-let autoRunning = false, autoTimer = null;
-function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
-function startAuto() { autoRunning = true; renderSVG(); autoStep(); }
-function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); renderSVG(); }
-function autoStep() {
-  if (!autoRunning) return;
-  if (stepIdx < steps.length - 1) { stepIdx++; renderSVG(); autoTimer = setTimeout(autoStep, 900); }
-  else stopAuto();
+  const ptr = Demo.el('div', 'ptr', o.ptr ? Demo.esc(o.ptr) : '&nbsp;');
+  if (!o.ptr) ptr.classList.add('ptr--dim');
+  else if (o.ptrClass) ptr.classList.add(o.ptrClass);
+  col.appendChild(ptr);
+  return col;
 }
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') nextStep();
-  else if (e.key === 'ArrowLeft') prevStep();
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+
+function chainRow(ids, decorate) {
+  const row = Demo.el('div', 'row');
+  ids.forEach(function (id, i) {
+    row.appendChild(nodeCol(id, decorate ? decorate(id, i) : {}));
+    row.appendChild(arrowCol());
+  });
+  const nilCol = Demo.el('div', 'col');
+  const nilNode = Demo.el('div', 'll-node', 'nil');
+  nilNode.style.borderStyle = 'dashed';
+  nilNode.style.color = 'var(--demo-muted)';
+  nilCol.appendChild(nilNode);
+  nilCol.appendChild(Demo.el('div', 'ptr ptr--dim', '&nbsp;'));
+  row.appendChild(nilCol);
+  return row;
+}
+
+const SMALL_STYLE = { background: 'var(--demo-ok-soft)', borderColor: 'var(--demo-ok)', color: 'var(--demo-ok)' };
+const LARGE_STYLE = { background: 'var(--demo-violet-soft)', borderColor: 'var(--demo-violet)', color: 'var(--demo-violet)' };
+
+Demo.create({
+  title: '66. 分隔链表 — 两条哨兵链分装，最后首尾拼接',
+  info: '输入：head = [1, 4, 3, 2, 5, 2]，x = 3。小于 3 的节点放 small 链，大于等于 3 的放 large 链，两链内部保持原有相对顺序。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 420,
+  legend: [
+    { color: 'var(--demo-accent)', label: 'head 当前考察节点' },
+    { color: 'var(--demo-ok)', label: 'small 链（val < x）' },
+    { color: 'var(--demo-violet)', label: 'large 链（val ≥ x）' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const origPanel = Demo.el('div', 'panel');
+    origPanel.style.width = '100%';
+    origPanel.appendChild(Demo.el('div', 'panel__title', '原链表（变淡的节点已经分拣完毕，head 从左往右扫）'));
+    origPanel.appendChild(chainRow(ORIG, function (id) {
+      const rest = step.rest.indexOf(id) >= 0;
+      const opts = {};
+      if (!rest) {
+        opts.style = { opacity: '0.35' };
+      } else if (id === step.cur) {
+        opts.className = 'is-active';
+        opts.ptr = 'head';
+      }
+      return opts;
+    }));
+    ctx.stage.appendChild(origPanel);
+
+    const row = Demo.el('div', 'row');
+    row.style.width = '100%';
+    row.style.alignItems = 'flex-start';
+
+    const smallPanel = Demo.el('div', 'panel');
+    smallPanel.appendChild(Demo.el('div', 'panel__title', 'small 链（val < x = ' + X + '），链尾 small'));
+    smallPanel.appendChild(chainRow(step.small, function (id) {
+      if (id < 0) return {};
+      const opts = { style: SMALL_STYLE };
+      if (id === step.smallTail) opts.ptr = 'small';
+      return opts;
+    }));
+
+    const largePanel = Demo.el('div', 'panel');
+    largePanel.appendChild(Demo.el('div', 'panel__title', 'large 链（val ≥ x = ' + X + '），链尾 large'));
+    largePanel.appendChild(chainRow(step.large, function (id) {
+      if (id < 0) return {};
+      const opts = { style: LARGE_STYLE };
+      if (id === step.largeTail) opts.ptr = 'large';
+      return opts;
+    }));
+
+    row.appendChild(smallPanel);
+    row.appendChild(largePanel);
+    if (!step.done) ctx.stage.appendChild(row);
+
+    const status = Demo.el('div', 'row');
+    status.appendChild(Demo.el('span', 'tag tag--info', 'x = ' + X));
+    status.appendChild(Demo.el('span', 'tag', 'head → ' + (step.cur === null ? 'nil（遍历结束）' : '节点 ' + VALS[step.cur])));
+    status.appendChild(Demo.el('span', 'tag tag--ok', 'small 已有 ' + (step.small.length - 1) + ' 个'));
+    status.appendChild(Demo.el('span', 'tag tag--violet', 'large 已有 ' + (step.large.length - 1) + ' 个'));
+    ctx.stage.appendChild(status);
+
+    if (step.merged) {
+      const mergedPanel = Demo.el('div', 'panel');
+      mergedPanel.style.width = '100%';
+      mergedPanel.appendChild(Demo.el('div', 'panel__title', '拼接结果：smallDummy.Next（小链在前，大链在后，各自保持相对顺序）'));
+      mergedPanel.appendChild(chainRow(step.merged, function (id) {
+        if (id < 0) return {};
+        return { className: 'is-ok' };
+      }));
+      ctx.stage.appendChild(mergedPanel);
+    } else {
+      const hint = Demo.el('div', 'panel');
+      hint.style.width = '100%';
+      hint.style.textAlign = 'center';
+      hint.innerHTML = '分拣规则：按值决定去 small 还是 large，<strong>只改 next 指针、不新建节点</strong>；' +
+        '全部扫完后 <strong>large.Next = nil</strong> 断尾，再 <strong>small.Next = largeDummy.Next</strong> 拼接。';
+      ctx.stage.appendChild(hint);
+    }
+  }
 });
-buildSteps();
-reset();
 </script>
 </body>
 </html>

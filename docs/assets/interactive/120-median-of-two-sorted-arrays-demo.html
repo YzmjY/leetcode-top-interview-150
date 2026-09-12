@@ -3,118 +3,314 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>120. 两个正序数组的中位数</title>
-<style>
-:root {
-  --bg: #f5f6fa; --card: #fff; --text: #2d3436; --sub: #636e72;
-  --border: #dfe6e9; --blue: #0984e3; --green: #00b894; --red: #e17055; --orange: #e17055;
-  --blue-bg: #dff6fd; --green-bg: #dff9e6; --hl: #ffeaa7;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1a1a2e; --card: #16213e; --text: #eee; --sub: #aaa;
-    --border: #2d3436; --blue: #74b9ff; --green: #55efc4; --red: #ff7675; --orange: #fab1a0;
-    --blue-bg: #1a3a5c; --green-bg: #1a3a2c; --hl: #5c4a1f;
-  }
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:var(--bg); display:flex; justify-content:center; align-items:center; min-height:100vh; }
-.container { width:860px; height:500px; background:var(--card); border-radius:8px; padding:20px 24px; display:flex; flex-direction:column; gap:10px; box-shadow:0 2px 12px rgba(0,0,0,0.1); }
-.header { display:flex; justify-content:space-between; align-items:center; }
-.header h2 { font-size:17px; color:var(--text); }
-.step-badge { font-size:13px; color:var(--sub); background:var(--border); padding:4px 12px; border-radius:8px; font-weight:500; }
-.info-panel { background:var(--blue-bg); border-left:3px solid var(--blue); padding:10px 14px; border-radius:8px; font-size:13px; color:var(--text); min-height:44px; display:flex; align-items:center; }
-.merged { display:flex; gap:0; justify-content:center; align-items:flex-end; flex:1; flex-wrap:nowrap; }
-.cell { width:48px; height:48px; border-radius:8px; background:var(--border); display:flex; align-items:center; justify-content:center; font-weight:600; font-size:18px; color:var(--text); margin:0 2px; transition:all 0.3s; }
-.cell.a { background:var(--blue-bg); border:2px solid var(--blue); }
-.cell.b { background:var(--green-bg); border:2px solid var(--green); }
-.cell.part-l { box-shadow:0 0 0 3px var(--red); }
-.cell.part-r { box-shadow:0 0 0 3px var(--green); }
-.cell.median { background:var(--hl); box-shadow:0 0 0 3px var(--orange); }
-.legend { display:flex; gap:16px; justify-content:center; font-size:12px; color:var(--sub); }
-.controls { display:flex; gap:8px; justify-content:center; }
-.btn { padding:7px 16px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; font-size:13px; font-family:inherit; transition:all 0.15s; }
-.btn:hover { background:var(--blue-bg); border-color:var(--blue); }
-.btn:active { transform:scale(0.96); }
-.key-hint { font-size:11px; color:var(--sub); text-align:center; }
-</style>
+<title>120. 寻找两个正序数组的中位数 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <h2>120. 两个正序数组的中位数</h2>
-    <span class="step-badge" id="stepBadge">步骤 0/5</span>
-  </div>
-  <div class="info-panel" id="info"></div>
-  <div class="merged" id="merged"></div>
-  <div class="legend">
-    <span style="color:var(--blue)">&#9632; nums1=[1,3]</span>
-    <span style="color:var(--green)">&#9632; nums2=[2]</span>
-    <span style="color:var(--orange)">&#9632; 中位数</span>
-  </div>
-  <div class="controls">
-    <button class="btn" onclick="reset()">重置</button>
-    <button class="btn" onclick="prev()">上步</button>
-    <button class="btn" onclick="next()">下步</button>
-    <button class="btn" id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button class="btn" onclick="goLast()">跳到最后</button>
-  </div>
-  <div class="key-hint">键盘: &#8592; &#8593; 上步 | &#8594; &#8595; 下步 | 空格 自动播放 | R 重置 | End 跳到最后</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const nums1 = [1,3], nums2 = [2];
-const total = nums1.length + nums2.length;
-const k = Math.floor((total + 1) / 2);
-let steps = [], cur = 0, autoTimer = null, running = false;
+const NUMS1 = [1, 3];
+const NUMS2 = [2];
+
+function fmt(v) {
+  if (v === -Infinity) return '−∞';
+  if (v === Infinity) return '+∞';
+  return String(v);
+}
 
 function buildSteps() {
-  steps = [];
-  // 合并数组展示
-  const merged = [...nums1.map(v=>({v,src:'a'})), ...nums2.map(v=>({v,src:'b'}))].sort((a,b)=>a.v-b.v);
-  steps.push({desc:`nums1=[${nums1}], nums2=[${nums2}], 合并排序=[${merged.map(m=>m.v)}], 总长度=${total}`,merged,medianIdx:-1});
-  // 找中位数
-  if (total % 2 === 1) {
-    steps.push({desc:`奇数长度，中位数是第${Math.floor(total/2)+1}个元素 = ${merged[Math.floor(total/2)].v}`,merged,medianIdx:Math.floor(total/2)});
-  } else {
-    const m1 = merged[total/2-1].v, m2 = merged[total/2].v;
-    steps.push({desc:`偶数长度，中位数 = (第${total/2}个 + 第${total/2+1}个)/2 = (${m1}+${m2})/2 = ${(m1+m2)/2}`,merged,medianIdx:total/2-1,medianIdx2:total/2});
+  const steps = [];
+  let A = NUMS1.slice();
+  let B = NUMS2.slice();
+  let swapped = false;
+  if (A.length > B.length) {
+    const t = A; A = B; B = t;
+    swapped = true;
   }
-  // 分割线展示
-  steps.push({desc:'分割线方法：二分较短数组，确保左半部分 <= 右半部分',merged,medianIdx:steps[steps.length-1].medianIdx,partition:true});
-}
-buildSteps();
+  const m = A.length;
+  const n = B.length;
+  const halfLen = Math.floor((m + n + 1) / 2);
+  const aName = swapped ? 'nums2' : 'nums1';
+  const bName = swapped ? 'nums1' : 'nums2';
 
-function render() {
-  const s = steps[cur];
-  document.getElementById('stepBadge').textContent = `步骤 ${cur}/${steps.length-1}`;
-  document.getElementById('info').textContent = s.desc;
-  document.getElementById('autoBtn').textContent = running ? '停止' : '自动播放';
-  const cont = document.getElementById('merged');
-  let html = '';
-  s.merged.forEach((m, i) => {
-    let cls = 'cell ' + m.src;
-    if (i === s.medianIdx) cls += ' median';
-    if (s.medianIdx2 !== undefined && i === s.medianIdx2) cls += ' median';
-    html += `<div class="${cls}">${m.v}</div>`;
+  let left = 0;
+  let right = m;
+  let checks = 0;
+  let answer = null;
+  let found = false;
+  let foundStep = null;
+
+  steps.push({
+    A: A, B: B, aName: aName, bName: bName, left: left, right: right, i: -1, j: -1,
+    aL: null, aR: null, bL: null, bR: null, cond1: null, cond2: null,
+    checks: 0, found: false, done: false, answer: null,
+    leftCells: [], rightCells: [],
+    note: `原 nums1 = [${NUMS1.join(', ')}]（长度 ${NUMS1.length}），nums2 = [${NUMS2.join(', ')}]（长度 ${NUMS2.length}）。` +
+      (swapped
+        ? `因为 nums1 比 nums2 长，先交换两者：把较短的 [${A.join(', ')}] 记作 A（来自 ${aName}），较长的 [${B.join(', ')}] 记作 B（来自 ${bName}）。只对较短的 A 二分，二分的次数就更少。`
+        : `A 就是 ${aName} = [${A.join(', ')}]，B 是 ${bName} = [${B.join(', ')}]。只对较短的 A 二分。`) +
+      ` 合并后共 ${m + n} 个元素，左半部分应有 halfLen = ⌊(${m} + ${n} + 1) / 2⌋ = ${halfLen} 个。设 A 分 i 个元素到左半，则 B 必须分 j = halfLen − i 个，所以 i 的搜索区间是 [0, m] = [0, ${m}]。`
   });
-  cont.innerHTML = html;
+
+  while (left <= right) {
+    const i = left + Math.floor((right - left) / 2);
+    const j = halfLen - i;
+    const aL = i === 0 ? -Infinity : A[i - 1];
+    const aR = i === m ? Infinity : A[i];
+    const bL = j === 0 ? -Infinity : B[j - 1];
+    const bR = j === n ? Infinity : B[j];
+    const cond1 = aL <= bR;
+    const cond2 = bL <= aR;
+    checks += 1;
+
+    if (cond1 && cond2) {
+      found = true;
+      foundStep = {
+        A: A, B: B, aName: aName, bName: bName, left: left, right: right, i: i, j: j,
+        aL: aL, aR: aR, bL: bL, bR: bR, cond1: cond1, cond2: cond2,
+        checks: checks, found: true, done: false, answer: null,
+        leftCells: [], rightCells: [],
+        note: `第 ${checks} 次尝试：i = ${i}，j = halfLen − i = ${halfLen} − ${i} = ${j}。此时 A 的左半是 [${A.slice(0, i).join(', ') || '空'}]、右半是 [${A.slice(i).join(', ') || '空'}]；B 的左半是 [${B.slice(0, j).join(', ') || '空'}]、右半是 [${B.slice(j).join(', ') || '空'}]。` +
+          ` 四个边界值：ALmax = ${fmt(aL)}，ARmin = ${fmt(aR)}，BLmax = ${fmt(bL)}，BRmin = ${fmt(bR)}。` +
+          ` 检查交叉条件：ALmax = ${fmt(aL)} ≤ BRmin = ${fmt(bR)} ✓，BLmax = ${fmt(bL)} ≤ ARmin = ${fmt(aR)} ✓，两条都成立，说明左半部分的所有元素都不大于右半部分的所有元素，划分正确，可以计算中位数了。`
+      };
+      break;
+    }
+
+    if (aL > bR) {
+      const oldRight = right;
+      right = i - 1;
+      steps.push({
+        A: A, B: B, aName: aName, bName: bName, left: left, right: right, i: i, j: j,
+        aL: aL, aR: aR, bL: bL, bR: bR, cond1: cond1, cond2: cond2,
+        checks: checks, found: false, done: false, answer: null,
+        leftCells: [], rightCells: [],
+        note: `第 ${checks} 次尝试：i = ${i}，j = halfLen − i = ${halfLen} − ${i} = ${j}。四个边界值 ALmax = ${fmt(aL)}，ARmin = ${fmt(aR)}，BLmax = ${fmt(bL)}，BRmin = ${fmt(bR)}。` +
+          ` 第一条交叉条件 ALmax ≤ BRmin 不满足：ALmax = ${fmt(aL)} > BRmin = ${fmt(bR)}，意思是 A 放进左半的元素太大了，连 B 右半最小的元素都比它小。这说明 i 取大了，要往左收，令 right = i − 1 = ${right}，搜索区间变成 [${left}, ${right}]。`
+      });
+    } else {
+      const oldLeft = left;
+      left = i + 1;
+      steps.push({
+        A: A, B: B, aName: aName, bName: bName, left: left, right: right, i: i, j: j,
+        aL: aL, aR: aR, bL: bL, bR: bR, cond1: cond1, cond2: cond2,
+        checks: checks, found: false, done: false, answer: null,
+        leftCells: [], rightCells: [],
+        note: `第 ${checks} 次尝试：i = ${i}，j = halfLen − i = ${halfLen} − ${i} = ${j}。四个边界值 ALmax = ${fmt(aL)}，ARmin = ${fmt(aR)}，BLmax = ${fmt(bL)}，BRmin = ${fmt(bR)}。` +
+          ` 第二条交叉条件 BLmax ≤ ARmin 不满足：BLmax = ${fmt(bL)} > ARmin = ${fmt(aR)}，意思是 B 放进左半的元素太多了，A 分给左半的个数不够。这说明 i 取小了，要往右扩，令 left = i + 1 = ${left}，搜索区间变成 [${left}, ${right}]。`
+      });
+    }
+  }
+
+  if (found) {
+    const leftMax = Math.max(foundStep.aL, foundStep.bL);
+    const rightMin = Math.min(foundStep.aR, foundStep.bR);
+    const odd = (m + n) % 2 === 1;
+    answer = odd ? leftMax : (leftMax + rightMin) / 2;
+    const leftCells = [];
+    const rightCells = [];
+    if (foundStep.i > 0) leftCells.push({ arr: 'A', idx: foundStep.i - 1 });
+    if (foundStep.j > 0) leftCells.push({ arr: 'B', idx: foundStep.j - 1 });
+    if (foundStep.i < m) rightCells.push({ arr: 'A', idx: foundStep.i });
+    if (foundStep.j < n) rightCells.push({ arr: 'B', idx: foundStep.j });
+
+    foundStep.leftCells = leftCells;
+    foundStep.rightCells = rightCells;
+    steps.push(foundStep);
+
+    steps.push({
+      A: A, B: B, aName: aName, bName: bName, left: left, right: right,
+      i: foundStep.i, j: foundStep.j,
+      aL: foundStep.aL, aR: foundStep.aR, bL: foundStep.bL, bR: foundStep.bR,
+      cond1: true, cond2: true, checks: checks, found: true, done: true, answer: answer,
+      leftCells: leftCells, rightCells: rightCells,
+      note: `划分正确后计算中位数。左半部分的最大值是 max(ALmax, BLmax) = max(${fmt(foundStep.aL)}, ${fmt(foundStep.bL)}) = ${fmt(leftMax)}，右半部分的最小值是 min(ARmin, BRmin) = min(${fmt(foundStep.aR)}, ${fmt(foundStep.bR)}) = ${fmt(rightMin)}。` +
+        (odd
+          ? ` 总共 ${m + n} 个元素是奇数个，左半比右半多一个，中位数就是左半的最大值 ${fmt(leftMax)}。`
+          : ` 总共 ${m + n} 个元素是偶数个，中位数取中间两个的平均值 (${fmt(leftMax)} + ${fmt(rightMin)}) / 2 = ${answer}。`) +
+        ` 全程只对长度 ${m} 的 A 做了 ${checks} 次二分，时间复杂度 O(log(min(m, n)))，只用常数个变量，空间复杂度 O(1)。`
+    });
+  } else {
+    steps.push({
+      A: A, B: B, aName: aName, bName: bName, left: left, right: right, i: -1, j: -1,
+      aL: null, aR: null, bL: null, bR: null, cond1: null, cond2: null,
+      checks: checks, found: false, done: true, answer: null,
+      leftCells: [], rightCells: [],
+      note: `搜索区间为空仍未找到合法划分，返回 0。`
+    });
+  }
+
+  return steps;
 }
-function reset() { cur = 0; stopAuto(); render(); }
-function prev() { if (cur > 0) { cur--; render(); } }
-function next() { if (cur < steps.length - 1) { cur++; render(); } else { stopAuto(); } }
-function goLast() { stopAuto(); cur = steps.length - 1; render(); }
-function toggleAuto() { running ? stopAuto() : startAuto(); }
-function startAuto() { running = true; render(); autoStep(); }
-function stopAuto() { running = false; if (autoTimer) clearTimeout(autoTimer); render(); }
-function autoStep() { if (!running) return; if (cur < steps.length - 1) { cur++; render(); autoTimer = setTimeout(autoStep, 700); } else { stopAuto(); } }
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
-  else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); next(); }
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
-  else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); reset(); }
-  else if (e.key === 'End') { e.preventDefault(); goLast(); }
+
+function partitionView(step) {
+  const W = 620;
+  const H = 322;
+  const cw = 58;
+  const ch = 42;
+  const Ay = 74;
+  const By = 218;
+  const A = step.A;
+  const B = step.B;
+  const m = A.length;
+  const n = B.length;
+  const x0A = (W - m * cw) / 2;
+  const x0B = (W - n * cw) / 2;
+  const hasCut = step.i >= 0;
+
+  const parts = [];
+  parts.push('<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:620px;height:auto;display:block" role="img">');
+
+  function drawRow(arr, x0, y, cut, name, note, leftCells, rightCells) {
+    const titleY = y - 46;
+    parts.push('<text x="14" y="' + titleY +
+      '" text-anchor="start" style="fill:var(--demo-muted);font-size:12px;font-weight:700">' + name + '</text>');
+    parts.push('<text x="' + (W - 14) + '" y="' + titleY +
+      '" text-anchor="end" style="fill:var(--demo-muted);font-size:11px;font-family:var(--demo-mono)">' + note + '</text>');
+
+    for (let k = 0; k < arr.length; k++) {
+      const x = x0 + k * cw;
+      const isLeft = cut >= 0 && k < cut;
+      let fill = isLeft ? 'var(--demo-violet-soft)' : 'var(--demo-info-soft)';
+      let stroke = isLeft ? 'var(--demo-violet)' : 'var(--demo-info)';
+      let width = 2;
+
+      if (leftCells.indexOf(k) >= 0) { fill = 'var(--demo-ok-soft)'; stroke = 'var(--demo-ok)'; width = 3; }
+      if (rightCells.indexOf(k) >= 0) { fill = 'var(--demo-warn-soft)'; stroke = 'var(--demo-warn)'; width = 3; }
+
+      parts.push('<rect x="' + (x + 4) + '" y="' + y + '" width="' + (cw - 8) + '" height="' + ch +
+        '" rx="7" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:' + width + '"/>');
+      parts.push('<text x="' + (x + cw / 2) + '" y="' + (y + ch / 2 + 6) +
+        '" text-anchor="middle" style="fill:var(--demo-text);font-size:17px;font-weight:700;font-family:var(--demo-mono)">' + arr[k] + '</text>');
+    }
+
+    if (cut >= 0) {
+      const cx = x0 + cut * cw;
+      parts.push('<line x1="' + cx + '" y1="' + (y - 20) + '" x2="' + cx + '" y2="' + (y + ch + 16) +
+        '" style="stroke:var(--demo-accent);stroke-width:2.5;stroke-dasharray:6 4"/>');
+      parts.push('<text x="' + cx + '" y="' + (y - 26) +
+        '" text-anchor="middle" style="fill:var(--demo-accent);font-size:11px;font-weight:700;font-family:var(--demo-mono)">' +
+        (arr === A ? 'i = ' + step.i : 'j = ' + step.j) + '</text>');
+    }
+  }
+
+  drawRow(A, x0A, Ay, hasCut ? step.i : -1,
+    'A = [' + A.join(', ') + ']（来自 ' + step.aName + '，较短，二分对象）',
+    '左半 ' + (hasCut ? step.i : '?') + ' 个 · 右半 ' + (hasCut ? m - step.i : '?') + ' 个',
+    step.leftCells.filter(function (c) { return c.arr === 'A'; }).map(function (c) { return c.idx; }),
+    step.rightCells.filter(function (c) { return c.arr === 'A'; }).map(function (c) { return c.idx; }));
+
+  drawRow(B, x0B, By, hasCut ? step.j : -1,
+    'B = [' + B.join(', ') + ']（来自 ' + step.bName + '，较长）',
+    '左半 ' + (hasCut ? step.j : '?') + ' 个 · 右半 ' + (hasCut ? n - step.j : '?') + ' 个',
+    step.leftCells.filter(function (c) { return c.arr === 'B'; }).map(function (c) { return c.idx; }),
+    step.rightCells.filter(function (c) { return c.arr === 'B'; }).map(function (c) { return c.idx; }));
+
+  if (hasCut) {
+    const cxa = x0A + step.i * cw;
+    const cxb = x0B + step.j * cw;
+    parts.push('<text x="' + (cxa - 8) + '" y="' + (Ay + ch + 30) + '" text-anchor="end" style="fill:var(--demo-violet);font-size:11px;font-weight:700;font-family:var(--demo-mono)">ALmax = ' + fmt(step.aL) + '</text>');
+    parts.push('<text x="' + (cxa + 8) + '" y="' + (Ay + ch + 30) + '" text-anchor="start" style="fill:var(--demo-info);font-size:11px;font-weight:700;font-family:var(--demo-mono)">ARmin = ' + fmt(step.aR) + '</text>');
+    parts.push('<text x="' + (cxb - 8) + '" y="' + (By + ch + 30) + '" text-anchor="end" style="fill:var(--demo-violet);font-size:11px;font-weight:700;font-family:var(--demo-mono)">BLmax = ' + fmt(step.bL) + '</text>');
+    parts.push('<text x="' + (cxb + 8) + '" y="' + (By + ch + 30) + '" text-anchor="start" style="fill:var(--demo-info);font-size:11px;font-weight:700;font-family:var(--demo-mono)">BRmin = ' + fmt(step.bR) + '</text>');
+  } else {
+    parts.push('<text x="' + (W / 2) + '" y="' + (H - 44) +
+      '" text-anchor="middle" style="fill:var(--demo-muted);font-size:12px">还没有开始划分：先把较短的数组排前面，再决定第一刀 i 切在哪里</text>');
+  }
+
+  parts.push('<text x="' + (W / 2) + '" y="' + (H - 12) +
+    '" text-anchor="middle" style="fill:var(--demo-muted);font-size:11px">虚线是分割线：它左边的元素全部进入合并后数组的左半部分</text>');
+
+  parts.push('</svg>');
+
+  const box = Demo.el('div', 'col');
+  box.style.width = '100%';
+  box.innerHTML = parts.join('');
+  return box;
+}
+
+function boundaryTable(step) {
+  const t = Demo.el('table', 'map-table');
+
+  const thead = Demo.el('thead');
+  const hr = Demo.el('tr');
+  ['边界值', '来源', '数值', '检查'].forEach(function (h) { hr.appendChild(Demo.el('th', null, h)); });
+  thead.appendChild(hr);
+  t.appendChild(thead);
+
+  const tbody = Demo.el('tbody');
+  function addRow(cells, active) {
+    const tr = Demo.el('tr');
+    if (active) tr.classList.add('is-active');
+    cells.forEach(function (c) { tr.appendChild(Demo.el('td', null, Demo.esc(c))); });
+    tbody.appendChild(tr);
+  }
+
+  const has = step.i >= 0;
+  addRow(['ALmax（A 左半最大）', has && step.i > 0 ? 'A[' + (step.i - 1) + ']' : '空 → −∞', has ? fmt(step.aL) : '—'], has);
+  addRow(['ARmin（A 右半最小）', has && step.i < step.A.length ? 'A[' + step.i + ']' : '空 → +∞', has ? fmt(step.aR) : '—'], has);
+  addRow(['BLmax（B 左半最大）', has && step.j > 0 ? 'B[' + (step.j - 1) + ']' : '空 → −∞', has ? fmt(step.bL) : '—'], has);
+  addRow(['BRmin（B 右半最小）', has && step.j < step.B.length ? 'B[' + step.j + ']' : '空 → +∞', has ? fmt(step.bR) : '—'], has);
+  addRow(['条件① ALmax ≤ BRmin',
+    has ? fmt(step.aL) + ' ≤ ' + fmt(step.bR) : '—',
+    step.cond1 == null ? '—' : (step.cond1 ? '满足' : '不满足'),
+    step.cond1 == null ? '' : (step.cond1 ? '✓' : '✗')], has && step.cond1 != null);
+  addRow(['条件② BLmax ≤ ARmin',
+    has ? fmt(step.bL) + ' ≤ ' + fmt(step.aR) : '—',
+    step.cond2 == null ? '—' : (step.cond2 ? '满足' : '不满足'),
+    step.cond2 == null ? '' : (step.cond2 ? '✓' : '✗')], has && step.cond2 != null);
+  addRow(['中位数', '', step.answer == null ? '—' : fmt(step.answer), ''], step.done && step.answer != null);
+
+  t.appendChild(tbody);
+  return t;
+}
+
+Demo.create({
+  title: '120. 寻找两个正序数组的中位数 — 在较短数组上二分划分线',
+  info: `输入：nums1 = [${NUMS1.join(', ')}]，nums2 = [${NUMS2.join(', ')}]（示例 1）。思路：把两个数组各切成左右两半，让左半总数等于 halfLen 且左半的最大值不超过右半的最小值。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 470,
+  legend: [
+    { color: 'var(--demo-violet)', label: '分割线左侧（进入合并数组左半）' },
+    { color: 'var(--demo-info)', label: '分割线右侧（进入合并数组右半）' },
+    { color: 'var(--demo-ok)', label: '左半最大值（奇数个时就是中位数）' },
+    { color: 'var(--demo-warn)', label: '右半最小值（偶数个时参与求平均）' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const top = Demo.el('div', 'row');
+    top.style.width = '100%';
+
+    const chartPanel = Demo.el('div', 'panel');
+    chartPanel.style.flex = '1 1 480px';
+    chartPanel.appendChild(Demo.el('div', 'panel__title',
+      step.done
+        ? `划分完成：i = ${step.i}，j = ${step.j}`
+        : (step.i < 0 ? '两个数组与要二分的 i' : `当前划分：i = ${step.i}，j = ${step.j}`)));
+    chartPanel.appendChild(partitionView(step));
+    top.appendChild(chartPanel);
+
+    const tablePanel = Demo.el('div', 'panel');
+    tablePanel.appendChild(Demo.el('div', 'panel__title', '四个边界值与两个条件'));
+    tablePanel.appendChild(boundaryTable(step));
+    top.appendChild(tablePanel);
+
+    ctx.stage.appendChild(top);
+
+    const result = Demo.el('div', 'panel',
+      `已在 A（长度 ${step.A.length}）上二分 <strong>${step.checks}</strong> 次 ｜ i ∈ <code>[${step.left}, ${step.right}]</code>` +
+      (step.done
+        ? (step.answer == null
+          ? ' &nbsp;<span class="tag tag--bad">未找到划分</span>'
+          : ` &nbsp;<span class="tag tag--ok">中位数 = ${fmt(step.answer)}</span>`)
+        : ''));
+    result.style.width = '100%';
+    result.style.textAlign = 'center';
+    ctx.stage.appendChild(result);
+  }
 });
-render();
 </script>
 </body>
 </html>

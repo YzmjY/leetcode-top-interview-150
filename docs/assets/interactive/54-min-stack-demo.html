@@ -1,147 +1,172 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root { --bg:#fff; --text:#333; --muted:#888; --cell-bg:#fafafa; --cell-border:#d0d0d0; --header:#222; --sub-bg:#f5f5f5; --btn-bg:#f0f0f0; --btn-hover:#e0e0e0; }
-  @media (prefers-color-scheme:dark) { :root { --bg:#1a1a2e; --text:#ddd; --muted:#aaa; --cell-bg:#222; --cell-border:#444; --header:#ddd; --btn-bg:#333; --btn-hover:#444; --sub-bg:#252540; } }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; padding:12px 20px; }
-  .container { max-width:850px; width:100%; }
-  h2 { text-align:center; color:var(--header); font-size:17px; margin-bottom:2px; }
-  .sub-title { text-align:center; color:var(--muted); font-size:12px; margin-bottom:4px; }
-  .info-bar { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:4px; font-size:14px; flex-wrap:wrap; }
-  .step-num { font-weight:bold; font-size:22px; color:#1976D2; min-width:32px; text-align:center; }
-  .step-desc { color:var(--muted); font-size:13px; max-width:600px; text-align:center; }
-  svg { display:block; margin:0 auto; width:100%; }
-  .legend { display:flex; gap:14px; justify-content:center; margin-top:4px; font-size:11px; color:var(--muted); flex-wrap:wrap; }
-  .legend-item { display:flex; align-items:center; gap:5px; }
-  .legend-dot { width:14px; height:14px; border-radius:3px; }
-  .controls { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:6px; }
-  button { padding:7px 15px; border:1px solid var(--cell-border); border-radius:6px; background:var(--btn-bg); color:var(--text); font-size:13px; cursor:pointer; transition:0.15s; }
-  button:hover { background:var(--btn-hover); }
-  button:active { transform:scale(0.96); }
-  button:disabled { opacity:0.35; cursor:default; }
-  button.play-btn { background:#1976D2; color:#fff; border-color:#1565C0; }
-</style>
+<title>54. 最小栈 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>最小栈 — 主栈 + 辅助栈可视化</h2>
-  <div class="sub-title">push(-2)→push(0)→push(-3)→getMin(-3)→pop→top(0)→getMin(-2)</div>
-  <div class="info-bar"><span class="step-num" id="stepNum">0</span><span class="step-desc" id="stepDesc">初始状态 · 点击下一步开始</span></div>
-  <svg id="svg" viewBox="0 0 840 340"></svg>
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#42A5F5;"></div>主栈</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#66BB6A;"></div>最小栈</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#FF7043;"></div>新入栈/操作中</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#FF5252;"></div>出栈</div>
-  </div>
-  <div class="controls">
-    <button onclick="goStep(0)">&#x23EE; 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
-    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
-  </div>
-</div>
+<script src="demo.js"></script>
 <script>
-const ops=[{type:'push',val:-2,desc:'push(-2)'},{type:'push',val:0,desc:'push(0)'},{type:'push',val:-3,desc:'push(-3)'},{type:'getMin',desc:'getMin() → -3'},{type:'pop',desc:'pop()'},{type:'top',desc:'top() → 0'},{type:'getMin',desc:'getMin() → -2'}];
+const OPS = [
+  ['push', -2], ['push', 0], ['push', -3],
+  ['getMin'], ['pop'], ['top'], ['getMin']
+];
 
-const steps=[];
-(function sim(){
-  let ms=[], mi=[];
-  steps.push({desc:'初始状态', main:[...ms], min:[...mi], op:'init', opV:null, phase:'init'});
-  for(const op of ops){
-    if(op.type==='push'){
-      ms.push(op.val);
-      const nm=mi.length===0?op.val:Math.min(op.val,mi[mi.length-1]);
-      mi.push(nm);
-      steps.push({desc:op.desc, main:[...ms], min:[...mi], op:'push', opV:op.val, phase:'push'});
-    }else if(op.type==='pop'){
-      const popped=ms[ms.length-1];
-      ms.pop(); mi.pop();
-      steps.push({desc:op.desc, main:[...ms], min:[...mi], op:'pop', opV:popped, phase:'pop'});
-    }else if(op.type==='getMin'){
-      steps.push({desc:op.desc, main:[...ms], min:[...mi], op:'getMin', opV:mi[mi.length-1], phase:'getMin'});
-    }else if(op.type==='top'){
-      steps.push({desc:op.desc, main:[...ms], min:[...mi], op:'top', opV:ms[ms.length-1], phase:'top'});
+function opLabel(op) {
+  return op[0] + '(' + (op.length > 1 ? op[1] : '') + ')';
+}
+
+function buildSteps() {
+  const stack = [];
+  const minStack = [];
+  const steps = [];
+
+  function snap(o) {
+    steps.push({
+      stack: stack.slice(),
+      minStack: minStack.slice(),
+      opIndex: o.opIndex,
+      op: o.op,
+      arg: o.arg == null ? null : o.arg,
+      ret: o.ret == null ? null : o.ret,
+      phase: o.phase,
+      note: o.note
+    });
+  }
+
+  snap({
+    opIndex: -1, op: null, phase: 'init',
+    note: '初始状态：主栈 stack 与辅助栈 minStack 都是空的。主栈保存所有元素；辅助栈的第 k 个元素记录「主栈只有下面 k 个元素时」的最小值，这样 getMin 永远只需读辅助栈的栈顶，做到 O(1)。'
+  });
+
+  OPS.forEach(function (op, k) {
+    const name = op[0];
+    const arg = op.length > 1 ? op[1] : null;
+
+    if (name === 'push') {
+      stack.push(arg);
+      const had = minStack.length > 0;
+      const oldMin = had ? minStack[minStack.length - 1] : null;
+      if (!had || arg < minStack[minStack.length - 1]) {
+        minStack.push(arg);
+        snap({
+          opIndex: k, op: name, arg: arg, phase: 'push',
+          note: 'push(' + arg + ')：先把 ' + arg + ' 压入主栈。'
+            + (had ? '再和辅助栈顶 ' + oldMin + ' 比较，' + arg + ' < ' + oldMin + '，所以这是新的最小值' : '辅助栈原本为空，没有可比较的最小值')
+            + '，把 ' + arg + ' 压入辅助栈。'
+        });
+      } else {
+        minStack.push(oldMin);
+        snap({
+          opIndex: k, op: name, arg: arg, phase: 'push',
+          note: 'push(' + arg + ')：先把 ' + arg + ' 压入主栈。再和辅助栈顶 ' + oldMin + ' 比较，' + arg + ' ≥ ' + oldMin + '，最小值没有被刷新，于是把当前最小值 ' + oldMin + ' 再压一次到辅助栈，保证两个栈高度一致、可以同步弹出。'
+        });
+      }
+    } else if (name === 'pop') {
+      const removed = stack[stack.length - 1];
+      stack.pop();
+      minStack.pop();
+      snap({
+        opIndex: k, op: name, phase: 'pop',
+        note: 'pop()：主栈和辅助栈同时弹出栈顶（题目保证不会在空栈上调用）。主栈中被删掉的是 ' + removed + '，辅助栈也弹出它对应的那一层最小值，于是恢复成「上一个状态」的最小值。'
+      });
+    } else if (name === 'top') {
+      const ret = stack[stack.length - 1];
+      snap({
+        opIndex: k, op: name, ret: ret, phase: 'top',
+        note: 'top()：不做任何修改，只读主栈栈顶，返回 ' + ret + '。'
+      });
+    } else {
+      const ret = minStack[minStack.length - 1];
+      snap({
+        opIndex: k, op: name, ret: ret, phase: 'getmin',
+        note: 'getMin()：直接读辅助栈栈顶，返回 ' + ret + '，不需要遍历主栈，所以是 O(1)。辅助栈栈顶始终等于当前主栈里的最小值。'
+      });
     }
-  }
-})();
+  });
 
-// SVG layout: two stack columns
-const mainX=280, minX=560, stackBase=310, cellH=42, cellW=160, cellRx=6;
+  snap({
+    opIndex: OPS.length, op: null, phase: 'done',
+    note: '操作序列执行完毕。四个操作 push / pop / top / getMin 都只做常数次读写，时间全部 O(1)；代价是额外一个等高的辅助栈，空间 O(n)。'
+  });
 
-function drawStack(arr, x, color, op, opV, phase){
-  let html='';
-  for(let i=0;i<arr.length;i++){
-    const y=stackBase-(i+1)*cellH;
-    const isTop=(i===arr.length-1);
-    let fill=color, stroke=color, fw='1.5', fc='#fff';
-    if(isTop && phase==='push'){
-      fill='#FF7043'; stroke='#E65100'; fw='2.5';
-    }else if(isTop && phase==='pop'){
-      fill='#FF5252'; stroke='#B71C1C'; fw='2.5';
-    }else if(phase==='getMin' && color==='#66BB6A' && isTop){
-      fill='#FF7043'; stroke='#E65100'; fw='2.5';
-    }
-    html+='<rect x="'+(x-cellW/2)+'" y="'+y+'" width="'+cellW+'" height="'+cellH+'" rx="'+cellRx+'" fill="'+fill+'" opacity="0.9" stroke="'+stroke+'" stroke-width="'+fw+'"/>';
-    html+='<text x="'+x+'" y="'+(y+cellH/2+6)+'" text-anchor="middle" fill="'+fc+'" font-size="16" font-weight="bold">'+arr[i]+'</text>';
-    // Index label
-    html+='<text x="'+(x-cellW/2-8)+'" y="'+(y+cellH/2+6)+'" text-anchor="end" fill="var(--muted)" font-size="10">'+(i+1)+'</text>';
-  }
-  if(arr.length===0){
-    const y=stackBase-cellH;
-    html+='<rect x="'+(x-cellW/2)+'" y="'+y+'" width="'+cellW+'" height="'+cellH+'" rx="'+cellRx+'" fill="var(--sub-bg)" stroke="var(--cell-border)" stroke-width="1.5" stroke-dasharray="4,3"/>';
-    html+='<text x="'+x+'" y="'+(y+cellH/2+6)+'" text-anchor="middle" fill="var(--muted)" font-size="13">(空)</text>';
-  }
-  // Stack frame lines
-  html+='<line x1="'+(x-cellW/2-5)+'" y1="'+(stackBase-arr.length*cellH)+'" x2="'+(x-cellW/2-5)+'" y2="'+stackBase+'" stroke="#888" stroke-width="1.5"/>';
-  html+='<line x1="'+(x-cellW/2-10)+'" y1="'+stackBase+'" x2="'+(x+cellW/2+10)+'" y2="'+stackBase+'" stroke="#888" stroke-width="1.5"/>';
-  return html;
+  return steps;
 }
 
-let current=0, autoTimer=null, autoRun=false;
-const svg=document.getElementById('svg');
-
-function render(){
-  const s=steps[current];
-  const total=steps.length-1;
-  document.getElementById('stepNum').textContent=current;
-  document.getElementById('stepDesc').textContent=s.desc;
-  document.getElementById('prevBtn').disabled=current<=0;
-  document.getElementById('nextBtn').disabled=current>=total;
-
-  let html='';
-  // Background columns
-  html+='<rect x="40" y="10" width="380" height="330" rx="12" fill="var(--sub-bg)" stroke="var(--cell-border)" stroke-width="1" opacity="0.5"/>';
-  html+='<rect x="440" y="10" width="380" height="330" rx="12" fill="var(--sub-bg)" stroke="var(--cell-border)" stroke-width="1" opacity="0.5"/>';
-
-  // Labels
-  html+='<text x="'+mainX+'" y="35" text-anchor="middle" fill="#42A5F5" font-size="14" font-weight="bold">主栈 Main</text>';
-  html+='<text x="'+minX+'" y="35" text-anchor="middle" fill="#66BB6A" font-size="14" font-weight="bold">最小栈 Min</text>';
-
-  // Draw stacks
-  html+=drawStack(s.main, mainX, '#42A5F5', s.op, s.opV, s.phase);
-  html+=drawStack(s.min, minX, '#66BB6A', s.op, s.opV, s.phase);
-
-  // Step indicator
-  if(s.phase!=='init'){
-    html+='<text x="420" y="320" text-anchor="middle" fill="var(--muted)" font-size="11">步骤 '+current+'/'+total+' · '+s.desc+'</text>';
+function stackBox(items, emptyText) {
+  const box = Demo.el('div', 'stack');
+  if (items.length === 0) {
+    box.appendChild(Demo.el('div', 'stack__item', emptyText));
+    return box;
   }
-
-  svg.innerHTML=html;
+  items.forEach(function (v, k) {
+    const item = Demo.el('div', 'stack__item', Demo.esc(v));
+    if (k === items.length - 1) item.classList.add('is-active');
+    box.appendChild(item);
+  });
+  return box;
 }
 
-function goStep(n){current=Math.max(0,Math.min(n,steps.length-1));render()}
-function toggleAuto(){
-  if(autoRun){clearInterval(autoTimer);autoRun=false;document.getElementById('playBtn').textContent='\u25B6 自动播放';document.getElementById('playBtn').style.background='';document.getElementById('playBtn').style.color='';document.getElementById('playBtn').classList.remove('play-btn');}
-  else{autoRun=true;document.getElementById('playBtn').textContent='\u23F8 暂停';document.getElementById('playBtn').style.background='#1976D2';document.getElementById('playBtn').style.color='#fff';document.getElementById('playBtn').classList.add('play-btn');if(current>=steps.length-1)goStep(0);autoTimer=setInterval(function(){if(current<steps.length-1)goStep(current+1);else toggleAuto()},900);}
+function render(step, idx, ctx) {
+  ctx.stage.innerHTML = '';
+
+  const mainRow = Demo.el('div', 'row');
+  mainRow.style.width = '100%';
+  mainRow.style.alignItems = 'flex-start';
+
+  const stackPanel = Demo.el('div', 'panel');
+  stackPanel.appendChild(Demo.el('div', 'panel__title', '主栈 stack（自下而上，上方为栈顶）'));
+  stackPanel.appendChild(stackBox(step.stack, '（空）'));
+  mainRow.appendChild(stackPanel);
+
+  const minPanel = Demo.el('div', 'panel');
+  minPanel.appendChild(Demo.el('div', 'panel__title', '辅助栈 minStack（每层记录当时的最小值）'));
+  minPanel.appendChild(stackBox(step.minStack, '（空）'));
+  mainRow.appendChild(minPanel);
+
+  const infoPanel = Demo.el('div', 'panel');
+  infoPanel.style.flex = '1';
+  infoPanel.appendChild(Demo.el('div', 'panel__title', '本次操作'));
+  infoPanel.appendChild(Demo.el('div', null, step.op == null
+    ? '<span class="tag tag--warn">等待操作</span>'
+    : '<span class="tag tag--info">' + Demo.esc(opLabel(step.op === 'push' ? ['push', step.arg] : [step.op])) + '</span>'));
+  infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">返回值：'
+    + (step.ret == null ? '<code>null</code>' : '<code>' + step.ret + '</code>')
+    + (step.ret != null ? ' <span class="tag tag--ok">返回 ' + step.ret + '</span>' : '')
+    + '</div>'));
+  infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">主栈大小：<code>' + step.stack.length + '</code></div>'));
+  infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">当前最小值：<code>'
+    + (step.minStack.length ? step.minStack[step.minStack.length - 1] : '—') + '</code></div>'));
+  mainRow.appendChild(infoPanel);
+
+  ctx.stage.appendChild(mainRow);
+
+  const logPanel = Demo.el('div', 'panel');
+  logPanel.style.width = '100%';
+  let t = '<table class="map-table" style="margin:0 auto"><tr><th>#</th><th>操作</th><th>返回</th></tr>';
+  OPS.forEach(function (op, k) {
+    t += '<tr' + (k === step.opIndex ? ' class="is-active"' : '') + '><td>' + k + '</td><td>'
+      + Demo.esc(opLabel(op)) + '</td><td>' + (op[0] === 'push' || op[0] === 'pop' ? 'null' : '…') + '</td></tr>';
+  });
+  t += '</table>';
+  logPanel.innerHTML = '<div class="panel__title">操作序列（示例 1）</div>' + t;
+  ctx.stage.appendChild(logPanel);
 }
-document.addEventListener('keydown',function(e){if(e.key==='ArrowRight')goStep(current+1);if(e.key==='ArrowLeft')goStep(current-1);if(e.key===' '){e.preventDefault();toggleAuto();}});
-render();
+
+Demo.create({
+  title: '54. 最小栈 — 主栈 + 同步辅助栈，getMin 为 O(1)',
+  info: '输入（示例 1）：依次执行 push(-2)、push(0)、push(-3)、getMin()、pop()、top()、getMin()，期望返回值依次为 -3、0、-2。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 400,
+  legend: [
+    { color: 'var(--demo-accent)', label: '栈顶（两个栈始终保持等高）' },
+    { color: 'var(--demo-ok)', label: '被读取 / 返回的值' }
+  ],
+  render: render
+});
 </script>
 </body>
 </html>

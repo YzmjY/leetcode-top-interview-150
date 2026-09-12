@@ -3,203 +3,158 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>全排列 - 回溯可视化</title>
-<style>
-:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#555;--border:#dee2e6;--accent:#7c3aed;--accent2:#a78bfa;--hover:#ede9fe;--green:#22c55e;--orange:#f59e0b;--blue:#3b82f6;--red:#ef4444;--btn-bg:#e5e7eb;--btn-txt:#374151;--node-bg:#f3e8ff;--node-border:#c4b5fd;--edge:#c4b5fd;--res-bg:#f0fdf4;--res-border:#86efac;--used-bg:#fef2f2;--used-txt:#ef4444}
-.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--node-bg:#1e1b4b;--node-border:#5b21b6;--edge:#5b21b6;--res-bg:#052e16;--res-border:#166534;--used-bg:#450a0a;--used-txt:#fca5a5}
-@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--node-bg:#1e1b4b;--node-border:#5b21b6;--edge:#5b21b6;--res-bg:#052e16;--res-border:#166534;--used-bg:#450a0a;--used-txt:#fca5a5}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
-.container{width:100%;max-width:800px;background:var(--card);border-radius:8px;border:1px solid var(--border);padding:20px 24px}
-h2{font-size:1.1rem;font-weight:600;margin-bottom:6px;color:var(--accent)}
-.info-panel{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:.85rem;color:var(--text2);flex-wrap:wrap}
-.info-panel .step{background:var(--accent);color:#fff;padding:3px 10px;border-radius:8px;font-weight:600;font-size:.8rem}
-.info-panel .desc{flex:1;min-width:200px}
-.used-bar{display:flex;gap:6px;margin-bottom:8px;font-size:.78rem;flex-wrap:wrap;align-items:center}
-.used-bar .label{color:var(--text2);font-weight:600}
-.used-bar .slot{min-width:32px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;border:2px solid var(--border);background:var(--bg);font-size:.85rem;transition:all .2s}
-.used-bar .slot.used{background:var(--used-bg);border-color:var(--red);color:var(--used-txt)}
-.used-bar .slot.free{background:var(--res-bg);border-color:var(--green);color:var(--green)}
-.used-bar .sep{color:var(--text2)}
-.vis-area{height:440px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg)}
-.vis-area canvas{display:block;width:100%;height:100%}
-.results-bar{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;min-height:28px}
-.results-bar .tag{background:var(--res-bg);border:1px solid var(--res-border);color:var(--green);padding:2px 8px;border-radius:6px;font-size:.75rem;font-family:monospace}
-.controls{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-.controls button{background:var(--btn-bg);color:var(--btn-txt);border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:inherit;transition:all .15s}
-.controls button:hover{background:var(--hover);border-color:var(--accent)}
-.controls button:active{transform:scale(.96)}
-.controls button.playing{background:var(--accent);color:#fff;border-color:var(--accent)}
-.legend{display:flex;gap:14px;margin-top:8px;font-size:.72rem;color:var(--text2);flex-wrap:wrap}
-.legend span{display:flex;align-items:center;gap:4px}
-.legend .dot{width:10px;height:10px;border-radius:50%}
-</style>
+<title>103. 全排列 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>103. 全排列 (Permutations)</h2>
-<div class="info-panel">
-  <span class="step" id="stepLabel">步骤 1/24</span>
-  <span class="desc" id="stepDesc">开始回溯: nums=[1,2,3]</span>
-</div>
-<div class="used-bar">
-  <span class="label">used数组:</span>
-  <span id="usedSlots"></span>
-  <span class="label">当前排列:</span>
-  <strong style="color:var(--accent)" id="curPerm">[]</strong>
-</div>
-<div class="vis-area"><canvas id="canvas"></canvas></div>
-<div class="results-bar" id="resultsBar"></div>
-<div class="controls">
-  <button onclick="reset()">重置</button>
-  <button onclick="prevStep()">上步</button>
-  <button onclick="nextStep()">下步</button>
-  <button id="playBtn" onclick="togglePlay()">自动播放</button>
-  <button onclick="jumpEnd()">最后</button>
-</div>
-<div class="legend">
-  <span><span class="dot" style="background:var(--accent)"></span>当前节点</span>
-  <span><span class="dot" style="background:var(--node-bg);border:2px solid var(--node-border)"></span>中间节点</span>
-  <span><span class="dot" style="background:var(--green)"></span>完成排列(叶子)</span>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const nums=[1,2,3];
-const steps=[];
-const results=[];
-function genSteps(path,used){
-  steps.push({type:'enter',path:[...path],used:[...used]});
-  if(path.length===nums.length){
-    results.push([...path]);
-    steps.push({type:'leaf',path:[...path],used:[...used]});
-    steps.push({type:'backtrack',path:[...path.slice(0,-1)],used:((u)=>{const u2=[...used];u2[path[path.length-1]-1]=false;return u2;})(used),removed:path[path.length-1]});
-    return;
+const NUMS = [1, 2, 3];
+
+function buildSteps() {
+  const n = NUMS.length;
+  const steps = [];
+  const path = [];
+  const used = new Array(n).fill(false);
+  const results = [];
+
+  function snap(extra) {
+    return {
+      path: path.slice(),
+      used: used.slice(),
+      results: results.slice(),
+      choiceIdx: extra.choiceIdx == null ? null : extra.choiceIdx,
+      phase: extra.phase,
+      note: extra.note
+    };
   }
-  for(let i=0;i<nums.length;i++){
-    if(used[i])continue;
-    steps.push({type:'pick',path:[...path],used:[...used],candidate:nums[i]});
-    used[i]=true;
-    path.push(nums[i]);
-    genSteps(path,used);
-    path.pop();
-    used[i]=false;
-  }
-  if(path.length>0)steps.push({type:'backtrack',path:[...path.slice(0,-1)],used:((u)=>{const u2=[...used];u2[path[path.length-1]-1]=false;return u2;})(used),removed:path[path.length-1]});
-}
-genSteps([],[false,false,false]);
 
-let curStep=0,playId=null;
-const canvas=document.getElementById('canvas');
-const ctx=canvas.getContext('2d');
+  steps.push(snap({
+    phase: 'init',
+    note: `初始化：nums = [${NUMS.join(', ')}]，path 为空，used 全部为 false。排列区分顺序，所以每一层都从下标 0 开始扫描整个数组；靠 used 数组保证同一条路径里每个元素只用一次，这才是去重的关键。`
+  }));
 
-function resize(){const r=canvas.getBoundingClientRect();canvas.width=r.width*devicePixelRatio;canvas.height=r.height*devicePixelRatio;ctx.setTransform(1,0,0,1,0,0);ctx.scale(devicePixelRatio,devicePixelRatio);draw();}
-window.addEventListener('resize',resize);
+  function backtrack() {
+    if (path.length === n) {
+      results.push(path.slice());
+      steps.push(snap({
+        phase: 'collect',
+        note: `path 长度达到 n = ${n}，说明每个元素都恰好用了一次，得到一个完整排列 [${path.join(', ')}]，加入结果集后返回。`
+      }));
+      return;
+    }
 
-function collectNodes(){
-  const nodes={};
-  for(let i=0;i<=curStep;i++){
-    const s=steps[i];
-    if(s.type==='enter'||s.type==='leaf'){
-      const l=s.path.length;
-      const key=s.path.join(',')||'root';
-      if(!nodes[l])nodes[l]=[];
-      if(!nodes[l].find(n=>n.key===key))nodes[l].push({key,path:[...s.path],x:0,y:0,isLeaf:s.type==='leaf'});
+    for (let i = 0; i < n; i++) {
+      if (used[i]) continue;
+
+      used[i] = true;
+      path.push(NUMS[i]);
+      steps.push(snap({
+        choiceIdx: i, phase: 'choose',
+        note: `扫描到下标 ${i}：used[${i}] 为 false，可以选。选择 nums[${i}] = ${NUMS[i]}，置 used[${i}] = true，path 变为 [${path.join(', ')}]，然后递归到下一层。`
+      }));
+
+      backtrack();
+
+      path.pop();
+      used[i] = false;
+      steps.push(snap({
+        choiceIdx: i, phase: 'undo',
+        note: `撤销选择 nums[${i}] = ${NUMS[i]}：从 path 末尾弹出，并把 used[${i}] 复位为 false，这样在别的分支里它又能被使用。随后继续扫描下标 ${i + 1}。`
+      }));
     }
   }
-  return nodes;
+
+  backtrack();
+
+  steps.push(snap({
+    phase: 'done',
+    note: `回溯结束，共得到 ${results.length} 个排列，等于 ${n}! = ${results.length}。每个排列对应一条「每层选一个未用元素」的完整路径，所以既不重复也不遗漏。`
+  }));
+
+  return steps;
 }
 
-function draw(){
-  const w=canvas.width/devicePixelRatio,h=canvas.height/devicePixelRatio;
-  ctx.clearRect(0,0,w,h);
-  const step=steps[curStep];
-  const nodes=collectNodes();
-  const maxL=Math.max(...Object.keys(nodes).map(Number),0);
-  const rootX=w/2,rootY=40,levelGap=75,nodeGap=32;
-  for(let l=0;l<=maxL;l++){
-    const nds=nodes[l]||[];
-    const tw=nds.length*nodeGap*2;
-    const sx=rootX-tw/2+nodeGap;
-    nds.forEach((n,i)=>{n.x=sx+i*nodeGap*2;n.y=rootY+l*levelGap});
-  }
-  for(let l=1;l<=maxL;l++){
-    const parents=nodes[l-1]||[];
-    const children=nodes[l]||[];
-    children.forEach(child=>{
-      for(const p of parents){
-        if(child.path.slice(0,l-1).join(',')===p.path.join(',')){
-          ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--edge').trim();
-          ctx.lineWidth=1.5;
-          ctx.beginPath();ctx.moveTo(p.x,p.y+20);ctx.lineTo(child.x,child.y-20);ctx.stroke();
-        }
-      }
-    });
-  }
-  for(let l=0;l<=maxL;l++){
-    (nodes[l]||[]).forEach(n=>{
-      const r=18;
-      const curPathStr=(step.path||[]).join(',');
-      const isCur=(step.type==='enter'||step.type==='pick')&&n.path.join(',')===curPathStr&&!n.isLeaf;
-      const isLeafCur=step.type==='leaf'&&n.path.join(',')===curPathStr;
-      if(isLeafCur||n.isLeaf){
-        ctx.fillStyle=isLeafCur?getComputedStyle(document.documentElement).getPropertyValue('--accent').trim():getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
-        ctx.fillRect(n.x-35,n.y-14,70,28);
-        ctx.fillStyle='#fff';ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText('['+n.path.join(',')+']',n.x,n.y);
-      }else if(isCur){
-        ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-        ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fill();
-        ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent2').trim();ctx.lineWidth=3;
-        ctx.beginPath();ctx.arc(n.x,n.y,r+3,0,Math.PI*2);ctx.stroke();
-        ctx.fillStyle='#fff';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText(n.path.length?n.path[n.path.length-1]:'R',n.x,n.y);
-      }else{
-        ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--node-bg').trim();
-        ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--node-border').trim();
-        ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fill();
-        ctx.lineWidth=1.5;ctx.stroke();
-        ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text').trim();
-        ctx.font='11px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText(n.path.length?n.path[n.path.length-1]:'R',n.x,n.y);
-      }
-    });
-  }
-  if(step.type==='pick'){
-    ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--orange').trim();
-    ctx.font='bold 13px system-ui';ctx.textAlign='center';
-    ctx.fillText('选择数字: '+step.candidate,w/2,h-15);
-  }
+function numsRow(step) {
+  const row = Demo.el('div', 'row');
+  NUMS.forEach((value, i) => {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(value));
+    if (step.phase === 'undo' && step.choiceIdx === i) {
+      cell.classList.add('is-warn');
+    } else if (step.used[i]) {
+      cell.classList.add('is-ok');
+    }
+    if (step.phase === 'choose' && step.choiceIdx === i) {
+      cell.classList.remove('is-ok');
+      cell.classList.add('is-active');
+    }
+    col.appendChild(cell);
+
+    const ptr = Demo.el('div', 'ptr', step.used[i] ? 'used=true' : 'used=false');
+    if (step.used[i]) ptr.classList.add('ptr--ok');
+    else ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+
+    col.appendChild(Demo.el('div', 'ptr ptr--dim', '[' + i + ']'));
+    row.appendChild(col);
+  });
+  return row;
 }
 
-function updateUI(){
-  const step=steps[curStep];
-  document.getElementById('stepLabel').textContent='步骤 '+(curStep+1)+'/'+steps.length;
-  let desc='';
-  if(step.type==='enter')desc='进入: 当前排列 ['+step.path.join(',')+']';
-  else if(step.type==='pick')desc='选择数字 '+step.candidate;
-  else if(step.type==='leaf')desc='找到排列: ['+step.path.join(',')+']';
-  else if(step.type==='backtrack')desc='回溯: 撤销数字 '+(step.removed||'');
-  else desc='开始回溯';
-  document.getElementById('stepDesc').textContent=desc;
-  document.getElementById('curPerm').textContent='['+(step.path||[]).join(',')+']';
-  // used slots
-  const slots=document.getElementById('usedSlots');
-  const u=step.used||[false,false,false];
-  slots.innerHTML=u.map((v,i)=>'<span class="slot '+(v?'used':'free')+'">'+nums[i]+'</span>').join('');
-  const bar=document.getElementById('resultsBar');
-  const found=[];
-  for(let i=0;i<=curStep;i++){if(steps[i].type==='leaf')found.push('['+steps[i].path.join(',')+']');}
-  bar.innerHTML=found.map(s=>'<span class="tag">'+s+'</span>').join('');
-  resize();
+function pathRow(step) {
+  const row = Demo.el('div', 'row');
+  for (let i = 0; i < NUMS.length; i++) {
+    const value = step.path[i];
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell cell--lg', value == null ? '?' : Demo.esc(value));
+    if (value == null) cell.classList.add('cell--empty');
+    else if (step.phase === 'choose' && i === step.path.length - 1) cell.classList.add('is-active');
+    else cell.classList.add('is-ok');
+    col.appendChild(cell);
+    col.appendChild(Demo.el('div', 'ptr ptr--dim', '第' + i + '层'));
+    row.appendChild(col);
+  }
+  return row;
 }
-function reset(){curStep=0;stopPlay();updateUI();}
-function nextStep(){if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();}
-function prevStep(){if(curStep>0){curStep--;updateUI();}}
-function jumpEnd(){curStep=steps.length-1;stopPlay();updateUI();}
-function stopPlay(){if(playId){clearInterval(playId);playId=null;document.getElementById('playBtn').classList.remove('playing');document.getElementById('playBtn').textContent='自动播放';}}
-function togglePlay(){if(playId){stopPlay();return;}if(curStep>=steps.length-1)curStep=0;document.getElementById('playBtn').classList.add('playing');document.getElementById('playBtn').textContent='暂停';playId=setInterval(()=>{if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();},550);}
-document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}else if(e.key==='ArrowRight'){e.preventDefault();nextStep();}else if(e.key===' '){e.preventDefault();togglePlay();}});
-updateUI();
+
+Demo.create({
+  title: '103. 全排列 — used 标记 + 逐个撤销选择',
+  info: `输入：nums = [${NUMS.join(', ')}]。每层都从下标 0 开始尝试，用 used 数组跳过已经用过的元素。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  legend: [
+    { color: 'var(--demo-accent)', label: '本步选中的元素' },
+    { color: 'var(--demo-ok)', label: '已用（used = true）' },
+    { color: 'var(--demo-warn)', label: '刚被撤销的元素' }
+  ],
+  stageHeight: 300,
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    ctx.stage.appendChild(Demo.el('div', 'panel__title', 'nums 原数组与 used 标记'));
+    ctx.stage.appendChild(numsRow(step));
+
+    const pathPanel = Demo.el('div', 'col');
+    pathPanel.appendChild(Demo.el('div', 'panel__title', 'path 路径（长度达到 n 时收集排列）'));
+    pathPanel.appendChild(pathRow(step));
+    ctx.stage.appendChild(pathPanel);
+
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.style.textAlign = 'center';
+    panel.appendChild(Demo.el('div', 'tag', '当前排列：' + (step.path.join('') || '（空）')));
+    const resRow = Demo.el('div', 'row');
+    resRow.style.marginTop = '6px';
+    if (!step.results.length) {
+      resRow.appendChild(Demo.el('span', 'ptr ptr--dim', '（还没有收集到排列）'));
+    } else {
+      step.results.forEach(r => resRow.appendChild(Demo.el('span', 'tag tag--ok', '[' + r.join(', ') + ']')));
+    }
+    panel.appendChild(resRow);
+    ctx.stage.appendChild(panel);
+  }
+});
 </script>
 </body>
 </html>

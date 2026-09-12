@@ -1,308 +1,195 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222; --fail: #E53935; --ok: #43A047; --active: #1976D2;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --bar-bg: #eee;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd; --bar-bg: #333;
-      --btn-bg: #333; --btn-hover: #444;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 20px;
-  }
-  .container { max-width: 700px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 12px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 12px;
-    margin-bottom: 8px; font-size: 14px;
-  }
-  .step-num { font-weight: bold; font-size: 22px; color: #1976D2; min-width: 35px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 12px; }
-
-  .stations-row {
-    display: flex; justify-content: center; gap: 8px; margin-bottom: 8px;
-  }
-  .station {
-    width: 100px; border-radius: 8px; border: 2px solid var(--cell-border);
-    background: var(--cell-bg); padding: 6px 4px; text-align: center;
-    transition: border-color 0.25s, background 0.25s, transform 0.15s;
-    font-size: 11px;
-  }
-  .station .label { font-weight: bold; font-size: 13px; margin-bottom: 3px; }
-  .station .row { display: flex; justify-content: space-between; padding: 1px 4px; font-size: 12px; }
-  .station .net-row { font-weight: bold; margin-top: 2px; padding-top: 2px; border-top: 1px dashed var(--cell-border); }
-  .station.net-neg .net-row { color: #E53935; }
-  .station.net-pos .net-row { color: #43A047; }
-  .station.active { transform: scale(1.06); border-color: #1976D2; }
-  .station.failed { border-color: #E53935; background: #FFEBEE; }
-  .station.success { border-color: #43A047; background: #E8F5E9; }
-  .station.visited { border-color: #43A047; background: #f1f8e9; }
-  @media (prefers-color-scheme: dark) {
-    .station.failed { background: #3e1a1a; }
-    .station.success { background: #1a3e1a; }
-    .station.visited { background: #1a2e1a; }
-  }
-
-  .tank-bar-wrap {
-    background: var(--bar-bg); border-radius: 8px; height: 24px; margin: 0 20px 8px;
-    position: relative; overflow: hidden;
-  }
-  .tank-bar-fill {
-    height: 100%; border-radius: 8px; transition: width 0.3s, background 0.3s;
-    display: flex; align-items: center;
-  }
-  .tank-bar-fill.ok { background: linear-gradient(90deg, #43A047, #66BB6A); }
-  .tank-bar-fill.fail { background: linear-gradient(90deg, #E53935, #EF5350); }
-  .tank-bar-label {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    font-size: 12px; font-weight: bold; color: #fff; text-shadow: 0 0 4px rgba(0,0,0,0.5);
-  }
-  .tank-threshold {
-    position: absolute; bottom: 0; width: 2px; height: 100%;
-    background: repeating-linear-gradient(to bottom, #E53935 0, #E53935 3px, transparent 3px, transparent 6px);
-  }
-
-  .var-panel {
-    background: #F5F5F5; border-radius: 8px; padding: 6px 14px;
-    margin-bottom: 8px; font-family: monospace; font-size: 12px;
-    color: var(--text); text-align: center;
-  }
-  @media (prefers-color-scheme: dark) { .var-panel { background: #2a2a3e; } }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-
-  .status-badge {
-    display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px;
-    font-weight: bold;
-  }
-  .badge-fail { background: #FFEBEE; color: #C62828; }
-  .badge-ok { background: #E8F5E9; color: #2E7D32; }
-  .badge-info { background: #E3F2FD; color: #1565C0; }
-  @media (prefers-color-scheme: dark) {
-    .badge-fail { background: #3e1a1a; color: #EF5350; }
-    .badge-ok { background: #1a3e1a; color: #81C784; }
-    .badge-info { background: #1a3a5e; color: #64B5F6; }
-  }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>14. 加油站 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>加油站 — 逐步交互演示</h2>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">/ 8 步 · 点击「下一步」开始</span>
-    <span class="status-badge badge-info" id="statusBdg">初始</span>
-  </div>
-
-  <div class="var-panel" id="varPanel">
-    gas=[1,2,3,4,5] &nbsp; cost=[3,4,5,1,2] &nbsp; net=[-2,-2,-2,3,3]
-  </div>
-
-  <div class="stations-row" id="stationsRow"></div>
-
-  <div style="text-align:center; font-size:12px; color:var(--muted); margin-bottom:4px;">
-    累计油量 (tank)
-  </div>
-  <div class="tank-bar-wrap" id="tankBarWrap">
-    <div class="tank-bar-fill" id="tankBarFill"></div>
-    <div class="tank-bar-label" id="tankBarLabel">tank = 0</div>
-  </div>
-
-  <div class="controls" style="margin-top:12px;">
-    <button onclick="goStep(0)">重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">自动播放</button>
-    <button onclick="goStep(totalSteps)" id="endBtn">跳到最后</button>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const gas = [1,2,3,4,5];
-const cost = [3,4,5,1,2];
-const n = gas.length;
-const net = gas.map((g,i)=>g-cost[i]);
+const CASES = [
+  { label: '示例 1', gas: [1, 2, 3, 4, 5], cost: [3, 4, 5, 1, 2] },
+  { label: '示例 2', gas: [2, 3, 4], cost: [3, 4, 3] }
+];
 
-// Steps: 0=init, then try each start
-const totalSteps = 8;
-const steps = [];
-
-steps.push({
-  phase:'init', desc:'初始化：显示各站 gas, cost, net',
-  startIdx: -1, curIdx: -1, tank: 0, tankOk: true,
-  failedStarts: [], visited: [], success: false,
-  varText:'准备从每个站点逐一尝试出发'
-});
-
-// Simulate all attempts
-// start=0: fails
-for (let start = 0; start < n; start++) {
-  let tank = 0;
-  let failed = false;
-  let failIdx = -1;
-  for (let j = 0; j < n; j++) {
-    const idx = (start + j) % n;
-    tank += net[idx];
-    if (tank < 0) { failed = true; failIdx = idx; break; }
-    // only add mid-steps for the successful start or the failure point
+/* 真实跑一遍题解的贪心：先看总量，再一次遍历用 tank 判断起点是否可行 */
+function simulate(label, gas, cost, steps) {
+  const n = gas.length;
+  let totalGas = 0, totalCost = 0;
+  for (let i = 0; i < n; i++) {
+    totalGas += gas[i];
+    totalCost += cost[i];
   }
-  if (!failed) {
-    // Success! Walk through each station
-    tank = 0;
-    for (let j = 0; j < n; j++) {
-      const idx = (start + j) % n;
-      tank += net[idx];
-      const visited = [];
-      for (let k = 0; k <= j; k++) visited.push((start + k) % n);
-      steps.push({
-        phase:'success', startIdx: start, curIdx: idx, tank,
-        tankOk: tank >= 0,
-        failedStarts: [0,1,2], visited: [...visited],
-        success: j === n - 1,
-        desc: '站 ' + idx + ': tank = ' + (tank - net[idx]) + ' + (' + net[idx] + ') = ' + tank,
-        varText: '起点站 ' + start + ' · 第 ' + (j+1) + '/' + n + ' 站 · tank=' + tank
-      });
-    }
-    break;
-  } else {
-    // Record failure at this start
-    const failedStarts = [];
-    for (let s = 0; s <= start; s++) failedStarts.push(s);
-    steps.push({
-      phase:'fail', startIdx: start, curIdx: failIdx, tank,
-      tankOk: false,
-      failedStarts: [...failedStarts], visited: [],
-      success: false,
-      desc: '起点站 ' + start + ' 失败: 在站 ' + failIdx + ' 处 tank=' + tank + ' < 0, 重置',
-      varText: '尝试起点站 ' + start + ' · 失败 · 总 gas='+gas.reduce((a,b)=>a+b)+' < 总 cost='+cost.reduce((a,b)=>a+b)+'?'
-    });
+
+  const base = { label: label, gas: gas, cost: cost, totalGas: totalGas, totalCost: totalCost };
+
+  function push(extra) {
+    const s = { i: -1, start: -1, tank: 0, failAt: -1, done: false, answer: null, note: '' };
+    Object.keys(base).forEach(function (k) { s[k] = base[k]; });
+    Object.keys(extra).forEach(function (k) { s[k] = extra[k]; });
+    steps.push(s);
   }
-}
 
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-// Build station DOM
-const stationsRow = document.getElementById('stationsRow');
-for (let i = 0; i < n; i++) {
-  const div = document.createElement('div');
-  div.className = 'station' + (net[i] >= 0 ? ' net-pos' : ' net-neg');
-  div.dataset.idx = i;
-  div.innerHTML = '<div class="label">站 ' + i + '</div>' +
-    '<div class="row"><span>gas</span><span>' + gas[i] + '</span></div>' +
-    '<div class="row"><span>cost</span><span>' + cost[i] + '</span></div>' +
-    '<div class="net-row"><span>net</span><span>' + (net[i] >= 0 ? '+' : '') + net[i] + '</span></div>';
-  stationsRow.appendChild(div);
-}
-
-function render() {
-  const s = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = current === 0
-    ? '/ ' + totalSteps + ' 步 · 点击「下一步」开始'
-    : '第 ' + current + ' 步 · ' + s.desc;
-  document.getElementById('varPanel').textContent = s.varText;
-
-  const bdg = document.getElementById('statusBdg');
-  if (s.phase === 'init') { bdg.textContent = '初始'; bdg.className = 'status-badge badge-info'; }
-  else if (s.phase === 'fail') { bdg.textContent = '失败'; bdg.className = 'status-badge badge-fail'; }
-  else if (s.success) { bdg.textContent = '成功!'; bdg.className = 'status-badge badge-ok'; }
-  else { bdg.textContent = '行进中'; bdg.className = 'status-badge badge-info'; }
-
-  // Update stations
-  document.querySelectorAll('.station').forEach(el => {
-    el.classList.remove('active','failed','success','visited');
-    const idx = parseInt(el.dataset.idx);
-    if (idx === s.curIdx) el.classList.add('active');
-    if (s.failedStarts.includes(idx) && s.phase === 'fail' && idx === s.startIdx) el.classList.add('failed');
-    if (s.failedStarts.includes(idx) && s.phase !== 'init' && s.phase !== 'fail') el.classList.add('failed');
-    if (s.visited.includes(idx) && !s.failedStarts.includes(idx)) el.classList.add('visited');
-    if (s.success && s.visited.includes(idx)) el.classList.add('success');
+  push({
+    note: `【${label}】先把总量算清楚：gas 总和 = ${gas.join(' + ')} = ${totalGas}，cost 总和 = ${cost.join(' + ')} = ${totalCost}。`
   });
 
-  // Tank bar
-  const fill = document.getElementById('tankBarFill');
-  const label = document.getElementById('tankBarLabel');
-  const maxTank = 10; // scale
-  if (s.phase === 'init') {
-    fill.style.width = '0%';
-    fill.className = 'tank-bar-fill ok';
-    label.textContent = 'tank = 0';
-  } else {
-    const pct = Math.min(Math.abs(s.tank) / maxTank * 100, 100);
-    fill.style.width = pct + '%';
-    if (s.tank >= 0) {
-      fill.className = 'tank-bar-fill ok';
-      label.textContent = 'tank = ' + s.tank + ' (ok)';
+  if (totalGas < totalCost) {
+    push({
+      done: true, answer: -1,
+      note: `【${label}】比较总量：总加油 ${totalGas} < 总耗油 ${totalCost}，跑完一圈净亏 ${totalCost - totalGas} 升。不论从哪个站出发，一整天能加的油就是这么多，所以再试也没用，直接返回 -1。`
+    });
+    return;
+  }
+
+  push({
+    start: 0,
+    note: `【${label}】总加油 ${totalGas} ≥ 总耗油 ${totalCost}，说明一定存在唯一解，值得继续找。下面从头遍历：start 记录当前尝试的起点（先设成 0），tank 记录从 start 一路开过来的油量结余。`
+  });
+
+  let start = 0;
+  let tank = 0;
+
+  for (let i = 0; i < n; i++) {
+    const delta = gas[i] - cost[i];
+    const prevTank = tank;
+    tank += delta;
+
+    const next = (i + 1) % n;
+    const detail = `i = ${i}：在加油站 ${i} 加 gas[${i}] = ${gas[i]} 升，开往加油站 ${next} 消耗 cost[${i}] = ${cost[i]} 升，净变化 ${delta >= 0 ? '+' : ''}${delta}。从 start 起累计的油箱结余 tank 由 ${prevTank} 变成 ${tank}。`;
+
+    if (tank < 0) {
+      push({
+        i: i, start: start, tank: tank, failAt: i,
+        note: `【${label}】${detail} tank = ${tank} < 0：还没开到加油站 ${next} 油就耗光了，说明从 start = ${start} 出发的这条路线走不通。`
+      });
+      const oldStart = start;
+      start = i + 1;
+      tank = 0;
+      push({
+        i: i, start: start, tank: tank, failAt: i,
+        note: `【${label}】关键结论：从 ${oldStart} 出发到不了加油站 ${next}。` +
+          (oldStart < i
+            ? `那么 ${oldStart} 到 ${i} 之间的任意一站出发也同样到不了：它们开到 ${i} 时油箱里的油只会更少（少了前面几站攒下的结余）。`
+            : `这个起点本身就被否掉了。`) +
+          `所以把起点直接跳到 i + 1 = ${start}，油箱清零重新起跑，被跳过的站统统不用再试——这一步把 O(n²) 的暴力枚举降成了 O(n)。`
+      });
     } else {
-      fill.className = 'tank-bar-fill fail';
-      label.textContent = 'tank = ' + s.tank + ' (< 0 失败!)';
+      push({
+        i: i, start: start, tank: tank, failAt: -1,
+        note: `【${label}】${detail} tank = ${tank} ≥ 0：油够开到加油站 ${next}，从 start = ${start} 出发的行程目前一直可行，继续往后走。`
+      });
     }
   }
 
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= totalSteps;
-  document.getElementById('endBtn').disabled = current >= totalSteps;
+  push({
+    done: true, start: start, answer: start,
+    note: `【${label}】结论：遍历结束时 start = ${start}，tank = ${tank} ≥ 0。因为总加油 ≥ 总耗油已经保证了绕行一圈一定能回到出发点（前面缺的油会在后半圈补上），所以答案是加油站 ${start}。整个算法只遍历一次数组：时间 O(n)，只用 start 和 tank 两个变量，空间 O(1)。`
+  });
 }
 
-function goStep(n) {
-  current = Math.max(0, Math.min(n, totalSteps));
-  render();
+function buildSteps() {
+  const steps = [];
+  CASES.forEach(function (c) { simulate(c.label, c.gas, c.cost, steps); });
+  return steps;
 }
 
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer);
-    autoRunning = false;
-    document.getElementById('playBtn').textContent = '自动播放';
-    document.getElementById('playBtn').style.background = '#1976D2';
-  } else {
-    autoRunning = true;
-    if (current >= totalSteps) goStep(0);
-    autoTimer = setInterval(() => {
-      if (current < totalSteps) goStep(current + 1);
-      else { clearInterval(autoTimer); autoRunning = false;
-        document.getElementById('playBtn').textContent = '自动播放'; }
-    }, 800);
+function rowOf(step, values, title, cellFor) {
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.appendChild(Demo.el('div', 'panel__title', Demo.esc(title)));
+  const row = Demo.el('div', 'row');
+  values.forEach(function (v, idx) {
+    const col = Demo.el('div', 'col');
+    col.appendChild(cellFor(v, idx));
+    const ptrLabels = [];
+    if (idx === step.i && !step.done) ptrLabels.push('i');
+    if (idx === step.start && (step.done || idx !== step.i)) ptrLabels.push('start');
+    const ptr = Demo.el('div', 'ptr', ptrLabels.length ? ptrLabels.join(' ') : String(idx));
+    if (!ptrLabels.length) ptr.classList.add('ptr--dim');
+    else if (ptrLabels.indexOf('i') >= 0) ptr.classList.add('ptr--info');
+    else ptr.classList.add('ptr--ok');
+    col.appendChild(ptr);
+    row.appendChild(col);
+  });
+  panel.appendChild(row);
+  return panel;
+}
+
+Demo.create({
+  title: '14. 加油站 — 一次遍历确定起点',
+  info: '示例 1：gas = [1,2,3,4,5]，cost = [3,4,5,1,2] → 3；示例 2：gas = [2,3,4]，cost = [3,4,3] → -1。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 420,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前遍历到的加油站 i' },
+    { color: 'var(--demo-ok)', label: '当前起点 start' },
+    { color: 'var(--demo-danger)', label: '油箱见底，起点作废' }
+  ],
+  render: function (step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const head = Demo.el('div', 'row');
+    head.appendChild(Demo.el('span', 'tag', Demo.esc('用例 ' + step.label)));
+    head.appendChild(Demo.el('span', 'tag ' + (step.done ? (step.answer >= 0 ? 'tag--ok' : 'tag--bad') : 'tag--info'),
+      step.done
+        ? (step.answer >= 0 ? '结论：从加油站 ' + step.answer + ' 出发可绕行一周' : '结论：无法绕行一周，返回 -1')
+        : '扫描中'));
+    head.appendChild(Demo.el('span', 'tag tag--violet', '总加油 ' + step.totalGas + ' / 总耗油 ' + step.totalCost));
+    ctx.stage.appendChild(head);
+
+    ctx.stage.appendChild(rowOf(step, step.gas, '每个加油站的汽油 gas[i]', function (v, idx) {
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(v));
+      if (idx === step.i && !step.done) cell.classList.add('is-active');
+      if (idx === step.start) cell.classList.add('is-ok');
+      return cell;
+    }));
+
+    ctx.stage.appendChild(rowOf(step, step.cost, '开往下一站的消耗 cost[i]', function (v, idx) {
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(v));
+      if (idx === step.i && !step.done) cell.classList.add('is-active');
+      if (idx === step.start) cell.classList.add('is-ok');
+      return cell;
+    }));
+
+    ctx.stage.appendChild(rowOf(step, step.gas.map(function (g, idx) { return g - step.cost[idx]; }),
+      '净收益 net[i] = gas[i] - cost[i]（正数是这段路攒油，负数是耗油）', function (v, idx) {
+        const cell = Demo.el('div', 'cell cell--sm', (v > 0 ? '+' : '') + v);
+        cell.classList.add(v >= 0 ? 'is-info' : 'is-warn');
+        if (idx === step.i && !step.done) cell.classList.add('is-active');
+        if (idx === step.start) cell.classList.add('is-ok');
+        return cell;
+      }));
+
+    const tankPanel = Demo.el('div', 'panel');
+    tankPanel.style.width = '100%';
+    tankPanel.appendChild(Demo.el('div', 'panel__title',
+      '油箱当前结余 tank（从 start 出发一路累积的净油量，< 0 表示这段路走不通）'));
+    const bar = Demo.el('div', 'bar');
+    bar.style.width = '100%';
+    const fill = Demo.el('div', 'bar__fill');
+    const scale = Math.max(1, step.totalGas);
+    fill.style.width = Math.min(100, Math.round((Math.abs(step.tank) / scale) * 100)) + '%';
+    fill.style.background = step.tank < 0 ? 'var(--demo-danger)' : (step.done ? 'var(--demo-ok)' : 'var(--demo-accent)');
+    bar.appendChild(fill);
+    bar.appendChild(Demo.el('div', 'bar__label',
+      'tank = ' + step.tank + (step.tank < 0 ? '（< 0，起点作废）' : '')));
+    tankPanel.appendChild(bar);
+
+    const state = Demo.el('div', 'row');
+    state.appendChild(Demo.el('span', 'tag ' + (step.tank < 0 ? 'tag--bad' : 'tag--ok'),
+      'tank = ' + step.tank));
+    state.appendChild(Demo.el('span', 'tag tag--ok',
+      step.start < 0 ? '还没有开始尝试起点' : 'start = ' + step.start));
+    if (step.failAt >= 0) state.appendChild(Demo.el('span', 'tag tag--bad', '在第 ' + (step.failAt + 1) + ' 站断油'));
+    tankPanel.appendChild(state);
+
+    ctx.stage.appendChild(tankPanel);
   }
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
 });
-
-render();
 </script>
 </body>
 </html>

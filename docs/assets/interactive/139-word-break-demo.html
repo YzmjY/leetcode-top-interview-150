@@ -3,127 +3,263 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>139. 单词拆分 - 可视化演示</title>
-<style>
-:root{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--sub:#666;--border:#e0e0e0;--accent:#2563eb;--step-bg:#f0f4ff;--grid-bg:#fafafa;--radius:8px;--font:system-ui,-apple-system,sans-serif}
-@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--sub:#a0a0b0;--border:#334;--accent:#60a5fa;--step-bg:#1e293b;--grid-bg:#0f172a}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:var(--font);background:var(--bg);display:flex;justify-content:center;align-items:center;min-height:100vh}
-.demo-container{width:100%;max-width:960px;height:500px;background:var(--card);border-radius:var(--radius);box-shadow:0 4px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
-.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--step-bg)}
-.header .title{font-size:15px;font-weight:600;color:var(--text)}
-.header .step-info{font-size:13px;color:var(--accent);font-weight:500}
-.controls{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.controls button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
-.controls button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
-.controls button:disabled{opacity:.4;cursor:not-allowed}
-.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.main-area{flex:1;display:flex;flex-direction:column;padding:12px 16px;gap:10px;overflow-y:auto}
-.info-panel{padding:10px 14px;background:var(--step-bg);border-radius:var(--radius);border:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.6}
-.info-panel strong{color:var(--accent)}
-.vis-area{flex:1;display:flex;flex-direction:column;gap:8px}
-.str-row{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;padding:6px 0}
-.ch-box{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-weight:700;font-size:17px;border:2px solid var(--border);background:var(--grid-bg);color:var(--text);transition:all .3s}
-.ch-box.matched{background:#bbf7d0;border-color:#22c55e;color:#166534}
-.ch-box.cur{background:#ddd6fe;border-color:#8b5cf6;color:#5b21b6}
-.dp-table{display:flex;gap:4px;align-items:center;justify-content:center;flex-wrap:wrap;padding:6px 0}
-.dp-box{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-weight:600;font-size:13px;border:2px solid var(--border);background:var(--grid-bg);color:var(--text);transition:all .3s}
-.dp-box.true{background:#bbf7d0;border-color:#22c55e;color:#166534}
-.dp-box.current{border-color:var(--accent);background:var(--step-bg)}
-.dict-tags{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:4px 0}
-.tag{padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:var(--step-bg);color:var(--accent);border:1px solid var(--accent)}
-.step-detail{font-size:13px;color:var(--sub);text-align:center}
-.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
-@media(prefers-color-scheme:dark){.ch-box.matched{background:#14532d;border-color:#22c55e;color:#86efac}.dp-box.true{background:#14532d;border-color:#22c55e;color:#86efac}}
-</style>
+<title>139. 单词拆分 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="demo-container">
-<div class="header">
-<span class="title">139. 单词拆分 (Word Break)</span>
-<span class="step-info" id="stepLabel">步骤 0 / 0</span>
-</div>
-<div class="controls">
-<button onclick="reset()">重置</button>
-<button onclick="prevStep()">上步</button>
-<button onclick="nextStep()">下步</button>
-<button onclick="toggleAuto()" id="autoBtn">自动播放</button>
-<button onclick="jumpEnd()">跳到最后</button>
-</div>
-<div class="main-area">
-<div class="info-panel" id="info"><strong>输入:</strong> s = "leetcode", wordDict = ["leet","code"] &nbsp;|&nbsp; <strong>思路:</strong> DP: dp[i]表示前缀s[0:i]能否拆分</div>
-<div class="vis-area">
-<div class="str-row" id="strRow"></div>
-<div class="dp-table" id="dpTable"></div>
-<div class="dict-tags"><span class="tag">leet</span><span class="tag">code</span></div>
-<div class="step-detail" id="stepDetail"></div>
-<div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
-</div>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const S='leetcode',DICT=['leet','code'];
-let steps=[],stepIdx=0,autoTimer=null,playing=false;
+const S = 'leetcode';
+const DICT = ['leet', 'code'];
 
-function buildSteps(){
-  steps=[];
-  let n=S.length;
-  let dp=Array(n+1).fill(false);
-  dp[0]=true;
-  steps.push({dp:[...dp],j:-1,match:'',note:'dp[0]=true (空串可拆分)',done:false});
-  for(let i=1;i<=n;i++){
-    let found=false;
-    for(let j=0;j<i;j++){
-      let sub=S.substring(j,i);
-      if(dp[j]&&DICT.includes(sub)){
-        dp[i]=true;found=true;
-        steps.push({dp:[...dp],j,i,sub,note:`j=${j}, s[${j}:${i}]="${sub}" 在字典中 & dp[${j}]=true => dp[${i}]=true`,done:i===n});
+/* 真实跑一遍「前缀 DP + 分割点枚举」：
+   dp[i] = s 的前 i 个字符能否被字典拼出。
+   对每个 i 枚举分割点 j，检查 dp[j] 与子串 s[j:i] 是否在字典中（短路求值同样逐步展示）。 */
+function buildSteps() {
+  const n = S.length;
+  const dictSet = {};
+  DICT.forEach(function (w) { dictSet[w] = true; });
+
+  const dp = new Array(n + 1).fill(null);
+  const steps = [];
+
+  function snap(extra) {
+    steps.push(Object.assign({
+      dp: dp.slice(),
+      i: 0,
+      j: -1,
+      word: '',
+      inDict: false,
+      skip: false,
+      hit: false,
+      done: false,
+      segments: null,
+      note: ''
+    }, extra));
+  }
+
+  snap({
+    i: 0,
+    note: '初始化：dp 的长度是 s.length + 1 = ' + (n + 1) +
+      '，dp[i] 表示「s 的前 i 个字符」（即 s[0..i-1]）能不能用字典里的单词拼出来。先令 dp[0] = true —— 空串不用任何单词就能拼成，它是全部递推的起点。'
+  });
+
+  dp[0] = true;
+
+  for (let i = 1; i <= n; i++) {
+    for (let j = 0; j < i; j++) {
+      if (dp[j] !== true) {
+        snap({
+          i: i, j: j, skip: true,
+          note: 'i = ' + i + '，枚举分割点 j = ' + j + '：dp[' + j + '] 是 false，说明前缀 s[0..' + (j - 1) +
+            '] 本身就没法拼出来。既然左半边不成立，右半边 s[' + j + '..' + (i - 1) + '] 再合法也没用，直接跳过这个 j。'
+        });
+        continue;
+      }
+
+      const word = S.slice(j, i);
+      const inDict = !!dictSet[word];
+
+      if (inDict) {
+        dp[i] = true;
+        snap({
+          i: i, j: j, word: word, inDict: true, hit: true,
+          note: 'i = ' + i + '，枚举分割点 j = ' + j + '：dp[' + j + '] = true（前缀 "' + S.slice(0, j) +
+            '" 可拼），再看右半边 s[' + j + '..' + (i - 1) + '] = "' + word + '"，它正好在字典里。' +
+            '两段都成立，于是 dp[' + i + '] = true，前缀 "' + S.slice(0, i) + '" 可以拼出，本层无需再试其它 j，break。'
+        });
         break;
       }
-      steps.push({dp:[...dp],j,i,sub,note:`j=${j}, s[${j}:${i}]="${sub}" ${DICT.includes(sub)?'在':'不在'}字典中`,done:false});
+
+      snap({
+        i: i, j: j, word: word, inDict: false,
+        note: 'i = ' + i + '，枚举分割点 j = ' + j + '：dp[' + j + '] = true，但右半边 s[' + j + '..' + (i - 1) +
+          '] = "' + word + '" 不在字典里，这个分割点作废，继续看下一个 j。'
+      });
     }
-    if(!found){steps.push({dp:[...dp],j:-1,i,sub:'',note:`dp[${i}] 仍为 false`,done:i===n});}
-  }
-  let last=steps[steps.length-1];
-  steps[steps.length-1]={...last,note:last.note+` | 结果: ${dp[n]}`,done:true};
-}
-function render(){
-  let s=steps[stepIdx]||steps[steps.length-1]||{};
-  let total=steps.length;
-  document.getElementById('stepLabel').textContent=`步骤 ${stepIdx+1} / ${total}`;
-  document.getElementById('progress').style.width=((stepIdx+1)/total*100)+'%';
-  document.getElementById('info').innerHTML=`<strong>s = "leetcode"</strong> &nbsp;|&nbsp; ${s.note||''}`;
 
-  let sh='';
-  for(let k=0;k<S.length;k++){
-    let cls='';
-    if(s.sub&&k>=s.j&&k<s.i)cls='matched';
-    if(k===s.j)cls='cur';
-    sh+=`<div class="ch-box ${cls}">${S[k]}</div>`;
+    if (dp[i] !== true) {
+      dp[i] = false;
+      snap({
+        i: i, j: -1,
+        note: 'i = ' + i + '：j 从 0 试到 ' + (i - 1) + ' 都没有找到可行的分割点，所以 dp[' + i + '] = false，前缀 "' +
+          S.slice(0, i) + '" 拼不出来。'
+      });
+    }
   }
-  document.getElementById('strRow').innerHTML=sh;
 
-  let dp=s.dp||[];
-  let dh='';for(let k=0;k<=S.length;k++){let cls=dp[k]?'true':'';if(k===s.i)cls+=' current';dh+=`<div class="dp-box ${cls}">${dp[k]?'T':'F'}</div>`;}
-  document.getElementById('dpTable').innerHTML=dh;
-  document.getElementById('stepDetail').textContent=`dp = [${dp.map(v=>v?'T':'F').join(',')}]`;
+  // 拼接成功时，从 dp[n] 向前回溯出一组切分方案
+  let segments = null;
+  if (dp[n] === true) {
+    segments = [];
+    let end = n;
+    while (end > 0) {
+      for (let start = end - 1; start >= 0; start--) {
+        if (dp[start] === true && dictSet[S.slice(start, end)]) {
+          segments.unshift(S.slice(start, end));
+          end = start;
+          break;
+        }
+      }
+    }
+  }
+
+  steps.push({
+    dp: dp.slice(),
+    i: n,
+    j: -1,
+    word: '',
+    inDict: false,
+    skip: false,
+    hit: false,
+    done: true,
+    segments: segments,
+    note: '递推结束，答案是 dp[' + n + '] = ' + (dp[n] ? 'true' : 'false') + '。' +
+      (segments
+        ? '沿 dp 从后往前回溯可以还原出切分方案：' + segments.join(' | ') + '，每个片段都在字典里，且前一段的结尾正好是后一段的起点。'
+        : '整串无法被拆成字典中的单词。')
+  });
+
+  return steps;
 }
-function reset(){stepIdx=0; stopAuto();buildSteps();render();}
-function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
-function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
-function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}
-function toggleAuto(){
-  if(playing){stopAuto();}else{playing=true;document.getElementById('autoBtn').classList.add('active');document.getElementById('autoBtn').textContent='停止';
-    autoTimer=setInterval(()=>{if(stepIdx<steps.length-1){stepIdx++;render();}else{stopAuto();}},900);}
+
+function charColumn(step, k) {
+  const col = Demo.el('div', 'col');
+  const cell = Demo.el('div', 'cell', Demo.esc(S[k]));
+
+  const inWindow = !step.done && step.j >= 0 && k >= step.j && k <= step.i - 1;
+  if (inWindow) {
+    cell.classList.add(step.inDict ? 'is-ok' : 'is-active');
+  } else if (step.done) {
+    cell.classList.add('cell--dim');
+  }
+
+  if (step.done && step.segments) {
+    // 按切分方案给字符染色
+    let pos = 0;
+    step.segments.forEach(function (w, si) {
+      if (k >= pos && k < pos + w.length) cell.className = 'cell ' + (si % 2 === 0 ? 'is-ok' : 'is-violet');
+      pos += w.length;
+    });
+  }
+
+  col.appendChild(cell);
+
+  let label = String(k);
+  let ptrClass = 'ptr ptr--dim';
+  if (!step.done && k === step.j) {
+    label = 'j';
+    ptrClass = 'ptr';
+  } else if (!step.done && k === step.i - 1 && step.i >= 1) {
+    label = 'i-1';
+    ptrClass = 'ptr ptr--info';
+  }
+  col.appendChild(Demo.el('div', ptrClass, Demo.esc(label)));
+  return col;
 }
-function stopAuto(){playing=false;clearInterval(autoTimer);document.getElementById('autoBtn').classList.remove('active');document.getElementById('autoBtn').textContent='自动播放';}
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight')nextStep();
-  else if(e.key==='ArrowLeft')prevStep();
-  else if(e.key===' '){e.preventDefault();toggleAuto();}
+
+function dpColumn(step, k) {
+  const col = Demo.el('div', 'col');
+  const cell = Demo.el('div', 'cell');
+  const value = step.dp[k];
+
+  if (value === true) cell.innerHTML = '√';
+  else if (value === false) cell.innerHTML = '×';
+  else { cell.innerHTML = '?'; cell.classList.add('cell--empty'); }
+
+  let label = 'dp[' + k + ']';
+  let ptrClass = 'ptr ptr--dim';
+
+  if (step.done) {
+    if (k === S.length) {
+      cell.classList.add(value ? 'is-ok' : 'is-bad');
+      label = '答案';
+      ptrClass = value ? 'ptr ptr--ok' : 'ptr ptr--bad';
+    }
+  } else if (k === step.i) {
+    cell.classList.add(value === true ? 'is-ok' : 'is-active');
+    label = 'dp[i]';
+    ptrClass = value === true ? 'ptr ptr--ok' : 'ptr';
+  } else if (k === step.j) {
+    cell.classList.add('is-info');
+    label = 'dp[j]';
+    ptrClass = 'ptr ptr--info';
+  } else if (value === true) {
+    cell.classList.add('is-ok');
+  }
+
+  col.appendChild(cell);
+  col.appendChild(Demo.el('div', ptrClass, Demo.esc(label)));
+  return col;
+}
+
+Demo.create({
+  title: '139. 单词拆分 — 前缀 DP，枚举分割点 dp[i] = ∃ j: dp[j] && s[j:i] ∈ dict',
+  info: '输入：s = "' + S + '"，wordDict = [' + DICT.map(w => '"' + w + '"').join(', ') + ']（示例 1，预期输出 true）。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 380,
+  legend: [
+    { color: 'var(--demo-accent)', label: '本次枚举的区间 s[j:i]（字典里没有）' },
+    { color: 'var(--demo-ok)', label: 'dp 为 true / 字典命中的单词' },
+    { color: 'var(--demo-info)', label: '被复用的 dp[j]' },
+    { color: 'var(--demo-violet)', label: '最终切分出的相邻单词' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const strPanel = Demo.el('div', 'panel');
+    strPanel.style.width = '100%';
+    strPanel.appendChild(Demo.el('div', 'panel__title',
+      step.done ? '字符串 s（已按切分方案上色）' : '字符串 s（高亮的是本轮检查的子串 s[j:i]）'));
+    const srow = Demo.el('div', 'row');
+    for (let k = 0; k < S.length; k++) srow.appendChild(charColumn(step, k));
+    strPanel.appendChild(srow);
+
+    const dictRow = Demo.el('div', 'row');
+    dictRow.style.marginTop = '8px';
+    dictRow.appendChild(Demo.el('span', 'tag', '字典：'));
+    DICT.forEach(function (w) {
+      dictRow.appendChild(Demo.el('span', 'tag tag--info', Demo.esc(w)));
+    });
+    strPanel.appendChild(dictRow);
+    ctx.stage.appendChild(strPanel);
+
+    const dpPanel = Demo.el('div', 'panel');
+    dpPanel.style.width = '100%';
+    dpPanel.appendChild(Demo.el('div', 'panel__title', '状态表 dp（√ 表示可拼出，× 表示不可拼出，? 表示尚未计算）'));
+    const drow = Demo.el('div', 'row');
+    for (let k = 0; k <= S.length; k++) drow.appendChild(dpColumn(step, k));
+    dpPanel.appendChild(drow);
+    ctx.stage.appendChild(dpPanel);
+
+    const check = Demo.el('div', 'panel');
+    check.style.width = '100%';
+    check.style.textAlign = 'center';
+    if (step.done) {
+      check.innerHTML = '返回结果 dp[' + S.length + '] = <strong>' + (step.dp[S.length] ? 'true' : 'false') + '</strong>' +
+        (step.segments
+          ? ' &nbsp;<span class="tag tag--ok">' + step.segments.join(' + ') + ' 拼接成 "' + S + '"</span>'
+          : ' &nbsp;<span class="tag tag--bad">无法由字典单词拼接</span>');
+    } else if (step.skip) {
+      check.innerHTML = '分割点 j = ' + step.j + '：dp[' + step.j + '] = <code>false</code> ' +
+        '<span class="tag tag--bad">左半段不成立，跳过</span>' +
+        '（对应代码里的短路：<code>dp[j] &amp;&amp; wordSet[s[j:i]]</code>）';
+    } else if (step.j >= 0) {
+      check.innerHTML = '检查 s[' + step.j + ':' + step.i + '] = <code>"' + Demo.esc(step.word) + '"</code> ' +
+        (step.inDict
+          ? '<span class="tag tag--ok">在字典中，dp[' + step.i + '] = true</span>'
+          : '<span class="tag tag--bad">不在字典中</span>') +
+        ' &nbsp; 前置条件 dp[' + step.j + '] = <code>' + (step.dp[step.j] ? 'true' : 'false') + '</code>';
+    } else if (step.dp[step.i] === false) {
+      check.innerHTML = '本轮 j 全部试完仍无解 → dp[' + step.i + '] = <code>false</code> ' +
+        '<span class="tag tag--bad">前缀 "' + Demo.esc(S.slice(0, step.i)) + '" 拼不出</span>';
+    } else {
+      check.innerHTML = '还没有开始枚举，当前只有边界 dp[0] = <code>true</code>（空串视为可拼出）。';
+    }
+    ctx.stage.appendChild(check);
+  }
 });
-buildSteps();render();
 </script>
 </body>
 </html>

@@ -2,241 +2,211 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>95. 蛇梯棋 - Snakes and Ladders</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
-.container{background:#fff;border-radius:8px;padding:20px;width:760px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
-h2{font-size:16px;margin-bottom:12px;color:#333}
-.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-button{border:none;border-radius:8px;padding:8px 16px;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s;color:#fff;font-weight:500}
-button:disabled{opacity:.4;cursor:not-allowed}
-.btn-reset{background:#6c757d}
-.btn-prev{background:#0d6efd}
-.btn-next{background:#0d6efd}
-.btn-auto{background:#198754}
-.btn-end{background:#dc3545}
-button:hover:not(:disabled){filter:brightness(1.15)}
-.info-panel{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:#555;background:#f0f4f8;border-radius:8px;padding:10px 14px}
-.step-badge{background:#0d6efd;color:#fff;border-radius:20px;padding:2px 12px;font-weight:600;font-size:12px}
-.info-text{flex:1;margin-left:12px}
-.vis-area{background:#fafafa;border-radius:8px;position:relative;height:500px;overflow:hidden;border:1px solid #e0e0e0}
-canvas{display:block}
-.hint{font-size:12px;color:#999;text-align:center;margin-top:8px}
-@media(prefers-color-scheme:dark){
-body{background:#1a1a2e}
-.container{background:#16213e;box-shadow:0 2px 12px rgba(0,0,0,.4)}
-h2{color:#e0e0e0}
-.info-panel{background:#1a1a3e;color:#ccc}
-.vis-area{background:#0f0f23;border-color:#2a2a4a}
-.hint{color:#777}
-}
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>95. 蛇梯棋 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>95. 蛇梯棋 (Snakes and Ladders) — BFS 最短路径</h2>
-<div class="controls">
-<button class="btn-reset" onclick="reset()">⟳ 重置</button>
-<button class="btn-prev" onclick="prevStep()">◀ 上步</button>
-<button class="btn-next" onclick="nextStep()">下步 ▶</button>
-<button class="btn-auto" id="btnAuto" onclick="toggleAuto()">▶ 自动播放</button>
-<button class="btn-end" onclick="jumpEnd()">▶▶ 跳到最后</button>
-</div>
-<div class="info-panel">
-<span class="step-badge" id="stepBadge">步骤 1/10</span>
-<span class="info-text" id="infoText">6×6棋盘 (1-36), BFS求从1到36的最短步数</span>
-</div>
-<div class="vis-area"><canvas id="cvs"></canvas></div>
-<div class="hint">键盘: ← → 切换步骤 | 空格 自动播放</div>
-</div>
+<script src="demo.js"></script>
 <script>
-// 6x6 board, standard numbering: bottom row left-to-right 1-6, then right-to-left 7-12, etc.
-const N=6,SIZE=36;
-// Ladders: 2->15, 7->27, 14->29, 25->35
-// Snakes: 17->4, 19->8, 24->16, 32->30, 34->12
-const board=new Array(SIZE+1).fill(-1);
-board[2]=15;board[7]=27;board[14]=29;board[25]=35;
-board[17]=4;board[19]=8;board[24]=16;board[32]=30;board[34]=12;
-
-function getRowCol(num){
-  let row=Math.floor((num-1)/N);
-  let col=(num-1)%N;
-  if(row%2===1)col=N-1-col;
-  return[row,col];
+const N = 6;
+const TARGET = N * N;
+const BOARD = [
+  [-1, -1, -1, -1, -1, -1],
+  [-1, -1, -1, -1, -1, -1],
+  [-1, -1, -1, -1, -1, -1],
+  [-1, 35, -1, -1, 13, -1],
+  [-1, -1, -1, -1, -1, -1],
+  [-1, 15, -1, -1, -1, -1]
+];
+const ID_AT = [];
+const JUMP = {};
+for (let r = 0; r < N; r++) {
+  const line = [];
+  const rowIdx = N - 1 - r;
+  for (let c = 0; c < N; c++) {
+    const id = rowIdx * N + (rowIdx % 2 === 0 ? c + 1 : N - c);
+    line.push(id);
+    JUMP[id] = BOARD[r][c];
+  }
+  ID_AT.push(line);
 }
 
-let steps=[],currentStep=0,totalSteps=0,autoTimer=null;
+function jumpOf(id) {
+  return JUMP[id] == null ? -1 : JUMP[id];
+}
 
-function buildSteps(){
-  steps=[];
-  // Board overview
-  steps.push({info:'6×6棋盘, 编号1-36. 绿色=梯子(上升), 红色=蛇(下降). 骰子1-6',phase:'intro',visited:new Set(),queue:[],distance:{},highlight:[],conn:[]});
+function buildSteps() {
+  const steps = [];
+  const visited = new Set([1]);
+  const queue = [{ id: 1, dist: 0 }];
+  let answer = -1;
 
-  // BFS
-  let visited=new Set([1]);
-  let queue=[[1,0]]; // [pos, steps]
-  let distance={1:0};
-  let bfsSteps=[{info:'BFS起点: 位置1, 距离0',visited:new Set([1]),queue:[[1,0]],distance:{1:0},highlight:[1],conn:[]}];
+  function snap(note, extra) {
+    const step = {
+      visited: Array.from(visited).sort((a, b) => a - b),
+      queue: queue.map(q => ({ id: q.id, dist: q.dist })),
+      note: note
+    };
+    if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+    steps.push(step);
+  }
 
-  while(queue.length>0){
-    let [pos,dist]=queue.shift();
-    if(pos===SIZE){
-      bfsSteps.push({info:`到达终点36! 最短路径长度=${dist}`,visited:new Set(visited),queue:[...queue],distance:{...distance},highlight:[pos],conn:[],done:true});
+  snap('初始状态：玩家站在方格 1（已用 0 次掷骰）。棋盘从最后一行开始由左向右编号，逐行蛇形交替。' +
+    '棋盘上的标记：2 → 15、14 → 35 是梯子（向上），17 → 13 是蛇（向下）。BFS 按「掷骰次数」一层层向外扩展，第一次碰到 36 时的层数就是最少次数。',
+    { level: 0, cur: 1 });
+
+  while (queue.length > 0) {
+    const cur = queue.shift();
+
+    if (cur.id === TARGET) {
+      answer = cur.dist;
+      snap('出队的方格 ' + TARGET + ' 就是终点！它的距离是 ' + answer + '，说明掷 ' + answer + ' 次骰子就能到达 → 返回 ' + answer + '。若队列清空仍没到 36，则返回 -1。',
+        { cur: cur.id, done: true, level: cur.dist, answer: answer });
       break;
     }
-    for(let dice=1;dice<=6&&pos+dice<=SIZE;dice++){
-      let next=pos+dice;
-      if(board[next]!==-1)next=board[next];
-      if(!visited.has(next)){
-        visited.add(next);
-        distance[next]=dist+1;
-        queue.push([next,dist+1]);
-        let snakeLadder=board[pos+dice]!==-1;
-        let connInfo=[pos,pos+dice];
-        if(snakeLadder)connInfo.push(board[pos+dice]);
-        bfsSteps.push({
-          info:`从位置${pos}掷骰子${dice}→${pos+dice}${snakeLadder?'→'+board[pos+dice]+'(梯/蛇)':''}, 到达${next}, 距离${dist+1}`,
-          visited:new Set(visited),queue:[...queue],distance:{...distance},highlight:[pos,next],conn:[connInfo]
-        });
+
+    const rolls = [];
+    for (let k = 1; k <= 6; k++) {
+      const next = cur.id + k;
+      if (next > TARGET) break;
+      const jt = jumpOf(next);
+      const landed = jt === -1 ? next : jt;
+      const isNew = !visited.has(landed);
+      if (isNew) {
+        visited.add(landed);
+        queue.push({ id: landed, dist: cur.dist + 1 });
+      }
+      rolls.push({ k: k, next: next, landed: landed, jumped: landed !== next, isNew: isNew });
+    }
+
+    const jumped = rolls.filter(r => r.jumped);
+    const fresh = rolls.filter(r => r.isNew);
+    let note = '出队方格 ' + cur.id + '（距离 ' + cur.dist + '，即已经掷了 ' + cur.dist + ' 次）：依次枚举骰子点数 1~6，' +
+      '得到 curr+k = ' + rolls.map(r => r.next).join('、') + '。';
+    if (jumped.length) {
+      note += jumped.map(r => ' 其中方格 ' + r.next + ' 上有' + (r.landed > r.next ? '梯子' : '蛇') + '，必须直接跳到 ' + r.landed + '；').join('');
+    }
+    note += fresh.length
+      ? ' 落点 ' + fresh.map(r => r.landed).join('、') + ' 此前没访问过，按 BFS 入队（距离 ' + (cur.dist + 1) + '）。'
+      : ' 这些落点此前都访问过，没有新方格入队（BFS 每个方格只入队一次）。';
+
+    snap(note, { cur: cur.id, level: cur.dist, rolls: rolls });
+  }
+
+  if (answer < 0) {
+    snap('队列已空且从未到达 ' + TARGET + '，说明无法到达终点 → 返回 -1。', { done: true, level: -1, answer: -1 });
+  }
+  return steps;
+}
+
+function boardCell(step, id) {
+  const cell = Demo.el('div', 'grid-cell');
+  const jt = jumpOf(id);
+  let inner = '<span style="display:block;text-align:center;line-height:1.15">' + id;
+  if (jt !== -1) {
+    const up = jt > id;
+    inner += '<br><span style="font-size:10px;color:' + (up ? 'var(--demo-ok)' : 'var(--demo-danger)') + '">' +
+      (up ? '↑' : '↓') + jt + '</span>';
+  }
+  inner += '</span>';
+  cell.innerHTML = inner;
+
+  const roll = step.rolls ? step.rolls.filter(r => r.next === id)[0] : null;
+  if (step.done && id === TARGET) cell.classList.add('is-ok');
+  else if (step.cur === id) cell.classList.add('is-active');
+  else if (roll) cell.classList.add(roll.jumped ? 'is-warn' : 'is-info');
+  else if (step.visited.indexOf(id) >= 0) cell.classList.add('is-ok');
+  return cell;
+}
+
+function rollColumn(roll) {
+  const col = Demo.el('div', 'col');
+  col.appendChild(Demo.el('div', 'cell cell--sm', String(roll.k)));
+  col.appendChild(Demo.el('div', 'ptr', '→' + roll.next));
+  const land = Demo.el('div', 'cell cell--sm', String(roll.landed));
+  land.classList.add(roll.isNew ? 'is-info' : 'is-ok');
+  col.appendChild(land);
+  if (roll.jumped) {
+    col.appendChild(Demo.el('div', 'tag ' + (roll.landed > roll.next ? 'tag--ok' : 'tag--bad'),
+      roll.landed > roll.next ? '梯子↑' : '蛇↓'));
+  } else {
+    col.appendChild(Demo.el('div', 'tag ' + (roll.isNew ? 'tag--info' : 'tag--warn'),
+      roll.isNew ? '入队' : '已访问'));
+  }
+  return col;
+}
+
+Demo.create({
+  title: '95. 蛇梯棋 — 编号映射 + BFS 分层扩展',
+  info: 'board 为示例 1（6×6），目标方格 36。梯子 2→15、14→35，蛇 17→13；每一步枚举骰子 1~6 点。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 520,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前出队的方格' },
+    { color: 'var(--demo-info)', label: '本格骰子新落点（入队）' },
+    { color: 'var(--demo-warn)', label: '踩到蛇/梯子' },
+    { color: 'var(--demo-ok)', label: '已访问 / 终点' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const boardPanel = Demo.el('div', 'panel');
+    boardPanel.style.width = '100%';
+    boardPanel.appendChild(Demo.el('div', 'panel__title', '棋盘（蛇形编号；格子内小字是蛇/梯子去向）'));
+    const grid = Demo.el('div', 'grid');
+    grid.style.gridTemplateColumns = 'repeat(' + N + ', 52px)';
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        grid.appendChild(boardCell(step, ID_AT[r][c]));
       }
     }
+    boardPanel.appendChild(grid);
+    ctx.stage.appendChild(boardPanel);
+
+    if (step.rolls) {
+      const rollPanel = Demo.el('div', 'panel');
+      rollPanel.style.width = '100%';
+      rollPanel.appendChild(Demo.el('div', 'panel__title', '方格 ' + step.cur + ' 的掷骰结果（骰子点数 → curr+k → 实际落点）'));
+      const row = Demo.el('div', 'row');
+      step.rolls.forEach(r => row.appendChild(rollColumn(r)));
+      rollPanel.appendChild(row);
+      ctx.stage.appendChild(rollPanel);
+    }
+
+    const bottom = Demo.el('div', 'row');
+    bottom.style.width = '100%';
+    bottom.style.alignItems = 'flex-start';
+
+    const queuePanel = Demo.el('div', 'panel');
+    queuePanel.style.flex = '1';
+    queuePanel.appendChild(Demo.el('div', 'panel__title', 'BFS 队列（方格 距离）'));
+    const queueRow = Demo.el('div', 'row');
+    queueRow.style.justifyContent = 'flex-start';
+    if (step.queue.length === 0) {
+      queueRow.appendChild(Demo.el('span', 'tag tag--ok', '队列已空'));
+    } else {
+      step.queue.forEach(q => {
+        queueRow.appendChild(Demo.el('span', 'tag' + (q.dist === step.level + 1 ? ' tag--info' : ''), q.id + ' (d=' + q.dist + ')'));
+      });
+    }
+    queuePanel.appendChild(queueRow);
+
+    const statusPanel = Demo.el('div', 'panel');
+    statusPanel.appendChild(Demo.el('div', 'panel__title', '状态'));
+    statusPanel.appendChild(Demo.el('div', null, '已掷骰次数：<strong>' + (step.level < 0 ? '-' : step.level) + '</strong>'));
+    statusPanel.appendChild(Demo.el('div', null, '已访问方格：' + step.visited.length + ' / ' + TARGET));
+    statusPanel.appendChild(Demo.el('div', null, '队列中待处理：' + step.queue.length + ' 个'));
+    statusPanel.appendChild(Demo.el('div', null, step.done
+      ? '<span class="tag tag--ok">到达终点，返回 ' + step.answer + '</span>'
+      : '<span class="tag tag--info">继续按层扩展</span>'));
+
+    bottom.appendChild(queuePanel);
+    bottom.appendChild(statusPanel);
+    ctx.stage.appendChild(bottom);
   }
-  bfsSteps.push({info:`BFS完成! 最短路径距离=${distance[SIZE]||'无解'}`,visited:new Set(visited),queue:[],distance:{...distance},highlight:[],conn:[],done:true,final:true});
-  steps=bfsSteps;
-}
-buildSteps();totalSteps=steps.length;
-
-const cvs=document.getElementById('cvs');
-const ctx=cvs.getContext('2d');
-function resizeCanvas(){cvs.width=cvs.parentElement.clientWidth;cvs.height=cvs.parentElement.clientHeight;}
-resizeCanvas();
-window.addEventListener('resize',()=>{resizeCanvas();draw();});
-
-const CELL=55,OX=60,OY=30;
-
-function draw(){
-  let s=steps[currentStep];
-  ctx.clearRect(0,0,cvs.width,cvs.height);
-
-  // Draw grid cells
-  for(let num=1;num<=SIZE;num++){
-    let [row,col]=getRowCol(num);
-    let displayRow=N-1-row; // flip y
-    let x=OX+col*(CELL+4),y=OY+displayRow*(CELL+4);
-
-    ctx.fillStyle='#fff';
-    ctx.fillRect(x,y,CELL,CELL);
-    ctx.strokeStyle='#999';ctx.lineWidth=1;
-    ctx.strokeRect(x,y,CELL,CELL);
-
-    // Highlight visited
-    if(s.visited.has(num)){
-      ctx.fillStyle='rgba(91,155,213,0.3)';
-      ctx.fillRect(x,y,CELL,CELL);
-    }
-
-    // Current highlight
-    if(s.highlight.includes(num)){
-      ctx.strokeStyle='#ff6b00';ctx.lineWidth=3;
-      ctx.strokeRect(x-2,y-2,CELL+4,CELL+4);
-    }
-
-    // Cell number
-    ctx.fillStyle='#333';ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(num,x+CELL/2,y+CELL/2);
-
-    // Distance label
-    if(s.distance[num]!==undefined){
-      ctx.fillStyle='#0d6efd';ctx.font='10px sans-serif';
-      ctx.fillText('d='+s.distance[num],x+CELL/2,y+CELL-8);
-    }
-
-    // Snake/Ladder indicator
-    if(board[num]!==-1){
-      let icon=board[num]>num?'\u25B2':'\u25BC';
-      ctx.fillStyle=board[num]>num?'#28a745':'#dc3545';
-      ctx.font='14px sans-serif';
-      ctx.fillText(icon,x+CELL-8,y+8);
-    }
-  }
-
-  // Draw connections (snakes/ladders)
-  for(let num=1;num<=SIZE;num++){
-    if(board[num]!==-1){
-      let [r1,c1]=getRowCol(num);
-      let [r2,c2]=getRowCol(board[num]);
-      let dr1=N-1-r1,dr2=N-1-r2;
-      let x1=OX+c1*(CELL+4)+CELL/2,y1=OY+dr1*(CELL+4)+CELL/2;
-      let x2=OX+c2*(CELL+4)+CELL/2,y2=OY+dr2*(CELL+4)+CELL/2;
-      ctx.strokeStyle=board[num]>num?'rgba(40,167,69,0.5)':'rgba(220,53,69,0.5)';
-      ctx.lineWidth=2;
-      ctx.setLineDash([4,3]);
-      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
-      ctx.setLineDash([]);
-    }
-  }
-
-  // Draw active connection arrow
-  if(s.conn&&s.conn.length>0&&s.conn[0].length>=2){
-    let [from,to]=s.conn[0];
-    let [r1,c1]=getRowCol(from),[r2,c2]=getRowCol(to);
-    let dr1=N-1-r1,dr2=N-1-r2;
-    let x1=OX+c1*(CELL+4)+CELL/2,y1=OY+dr1*(CELL+4)+CELL/2;
-    let x2=OX+c2*(CELL+4)+CELL/2,y2=OY+dr2*(CELL+4)+CELL/2;
-    ctx.strokeStyle='#ff0';ctx.lineWidth=3;
-    ctx.setLineDash([]);
-    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
-    // arrowhead
-    let angle=Math.atan2(y2-y1,x2-x1);
-    let ax=x2-Math.cos(angle)*12,ay=y2-Math.sin(angle)*12;
-    ctx.fillStyle='#ff0';
-    ctx.beginPath();ctx.moveTo(ax,ay);
-    ctx.lineTo(ax-Math.cos(angle-Math.PI/6)*10,ay-Math.sin(angle-Math.PI/6)*10);
-    ctx.lineTo(ax-Math.cos(angle+Math.PI/6)*10,ay-Math.sin(angle+Math.PI/6)*10);
-    ctx.fill();
-
-    if(s.conn[0].length===3){
-      let snakeDest=s.conn[0][2];
-      let [r3,c3]=getRowCol(snakeDest);
-      let dr3=N-1-r3;
-      let x3=OX+c3*(CELL+4)+CELL/2,y3=OY+dr3*(CELL+4)+CELL/2;
-      ctx.strokeStyle='#28a745';
-      ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x3,y3);ctx.stroke();
-    }
-  }
-
-  // Legend
-  let lx=OX+N*(CELL+4)+30,ly=OY;
-  ctx.fillStyle='#333';ctx.font='12px sans-serif';ctx.textAlign='left';
-  ctx.fillText('梯子:',lx,ly);
-  ctx.fillStyle='#28a745';ctx.fillRect(lx,ly+8,14,14);
-  ctx.fillText(' 蛇:',lx+60,ly);
-  ctx.fillStyle='#dc3545';ctx.fillRect(lx+60,ly+8,14,14);
-
-  document.getElementById('stepBadge').textContent=`步骤 ${currentStep+1}/${totalSteps}`;
-  document.getElementById('infoText').textContent=s.info;
-  let btns=document.querySelectorAll('button');
-  btns.forEach(b=>b.disabled=false);
-  if(currentStep===0)document.querySelector('.btn-prev').disabled=true;
-  if(currentStep===totalSteps-1){document.querySelector('.btn-next').disabled=true;document.querySelector('.btn-end').disabled=true;document.querySelector('.btn-auto').disabled=true;}
-}
-
-function nextStep(){if(currentStep<totalSteps-1){currentStep++;draw();}}
-function prevStep(){if(currentStep>0){currentStep--;draw();}}
-function reset(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=0;draw();}
-function jumpEnd(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=totalSteps-1;draw();}
-function toggleAuto(){
-  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}
-  else{document.getElementById('btnAuto').textContent='⏸ 暂停';autoTimer=setInterval(()=>{if(currentStep<totalSteps-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}},1000);}
-}
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight'){e.preventDefault();nextStep();}
-  else if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}
-  else if(e.key===' '){e.preventDefault();toggleAuto();}
 });
-draw();
 </script>
 </body>
 </html>

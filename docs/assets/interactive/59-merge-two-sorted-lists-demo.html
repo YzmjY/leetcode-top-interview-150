@@ -3,190 +3,200 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>59. 合并两个有序链表 - 可视化演示</title>
-<style>
-:root {
-  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
-  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
-  --btn-active-text: #fff; --node-bg: #e9ecef;
-  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
-  --step-bg: #e7f5ff;
-}
-@media (prefers-color-scheme: dark) {
-:root {
-  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
-  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
-  --btn-active-text: #fff; --node-bg: #2a2a4a; --step-bg: #1a2a3a;
-}
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, "Microsoft YaHei", sans-serif;
-  background: var(--bg); color: var(--text);
-  display: flex; justify-content: center; padding: 20px;
-}
-.container {
-  width: 100%; max-width: 950px; height: 500px;
-  background: var(--card-bg); border-radius: 8px;
-  border: 1px solid var(--border); padding: 16px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.step-panel {
-  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
-  display: flex; justify-content: space-between; align-items: center; font-size: 14px;
-}
-.step-num { font-weight: 700; color: var(--btn-active); }
-.step-desc { flex: 1; margin-left: 16px; }
-.svg-area { flex: 1; display: flex; justify-content: center; align-items: center; }
-.controls {
-  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-}
-.controls button {
-  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--btn-bg); color: var(--text); cursor: pointer;
-  font-size: 13px; font-family: inherit; transition: all 0.15s;
-}
-.controls button:hover { background: var(--btn-hover); }
-.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
-</style>
+<title>59. 合并两个有序链表 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <div class="step-panel">
-    <span class="step-num" id="stepNum">步骤 0 / 0</span>
-    <span class="step-desc" id="stepDesc">初始状态</span>
-  </div>
-  <div class="svg-area"><svg id="svg" viewBox="0 0 880 300"></svg></div>
-  <div class="controls">
-    <button onclick="reset()">重置</button>
-    <button onclick="prevStep()">上步</button>
-    <button onclick="nextStep()">下步</button>
-    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button onclick="goEnd()">跳到最后</button>
-  </div>
-</div>
+<script src="demo.js"></script>
 <script>
-const l1v = [1, 2, 4];
-const l2v = [1, 3, 4];
-const steps = [];
-let stepIdx = -1;
+const L1 = [1, 2, 4];
+const L2 = [1, 3, 4];
 
-const pos1 = [{x:60,y:70},{x:170,y:70},{x:280,y:70}];
-const pos2 = [{x:60,y:150},{x:170,y:150},{x:280,y:150}];
-const posM = [];
-for (let i = 0; i < 12; i++) posM.push({x: 520 + (i % 6) * 55, y: 100 + Math.floor(i / 6) * 60});
+function link(values) {
+  const nodes = values.map(v => ({ v: v }));
+  for (let k = 0; k + 1 < nodes.length; k++) nodes[k].next = nodes[k + 1];
+  return nodes;
+}
+
+function walk(head) {
+  const out = [];
+  let cur = head;
+  while (cur) { out.push(cur.v); cur = cur.next; }
+  return out;
+}
 
 function buildSteps() {
-  steps.length = 0;
-  let i = 0, j = 0;
-  const merged = [];
-  const hl = { l1: -1, l2: -1, chosen: '' };
+  const steps = [];
+  const a = link(L1);
+  const b = link(L2);
+  const dummy = { v: null, dummy: true, next: null };
 
-  steps.push({ i, j, merged: [], hl: {...hl}, desc: '初始状态：两个有序链表待合并' });
+  let cur = dummy;
+  let p = a[0] || null;
+  let q = b[0] || null;
+  let i1 = 0;
+  let i2 = 0;
+  const out = [];
 
-  while (i < l1v.length || j < l2v.length) {
-    hl.l1 = i < l1v.length ? i : -1;
-    hl.l2 = j < l2v.length ? j : -1;
+  steps.push({
+    i1: 0, i2: 0, out: [], picked: null,
+    phase: 'init', done: false,
+    note: '初始化：建一个哨兵节点 dummy，cur 指向它。l1、l2 的指针分别指向各自头节点。dummy 让「结果链表为空」和「插入第一个节点」不再需要特判，最后返回 dummy.Next 即可。'
+  });
 
-    if (i >= l1v.length) {
-      merged.push(l2v[j]); hl.chosen = 'l2';
-      steps.push({ i, j, merged: [...merged], hl: {...hl}, desc: `l1 已空，取 l2[${j}]=${l2v[j]} 加入结果` });
-      j++;
-    } else if (j >= l2v.length) {
-      merged.push(l1v[i]); hl.chosen = 'l1';
-      steps.push({ i, j, merged: [...merged], hl: {...hl}, desc: `l2 已空，取 l1[${i}]=${l1v[i]} 加入结果` });
-      i++;
-    } else if (l1v[i] <= l2v[j]) {
-      merged.push(l1v[i]); hl.chosen = 'l1';
-      steps.push({ i, j, merged: [...merged], hl: {...hl}, desc: `比较: l1[${i}]=${l1v[i]} <= l2[${j}]=${l2v[j]}，选 l1 的 ${l1v[i]}` });
-      i++;
+  while (p && q) {
+    let picked;
+    let val;
+    if (p.v <= q.v) {
+      picked = 'l1';
+      val = p.v;
+      cur.next = p;
+      p = p.next;
+      i1 += 1;
     } else {
-      merged.push(l2v[j]); hl.chosen = 'l2';
-      steps.push({ i, j, merged: [...merged], hl: {...hl}, desc: `比较: l1[${i}]=${l1v[i]} > l2[${j}]=${l2v[j]}，选 l2 的 ${l2v[j]}` });
-      j++;
+      picked = 'l2';
+      val = q.v;
+      cur.next = q;
+      q = q.next;
+      i2 += 1;
     }
+    cur = cur.next;
+    out.push(val);
+
+    const cmpText = picked === 'l1'
+      ? 'l1 的 ' + val + ' 与 l2 的 ' + q.v + ' 比较：' + val + ' <= ' + q.v + '，取 l1 的节点。'
+      : 'l1 的 ' + p.v + ' 与 l2 的 ' + val + ' 比较：' + p.v + ' > ' + val + '，取 l2 的节点。';
+    const nextPtr = picked === 'l1' ? (p ? 'l1 指针后移到 ' + p.v : 'l1 指针走到 nil') : (q ? 'l2 指针后移到 ' + q.v : 'l2 指针走到 nil');
+
+    steps.push({
+      i1: i1, i2: i2, out: out.slice(), picked: picked,
+      phase: 'pick', done: false,
+      note: cmpText + '把该节点挂到 cur 后面（直接复用原节点，没有新建节点），' + nextPtr + '，cur 前进到刚挂上的节点。'
+    });
   }
 
-  steps.push({ i, j, merged: [...merged], hl: {l1:-1,l2:-1,chosen:''},
-    desc: `合并完成！结果: [${merged.join(',')}]` });
+  const restValues = walk(p || q);
+  restValues.forEach(v => out.push(v));
+
+  steps.push({
+    i1: L1.length, i2: L2.length, out: out.slice(), picked: null,
+    phase: 'rest', done: false,
+    note: (restValues.length
+      ? '其中一个链表已经走完（指针为 nil），把另一个链表剩下的 [' + restValues.join(', ') + '] 整段接在 cur 后面。'
+      : '两个链表同时走完，没有剩余节点需要拼接。') + ' 因为两个链表本身有序，剩余这段一定不小于已合并的所有节点，直接接上即可。'
+  });
+
+  steps.push({
+    i1: L1.length, i2: L2.length, out: out.slice(), picked: null,
+    phase: 'done', done: true,
+    note: '返回 dummy.Next，合并结果 = [' + out.join(', ') + ']。每个节点只被访问一次，时间 O(n + m)；只用了 dummy 和几个指针，额外空间 O(1)。'
+  });
+
+  return steps;
 }
 
-const R = 20;
-function drawNode(cx, cy, val, fill, stroke, hl, extraClass) {
-  const r = hl ? R + 3 : R;
-  const sw = hl ? 3 : 2;
-  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${hl ? 'var(--orange)' : stroke}" stroke-width="${sw}"/>
-    <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text)" font-family="Consolas,monospace">${val}</text>`;
+function rowOf(items) {
+  const row = Demo.el('div', 'row');
+  items.forEach((it, k) => {
+    if (k > 0) {
+      const arrow = Demo.el('div', 'arrow', '→');
+      arrow.style.width = '24px';
+      arrow.style.textAlign = 'center';
+      row.appendChild(arrow);
+    }
+    const col = Demo.el('div', 'col');
+    const node = Demo.el('div', 'll-node');
+    node.style.width = it.wide ? '56px' : '46px';
+    node.style.flex = 'none';
+    if (it.dim) {
+      node.style.borderStyle = 'dashed';
+      node.style.opacity = '0.4';
+    }
+    if (it.dummy) node.style.fontSize = '11px';
+    node.innerHTML = Demo.esc(it.text);
+    if (it.cls) node.classList.add(it.cls);
+    col.appendChild(node);
+
+    const ptr = Demo.el('div', 'ptr', it.ptr || '');
+    if (!it.ptr) ptr.classList.add('ptr--dim');
+    if (it.ptrCls) ptr.classList.add(it.ptrCls);
+    col.appendChild(ptr);
+    row.appendChild(col);
+  });
+  return row;
 }
 
-function renderSVG() {
-  const st = steps[Math.min(stepIdx, steps.length - 1)];
-  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
-  document.getElementById('stepDesc').textContent = st.desc;
+function listPanel(title, items) {
+  const block = Demo.el('div', 'col');
+  block.style.width = '100%';
+  block.appendChild(Demo.el('div', 'panel__title', Demo.esc(title)));
+  block.appendChild(rowOf(items));
+  return block;
+}
 
-  const svg = document.getElementById('svg');
-  let html = `<defs>
-    <marker id="arrowB" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="var(--blue)"/>
-    </marker>
-    <marker id="arrowG" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="var(--green)"/>
-    </marker>
-    <marker id="arrowO" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="var(--orange)"/>
-    </marker>
-  </defs>`;
+Demo.create({
+  title: '59. 合并两个有序链表 — 双指针 + dummy 哨兵',
+  info: '输入：l1 = [' + L1.join(', ') + ']，l2 = [' + L2.join(', ') + ']（均非递减）。每轮比较两个链表的头节点，把较小的那个摘下来接到结果链表尾部，直到其中一条走空。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 400,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前被选中的节点 / cur' },
+    { color: 'var(--demo-ok)', label: '已并入结果链表' },
+    { color: 'var(--demo-info)', label: 'l1、l2 的当前指针' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
 
-  html += `<text x="20" y="75" font-size="14" font-weight="700" fill="var(--blue)">l1</text>`;
-  html += `<text x="20" y="155" font-size="14" font-weight="700" fill="var(--green)">l2</text>`;
-  html += `<text x="460" y="90" font-size="14" font-weight="700" fill="var(--orange)">合并结果</text>`;
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', '两个输入链表与合并中的结果链表'));
 
-  // l1
-  for (let i = 0; i < l1v.length; i++) {
-    html += drawNode(pos1[i].x, pos1[i].y, l1v[i], 'var(--node-bg)', 'var(--blue)', st.hl.l1 === i && st.hl.chosen === 'l1');
-    if (i < l1v.length - 1) html += `<line x1="${pos1[i].x+R}" y1="${pos1[i].y}" x2="${pos1[i+1].x-R}" y2="${pos1[i+1].y}" stroke="var(--blue)" stroke-width="2" marker-end="url(#arrowB)"/>`;
-    if (i >= st.i) html += `<rect x="${pos1[i].x-R-2}" y="${pos1[i].y-R-2}" width="${R*2+4}" height="${R*2+4}" rx="12" fill="none" stroke="var(--text-secondary)" stroke-width="1" stroke-dasharray="3,3"/>`;
+    panel.appendChild(listPanel('l1（剩余 ' + (L1.length - step.i1) + ' 个）', L1.map((v, k) => ({
+      text: v,
+      cls: k < step.i1 ? 'is-ok' : '',
+      ptr: k === step.i1 && !step.done ? 'l1' : '',
+      ptrCls: k === step.i1 ? 'ptr--info' : ''
+    }))));
+
+    panel.appendChild(listPanel('l2（剩余 ' + (L2.length - step.i2) + ' 个）', L2.map((v, k) => ({
+      text: v,
+      cls: k < step.i2 ? 'is-ok' : '',
+      ptr: k === step.i2 && !step.done ? 'l2' : '',
+      ptrCls: k === step.i2 ? 'ptr--info' : ''
+    }))));
+
+    const outItems = [{ text: 'dummy', dummy: true, wide: true, ptr: 'dummy', ptrCls: 'ptr--violet' }];
+    step.out.forEach((v, k) => {
+      const isLast = k === step.out.length - 1;
+      outItems.push({
+        text: v,
+        cls: step.done || !isLast ? 'is-ok' : 'is-active',
+        ptr: !step.done && isLast ? 'cur' : '',
+        ptrCls: 'ptr--ok'
+      });
+    });
+    panel.appendChild(listPanel('结果链表（返回 dummy.Next）', outItems));
+    ctx.stage.appendChild(panel);
+
+    const tags = Demo.el('div', 'panel');
+    tags.style.width = '100%';
+    tags.style.textAlign = 'center';
+    let html = '';
+    if (step.phase === 'init') {
+      html = '结果为空，dummy 与 cur 都指向哨兵节点。';
+    } else if (step.phase === 'pick') {
+      html = (step.picked === 'l1' ? 'l1' : 'l2') + ' 胜出，取节点 ' + step.out[step.out.length - 1] +
+        ' &nbsp;<span class="tag">已合并 ' + step.out.length + ' 个</span>';
+    } else if (step.phase === 'rest') {
+      html = '剩余的整段已拼接 &nbsp;<span class="tag tag--ok">已合并 ' + step.out.length + ' 个</span>';
+    } else {
+      html = '合并结果 [' + step.out.join(', ') + '] &nbsp;<span class="tag tag--ok">完成</span>';
+    }
+    tags.innerHTML = html;
+    ctx.stage.appendChild(tags);
   }
-  // l2
-  for (let i = 0; i < l2v.length; i++) {
-    html += drawNode(pos2[i].x, pos2[i].y, l2v[i], 'var(--node-bg)', 'var(--green)', st.hl.l2 === i && st.hl.chosen === 'l2');
-    if (i < l2v.length - 1) html += `<line x1="${pos2[i].x+R}" y1="${pos2[i].y}" x2="${pos2[i+1].x-R}" y2="${pos2[i+1].y}" stroke="var(--green)" stroke-width="2" marker-end="url(#arrowG)"/>`;
-    if (i >= st.j) html += `<rect x="${pos2[i].x-R-2}" y="${pos2[i].y-R-2}" width="${R*2+4}" height="${R*2+4}" rx="12" fill="none" stroke="var(--text-secondary)" stroke-width="1" stroke-dasharray="3,3"/>`;
-  }
-  // merged
-  const m = st.merged;
-  for (let i = 0; i < m.length; i++) {
-    const p = posM[Math.min(i, posM.length - 1)];
-    const isNew = stepIdx > 0 && i === m.length - 1 && m.length > (steps[stepIdx-1]?.merged?.length || 0);
-    html += drawNode(p.x, p.y, m[i], isNew ? 'rgba(253,126,20,0.1)' : 'var(--node-bg)', 'var(--orange)', isNew);
-    if (i < m.length - 1) html += `<line x1="${p.x+R}" y1="${p.y}" x2="${posM[Math.min(i+1,posM.length-1)].x-R}" y2="${posM[Math.min(i+1,posM.length-1)].y}" stroke="var(--orange)" stroke-width="2" marker-end="url(#arrowO)"/>`;
-  }
-
-  svg.innerHTML = html;
-  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
-}
-
-function reset() { stepIdx = 0; stopAuto(); renderSVG(); }
-function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; renderSVG(); }
-function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; renderSVG(); }
-function goEnd() { stopAuto(); stepIdx = steps.length - 1; renderSVG(); }
-
-let autoRunning = false, autoTimer = null;
-function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
-function startAuto() { autoRunning = true; renderSVG(); autoStep(); }
-function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); renderSVG(); }
-function autoStep() {
-  if (!autoRunning) return;
-  if (stepIdx < steps.length - 1) { stepIdx++; renderSVG(); autoTimer = setTimeout(autoStep, 900); }
-  else stopAuto();
-}
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') nextStep();
-  else if (e.key === 'ArrowLeft') prevStep();
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
 });
-buildSteps();
-reset();
 </script>
 </body>
 </html>

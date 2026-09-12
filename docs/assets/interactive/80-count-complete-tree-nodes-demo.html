@@ -1,103 +1,264 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>完全二叉树的节点个数</title>
-<style>
-:root{--bg:#fff;--text:#333;--muted:#888;--btn-bg:#f0f0f0;--btn-hover:#e0e0e0;--sub-bg:#f5f5f5;--cell-border:#d0d0d0;--header:#222}
-@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--text:#ddd;--muted:#aaa;--btn-bg:#333;--btn-hover:#444;--sub-bg:#252540;--cell-border:#444;--header:#ddd}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
-.container{max-width:780px;width:100%}
-h2{text-align:center;color:var(--header);font-size:17px;margin-bottom:6px}
-.info-bar{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:4px;font-size:14px}
-.step-num{font-weight:bold;font-size:22px;color:#1976D2;min-width:36px;text-align:center}
-.step-desc{color:var(--muted);font-size:12px;max-width:550px;text-align:center}
-svg{display:block;margin:0 auto;width:100%;height:430px}
-.controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px}
-button{padding:7px 15px;border:1px solid var(--cell-border);border-radius:6px;background:var(--btn-bg);color:var(--text);font-size:12px;cursor:pointer;transition:0.15s}
-button:hover{background:var(--btn-hover)}
-button:active{transform:scale(0.96)}
-button:disabled{opacity:0.35;cursor:default}
-button.play-btn{background:#1976D2;color:#fff;border-color:#1565C0}
-</style>
+<title>80. 完全二叉树的节点个数 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>完全二叉树的节点个数 — 利用完全二叉树性质</h2>
-<div class="info-bar">
-<span class="step-num" id="stepNum">0</span>
-<span class="step-desc" id="stepDesc">树：[1,2,3,4,5,6] · 高效计数 O(log^2 n)</span>
-</div>
-<svg id="treeSvg" viewBox="0 0 740 430"></svg>
-<div class="controls">
-<button onclick="goStep(0)">重置</button>
-<button onclick="goStep(cur-1)" id="prevBtn">上步</button>
-<button onclick="goStep(cur+1)" id="nextBtn">下步</button>
-<button class="play-btn" onclick="toggleAuto()" id="playBtn">自动播放</button>
-<button onclick="goStep(steps.length-1)">跳到最后</button>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const nodes=[{x:370,y:40,val:1},{x:220,y:140,val:2},{x:520,y:140,val:3},{x:140,y:260,val:4},{x:300,y:260,val:5},{x:440,y:260,val:6}];
-const edges=[[0,1],[0,2],[1,3],[1,4],[2,5]];
+const TREE = [1, 2, 3, 4, 5, 6];
+const EXPECTED = 6;
 
-const steps=[
-{desc:'初始状态：树 [1,2,3,4,5,6] · 完全二叉树',hl:[],count:0,info:''},
-{desc:'根节点1：左深度=3，右深度=2。不等→递归计算',hl:[0],count:0,info:'左深度=3 右深度=2 (不等)'},
-{desc:'左子树根2：左深度=2，右深度=2。相等→满二叉树, 节点数=2^2-1=3',hl:[0,1],count:3,info:'节点2: 满二叉树(深2) → 3个节点'},
-{desc:'右子树根3：左深度=1，右深度=1。相等→满二叉树, 节点数=2^1-1=1',hl:[0,1,2],count:4,info:'节点3: 满二叉树(深1) → 1个节点'},
-{desc:'汇总：左子树3个 + 右子树1个 + 根节点1个 = 5？再算...',hl:[0,1,2,3,4,5],count:6,info:'根1: 左满3 + 右1 + 根1 = 5...'},
-{desc:'完成！总节点数 = 6（左子树3 + 右子树2 + 根1。注：右子树含节点6）',hl:[0,1,2,3,4,5],count:6,info:'总节点数 = 6'}
-];
+const NODE_PAINT = {
+  default: ['var(--demo-subtle)', 'var(--demo-border)', 'var(--demo-text)'],
+  accent:  ['var(--demo-accent-soft)', 'var(--demo-accent)', 'var(--demo-accent-strong)'],
+  ok:      ['var(--demo-ok-soft)', 'var(--demo-ok)', 'var(--demo-ok)'],
+  warn:    ['var(--demo-warn-soft)', 'var(--demo-warn)', 'var(--demo-warn)'],
+  violet:  ['var(--demo-violet-soft)', 'var(--demo-violet)', 'var(--demo-violet)']
+};
 
-let cur=0,autoTimer=null,autoRun=false;
-const svg=document.getElementById('treeSvg');
-
-function render(){
-const s=steps[cur];
-document.getElementById('stepNum').textContent=cur;
-document.getElementById('stepDesc').textContent=(cur===0?'初始状态 · ':'第'+cur+'步 · ')+s.desc;
-document.getElementById('prevBtn').disabled=cur<=0;
-document.getElementById('nextBtn').disabled=cur>=steps.length-1;
-
-let html='<defs><radialGradient id="gBlue"><stop offset="0%" stop-color="#42A5F5"/><stop offset="100%" stop-color="#1976D2"/></radialGradient><radialGradient id="gGr"><stop offset="0%" stop-color="#81C784"/><stop offset="100%" stop-color="#4CAF50"/></radialGradient></defs><rect width="740" height="430" fill="transparent"/>';
-for(const e of edges) {
-const a=nodes[e[0]],b=nodes[e[1]];
-const visited=s.hl.includes(e[0])&&s.hl.includes(e[1]);
-html+=`<line x1="${a.x}" y1="${a.y+24}" x2="${b.x}" y2="${b.y-24}" stroke="${visited?'#1976D2':'#ccc'}" stroke-width="${visited?2.5:2}"/>`;
-}
-for(let i=0;i<nodes.length;i++){
-const n=nodes[i];const isHL=s.hl.includes(i);
-const isAll=cur===steps.length-1;
-if(isAll){
-html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="url(#gGr)" stroke="#2E7D32" stroke-width="3"/>`;
-html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">${n.val}</text>`;
-}else if(isHL){
-html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="url(#gBlue)" stroke="#0D47A1" stroke-width="2.5"/>`;
-html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">${n.val}</text>`;
-}else{
-html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="var(--sub-bg)" stroke="var(--cell-border)" stroke-width="2"/>`;
-html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="var(--text)" font-size="14">${n.val}</text>`;
-}
-}
-if(s.count>0)html+=`<text x="370" y="410" text-anchor="middle" fill="#1976D2" font-size="15" font-weight="bold">节点计数: ${s.count}</text>`;
-if(s.info)html+=`<text x="370" y="425" text-anchor="middle" fill="var(--muted)" font-size="11">${s.info}</text>`;
-svg.innerHTML=html;
+function buildTree(arr) {
+  if (!arr.length || arr[0] == null) return null;
+  let seq = 0;
+  const root = { id: seq++, val: arr[0], left: null, right: null };
+  const queue = [root];
+  let i = 1;
+  while (i < arr.length && queue.length) {
+    const node = queue.shift();
+    const lv = arr[i++];
+    if (lv != null) { node.left = { id: seq++, val: lv, left: null, right: null }; queue.push(node.left); }
+    if (i < arr.length) {
+      const rv = arr[i++];
+      if (rv != null) { node.right = { id: seq++, val: rv, left: null, right: null }; queue.push(node.right); }
+    }
+  }
+  return root;
 }
 
-function goStep(n){cur=Math.max(0,Math.min(n,steps.length-1));render()}
-function toggleAuto(){
-if(autoRun){clearInterval(autoTimer);autoRun=false;document.getElementById('playBtn').textContent='自动播放';}
-else{document.getElementById('playBtn').textContent='暂停';autoRun=true;if(cur>=steps.length-1)goStep(0);
-autoTimer=setInterval(()=>{if(cur<steps.length-1)goStep(cur+1);else toggleAuto()},1000);}
+function snapTree(node) {
+  if (!node) return null;
+  return { id: node.id, val: node.val, left: snapTree(node.left), right: snapTree(node.right) };
 }
-document.addEventListener('keydown',e=>{
-if(e.key==='ArrowRight')goStep(cur+1);if(e.key==='ArrowLeft')goStep(cur-1);
-if(e.key===' '){e.preventDefault();toggleAuto();}
+
+function collectIds(node) {
+  if (!node) return [];
+  return [node.id].concat(collectIds(node.left)).concat(collectIds(node.right));
+}
+
+function findById(node, id) {
+  if (!node || id == null) return null;
+  if (node.id === id) return node;
+  return findById(node.left, id) || findById(node.right, id);
+}
+
+function treeSVG(root, paintOf, badgeOf) {
+  if (!root) return '<div class="panel" style="width:100%;text-align:center">（空树）</div>';
+  const pos = {};
+  let count = 0, maxDepth = 0;
+  (function walk(node, depth) {
+    if (!node) return;
+    walk(node.left, depth + 1);
+    pos[node.id] = { x: count++, y: depth };
+    if (depth > maxDepth) maxDepth = depth;
+    walk(node.right, depth + 1);
+  })(root, 0);
+
+  const gapX = 66, gapY = 78, padX = 36, padY = 32, r = 21;
+  const W = count * gapX + padX * 2;
+  const H = (maxDepth + 1) * gapY + padY * 2;
+  const cx = id => padX + pos[id].x * gapX + gapX / 2;
+  const cy = id => padY + pos[id].y * gapY + gapY / 2;
+
+  let edges = '';
+  (function drawEdges(node) {
+    if (!node) return;
+    [node.left, node.right].forEach(child => {
+      if (!child) return;
+      const dx = pos[child.id].x - pos[node.id].x;
+      const dy = pos[child.id].y - pos[node.id].y;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      edges += '<line x1="' + (cx(node.id) + dx / len * r).toFixed(1) + '" y1="' + (cy(node.id) + dy / len * r).toFixed(1) +
+        '" x2="' + (cx(child.id) - dx / len * r).toFixed(1) + '" y2="' + (cy(child.id) - dy / len * r).toFixed(1) +
+        '" style="stroke:var(--demo-border);stroke-width:2"/>';
+      drawEdges(child);
+    });
+  })(root);
+
+  let nodes = '';
+  (function drawNodes(node) {
+    if (!node) return;
+    let info = paintOf ? paintOf(node) : null;
+    if (typeof info === 'string') info = { state: info };
+    info = info || {};
+    const paint = NODE_PAINT[info.state] || NODE_PAINT.default;
+    if (info.ring) {
+      nodes += '<circle cx="' + cx(node.id) + '" cy="' + cy(node.id) + '" r="' + (r + 6) + '" style="fill:none;stroke:' + info.ring + ';stroke-width:3"/>';
+    }
+    nodes += '<circle cx="' + cx(node.id) + '" cy="' + cy(node.id) + '" r="' + r + '" style="fill:' + paint[0] + ';stroke:' + paint[1] + ';stroke-width:2.5"/>';
+    nodes += '<text x="' + cx(node.id) + '" y="' + (cy(node.id) + 6) + '" text-anchor="middle" style="fill:' + paint[2] + ';font:600 16px sans-serif">' + Demo.esc(node.val) + '</text>';
+    const badge = badgeOf ? badgeOf(node) : null;
+    if (badge) {
+      nodes += '<text x="' + cx(node.id) + '" y="' + (cy(node.id) + r + 17) + '" text-anchor="middle" style="fill:var(--demo-muted);font:600 12px sans-serif">' + Demo.esc(badge) + '</text>';
+    }
+    drawNodes(node.left);
+    drawNodes(node.right);
+  })(root);
+
+  return '<div style="width:100%"><svg viewBox="0 0 ' + W + ' ' + (H + 20) + '" style="width:100%;height:auto;display:block;max-height:430px">' + edges + nodes + '</svg></div>';
+}
+
+function buildSteps() {
+  const root = buildTree(TREE);
+  const steps = [];
+  const counted = [];
+  const blocks = [];
+  let total = 0;
+
+  function snap(note, extra) {
+    const step = {
+      tree: snapTree(root),
+      note: note,
+      counted: counted.slice(),
+      blocks: blocks.map(b => ({ root: b.root, count: b.count })),
+      total: total
+    };
+    if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+    steps.push(step);
+  }
+
+  function markCounted(ids, count, label) {
+    ids.forEach(id => { if (counted.indexOf(id) === -1) counted.push(id); });
+    blocks.push({ root: label, count: count });
+    total += count;
+  }
+
+  snap('初始状态：完全二叉树 ' + JSON.stringify(TREE) + '，共 ' + EXPECTED + ' 个节点，下面用「满二叉树整块算」的方法验证。对任意子树，先量左子树最左路径的高度 leftH、右子树最左路径的高度 rightH。', { active: root.id, phase: 'enter' });
+
+  function count(node) {
+    if (!node) return 0;
+
+    snap('进入以 ' + node.val + ' 为根的子树：分别量 leftH 与 rightH，用来判断哪一边是满二叉树，满的那一边可以直接套公式，不必逐个数。', { active: node.id, phase: 'enter' });
+
+    const lhPath = [];
+    for (let n = node.left; n; n = n.left) lhPath.push(n.id);
+    const lh = lhPath.length;
+    snap('leftH：从 ' + node.val + ' 的左孩子出发一路向左' +
+      (lh ? '（' + lhPath.map(id => findById(root, id).val).join(' → ') + '）' : '（左孩子为空）') +
+      '，得到 leftH = ' + lh + '。', { active: node.id, phase: 'measure', lh: lh, lhPath: lhPath });
+
+    const rhPath = [];
+    for (let n = node.right; n; n = n.left) rhPath.push(n.id);
+    const rh = rhPath.length;
+    snap('rightH：从 ' + node.val + ' 的右孩子出发一路向左' +
+      (rh ? '（' + rhPath.map(id => findById(root, id).val).join(' → ') + '）' : '（右孩子为空）') +
+      '，得到 rightH = ' + rh + '。', { active: node.id, phase: 'measure', rh: rh, rhPath: rhPath });
+
+    if (lh === rh) {
+      const blockCount = 1 << lh;
+      markCounted([node.id].concat(collectIds(node.left)), blockCount, '节点 ' + node.val + ' 的满左子树 + 它自己');
+      snap('leftH == rightH == ' + lh + '：在完全二叉树里这说明左子树是高度 ' + lh +
+        ' 的满二叉树。它加上根节点 ' + node.val + ' 一共 2^' + lh + ' = ' + blockCount +
+        ' 个节点，可以整块计入，不用再往下数；剩下的只有右子树要递归统计。（这是本例最关键的一次整块。）',
+        { active: node.id, phase: 'block', lh: lh, rh: rh, blockCount: blockCount, blockRoot: node.val });
+      const rest = count(node.right);
+      const res = blockCount + rest;
+      snap('子树（根 ' + node.val + '）统计完成：整块 ' + blockCount + ' 个 + 右子树递归得到 ' + rest + ' 个 = ' + res + '，返回给上一层。',
+        { active: node.id, phase: 'return', res: res });
+      return res;
+    }
+
+    const blockCount = 1 << rh;
+    markCounted([node.id].concat(collectIds(node.right)), blockCount, '节点 ' + node.val + ' 的满右子树 + 它自己');
+    snap('leftH = ' + lh + ' ≠ rightH = ' + rh + '：最后一层没填满，左子树不能整块算；但右子树高度只有 ' + rh +
+      '，它是满的。右子树加上根节点 ' + node.val + ' 一共 2^' + rh + ' = ' + blockCount +
+      ' 个节点，整块计入，剩下的递归统计左子树。',
+      { active: node.id, phase: 'block', lh: lh, rh: rh, blockCount: blockCount, blockRoot: node.val });
+    const rest = count(node.left);
+    const res = blockCount + rest;
+    snap('子树（根 ' + node.val + '）统计完成：整块 ' + blockCount + ' 个 + 左子树递归得到 ' + rest + ' 个 = ' + res + '，返回给上一层。',
+      { active: node.id, phase: 'return', res: res });
+    return res;
+  }
+
+  const result = count(root);
+  snap('递归结束，节点总数为 ' + result + '，与示例输出一致。每次递归高度只走一条链（O(log n)），递归深度也是 O(log n)，总复杂度 O((log n)²)，远好于逐个数节点的 O(n)。',
+    { active: null, phase: 'done', done: true, res: result });
+
+  return steps;
+}
+
+Demo.create({
+  title: '80. 完全二叉树的节点个数 — 满子树整块计算',
+  info: 'root = [1,2,3,4,5,6]（完全二叉树），答案应为 ' + EXPECTED + '。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 470,
+  legend: [
+    { color: 'var(--demo-violet)', label: '正在测量的最左路径' },
+    { color: 'var(--demo-ok)', label: '已整块计入的节点' },
+    { color: 'var(--demo-accent)', label: '当前子树根' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const wrap = Demo.el('div');
+    wrap.style.width = '100%';
+    wrap.innerHTML = treeSVG(step.tree, node => {
+      if (step.active === node.id && step.phase !== 'done') return { state: 'accent', ring: 'var(--demo-accent)' };
+      if (step.counted.indexOf(node.id) >= 0) return 'ok';
+      if (step.lhPath && step.lhPath.indexOf(node.id) >= 0) return 'violet';
+      if (step.rhPath && step.rhPath.indexOf(node.id) >= 0) return 'warn';
+      return 'default';
+    }, node => {
+      if (step.counted.indexOf(node.id) >= 0) return '已计入';
+      if (step.lhPath && step.lhPath.indexOf(node.id) >= 0) return 'leftH';
+      if (step.rhPath && step.rhPath.indexOf(node.id) >= 0) return 'rightH';
+      return null;
+    });
+    ctx.stage.appendChild(wrap);
+
+    const row = Demo.el('div', 'row');
+    row.style.width = '100%';
+    row.style.alignItems = 'flex-start';
+    row.style.gap = '12px';
+
+    const heightPanel = Demo.el('div', 'panel');
+    heightPanel.appendChild(Demo.el('div', 'panel__title', '高度测量'));
+    heightPanel.appendChild(Demo.el('div', null,
+      'leftH = <strong>' + (step.lh == null ? '—' : step.lh) + '</strong><br>' +
+      'rightH = <strong>' + (step.rh == null ? '—' : step.rh) + '</strong><br>' +
+      (step.phase === 'block'
+        ? '<span class="tag tag--violet">2^' + (step.lh === step.rh ? step.lh : step.rh) + ' = ' + step.blockCount + ' 整块</span>'
+        : step.phase === 'return'
+          ? '<span class="tag tag--ok">返回 ' + step.res + '</span>'
+          : step.phase === 'done'
+            ? '<span class="tag tag--ok">总数 ' + step.res + '</span>'
+            : '<span class="tag tag--info">测量中</span>')));
+
+    const totalPanel = Demo.el('div', 'panel');
+    totalPanel.style.flex = '1';
+    totalPanel.appendChild(Demo.el('div', 'panel__title', '已确定的节点数（累加）'));
+    totalPanel.appendChild(Demo.el('div', null, '合计 = <strong>' + step.total + '</strong>'));
+    let html = '<table class="map-table" style="margin-top:6px"><tr><th>整块</th><th>节点数</th></tr>';
+    if (step.blocks.length === 0) {
+      html += '<tr><td colspan="2">（还没有整块）</td></tr>';
+    } else {
+      step.blocks.forEach((block, k) => {
+        const isNew = k === step.blocks.length - 1 && step.phase === 'block';
+        html += '<tr' + (isNew ? ' class="is-active"' : '') + '><td>' + Demo.esc(block.root) + '</td><td>' + block.count + '</td></tr>';
+      });
+    }
+    html += '</table>';
+    totalPanel.appendChild(Demo.el('div', null, html));
+
+    row.appendChild(heightPanel);
+    row.appendChild(totalPanel);
+    ctx.stage.appendChild(row);
+  }
 });
-render();
 </script>
 </body>
 </html>

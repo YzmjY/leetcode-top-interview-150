@@ -2,253 +2,191 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>94. 课程表 II - Course Schedule II</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
-.container{background:#fff;border-radius:8px;padding:20px;width:780px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
-h2{font-size:16px;margin-bottom:12px;color:#333}
-.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-button{border:none;border-radius:8px;padding:8px 16px;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s;color:#fff;font-weight:500}
-button:disabled{opacity:.4;cursor:not-allowed}
-.btn-reset{background:#6c757d}
-.btn-prev{background:#0d6efd}
-.btn-next{background:#0d6efd}
-.btn-auto{background:#198754}
-.btn-end{background:#dc3545}
-button:hover:not(:disabled){filter:brightness(1.15)}
-.info-panel{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:#555;background:#f0f4f8;border-radius:8px;padding:10px 14px}
-.step-badge{background:#0d6efd;color:#fff;border-radius:20px;padding:2px 12px;font-weight:600;font-size:12px}
-.info-text{flex:1;margin-left:12px}
-.vis-area{background:#fafafa;border-radius:8px;position:relative;height:480px;overflow:hidden;border:1px solid #e0e0e0}
-svg{width:100%;height:100%}
-.hint{font-size:12px;color:#999;text-align:center;margin-top:8px}
-@media(prefers-color-scheme:dark){
-body{background:#1a1a2e}
-.container{background:#16213e;box-shadow:0 2px 12px rgba(0,0,0,.4)}
-h2{color:#e0e0e0}
-.info-panel{background:#1a1a3e;color:#ccc}
-.vis-area{background:#0f0f23;border-color:#2a2a4a}
-.hint{color:#777}
-}
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>94. 课程表 II - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>94. 课程表 II (Course Schedule II) — 输出拓扑排序顺序</h2>
-<div class="controls">
-<button class="btn-reset" onclick="reset()">⟳ 重置</button>
-<button class="btn-prev" onclick="prevStep()">◀ 上步</button>
-<button class="btn-next" onclick="nextStep()">下步 ▶</button>
-<button class="btn-auto" id="btnAuto" onclick="toggleAuto()">▶ 自动播放</button>
-<button class="btn-end" onclick="jumpEnd()">▶▶ 跳到最后</button>
-</div>
-<div class="info-panel">
-<span class="step-badge" id="stepBadge">步骤 1/8</span>
-<span class="info-text" id="infoText">numCourses=2, prerequisites=[[1,0]] — 需输出合法的上课顺序</span>
-</div>
-<div class="vis-area"><svg id="svg" viewBox="0 0 780 480"></svg></div>
-<div class="hint">键盘: ← → 切换步骤 | 空格 自动播放</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const N=2;
-const prereq=[[1,0]];
+const N = 4;
+const PREREQ = [[1, 0], [2, 0], [3, 1], [3, 2]];
+const POS = { 0: { x: 320, y: 75 }, 1: { x: 150, y: 195 }, 2: { x: 490, y: 195 }, 3: { x: 320, y: 315 } };
 
-let steps=[],currentStep=0,totalSteps=0,autoTimer=null;
-function buildSteps(){
-  steps=[];
-  steps.push({info:'初始: 2门课程, 先修关系 [[1,0]] — 课程1依赖课程0',phase:'init',indegree:{0:0,1:0},adj:{0:[],1:[]},order:[],queue:[],processed:[],highlight:[]});
+function buildSteps() {
+  const adj = [];
+  for (let i = 0; i < N; i++) adj.push([]);
+  const indeg = [];
+  for (let i = 0; i < N; i++) indeg.push(0);
+  const queue = [];
+  const order = [];
+  const steps = [];
 
-  let indegree={0:0,1:0},adj={0:[],1:[]};
-  for(let [c,p] of prereq){adj[p].push(c);indegree[c]++;}
-  steps.push({info:'构建邻接表和入度: 0→[1], 1→[]  indegree[0]=0, indegree[1]=1',phase:'build',indegree:{...indegree},adj:{0:[...adj[0]],1:[...adj[1]]},order:[],queue:[],processed:[],highlight:[]});
-
-  let queue=[],order=[],processed=[];
-  for(let i=0;i<N;i++)if(indegree[i]===0)queue.push(i);
-  steps.push({info:'入度为0的课程 0 入队 — 它可以最先学习',phase:'enqueue',indegree:{...indegree},adj:{0:[...adj[0]],1:[...adj[1]]},order:[...order],queue:[...queue],processed:[],highlight:[0]});
-
-  while(queue.length>0){
-    let cur=queue.shift();
-    order.push(cur);processed.push(cur);
-    steps.push({info:`出队: 课程 ${cur} → 加入上课顺序 [${order.join(',')}]`,phase:'process',indegree:{...indegree},adj:{0:[...adj[0]],1:[...adj[1]]},order:[...order],queue:[...queue],processed:[...processed],highlight:[cur],curCourse:cur});
-
-    for(let nb of adj[cur]){
-      indegree[nb]--;
-      let becameZero=indegree[nb]===0;
-      if(becameZero)queue.push(nb);
-      steps.push({info:`课程${cur}学完 → 课程${nb}入度减1 (${indegree[nb]+1}→${indegree[nb]})${becameZero?', 入度为0, 入队!':''}`,phase:'reduce',indegree:{...indegree},adj:{0:[...adj[0]],1:[...adj[1]]},order:[...order],queue:[...queue],processed:[...processed],highlight:[nb,cur],reduceEdge:[cur,nb]});
-    }
-  }
-  if(order.length===N){
-    steps.push({info:`完成! 上课顺序: [${order.join(', ')}]`,phase:'done',indegree:{0:0,1:0},adj:{0:[],1:[]},order:[...order],queue:[],processed:[...processed],highlight:[],done:true});
-  }else{
-    steps.push({info:`无法完成! 检测到环 — 只有 ${order.length}/${N} 门课可上`,phase:'fail',indegree:{...indegree},adj:{0:[...adj[0]],1:[...adj[1]]},order:[...order],queue:[],processed:[...processed],highlight:[]});
-  }
-}
-buildSteps();totalSteps=steps.length;
-
-const svg=document.getElementById('svg');
-const pos={0:{x:280,y:140},1:{x:500,y:140}};
-
-function draw(){
-  let s=steps[currentStep];
-  svg.innerHTML='';
-
-  // Arrow 0 -> 1
-  let p0=pos[0],p1=pos[1];
-  let edgeColor=s.reduceEdge?'#28a745':'#0d6efd';
-
-  let g=document.createElementNS('http://www.w3.org/2000/svg','g');
-  let l=document.createElementNS('http://www.w3.org/2000/svg','line');
-  l.setAttribute('x1',p0.x+32);l.setAttribute('y1',p0.y);
-  l.setAttribute('x2',p1.x-32);l.setAttribute('y2',p1.y);
-  l.setAttribute('stroke',edgeColor);l.setAttribute('stroke-width',3);
-  l.setAttribute('marker-end','url(#arr)');
-  g.appendChild(l);
-  let lt=document.createElementNS('http://www.w3.org/2000/svg','text');
-  lt.setAttribute('x',(p0.x+p1.x)/2);lt.setAttribute('y',p0.y-12);
-  lt.setAttribute('text-anchor','middle');lt.setAttribute('font-size','13');lt.setAttribute('fill',edgeColor);
-  lt.textContent='依赖';
-  g.appendChild(lt);
-  svg.appendChild(g);
-
-  for(let i=0;i<N;i++){
-    let p=pos[i];
-    let isHL=s.highlight.includes(i);
-    let isCur=s.curCourse===i;
-    let isOrdered=s.order.includes(i);
-
-    if(isHL||isCur){
-      let hc=document.createElementNS('http://www.w3.org/2000/svg','circle');
-      hc.setAttribute('cx',p.x);hc.setAttribute('cy',p.y);hc.setAttribute('r',38);
-      hc.setAttribute('fill','none');hc.setAttribute('stroke',isCur?'#ff0':'#ff6b00');hc.setAttribute('stroke-width',3);
-      svg.appendChild(hc);
-    }
-
-    let c=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    c.setAttribute('cx',p.x);c.setAttribute('cy',p.y);c.setAttribute('r',32);
-    c.setAttribute('fill',isOrdered?'#28a745':'#5b9bd5');c.setAttribute('stroke','#3a7abd');c.setAttribute('stroke-width',2.5);
-    svg.appendChild(c);
-
-    let t=document.createElementNS('http://www.w3.org/2000/svg','text');
-    t.setAttribute('x',p.x);t.setAttribute('y',p.y-5);
-    t.setAttribute('text-anchor','middle');t.setAttribute('font-size','16');t.setAttribute('fill','#fff');t.setAttribute('font-weight','bold');
-    t.textContent='课程'+i;
-    svg.appendChild(t);
-
-    let sub=document.createElementNS('http://www.w3.org/2000/svg','text');
-    sub.setAttribute('x',p.x);sub.setAttribute('y',p.y+14);
-    sub.setAttribute('text-anchor','middle');sub.setAttribute('font-size','13');sub.setAttribute('fill','#fff');
-    sub.textContent=isOrdered?'✓':'in='+s.indegree[i];
-    svg.appendChild(sub);
+  function snap(note, extra) {
+    const step = {
+      adj: adj.map(a => a.slice()),
+      indeg: indeg.slice(),
+      queue: queue.slice(),
+      order: order.slice(),
+      note: note
+    };
+    if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+    steps.push(step);
   }
 
-  // Order timeline below
-  let oy=260;
-  let ot=document.createElementNS('http://www.w3.org/2000/svg','text');
-  ot.setAttribute('x',50);ot.setAttribute('y',oy);
-  ot.setAttribute('font-size','15');ot.setAttribute('fill','#333');ot.setAttribute('font-weight','bold');
-  ot.textContent='上课顺序:';
-  svg.appendChild(ot);
-  let orderSt=s.order;
-  for(let i=0;i<orderSt.length;i++){
-    // Arrow between
-    if(i>0){
-      let arr=document.createElementNS('http://www.w3.org/2000/svg','text');
-      arr.setAttribute('x',178+i*70-20);arr.setAttribute('y',oy+5);
-      arr.setAttribute('font-size','16');arr.setAttribute('fill','#28a745');
-      arr.textContent='→';
-      svg.appendChild(arr);
-    }
-    let oc=document.createElementNS('http://www.w3.org/2000/svg','rect');
-    oc.setAttribute('x',160+i*70);oc.setAttribute('y',oy-20);oc.setAttribute('width',42);oc.setAttribute('height',30);
-    oc.setAttribute('rx',8);oc.setAttribute('fill','#28a745');
-    svg.appendChild(oc);
-    let ot2=document.createElementNS('http://www.w3.org/2000/svg','text');
-    ot2.setAttribute('x',160+i*70+21);ot2.setAttribute('y',oy+2);
-    ot2.setAttribute('text-anchor','middle');ot2.setAttribute('font-size','15');ot2.setAttribute('fill','#fff');ot2.setAttribute('font-weight','bold');
-    ot2.textContent=orderSt[i];
-    svg.appendChild(ot2);
+  snap('初始：numCourses = 4，先修关系 [[1,0],[2,0],[3,1],[3,2]]。入度 = 这门课还有几门先修课没学；入度为 0 的课可以立刻学。Kahn 算法就是不断取出入度为 0 的课，并「解锁」它的后继。');
+
+  PREREQ.forEach(p => {
+    const course = p[0];
+    const pre = p[1];
+    adj[pre].push(course);
+    indeg[course] += 1;
+    snap('处理先修关系 [' + course + ',' + pre + ']：要学 ' + course + ' 必须先学 ' + pre + ' → 建边 ' + pre + '→' + course + '，课程 ' + course + ' 的入度 +1（现在是 ' + indeg[course] + '）。', { edge: [pre, course] });
+  });
+
+  snap('邻接表与入度构建完成：0→[' + adj[0].join(',') + ']，1→[' + adj[1].join(',') + ']，2→[' + adj[2].join(',') + ']，3→[' + adj[3].join(',') + ']；入度 = [' + indeg.join(',') + ']。');
+
+  for (let i = 0; i < N; i++) {
+    if (indeg[i] === 0) queue.push(i);
+  }
+  snap('扫描入度表，把入度为 0 的课程 ' + queue.join('、') + ' 全部入队：它们没有任何没完成的前置要求，可以最先学。', { enqueued: queue.slice() });
+
+  while (queue.length > 0) {
+    const cur = queue.shift();
+    order.push(cur);
+    snap('出队课程 ' + cur + '：把它追加到结果数组，得到 [' + order.join(', ') + ']。接下来看它的后继能不能因为这门课学完而解锁。', { cur: cur });
+
+    adj[cur].forEach(nxt => {
+      indeg[nxt] -= 1;
+      const unlocked = indeg[nxt] === 0;
+      if (unlocked) queue.push(nxt);
+      snap('课程 ' + cur + ' 学完 → 后继 ' + nxt + ' 少了一门先修课，入度减 1（现在 ' + indeg[nxt] + '）' +
+        (unlocked ? '，降为 0 → 入队，它可以学了。' : '，还不为 0，继续等待。'), { cur: cur, edge: [cur, nxt], unlocked: unlocked });
+    });
   }
 
-  // Queue
-  let qy=320;
-  if(s.queue.length>0){
-    let qtt=document.createElementNS('http://www.w3.org/2000/svg','text');
-    qtt.setAttribute('x',50);qtt.setAttribute('y',qy);
-    qtt.setAttribute('font-size','14');qtt.setAttribute('fill','#ff6b00');qtt.setAttribute('font-weight','bold');
-    qtt.textContent='待处理队列: [';
-    svg.appendChild(qtt);
-    for(let i=0;i<s.queue.length;i++){
-      let off=50+120+i*30;
-      if(i>0){
-        let comma=document.createElementNS('http://www.w3.org/2000/svg','text');
-        comma.setAttribute('x',off-15);comma.setAttribute('y',qy);
-        comma.setAttribute('font-size','14');comma.setAttribute('fill','#ff6b00');
-        comma.textContent=',';
-        svg.appendChild(comma);
-      }
-      let qn=document.createElementNS('http://www.w3.org/2000/svg','text');
-      qn.setAttribute('x',off);qn.setAttribute('y',qy);
-      qn.setAttribute('font-size','15');qn.setAttribute('fill','#ff6b00');qn.setAttribute('font-weight','bold');
-      qn.textContent=s.queue[i];
-      svg.appendChild(qn);
-    }
-    let close=document.createElementNS('http://www.w3.org/2000/svg','text');
-    close.setAttribute('x',50+120+s.queue.length*30);close.setAttribute('y',qy);
-    close.setAttribute('font-size','14');close.setAttribute('fill','#ff6b00');
-    close.textContent=']';
-    svg.appendChild(close);
-  }
-
-  // Done
-  if(s.done){
-    let dm=document.createElementNS('http://www.w3.org/2000/svg','text');
-    dm.setAttribute('x',400);dm.setAttribute('y',400);
-    dm.setAttribute('text-anchor','middle');dm.setAttribute('font-size','20');dm.setAttribute('fill','#28a745');dm.setAttribute('font-weight','bold');
-    dm.textContent='✓ 拓扑排序完成: ['+s.order.join(', ')+']';
-    svg.appendChild(dm);
-  }
-
-  // Adj info
-  let ai=document.createElementNS('http://www.w3.org/2000/svg','text');
-  ai.setAttribute('x',50);ai.setAttribute('y',430);
-  ai.setAttribute('font-size','13');ai.setAttribute('fill','#666');ai.setAttribute('font-family','monospace');
-  ai.textContent='邻接表: 0→[1], 1→[]  |  入度: 0:0, 1:'+s.indegree[1];
-  svg.appendChild(ai);
-
-  let defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
-  let m=document.createElementNS('http://www.w3.org/2000/svg','marker');
-  m.setAttribute('id','arr');m.setAttribute('markerWidth','10');m.setAttribute('markerHeight','10');
-  m.setAttribute('refX','9');m.setAttribute('refY','3');m.setAttribute('orient','auto');
-  let mp=document.createElementNS('http://www.w3.org/2000/svg','path');
-  mp.setAttribute('d','M0,0 L0,6 L9,3 z');mp.setAttribute('fill',edgeColor);
-  m.appendChild(mp);defs.appendChild(m);
-  svg.insertBefore(defs,svg.firstChild);
-
-  document.getElementById('stepBadge').textContent=`步骤 ${currentStep+1}/${totalSteps}`;
-  document.getElementById('infoText').textContent=s.info;
-  let btns=document.querySelectorAll('button');
-  btns.forEach(b=>b.disabled=false);
-  if(currentStep===0)document.querySelector('.btn-prev').disabled=true;
-  if(currentStep===totalSteps-1){document.querySelector('.btn-next').disabled=true;document.querySelector('.btn-end').disabled=true;document.querySelector('.btn-auto').disabled=true;}
+  const ok = order.length === N;
+  snap(ok
+    ? '队列已空，结果数组长度 ' + N + ' 等于课程总数 → 无环，返回拓扑顺序 [' + order.join(', ') + ']。每个点和每条边各处理一次，时间 O(V+E)。'
+    : '队列提前空了，只排出 ' + order.length + '/' + N + ' 门课 → 剩余课程互相牵制（存在环），返回空数组。', { done: true, ok: ok });
+  return steps;
 }
 
-function nextStep(){if(currentStep<totalSteps-1){currentStep++;draw();}}
-function prevStep(){if(currentStep>0){currentStep--;draw();}}
-function reset(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=0;draw();}
-function jumpEnd(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=totalSteps-1;draw();}
-function toggleAuto(){
-  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}
-  else{document.getElementById('btnAuto').textContent='⏸ 暂停';autoTimer=setInterval(()=>{if(currentStep<totalSteps-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}},900);}
+function nodeStyle(step, v) {
+  if (step.order.indexOf(v) !== -1) return { fill: 'var(--demo-ok)', stroke: 'var(--demo-ok)', text: 'var(--demo-card)' };
+  if (step.queue.indexOf(v) !== -1) return { fill: 'var(--demo-warn)', stroke: 'var(--demo-warn)', text: 'var(--demo-card)' };
+  return { fill: 'var(--demo-subtle)', stroke: 'var(--demo-border)', text: 'var(--demo-text)' };
 }
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight'){e.preventDefault();nextStep();}
-  else if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}
-  else if(e.key===' '){e.preventDefault();toggleAuto();}
+
+function graphSvg(step) {
+  const palette = { muted: 'var(--demo-muted)', accent: 'var(--demo-accent)' };
+  let out = '<defs>';
+  Object.keys(palette).forEach(key => {
+    out += '<marker id="tp-' + key + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">' +
+      '<path d="M0,1 L10,5 L0,9 z" style="fill:' + palette[key] + '"/></marker>';
+  });
+  out += '</defs>';
+
+  for (let u = 0; u < N; u++) {
+    step.adj[u].forEach(v => {
+      const p = POS[u];
+      const q = POS[v];
+      const dx = q.x - p.x;
+      const dy = q.y - p.y;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const isCur = step.edge && step.edge[0] === u && step.edge[1] === v;
+      const kind = isCur ? 'accent' : 'muted';
+      const x1 = p.x + dx / len * 34;
+      const y1 = p.y + dy / len * 34;
+      const x2 = q.x - dx / len * 34;
+      const y2 = q.y - dy / len * 34;
+      out += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) +
+        '" style="stroke:' + palette[kind] + ';stroke-width:' + (isCur ? 3.5 : 2) + '" marker-end="url(#tp-' + kind + ')"/>';
+    });
+  }
+
+  for (let v = 0; v < N; v++) {
+    const p = POS[v];
+    const col = nodeStyle(step, v);
+    if (step.cur === v) {
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="41" style="fill:none;stroke:var(--demo-accent);stroke-width:3"/>';
+    }
+    out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="32" style="fill:' + col.fill + ';stroke:' + col.stroke + ';stroke-width:2.5"/>';
+    out += '<text x="' + p.x + '" y="' + (p.y - 2) + '" text-anchor="middle" style="fill:' + col.text + ';font:600 18px sans-serif">' + v + '</text>';
+    out += '<text x="' + p.x + '" y="' + (p.y + 16) + '" text-anchor="middle" style="fill:' + col.text + ';font:500 11px sans-serif">入度 ' + step.indeg[v] + '</text>';
+  }
+
+  return '<div style="width:100%"><svg viewBox="0 0 640 380" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+}
+
+function chipRow(values, cls, emptyText) {
+  const row = Demo.el('div', 'row');
+  if (!values.length) {
+    row.appendChild(Demo.el('div', 'tag', emptyText));
+  } else {
+    values.forEach(v => {
+      const cell = Demo.el('div', 'cell cell--sm', String(v));
+      cell.classList.add(cls);
+      row.appendChild(cell);
+    });
+  }
+  return row;
+}
+
+Demo.create({
+  title: '94. 课程表 II — Kahn 算法输出拓扑序',
+  info: 'numCourses = 4，prerequisites = [[1,0],[2,0],[3,1],[3,2]]（示例 2）。反复取出入度为 0 的课程，边输出顺序边解锁后继。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 420,
+  legend: [
+    { color: 'var(--demo-ok)', label: '已排入顺序' },
+    { color: 'var(--demo-warn)', label: '已在队列中（入度为 0）' },
+    { color: 'var(--demo-accent)', label: '当前处理的边' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const wrap = Demo.el('div');
+    wrap.style.width = '100%';
+    wrap.innerHTML = graphSvg(step);
+    ctx.stage.appendChild(wrap);
+
+    const statusRow = Demo.el('div', 'row');
+    statusRow.style.width = '100%';
+    statusRow.style.alignItems = 'flex-start';
+
+    const queuePanel = Demo.el('div', 'panel');
+    queuePanel.appendChild(Demo.el('div', 'panel__title', '队列（入度为 0）'));
+    queuePanel.appendChild(chipRow(step.queue, 'is-warn', '（空）'));
+
+    const orderPanel = Demo.el('div', 'panel');
+    orderPanel.appendChild(Demo.el('div', 'panel__title', '结果数组 result'));
+    orderPanel.appendChild(chipRow(step.order, 'is-ok', '（还没开始）'));
+
+    statusRow.appendChild(queuePanel);
+    statusRow.appendChild(orderPanel);
+    ctx.stage.appendChild(statusRow);
+
+    const tablePanel = Demo.el('div', 'panel');
+    tablePanel.style.width = '100%';
+    tablePanel.appendChild(Demo.el('div', 'panel__title', '入度表'));
+    let head = '<tr><th>课程</th>';
+    let body = '<tr><td>入度</td>';
+    for (let v = 0; v < N; v++) {
+      const hot = step.edge && step.edge[1] === v;
+      head += '<th' + (hot ? ' style="background:var(--demo-accent-soft);color:var(--demo-accent-strong)"' : '') + '>' + v + '</th>';
+      body += '<td' + (hot ? ' style="background:var(--demo-accent-soft);color:var(--demo-accent-strong);font-weight:700"' : '') + '>' + step.indeg[v] + '</td>';
+    }
+    head += '</tr>';
+    body += '</tr>';
+    tablePanel.appendChild(Demo.el('div', null, '<table class="map-table">' + head + body + '</table>'));
+    tablePanel.appendChild(Demo.el('div', null, step.done
+      ? (step.ok ? '<span class="tag tag--ok">拓扑排序完成</span>' : '<span class="tag tag--bad">存在环，返回空数组</span>')
+      : '<span class="tag tag--info">已排 ' + step.order.length + ' / ' + N + ' 门</span>'));
+    ctx.stage.appendChild(tablePanel);
+  }
 });
-draw();
 </script>
 </body>
 </html>

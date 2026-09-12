@@ -1,495 +1,177 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>38. 生命游戏 — 逐步交互演示</title>
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888; --header: #222;
-    --cell-bg: #f0f0f0; --cell-border: #d0d0d0;
-    --live-bg: #1976D2; --live-fg: #fff;
-    --dead-bg: #eee; --dead-fg: #bbb;
-    --focus-border: #FF9800; --focus-bg: #FFF3E0;
-    --neighbor-bg: #FF9800; --neighbor-fg: #fff;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --card-bg: #f5f5f5; --card-border: #e0e0e0;
-    --change-bg: #4CAF50; --die-bg: #EF5350;
-    --highlight-scan: rgba(255,152,0,0.18);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa; --header: #ddd;
-      --cell-bg: #222; --cell-border: #444;
-      --live-bg: #42A5F5; --live-fg: #fff;
-      --dead-bg: #2a2a3a; --dead-fg: #555;
-      --focus-border: #FFB74D; --focus-bg: #3e3020;
-      --neighbor-bg: #FFB74D; --neighbor-fg: #1a1a2e;
-      --btn-bg: #333; --btn-hover: #444;
-      --card-bg: #252540; --card-border: #3a3a5c;
-      --change-bg: #66BB6A; --die-bg: #EF5350;
-      --highlight-scan: rgba(255,183,77,0.22);
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 20px;
-  }
-  .container { max-width: 640px; width: 100%; }
-
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 10px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 12px;
-    margin-bottom: 10px; font-size: 14px; min-height: 36px;
-  }
-  .step-num { font-weight: bold; font-size: 22px; color: #1976D2; min-width: 56px; text-align: center; white-space: nowrap; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 400px; line-height: 1.4; }
-
-  .phase-badge {
-    display: inline-block; padding: 2px 8px; border-radius: 10px;
-    font-size: 11px; font-weight: bold; margin-right: 4px;
-  }
-  .phase-scan { background: #FFF3E0; color: #E65100; }
-  .phase-apply { background: #E8F5E9; color: #2E7D32; }
-
-  .grid-wrapper {
-    display: flex; align-items: center; justify-content: center; gap: 0;
-    margin-bottom: 10px;
-  }
-  .row-labels {
-    display: flex; flex-direction: column; gap: 6px; margin-right: 6px;
-  }
-  .row-label {
-    width: 20px; height: 52px; display: flex; align-items: center; justify-content: center;
-    font-size: 12px; color: var(--muted); font-weight: bold;
-  }
-  .grid-container {
-    display: grid;
-    grid-template-columns: repeat(3, 52px);
-    grid-template-rows: repeat(4, 52px);
-    gap: 6px;
-  }
-  .col-labels {
-    display: flex; gap: 6px; margin-top: 4px; justify-content: center; padding-left: 26px;
-  }
-  .col-label {
-    width: 52px; text-align: center; font-size: 12px; color: var(--muted); font-weight: bold;
-  }
-
-  .cell {
-    background: var(--cell-bg);
-    border: 2px solid var(--cell-border);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    width: 52px; height: 52px;
-    position: relative;
-    transition: border-color 0.25s, background 0.25s, transform 0.15s;
-  }
-  .cell .dot {
-    width: 28px; height: 28px; border-radius: 50%;
-    transition: background 0.3s, transform 0.3s, opacity 0.3s;
-  }
-  .cell.live .dot { background: var(--live-bg); }
-  .cell.dead .dot { background: var(--dead-fg); }
-  .cell.newborn .dot { background: var(--change-bg); transform: scale(0); animation: popIn 0.3s 0.05s ease-out forwards; }
-  .cell.dying .dot { background: var(--die-bg); animation: shrinkOut 0.3s ease-in forwards; }
-
-  .cell.focus {
-    border-color: var(--focus-border);
-    background: var(--focus-bg);
-    transform: scale(1.08);
-    box-shadow: 0 0 12px var(--highlight-scan);
-    z-index: 2;
-  }
-
-  .neighbor-badge {
-    position: absolute; bottom: -6px; right: -6px;
-    background: var(--neighbor-bg); color: var(--neighbor-fg);
-    font-size: 10px; font-weight: bold; width: 20px; height: 20px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; transform: scale(0.5);
-    transition: opacity 0.25s, transform 0.25s;
-    z-index: 3;
-    line-height: 1;
-  }
-  .neighbor-badge.show { opacity: 1; transform: scale(1); }
-  .neighbor-badge.rule-3 { background: var(--change-bg); }
-
-  @keyframes popIn {
-    0%   { transform: scale(0); opacity: 0.3; }
-    70%  { transform: scale(1.1); opacity: 1; }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  @keyframes shrinkOut {
-    0%   { transform: scale(1); opacity: 1; }
-    100% { transform: scale(0); opacity: 0.2; }
-  }
-  @keyframes pulse {
-    0%,100% { transform: scale(1); }
-    50%     { transform: scale(1.06); }
-  }
-
-  .rule-card {
-    background: var(--card-bg); border: 1px solid var(--card-border);
-    border-radius: 8px; padding: 10px 14px; margin-bottom: 10px;
-    font-size: 12px; color: var(--text); line-height: 1.8;
-  }
-  .rule-card .rule-title {
-    font-weight: bold; font-size: 13px; margin-bottom: 4px; color: var(--header);
-  }
-  .rule-card .rule {
-    display: flex; align-items: baseline; gap: 6px;
-  }
-  .rule-card .rule-num {
-    font-weight: bold; color: #1976D2; min-width: 18px; text-align: right;
-  }
-  .rule-card .rule-highlight {
-    color: var(--change-bg); font-weight: bold;
-  }
-  .rule-card .rule-die {
-    color: var(--die-bg); font-weight: bold;
-  }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 8px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-    font-family: inherit;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-  button.play-btn.running { background: #E53935; border-color: #C62828; }
-</style>
+<title>38. 生命游戏 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>生命游戏 (Game of Life) &mdash; 逐步交互演示</h2>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">初始状态：4&times;3 细胞网格 · 点击「下一步」开始</span>
-  </div>
-
-  <div class="grid-wrapper">
-    <div class="row-labels" id="rowLabels"></div>
-    <div>
-      <div class="grid-container" id="grid"></div>
-      <div class="col-labels" id="colLabels"></div>
-    </div>
-  </div>
-
-  <div class="rule-card">
-    <div class="rule-title">Game of Life 四条规则</div>
-    <div class="rule"><span class="rule-num">1.</span>活细胞邻居 <b class="rule-die">&lt; 2</b> &rarr; <b class="rule-die">死亡</b>（人口过少）</div>
-    <div class="rule"><span class="rule-num">2.</span>活细胞邻居 <b style="color:#1976D2">= 2 或 3</b> &rarr; <b style="color:#1976D2">存活</b></div>
-    <div class="rule"><span class="rule-num">3.</span>活细胞邻居 <b class="rule-die">&gt; 3</b> &rarr; <b class="rule-die">死亡</b>（人口过多）</div>
-    <div class="rule"><span class="rule-num">4.</span>死细胞邻居 <b class="rule-highlight">= 3</b> &rarr; <b class="rule-highlight">复活</b>（繁殖）</div>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)" id="resetBtn">重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">自动播放</button>
-    <button onclick="goStep(steps.length-1)" id="endBtn">跳到最后</button>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-// ── Data ──
-const initialBoard = [
+const BOARD = [
   [0, 1, 0],
   [0, 0, 1],
   [1, 1, 1],
   [0, 0, 0]
 ];
-const nextBoard = [
-  [0, 0, 0],
-  [1, 0, 1],
-  [0, 1, 1],
-  [0, 1, 0]
+const M = BOARD.length;
+const N = BOARD[0].length;
+
+const DIRS = [
+  [-1, -1], [-1, 0], [-1, 1],
+  [0, -1], [0, 1],
+  [1, -1], [1, 0], [1, 1]
 ];
 
-const scanOrder = [
-  {r:0,c:0}, {r:0,c:1}, {r:0,c:2},
-  {r:1,c:0}, {r:1,c:1}, {r:1,c:2},
-  {r:2,c:0}, {r:2,c:1}, {r:2,c:2},
-  {r:3,c:0}, {r:3,c:1}, {r:3,c:2}
-];
+const STATE_NAME = { 0: '死→死', 1: '活→活', 2: '活→死', 3: '死→活' };
 
-// Precomputed neighbor counts
-const neighborCounts = [1,1,2, 3,5,3, 1,3,2, 2,3,2];
-
-function neighborRule(count, isLive) {
-  if (isLive) {
-    if (count < 2) return 'die';
-    if (count <= 3) return 'live';
-    return 'die';
-  }
-  if (count === 3) return 'born';
-  return 'dead';
+function isLive(v) {
+  return v === 1 || v === 2;
 }
 
-// ── Build steps ──
-const steps = [];
+function buildSteps() {
+  const board = BOARD.map(function (row) { return row.slice(); });
+  const steps = [];
 
-// Step 0: initial state
-steps.push({
-  type: 'init',
-  board: JSON.parse(JSON.stringify(initialBoard)),
-  focusR: -1, focusC: -1,
-  scanned: [],
-  phase: 'init',
-  desc: '初始状态：4×3 细胞网格',
-  descShort: '初始状态'
-});
-
-// Steps 1-12: scanning each cell
-for (let i = 0; i < scanOrder.length; i++) {
-  const {r, c} = scanOrder[i];
-  const count = neighborCounts[i];
-  const isLive = initialBoard[r][c] === 1;
-  const rule = neighborRule(count, isLive);
-  const scanned = [];
-  for (let j = 0; j <= i; j++) {
-    scanned.push({r: scanOrder[j].r, c: scanOrder[j].c, count: neighborCounts[j]});
-  }
-  let ruleDesc = '';
-  if (isLive) {
-    if (count < 2) ruleDesc = '规则1：邻居<' + count + '，即将死亡';
-    else if (count <= 3) ruleDesc = '规则2：邻居=' + count + '，保持存活';
-    else ruleDesc = '规则3：邻居>' + count + '，即将死亡';
-  } else {
-    if (count === 3) ruleDesc = '规则4：邻居=3，即将复活';
-    else ruleDesc = '邻居≠3，保持死细胞状态';
-  }
-  steps.push({
-    type: 'scan',
-    board: JSON.parse(JSON.stringify(initialBoard)),
-    focusR: r, focusC: c,
-    scanned: scanned,
-    phase: 'scan',
-    desc: `扫描细胞 (${r},${c}) · 存活邻居数：${count} · ${ruleDesc}`,
-    descShort: `扫描 (${r},${c}) 邻居=${count}`
-  });
-}
-
-// Step 13: apply rules
-steps.push({
-  type: 'apply',
-  board: JSON.parse(JSON.stringify(nextBoard)),
-  prevBoard: JSON.parse(JSON.stringify(initialBoard)),
-  focusR: -1, focusC: -1,
-  scanned: scanOrder.map((p, i) => ({r: p.r, c: p.c, count: neighborCounts[i]})),
-  phase: 'apply',
-  desc: '扫描完成！应用规则，同时更新所有细胞 · 蓝色=存活，绿色=新复活，红色=死亡',
-  descShort: '应用规则更新'
-});
-
-const totalSteps = steps.length;
-
-// ── Build DOM ──
-const grid = document.getElementById('grid');
-const rowLabels = document.getElementById('rowLabels');
-const colLabels = document.getElementById('colLabels');
-const ROWS = 4, COLS = 3;
-
-// Row labels
-for (let r = 0; r < ROWS; r++) {
-  const lbl = document.createElement('div');
-  lbl.className = 'row-label';
-  lbl.textContent = r;
-  rowLabels.appendChild(lbl);
-}
-
-// Col labels
-for (let c = 0; c < COLS; c++) {
-  const lbl = document.createElement('div');
-  lbl.className = 'col-label';
-  lbl.textContent = c;
-  colLabels.appendChild(lbl);
-}
-
-// Grid cells
-const cellEls = [];
-for (let r = 0; r < ROWS; r++) {
-  cellEls[r] = [];
-  for (let c = 0; c < COLS; c++) {
-    const cell = document.createElement('div');
-    cell.className = 'cell dead';
-    cell.dataset.r = r;
-    cell.dataset.c = c;
-    const dot = document.createElement('div');
-    dot.className = 'dot';
-    cell.appendChild(dot);
-    const badge = document.createElement('div');
-    badge.className = 'neighbor-badge';
-    badge.textContent = '';
-    cell.appendChild(badge);
-    grid.appendChild(cell);
-    cellEls[r][c] = { el: cell, dot: dot, badge: badge };
-  }
-}
-
-// ── Render ──
-const stepNum = document.getElementById('stepNum');
-const stepDesc = document.getElementById('stepDesc');
-const playBtn = document.getElementById('playBtn');
-const prevBtn = document.getElementById('prevBtn');
-const nextBtn = document.getElementById('nextBtn');
-
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-function render() {
-  const step = steps[current];
-
-  stepNum.textContent = `${current}/${totalSteps - 1}`;
-
-  if (step.phase === 'init') {
-    stepDesc.innerHTML = `<span style="color:var(--muted)">初始状态：4&times;3 细胞网格 · 点击「下一步」开始扫描</span>`;
-  } else if (step.phase === 'scan') {
-    stepDesc.innerHTML = `<span class="phase-badge phase-scan">扫描阶段</span> ${step.desc}`;
-  } else {
-    stepDesc.innerHTML = `<span class="phase-badge phase-apply">更新阶段</span> ${step.desc}`;
+  function snapshot(extra) {
+    return Object.assign({
+      board: board.map(function (row) { return row.slice(); }),
+      cell: null,
+      neighbors: [],
+      live: 0,
+      before: null,
+      after: null
+    }, extra);
   }
 
-  // Reset all cells
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      const { el, dot, badge } = cellEls[r][c];
-      el.classList.remove('focus', 'newborn', 'dying');
-      dot.style.animation = '';
-      badge.classList.remove('show', 'rule-3');
-      badge.textContent = '';
-    }
-  }
+  steps.push(snapshot({
+    kind: 'init',
+    note: '初始面板（示例 1）。为了原地更新，算法用 4 个编码值表示状态：0=死→死，1=活→活，2=活→死，3=死→活。统计邻居时 1 和 2 都算「原来是活的」。'
+  }));
 
-  if (step.type === 'apply') {
-    // Show scanned neighbor counts
-    for (const s of step.scanned) {
-      const { badge } = cellEls[s.r][s.c];
-      badge.textContent = s.count;
-      badge.classList.add('show');
-      if (s.count === 3 && initialBoard[s.r][s.c] === 0) badge.classList.add('rule-3');
-    }
-    // Apply changes with animation
-    setTimeout(() => {
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          const { el, dot } = cellEls[r][c];
-          const prev = initialBoard[r][c];
-          const next = nextBoard[r][c];
-          if (prev === 0 && next === 1) {
-            el.classList.add('newborn');
-            el.classList.remove('dead');
-            el.classList.add('live');
-          } else if (prev === 1 && next === 0) {
-            el.classList.add('dying');
-            // After animation completes, switch to dead
-            dot.addEventListener('animationend', function handler() {
-              dot.removeEventListener('animationend', handler);
-              el.classList.remove('live', 'dying');
-              el.classList.add('dead');
-            }, { once: true });
-          } else if (next === 1) {
-            el.classList.add('live');
-            el.classList.remove('dead');
-          } else {
-            el.classList.add('dead');
-            el.classList.remove('live');
-          }
-        }
+  for (let i = 0; i < M; i++) {
+    for (let j = 0; j < N; j++) {
+      const self = board[i][j];
+      let live = 0;
+      const neighbors = [];
+      for (let d = 0; d < DIRS.length; d++) {
+        const ni = i + DIRS[d][0];
+        const nj = j + DIRS[d][1];
+        if (ni < 0 || ni >= M || nj < 0 || nj >= N) continue;
+        neighbors.push([ni, nj]);
+        if (isLive(board[ni][nj])) live++;
       }
-    }, 50);
-  } else {
-    // Show current board state
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-        const { el } = cellEls[r][c];
-        if (step.board[r][c] === 1) {
-          el.classList.add('live');
-          el.classList.remove('dead');
-        } else {
-          el.classList.add('dead');
-          el.classList.remove('live');
-        }
-      }
-    }
-
-    // Show scanned neighbor counts
-    if (step.scanned) {
-      for (const s of step.scanned) {
-        const { badge } = cellEls[s.r][s.c];
-        badge.textContent = s.count;
-        badge.classList.add('show');
-        if (s.count === 3 && initialBoard[s.r][s.c] === 0) badge.classList.add('rule-3');
-      }
-    }
-
-    // Highlight focused cell
-    if (step.focusR >= 0 && step.focusC >= 0) {
-      cellEls[step.focusR][step.focusC].el.classList.add('focus');
-    }
-  }
-
-  // Update buttons
-  prevBtn.disabled = (current === 0);
-  nextBtn.disabled = (current === totalSteps - 1);
-}
-
-function goStep(n) {
-  if (n < 0 || n >= totalSteps) return;
-  current = n;
-  render();
-}
-
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer);
-    autoTimer = null;
-    autoRunning = false;
-    playBtn.textContent = '自动播放';
-    playBtn.classList.remove('running');
-  } else {
-    if (current === totalSteps - 1) goStep(0);
-    autoRunning = true;
-    playBtn.textContent = '暂停';
-    playBtn.classList.add('running');
-    autoTimer = setInterval(() => {
-      if (current < totalSteps - 1) {
-        goStep(current + 1);
+      let next = self;
+      let reason;
+      if (isLive(self)) {
+        if (live < 2) { next = 2; reason = '活细胞但只有 ' + live + ' 个活邻居（少于 2），孤独死亡，编码为 2'; }
+        else if (live > 3) { next = 2; reason = '活细胞但有 ' + live + ' 个活邻居（多于 3），拥挤死亡，编码为 2'; }
+        else { next = 1; reason = '活细胞有 ' + live + ' 个活邻居（2 或 3），继续存活，编码为 1'; }
       } else {
-        clearInterval(autoTimer);
-        autoTimer = null;
-        autoRunning = false;
-        playBtn.textContent = '自动播放';
-        playBtn.classList.remove('running');
+        if (live === 3) { next = 3; reason = '死细胞周围正好 3 个活细胞，复活，编码为 3'; }
+        else { next = 0; reason = '死细胞周围只有 ' + live + ' 个活细胞（不是 3），保持死亡，编码为 0'; }
       }
-    }, 1200);
+      board[i][j] = next;
+      steps.push(snapshot({
+        kind: 'calc', cell: [i, j], neighbors: neighbors, live: live, before: self, after: next,
+        note: '第一遍 · 统计 (' + i + ',' + j + ') 周围的 8 个格子：共 ' + live + ' 个活细胞。该格原本是' +
+          (isLive(self) ? '活' : '死') + '细胞，' + reason + '。注意此时不能直接写最终值，否则会影响后面格子的邻居统计。'
+      }));
+    }
   }
+
+  for (let i = 0; i < M; i++) {
+    const rowCells = [];
+    for (let j = 0; j < N; j++) {
+      rowCells.push([i, j]);
+      board[i][j] %= 2;
+    }
+    steps.push(snapshot({
+      kind: 'flip', row: i, cell: [i, 0], flipRow: rowCells,
+      note: '第二遍 · 第 ' + i + ' 行统一解码：编码值对 2 取模（2→0、3→1），这一行的细胞在同一时刻完成生死切换。'
+    }));
+  }
+
+  steps.push(snapshot({
+    kind: 'done', cell: null,
+    note: '完成。最终面板为 [' + board.map(function (r) { return '[' + r.join(',') + ']'; }).join(', ') +
+      ']，与题目示例 1 的输出一致。整个过程原地完成，额外空间 O(1)。'
+  }));
+
+  return steps;
 }
 
-// Keyboard
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowLeft')  { e.preventDefault(); goStep(current - 1); }
-  if (e.key === 'ArrowRight') { e.preventDefault(); goStep(current + 1); }
-  if (e.key === ' ')          { e.preventDefault(); toggleAuto(); }
-});
+function cellClass(step, r, c) {
+  const v = step.board[r][c];
+  if (step.cell && step.cell[0] === r && step.cell[1] === c) return 'is-active';
+  if (step.kind === 'flip') {
+    if (step.row === r) return 'is-active';
+    return v === 1 ? 'is-ok' : (v === 2 ? 'is-bad' : (v === 3 ? 'is-violet' : 'is-dim'));
+  }
+  for (let k = 0; k < step.neighbors.length; k++) {
+    if (step.neighbors[k][0] === r && step.neighbors[k][1] === c) return 'is-info';
+  }
+  if (v === 1) return 'is-ok';
+  if (v === 2) return 'is-bad';
+  if (v === 3) return 'is-violet';
+  return 'is-dim';
+}
 
-// Initial render
-render();
+function stateText(step, r, c) {
+  if (step.kind === 'init' || step.kind === 'done') return step.board[r][c] === 1 ? '1' : '0';
+  return String(step.board[r][c]);
+}
+
+Demo.create({
+  title: '38. 生命游戏 — 状态编码实现原地同时更新',
+  info: '输入：4×3 面板 [[0,1,0],[0,0,1],[1,1,1],[0,0,0]]，要求原地求出下一状态（生死必须同时发生）。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前统计的格子' },
+    { color: 'var(--demo-info)', label: '当前格的 8 个邻居' },
+    { color: 'var(--demo-ok)', label: '1 活→活' },
+    { color: 'var(--demo-danger)', label: '2 活→死' },
+    { color: 'var(--demo-violet)', label: '3 死→活' }
+  ],
+  render: function (step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const grid = Demo.el('div', 'grid');
+    grid.style.gridTemplateColumns = 'repeat(' + N + ', 52px)';
+    for (let r = 0; r < M; r++) {
+      for (let c = 0; c < N; c++) {
+        const cls = cellClass(step, r, c);
+        const cell = Demo.el('div', 'grid-cell' + (cls ? ' ' + cls : ''), stateText(step, r, c));
+        cell.style.minWidth = '52px';
+        cell.style.height = '42px';
+        cell.style.fontSize = '17px';
+        grid.appendChild(cell);
+      }
+    }
+    ctx.stage.appendChild(grid);
+
+    const tags = Demo.el('div', 'row');
+    if (step.kind === 'calc') {
+      tags.appendChild(Demo.el('div', 'tag tag--info', '邻居活细胞数 = ' + step.live + ' / 8'));
+      tags.appendChild(Demo.el('div', 'tag tag--violet',
+        '原状态 ' + step.before + '（' + (isLive(step.before) ? '活' : '死') + '） → 新编码 ' + step.after + '（' + STATE_NAME[step.after] + '）'));
+      tags.appendChild(Demo.el('div', 'tag', '位置 (' + step.cell[0] + ',' + step.cell[1] + ')'));
+    }
+    if (step.kind === 'flip') {
+      tags.appendChild(Demo.el('div', 'tag tag--warn', '第二遍：第 ' + step.row + ' 行对 2 取模'));
+    }
+    if (step.kind === 'init') tags.appendChild(Demo.el('div', 'tag', '第一遍：逐格统计邻居并编码'));
+    if (step.kind === 'done') tags.appendChild(Demo.el('div', 'tag tag--ok', '全部细胞已同时更新'));
+    ctx.stage.appendChild(tags);
+
+    const panel = Demo.el('div', 'panel');
+    panel.style.textAlign = 'center';
+    panel.innerHTML = '编码含义：<strong>0</strong> 死→死 · <strong>1</strong> 活→活 · <strong>2</strong> 活→死 · <strong>3</strong> 死→活';
+    ctx.stage.appendChild(panel);
+  }
+});
 </script>
 </body>
 </html>

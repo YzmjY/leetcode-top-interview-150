@@ -1,442 +1,152 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0; --btn-active: #1565C0;
-    --sub-bg: #f5f5f5;
-    --skip-bg: #f0f0f0; --skip-text: #bbb;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd;
-      --btn-bg: #333; --btn-hover: #444;
-      --sub-bg: #252540;
-      --skip-bg: #2a2a38; --skip-text: #555;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 16px 20px;
-  }
-  .container { max-width: 700px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 8px; }
-  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
-
-  /* Info bar */
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px;
-    font-size: 14px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 500px; text-align: center; }
-
-  /* Pointer info */
-  .pointer-info {
-    display: flex; justify-content: center; gap: 36px; margin-bottom: 10px;
-    font-size: 13px; color: var(--muted);
-  }
-  .pointer-info .lbl { font-weight: bold; }
-  .pointer-info .val { font-family: monospace; font-size: 15px; }
-  .pin-s .lbl { color: #E91E63; }
-  .pin-t .lbl { color: #FF9800; }
-
-  .section-label { font-size: 12px; font-weight: bold; color: var(--muted); text-align: center; margin-bottom: 3px; }
-
-  /* Row wrapper */
-  .two-rows { margin-bottom: 6px; }
-
-  /* Char grid */
-  .char-grid {
-    display: flex; align-items: center; justify-content: center; gap: 4px;
-    flex-wrap: wrap; margin-bottom: 2px;
-  }
-  .char-cell {
-    background: var(--cell-bg);
-    border: 2px solid var(--cell-border);
-    border-radius: 8px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-size: 16px; font-weight: bold; color: var(--text);
-    width: 48px; height: 48px;
-    position: relative;
-    transition: border-color 0.25s, background 0.25s, transform 0.15s, opacity 0.25s;
-  }
-  .char-cell .idx {
-    font-size: 9px; color: var(--muted); line-height: 1; margin-top: 1px;
-  }
-  .char-cell .ch {
-    line-height: 1.2;
-  }
-
-  /* S-row cell states */
-  .char-cell.s-active { border-color: #C2185B; background: #F8BBD0; transform: scale(1.08); z-index: 2; }
-  .char-cell.s-matched { border-color: #4CAF50; background: #E8F5E9; }
-  .char-cell.s-done { border-color: #1976D2; background: #E3F2FD; }
-  .char-cell.s-waiting { border-color: #e0e0e0; background: var(--cell-bg); opacity: 0.6; }
-
-  /* T-row cell states */
-  .char-cell.t-active { border-color: #E65100; background: #FFE0B2; transform: scale(1.08); z-index: 2; }
-  .char-cell.t-skipped { border-color: #ccc; background: var(--skip-bg); color: var(--skip-text); opacity: 0.5; }
-  .char-cell.t-match { border-color: #2E7D32; background: #C8E6C9; transform: scale(1.08); z-index: 2; }
-  .char-cell.t-done { border-color: #4CAF50; background: #E8F5E9; }
-
-  .step-tag {
-    position: absolute; top: -8px; right: -8px;
-    background: #1976D2; color: #fff;
-    font-size: 9px; font-weight: bold; width: 20px; height: 20px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; transform: scale(0.5);
-    transition: opacity 0.25s, transform 0.25s;
-  }
-  .step-tag.show { opacity: 1; transform: scale(1); }
-
-  /* Arrow row */
-  .arrow-row {
-    display: flex; align-items: center; justify-content: center; gap: 4px;
-    margin-bottom: 4px; min-height: 20px; flex-wrap: wrap;
-  }
-  .arrow-slot {
-    width: 48px; text-align: center; font-size: 11px; font-weight: bold;
-    color: var(--muted);
-  }
-  .arrow-s { color: #E91E63; }
-  .arrow-t { color: #FF9800; }
-
-  /* Match connector */
-  .match-line {
-    display: flex; align-items: center; justify-content: center;
-    height: 24px; margin-bottom: 4px; color: #4CAF50; font-size: 20px; font-weight: bold;
-  }
-
-  /* Result bar */
-  .result-row {
-    background: var(--sub-bg); border-radius: 8px; padding: 10px 14px;
-    margin-bottom: 10px; font-size: 13px; text-align: center; color: var(--text);
-  }
-  .result-row .highlight { color: #1976D2; font-weight: bold; font-size: 15px; }
-
-  /* Controls */
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-
-  .legend {
-    display: flex; gap: 18px; justify-content: center; margin-top: 10px;
-    font-size: 12px; color: var(--muted); flex-wrap: wrap;
-  }
-  .legend-item { display: flex; align-items: center; gap: 5px; }
-  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
-
-  @media (max-width: 600px) {
-    .char-cell { width: 38px; height: 38px; font-size: 13px; }
-    .char-cell .idx { font-size: 7px; }
-    .arrow-slot { width: 38px; font-size: 9px; }
-    .char-grid { gap: 2px; }
-    .arrow-row { gap: 2px; }
-    .pointer-info { gap: 16px; }
-  }
-</style>
+<title>26. 判断子序列 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>判断子序列 — 逐步交互演示</h2>
-  <div class="sub-title">s = "abc", t = "ahbgdc" → true (s 是 t 的子序列)</div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
-  </div>
-
-  <div class="pointer-info">
-    <div class="pin-s">
-      <span class="lbl">s_ptr: </span>
-      <span class="val" id="sInfo">--</span>
-    </div>
-    <div class="pin-t">
-      <span class="lbl">t_ptr: </span>
-      <span class="val" id="tInfo">--</span>
-    </div>
-  </div>
-
-  <div class="two-rows">
-    <div class="section-label">s (子序列)</div>
-    <div class="char-grid" id="sGrid"></div>
-    <div class="arrow-row" id="sArrowRow"></div>
-
-    <div class="section-label" style="margin-top:4px;">t (目标串)</div>
-    <div class="char-grid" id="tGrid"></div>
-    <div class="arrow-row" id="tArrowRow"></div>
-  </div>
-
-  <div class="result-row" id="resultBar">
-    <span style="color:var(--muted)">判定: </span><span id="resultText" class="highlight">进行中...</span>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">⏮ 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">◀ 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 ▶</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">▶ 自动播放</button>
-    <button onclick="goStep(steps.length-1)">⏭ 跳到最后</button>
-  </div>
-
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#E91E63"></div>s_ptr (子序列)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div>t_ptr (扫描)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div>匹配成功</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#bbb"></div>t中已跳过</div>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const sStr = "abc";
-const tStr = "ahbgdc";
+const S = 'abc';
+const T = 'ahbgdc';
 
-const sChars = [];
-for (let i = 0; i < sStr.length; i++) {
-  sChars.push({ ch: sStr[i], idx: i });
-}
-const tChars = [];
-for (let i = 0; i < tStr.length; i++) {
-  tChars.push({ ch: tStr[i], idx: i });
-}
+function buildSteps() {
+  const steps = [];
+  const tState = [];
+  for (let k = 0; k < T.length; k++) tState.push(0);
 
-// Simulate all steps
-const steps = [];
-(function simulate() {
-  let sPtr = 0;
-  let tPtr = 0;
+  let i = 0;
+  let j = 0;
 
-  // Initial state
-  steps.push({
-    sPtr: -1, tPtr: -1,
-    sStates: sChars.map(() => 'default'),
-    tStates: tChars.map(() => 'default'),
-    desc: '初始状态 · 点击「下一步」开始 · 共 ' + (tStr.length) + ' 步',
-    verdict: null,
-    sInfo: '--', tInfo: '--'
-  });
+  function snap(phase, ok, note) {
+    return {
+      i: i,
+      j: j,
+      phase: phase,
+      ok: ok,
+      tState: tState.slice(),
+      result: null,
+      note: note
+    };
+  }
 
-  // Step-by-step through t
-  while (tPtr < tStr.length) {
-    if (sPtr < sStr.length && sStr[sPtr] === tStr[tPtr]) {
-      // Match found
-      const sSt = sChars.map(() => 'default');
-      for (let j = 0; j < sPtr; j++) sSt[j] = 's-matched';
-      sSt[sPtr] = 's-active';
+  steps.push(snap('init', null,
+    '初始状态：i=0 指向 s 的首字符，j=0 指向 t 的首字符。j 从左到右扫过 t，只有 s[i] 与 t[j] 相等时 i 才前进，不相等时只丢弃 t 的这个字符。'));
 
-      const tSt = tChars.map(() => 'default');
-      for (let j = 0; j < tPtr; j++) tSt[j] = 't-skipped';
-      tSt[tPtr] = 't-match';
-
-      steps.push({
-        sPtr, tPtr,
-        sStates: sSt, tStates: tSt,
-        desc: `匹配! s[${sPtr}]='${sStr[sPtr]}' == t[${tPtr}]='${tStr[tPtr]}' → s_ptr=${sPtr+1}, t_ptr=${tPtr+1}`,
-        verdict: null,
-        sInfo: `[${sPtr}]='${sStr[sPtr]}' 匹配`, tInfo: `[${tPtr}]='${tStr[tPtr]}' 匹配`
-      });
-      sPtr++;
-      tPtr++;
+  while (j < T.length && i < S.length) {
+    const ok = S[i] === T[j];
+    steps.push(snap('compare', ok,
+      "比较 s[" + i + "]='" + S[i] + "' 与 t[" + j + "]='" + T[j] + "' → " + (ok ? '相等。' : '不相等。')
+      + (ok ? 's 当前需要的字符在 t 中出现了，i 前进一位，去匹配 s 的下一个字符。'
+            : 't 的这个字符不是 s 现在需要的，跳过它，i 不动。')));
+    if (ok) {
+      tState[j] = 2;
+      i++;
+      j++;
+      steps.push(snap('matched', true,
+        "匹配成功：t[" + (j - 1) + "]='" + T[j - 1] + "' 正好是 s[" + (i - 1) + "]='" + S[i - 1] + "'，i → " + i + "，j → " + j + "。"));
     } else {
-      // No match, skip t char
-      const sSt = sChars.map(() => 'default');
-      for (let j = 0; j < sPtr; j++) sSt[j] = 's-matched';
-      if (sPtr < sStr.length) sSt[sPtr] = 's-waiting';
-
-      const tSt = tChars.map(() => 'default');
-      for (let j = 0; j < tPtr; j++) tSt[j] = 't-skipped';
-      tSt[tPtr] = 't-active';
-
-      const sCh = sPtr < sStr.length ? `s[${sPtr}]='${sStr[sPtr]}'` : 's已扫描完毕';
-      steps.push({
-        sPtr, tPtr,
-        sStates: sSt, tStates: tSt,
-        desc: `不匹配: ${sCh} != t[${tPtr}]='${tStr[tPtr]}' → 仅 t_ptr=${tPtr+1}`,
-        verdict: null,
-        sInfo: sPtr < sStr.length ? `[${sPtr}]='${sStr[sPtr]}' 等待中` : '--',
-        tInfo: `[${tPtr}]='${tStr[tPtr]}' 跳过`
-      });
-      tPtr++;
+      tState[j] = 1;
+      j++;
+      steps.push(snap('skipped', false,
+        "不匹配：t[" + (j - 1) + "]='" + T[j - 1] + "' 无法匹配 s[" + i + "]='" + S[i] + "'，只有 j → " + j + "，i 保持不变。"));
     }
   }
 
-  // Final verdict
-  const finalSSt = sChars.map(() => 's-done');
-  const finalTSt = tChars.map(() => 't-done');
-  const success = sPtr === sStr.length;
+  const result = i === S.length;
   steps.push({
-    sPtr: sPtr, tPtr: tPtr,
-    sStates: finalSSt, tStates: finalTSt,
-    desc: success
-      ? `验证完成! s_ptr=${sPtr} == s.length=${sStr.length} → s 是 t 的子序列 → true`
-      : `验证完成! s_ptr=${sPtr} < s.length=${sStr.length} → s 不是 t 的子序列 → false`,
-    verdict: success,
-    sInfo: '完成', tInfo: '完成'
+    i: i,
+    j: j,
+    phase: 'done',
+    ok: result,
+    tState: tState.slice(),
+    result: result,
+    note: result
+      ? '循环结束：i=' + i + ' 已等于 s 的长度，说明 s 的每个字符都按原顺序在 t 中找到了对应位置 → s 是 t 的子序列，返回 true。'
+      : '循环结束：i=' + i + ' 小于 s 的长度 ' + S.length + '，s 中还有字符没能在 t 中按顺序匹配到 → 返回 false。'
   });
-})();
 
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-// Build DOM
-const sGrid = document.getElementById('sGrid');
-const sArrowRow = document.getElementById('sArrowRow');
-const tGrid = document.getElementById('tGrid');
-const tArrowRow = document.getElementById('tArrowRow');
-
-for (let i = 0; i < sChars.length; i++) {
-  const cell = document.createElement('div');
-  cell.className = 'char-cell';
-  cell.id = 'sc' + i;
-  cell.innerHTML = `<span class="ch">${sChars[i].ch}</span><span class="idx">${i}</span><span class="step-tag"></span>`;
-  sGrid.appendChild(cell);
-
-  const arrow = document.createElement('div');
-  arrow.className = 'arrow-slot';
-  arrow.id = 'sa' + i;
-  sArrowRow.appendChild(arrow);
+  return steps;
 }
 
-for (let i = 0; i < tChars.length; i++) {
-  const cell = document.createElement('div');
-  cell.className = 'char-cell';
-  cell.id = 'tc' + i;
-  cell.innerHTML = `<span class="ch">${tChars[i].ch}</span><span class="idx">${i}</span><span class="step-tag"></span>`;
-  tGrid.appendChild(cell);
+function render(step, idx, ctx) {
+  ctx.stage.innerHTML = '';
 
-  const arrow = document.createElement('div');
-  arrow.className = 'arrow-slot';
-  arrow.id = 'ta' + i;
-  tArrowRow.appendChild(arrow);
-}
-
-function render() {
-  const s = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = s.desc;
-  document.getElementById('sInfo').textContent = s.sInfo;
-  document.getElementById('tInfo').textContent = s.tInfo;
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
-
-  // Result text
-  const rText = document.getElementById('resultText');
-  if (s.verdict === true) {
-    rText.textContent = 'true — s 是 t 的子序列!';
-    rText.style.color = '#4CAF50';
-  } else if (s.verdict === false) {
-    rText.textContent = 'false — s 不是 t 的子序列!';
-    rText.style.color = '#F44336';
-  } else {
-    rText.textContent = '进行中...';
-    rText.style.color = '#1976D2';
-  }
-
-  // Reset s cells
-  for (let i = 0; i < sChars.length; i++) {
-    const cell = document.getElementById('sc' + i);
-    cell.className = 'char-cell ' + (s.sStates[i] || 'default');
-    const tag = cell.querySelector('.step-tag');
-    tag.classList.remove('show');
-    tag.textContent = '';
-    document.getElementById('sa' + i).textContent = '';
-  }
-
-  // Reset t cells
-  for (let i = 0; i < tChars.length; i++) {
-    const cell = document.getElementById('tc' + i);
-    cell.className = 'char-cell ' + (s.tStates[i] || 'default');
-    const tag = cell.querySelector('.step-tag');
-    tag.classList.remove('show');
-    tag.textContent = '';
-    document.getElementById('ta' + i).textContent = '';
-  }
-
-  // Show arrows for current pointers
-  if (s.sPtr >= 0 && s.sPtr < sChars.length) {
-    const a = document.getElementById('sa' + s.sPtr);
-    a.textContent = 's_ptr';
-    a.className = 'arrow-slot arrow-s';
-  }
-  if (s.tPtr >= 0 && s.tPtr < tChars.length) {
-    const a = document.getElementById('ta' + s.tPtr);
-    a.textContent = 't_ptr';
-    a.className = 'arrow-slot arrow-t';
-  }
-
-  // Show step tag on active/match cells
-  if (s.sPtr >= 0 && s.sPtr < sChars.length) {
-    const sState = s.sStates[s.sPtr];
-    if (sState === 's-active') {
-      const tag = document.getElementById('sc' + s.sPtr).querySelector('.step-tag');
-      tag.textContent = current;
-      tag.classList.add('show');
+  function charRow(title, chars, stateFn, ptrFn) {
+    const block = Demo.el('div', 'col');
+    block.appendChild(Demo.el('div', 'panel__title', title));
+    const row = Demo.el('div', 'row');
+    for (let k = 0; k < chars.length; k++) {
+      const col = Demo.el('div', 'col');
+      col.appendChild(Demo.el('div', 'ptr ptr--dim', String(k)));
+      const cell = Demo.el('div', 'cell', Demo.esc(chars[k]));
+      const st = stateFn(k);
+      if (st) cell.classList.add(st);
+      col.appendChild(cell);
+      const info = ptrFn(k);
+      const ptr = Demo.el('div', 'ptr', info.text);
+      if (info.cls) ptr.classList.add(info.cls);
+      if (!info.text) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
     }
+    block.appendChild(row);
+    return block;
   }
-  if (s.tPtr >= 0 && s.tPtr < tChars.length) {
-    const tState = s.tStates[s.tPtr];
-    if (tState === 't-active' || tState === 't-match') {
-      const tag = document.getElementById('tc' + s.tPtr).querySelector('.step-tag');
-      tag.textContent = current;
-      tag.classList.add('show');
-    }
+
+  const box = Demo.el('div', 'col');
+  box.style.gap = '14px';
+  box.style.width = '100%';
+
+  box.appendChild(charRow('s（子序列，长度 ' + S.length + '）', S.split(''), function (k) {
+    if (k < step.i) return 'is-ok';
+    if (k === step.i && step.phase !== 'done') return 'is-active';
+    return null;
+  }, function (k) {
+    return (k === step.i && step.phase !== 'done') ? { text: 'i', cls: 'ptr--violet' } : { text: '', cls: null };
+  }));
+
+  box.appendChild(charRow('t（目标串，长度 ' + T.length + '）', T.split(''), function (k) {
+    if (step.phase === 'done') return step.tState[k] === 2 ? 'is-ok' : 'cell--dim';
+    if (k === step.j) return 'is-active';
+    if (step.tState[k] === 2) return 'is-ok';
+    if (step.tState[k] === 1) return 'cell--dim';
+    return null;
+  }, function (k) {
+    return (k === step.j && step.phase !== 'done') ? { text: 'j', cls: 'ptr--info' } : { text: '', cls: null };
+  }));
+
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.style.textAlign = 'center';
+  let html = 'i = ' + step.i + ' / ' + S.length + '（s 中已匹配的字符数），j = ' + step.j + ' / ' + T.length + '（t 中已扫描的位置）';
+  if (step.phase === 'compare') {
+    html += ' &nbsp; 本轮比较：<code>' + Demo.esc(S[step.i]) + '</code> vs <code>' + Demo.esc(T[step.j]) + '</code> '
+      + (step.ok ? '<span class="tag tag--ok">相等，i 前进</span>' : '<span class="tag tag--bad">不相等，只推进 j</span>');
   }
+  if (step.result === true) html += ' &nbsp;<span class="tag tag--ok">结果 true</span>';
+  if (step.result === false) html += ' &nbsp;<span class="tag tag--bad">结果 false</span>';
+  panel.innerHTML = html;
+  box.appendChild(panel);
+
+  ctx.stage.appendChild(box);
 }
 
-function goStep(n) {
-  current = Math.max(0, Math.min(n, steps.length - 1));
-  render();
-}
-
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer);
-    autoRunning = false;
-    document.getElementById('playBtn').textContent = '▶ 自动播放';
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-  } else {
-    autoRunning = true;
-    document.getElementById('playBtn').textContent = '⏸ 暂停';
-    document.getElementById('playBtn').style.background = '#1565C0';
-    document.getElementById('playBtn').style.color = '#fff';
-    if (current >= steps.length - 1) goStep(0);
-    autoTimer = setInterval(() => {
-      if (current < steps.length - 1) goStep(current + 1);
-      else toggleAuto();
-    }, 800);
-  }
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+Demo.create({
+  title: '26. 判断子序列 — 同向双指针扫描 t',
+  info: '输入：s = "abc"，t = "ahbgdc"。t 中划掉不需要的字符后得到 a-b-c，顺序与 s 一致。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  legend: [
+    { color: 'var(--demo-accent)', label: 'j 正在扫描的 t 字符' },
+    { color: 'var(--demo-violet)', label: 'i 当前等待匹配的 s 字符' },
+    { color: 'var(--demo-ok)', label: '已匹配的字符' },
+    { color: 'var(--demo-muted)', label: 't 中已被丢弃的字符' }
+  ],
+  render: render
 });
-
-render();
 </script>
 </body>
 </html>

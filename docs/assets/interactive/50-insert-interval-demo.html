@@ -1,182 +1,178 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root { --bg:#fff; --text:#333; --muted:#888; --cell-bg:#fafafa; --cell-border:#d0d0d0; --header:#222; --sub-bg:#f5f5f5; --btn-bg:#f0f0f0; --btn-hover:#e0e0e0; }
-  @media (prefers-color-scheme:dark) { :root { --bg:#1a1a2e; --text:#ddd; --muted:#aaa; --cell-bg:#222; --cell-border:#444; --header:#ddd; --btn-bg:#333; --btn-hover:#444; --sub-bg:#252540; } }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; padding:14px 20px; }
-  .container { max-width:900px; width:100%; }
-  h2 { text-align:center; color:var(--header); font-size:17px; margin-bottom:2px; }
-  .sub-title { text-align:center; color:var(--muted); font-size:12px; margin-bottom:6px; }
-  .info-bar { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:4px; font-size:14px; flex-wrap:wrap; }
-  .step-num { font-weight:bold; font-size:22px; color:#1976D2; min-width:32px; text-align:center; }
-  .step-desc { color:var(--muted); font-size:13px; max-width:600px; text-align:center; }
-  svg { display:block; margin:0 auto; width:100%; }
-  .result-row { background:var(--sub-bg); border-radius:8px; padding:8px 14px; margin-bottom:4px; font-size:13px; text-align:center; }
-  .result-row .highlight { font-weight:bold; font-size:15px; }
-  .legend { display:flex; gap:14px; justify-content:center; margin-top:4px; font-size:11px; color:var(--muted); flex-wrap:wrap; }
-  .legend-item { display:flex; align-items:center; gap:5px; }
-  .legend-dot { width:14px; height:14px; border-radius:3px; }
-  .legend-dot.dash { border-radius:50%; width:12px; height:12px; }
-  .controls { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:6px; }
-  button { padding:7px 15px; border:1px solid var(--cell-border); border-radius:6px; background:var(--btn-bg); color:var(--text); font-size:13px; cursor:pointer; transition:0.15s; }
-  button:hover { background:var(--btn-hover); }
-  button:active { transform:scale(0.96); }
-  button:disabled { opacity:0.35; cursor:default; }
-  button.play-btn { background:#1976D2; color:#fff; border-color:#1565C0; }
-</style>
+<title>50. 插入区间 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>插入区间 — 三步法可视化</h2>
-  <div class="sub-title">intervals=[[1,3],[6,9]], newInterval=[2,5] &rarr; 左侧+合并+右侧 &rarr; [[1,5],[6,9]]</div>
-  <div class="info-bar"><span class="step-num" id="stepNum">0</span><span class="step-desc" id="stepDesc">初始状态 · 点击下一步开始</span></div>
-  <svg id="svg" viewBox="0 0 880 360"></svg>
-  <div class="result-row"><span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span></div>
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#42A5F5;"></div>左侧(不重叠)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#FF7043;"></div>合并中</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#FFA726;"></div>新区间</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#AB47BC;"></div>右侧(剩余)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#66BB6A;"></div>结果</div>
-  </div>
-  <div class="controls">
-    <button onclick="goStep(0)">&#x23EE; 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
-    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
-  </div>
-</div>
+<script src="demo.js"></script>
 <script>
-const intervals=[[1,3],[6,9]], ni=[2,5];
-const xMin=0, xMax=10;
-const axisY=200, barH=28, rowGap=40;
-const xScale=v=>60+(v-xMin)*760/(xMax-xMin);
+const INTERVALS = [[1, 2], [3, 5], [6, 7], [8, 10], [12, 16]];
+const NEW_INTERVAL = [4, 8];
 
-const steps=[];
-(function sim(){
-  steps.push({desc:'初始状态 · intervals=[[1,3],[6,9]], 待插入新区间=[2,5]', phase:'init', curIdx:-1, result:[], ni:[...ni], iStates:['',''], niCls:'new-interval', rRanges:[]});
-  const res=[];
-  let i=0, curNi=[...ni];
-  // left phase
-  steps.push({desc:'第1步·左侧: end<2的区间直接加入结果', phase:'left', curIdx:-1, result:[...res], ni:[...curNi], iStates:intervals.map((_,j)=>intervals[j][1]<ni[0]?'left':''), niCls:'new-interval', rRanges:[]});
-  while(i<intervals.length&&intervals[i][1]<curNi[0]){
-    res.push([...intervals[i]]);
-    steps.push({desc:'左侧: 区间['+intervals[i][0]+','+intervals[i][1]+'] end='+intervals[i][1]+' < '+curNi[0]+' → 直接加入', phase:'left-add', curIdx:i, result:res.map(r=>[...r]), ni:[...curNi], iStates:intervals.map((_,j)=>j<i?'left':(j===i?'left':'')), niCls:'new-interval', rRanges:res.map((r,idx)=>({s:r[0],e:r[1],row:idx,cls:'left'}))});
-    i++;
-  }
-  // merge phase
-  steps.push({desc:'第2步·合并: 重叠区间与新区间合并', phase:'merge-start', curIdx:i, result:res.map(r=>[...r]), ni:[...curNi], iStates:intervals.map((_,j)=>j<i?'left':(j===i?'merge':'')), niCls:'merge-ni', rRanges:res.map((r,idx)=>({s:r[0],e:r[1],row:idx,cls:'left'}))});
-  while(i<intervals.length&&intervals[i][0]<=curNi[1]){
-    curNi[0]=Math.min(curNi[0],intervals[i][0]);
-    curNi[1]=Math.max(curNi[1],intervals[i][1]);
-    steps.push({desc:'合并: 与['+intervals[i][0]+','+intervals[i][1]+']重叠 → 新区间=['+curNi[0]+','+curNi[1]+']', phase:'merge', curIdx:i, result:res.map(r=>[...r]), ni:[...curNi], iStates:intervals.map((_,j)=>j<i?'left':(j===i?'merge':(j>i&&j<i?'merge':''))), niCls:'merge-ni', rRanges:res.map((r,idx)=>({s:r[0],e:r[1],row:idx,cls:'left'}))});
-    i++;
-  }
-  res.push([...curNi]);
-  steps.push({desc:'合并完成, 新区间=['+curNi[0]+','+curNi[1]+'] 加入结果', phase:'merge-done', curIdx:-1, result:res.map(r=>[...r]), ni:[...curNi], iStates:intervals.map(()=>'done'), niCls:'merge-done', rRanges:res.map((r,idx)=>({s:r[0],e:r[1],row:idx,cls:idx===res.length-1?'merge-done':'left'}))});
-  // right phase
-  steps.push({desc:'第3步·右侧: 剩余区间直接加入结果', phase:'right', curIdx:i, result:res.map(r=>[...r]), ni:[...curNi], iStates:intervals.map((_,j)=>j<i?'done':'right'), niCls:'merge-done', rRanges:res.map((r,idx)=>({s:r[0],e:r[1],row:idx,cls:idx===res.length-1?'merge-done':'left'}))});
-  while(i<intervals.length){
-    res.push([...intervals[i]]);
-    steps.push({desc:'右侧: 添加区间['+intervals[i][0]+','+intervals[i][1]+']', phase:'right-add', curIdx:i, result:res.map(r=>[...r]), ni:[...curNi], iStates:intervals.map((_,j)=>j<i?'done':(j===i?'right':'')), niCls:'merge-done', rRanges:res.map((r,idx)=>({s:r[0],e:r[1],row:idx,cls:idx===res.length-1?'merge-done':(idx===res.length-2?'left':'right')}))});
-    i++;
-  }
-  steps.push({desc:'完成! 结果: [[1,5],[6,9]]', phase:'done', curIdx:-1, result:res.map(r=>[...r]), ni:[...curNi], iStates:intervals.map(()=>'done'), niCls:'merge-done', rRanges:res.map((r,idx)=>({s:r[0],e:r[1],row:idx,cls:'final'}))});
-})();
+function buildSteps() {
+  const intervals = INTERVALS.map(function (iv) { return [iv[0], iv[1]]; });
+  const n = intervals.length;
+  const newIv = NEW_INTERVAL.slice();
+  const result = [];
+  let i = 0;
+  const steps = [];
 
-function colorFor(cls){
-  if(cls==='left')return'#42A5F5';
-  if(cls==='merge'||cls==='merge-ni')return'#FF7043';
-  if(cls==='new-interval')return'#FFA726';
-  if(cls==='right')return'#AB47BC';
-  if(cls==='done')return'#BDBDBD';
-  if(cls==='merge-done'||cls==='final')return'#66BB6A';
-  return'#BDBDBD';
-}
-
-let current=0,autoTimer=null,autoRun=false;
-const svg=document.getElementById('svg');
-
-function render(){
-  const s=steps[current];
-  document.getElementById('stepNum').textContent=current;
-  document.getElementById('stepDesc').textContent=s.desc;
-  document.getElementById('prevBtn').disabled=current<=0;
-  document.getElementById('nextBtn').disabled=current>=steps.length-1;
-  const rt=document.getElementById('resultText');
-  if(s.phase==='done'){rt.textContent='[[1,5],[6,9]]';rt.style.color='#388E3C';}
-  else if(s.result&&s.result.length>0){rt.textContent='['+s.result.map(r=>'['+r[0]+','+r[1]+']').join(',')+']';rt.style.color='#1976D2';}
-  else{rt.textContent='进行中...';rt.style.color='#1976D2';}
-
-  let html='';
-  // axis
-  html+='<line x1="60" y1="'+axisY+'" x2="820" y2="'+axisY+'" stroke="#888" stroke-width="1.5"/>';
-  html+='<polygon points="820,'+(axisY-5)+' 820,'+(axisY+5)+' 828,'+axisY+'" fill="#888"/>';
-  for(let v=0;v<=10;v++){
-    const x=xScale(v);
-    html+='<line x1="'+x+'" y1="'+axisY+'" x2="'+x+'" y2="'+(axisY+6)+'" stroke="#888" stroke-width="1"/>';
-    html+='<text x="'+x+'" y="'+(axisY+20)+'" text-anchor="middle" fill="var(--muted)" font-size="11">'+v+'</text>';
-  }
-
-  // original intervals above axis, staggered by overlap
-  const origYs=[axisY-50,axisY-95,axisY-50];
-  for(let j=0;j<intervals.length;j++){
-    const [a,b]=intervals[j];
-    const cls=s.iStates[j]||'';
-    const c=colorFor(cls);
-    const x1=xScale(a), x2=xScale(b);
-    const y=origYs[j]||(axisY-50);
-    html+='<rect x="'+x1+'" y="'+y+'" width="'+Math.max(8,x2-x1)+'" height="'+barH+'" rx="6" fill="'+c+'" opacity="0.85" stroke="'+c+'" stroke-width="1.5"/>';
-    html+='<text x="'+(Math.round((x1+x2)/2))+'" y="'+(y+barH/2+5)+'" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">['+a+','+b+']</text>';
-    html+='<circle cx="'+x1+'" cy="'+axisY+'" r="4" fill="'+c+'"/>';
-    html+='<circle cx="'+x2+'" cy="'+axisY+'" r="4" fill="'+c+'"/>';
-  }
-  // new interval
-  {
-    const [a,b]=s.ni;
-    const c=colorFor(s.niCls||'new-interval');
-    const x1=xScale(a), x2=xScale(b);
-    const y=axisY-140;
-    html+='<rect x="'+x1+'" y="'+y+'" width="'+Math.max(8,x2-x1)+'" height="'+(barH+4)+'" rx="6" fill="'+c+'" opacity="0.9" stroke="'+c+'" stroke-width="2.5" stroke-dasharray="6,3"/>';
-    html+='<text x="'+(Math.round((x1+x2)/2))+'" y="'+(y+barH/2+7)+'" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">new['+a+','+b+']</text>';
-    html+='<circle cx="'+x1+'" cy="'+axisY+'" r="5" fill="'+c+'" stroke="#fff" stroke-width="1.5"/>';
-    html+='<circle cx="'+x2+'" cy="'+axisY+'" r="5" fill="'+c+'" stroke="#fff" stroke-width="1.5"/>';
-    if(s.curIdx>=0){
-      html+='<text x="'+((x1+x2)/2)+'" y="'+(y-8)+'" text-anchor="middle" fill="'+c+'" font-size="12" font-weight="bold">▼ 插入</text>';
-    }
-  }
-  // result ranges below axis
-  if(s.rRanges){
-    s.rRanges.forEach((mr,idx)=>{
-      const x1=xScale(mr.s), x2=xScale(mr.e);
-      const y=axisY+34+idx*36;
-      const c=colorFor(mr.cls);
-      html+='<rect x="'+x1+'" y="'+y+'" width="'+Math.max(40,x2-x1)+'" height="'+barH+'" rx="6" fill="'+c+'" opacity="0.85" stroke="'+c+'" stroke-width="1.5"/>';
-      html+='<text x="'+(Math.round((x1+x2)/2))+'" y="'+(y+barH/2+5)+'" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">['+mr.s+','+mr.e+']</text>';
+  function snap(o) {
+    steps.push({
+      intervals: intervals.map(function (iv) { return [iv[0], iv[1]]; }),
+      result: result.map(function (iv) { return [iv[0], iv[1]]; }),
+      newIv: newIv.slice(),
+      i: o.i == null ? i : o.i,
+      cur: o.cur == null ? -1 : o.cur,
+      phase: o.phase,
+      note: o.note
     });
   }
-  html+='<text x="60" y="'+(axisY+33)+'" text-anchor="start" fill="var(--muted)" font-size="11">结果:</text>';
 
-  // Phase label
-  const phases={left:'左侧阶段',right:'右侧阶段',merge:'合并阶段','merge-start':'合并阶段',done:'完成'};
-  const pl=phases[s.phase];
-  if(pl) html+='<text x="820" y="'+(axisY-155)+'" text-anchor="end" fill="var(--muted)" font-size="12">'+pl+'</text>';
+  snap({
+    phase: 'init',
+    note: '初始状态：intervals 已经按起点升序、彼此不重叠，newInterval = [' + newIv[0] + ', ' + newIv[1] + ']。既然原列表有序，就不需要重新排序：只需一次遍历，分三个阶段把它们分类。'
+  });
 
-  svg.innerHTML=html;
+  while (i < n && intervals[i][1] < newIv[0]) {
+    const iv = intervals[i];
+    result.push([iv[0], iv[1]]);
+    snap({
+      phase: 'left', cur: i,
+      note: '阶段一：区间 [' + iv[0] + ', ' + iv[1] + '] 的终点 ' + iv[1] + ' < 新区间起点 ' + newIv[0] + '。它在新区间完全左侧，绝不可能重叠，直接放进结果，i 后移。'
+    });
+    i += 1;
+  }
+
+  snap({
+    phase: 'left-stop', cur: i < n ? i : -1,
+    note: i < n
+      ? '阶段一结束：此时 intervals[' + i + '] = [' + intervals[i][0] + ', ' + intervals[i][1] + '] 的终点 ' + intervals[i][1] + ' ≥ 新区间起点 ' + newIv[0] + '，它有可能与新区间重叠，交给阶段二判断。'
+      : '阶段一结束：所有区间都在新区间左侧，已全部放入结果。'
+  });
+
+  while (i < n && intervals[i][0] <= newIv[1]) {
+    const iv = intervals[i];
+    const beforeStart = newIv[0];
+    const beforeEnd = newIv[1];
+    if (iv[0] < newIv[0]) newIv[0] = iv[0];
+    if (iv[1] > newIv[1]) newIv[1] = iv[1];
+    snap({
+      phase: 'overlap', cur: i,
+      note: '阶段二：区间 [' + iv[0] + ', ' + iv[1] + '] 的起点 ' + iv[0] + ' ≤ 新区间当前终点 ' + beforeEnd + '，说明两者重叠，可以吸收。'
+        + ' 新区间扩展为 [min(' + beforeStart + ', ' + iv[0] + '), max(' + beforeEnd + ', ' + iv[1] + ')] = [' + newIv[0] + ', ' + newIv[1] + ']。'
+        + ' 注意判断条件用的是「起点 ≤ 新区间终点」，而不是终点，这样跨多个区间连续合并时不会漏掉下一个。'
+    });
+    i += 1;
+  }
+
+  result.push(newIv.slice());
+  snap({
+    phase: 'insert',
+    note: '阶段二结束：与新区间重叠的区间都被吸收了，把合并后的 [' + newIv[0] + ', ' + newIv[1] + '] 加入结果。它顶替了原来的 [3,5]、[6,7]、[8,10] 三段。'
+  });
+
+  while (i < n) {
+    const iv = intervals[i];
+    result.push([iv[0], iv[1]]);
+    snap({
+      phase: 'right', cur: i,
+      note: '阶段三：区间 [' + iv[0] + ', ' + iv[1] + '] 的起点 ' + iv[0] + ' > 合并后新区间的终点 ' + newIv[1] + '，位于右侧且不重叠，原样加入结果，i 后移。'
+    });
+    i += 1;
+  }
+
+  snap({
+    phase: 'done',
+    note: '遍历结束，插入完成。结果 = ' + result.map(function (iv) { return '[' + iv[0] + ',' + iv[1] + ']'; }).join('、')
+      + '，仍然按起点升序且互不重叠。整个算法只扫描一次原数组，时间 O(n)、结果占用 O(n)。'
+  });
+
+  return steps;
 }
 
-function goStep(n){current=Math.max(0,Math.min(n,steps.length-1));render()}
-function toggleAuto(){
-  if(autoRun){clearInterval(autoTimer);autoRun=false;document.getElementById('playBtn').textContent='\u25B6 自动播放';document.getElementById('playBtn').style.background='';document.getElementById('playBtn').style.color='';document.getElementById('playBtn').classList.remove('play-btn');}
-  else{autoRun=true;document.getElementById('playBtn').textContent='\u23F8 暂停';document.getElementById('playBtn').style.background='#1976D2';document.getElementById('playBtn').style.color='#fff';document.getElementById('playBtn').classList.add('play-btn');if(current>=steps.length-1)goStep(0);autoTimer=setInterval(function(){if(current<steps.length-1)goStep(current+1);else toggleAuto()},1200);}
+function render(step, idx, ctx) {
+  ctx.stage.innerHTML = '';
+
+  const xMin = 0, xMax = 18, X0 = 44, X1 = 756;
+  function xs(v) { return X0 + v * (X1 - X0) / (xMax - xMin); }
+
+  const n = step.intervals.length;
+  const mergedRow = 26 + n * 30;
+  const axisY = mergedRow + 30;
+  const baseY = axisY + 46;
+  const H = baseY + (step.result.length + 1) * 28 + 16;
+
+  const p = [];
+  p.push('<svg viewBox="0 0 800 ' + H + '" style="width:100%;max-width:800px;height:auto;display:block" role="img">');
+  p.push('<text x="8" y="16" style="fill:var(--demo-muted);font-size:12px;font-weight:700">原区间 intervals（已按起点升序）</text>');
+
+  for (let k = 0; k < n; k++) {
+    const iv = step.intervals[k];
+    const y = 26 + k * 30;
+    let fill = 'var(--demo-subtle)';
+    let stroke = 'var(--demo-border)';
+    if (k === step.cur) { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; }
+    else if (step.cur >= 0 && k < step.cur) { fill = 'var(--demo-subtle)'; stroke = 'var(--demo-border)'; }
+    p.push('<rect x="' + xs(iv[0]) + '" y="' + y + '" width="' + Math.max(10, xs(iv[1]) - xs(iv[0])) + '" height="20" rx="5" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2' + (step.cur >= 0 && k < step.cur ? ';opacity:0.45' : '') + '"/>');
+    p.push('<text x="' + ((xs(iv[0]) + xs(iv[1])) / 2) + '" y="' + (y + 14) + '" text-anchor="middle" style="fill:var(--demo-text);font-size:11px;font-weight:700;font-family:var(--demo-mono)">[' + iv[0] + ',' + iv[1] + ']</text>');
+    p.push('<text x="20" y="' + (y + 14) + '" text-anchor="middle" style="fill:var(--demo-muted);font-size:10px;font-family:var(--demo-mono)">' + k + '</text>');
+  }
+
+  p.push('<rect x="' + xs(step.newIv[0]) + '" y="' + mergedRow + '" width="' + Math.max(10, xs(step.newIv[1]) - xs(step.newIv[0])) + '" height="20" rx="5" style="fill:var(--demo-pink-soft);stroke:var(--demo-pink);stroke-width:2"/>');
+  p.push('<text x="' + ((xs(step.newIv[0]) + xs(step.newIv[1])) / 2) + '" y="' + (mergedRow + 14) + '" text-anchor="middle" style="fill:var(--demo-text);font-size:11px;font-weight:700;font-family:var(--demo-mono)">new = [' + step.newIv[0] + ',' + step.newIv[1] + ']</text>');
+
+  p.push('<line x1="' + (X0 - 10) + '" y1="' + axisY + '" x2="' + (X1 + 10) + '" y2="' + axisY + '" style="stroke:var(--demo-border);stroke-width:1.5"/>');
+  for (let v = xMin; v <= xMax; v++) {
+    p.push('<line x1="' + xs(v) + '" y1="' + axisY + '" x2="' + xs(v) + '" y2="' + (axisY + 4) + '" style="stroke:var(--demo-border);stroke-width:1"/>');
+    if (v % 2 === 0) p.push('<text x="' + xs(v) + '" y="' + (axisY + 16) + '" text-anchor="middle" style="fill:var(--demo-muted);font-size:9px;font-family:var(--demo-mono)">' + v + '</text>');
+  }
+
+  p.push('<text x="8" y="' + (axisY + 36) + '" style="fill:var(--demo-muted);font-size:12px;font-weight:700">结果 result（共 ' + step.result.length + ' 段）</text>');
+  if (step.result.length === 0) {
+    p.push('<text x="' + (X0 + 10) + '" y="' + (baseY + 16) + '" style="fill:var(--demo-muted);font-size:12px">（结果为空）</text>');
+  }
+  step.result.forEach(function (iv, k) {
+    const y = baseY + k * 28;
+    const isNew = step.phase === 'insert' && k === step.result.length - 1;
+    const fill = isNew ? 'var(--demo-pink-soft)' : 'var(--demo-ok-soft)';
+    const stroke = isNew ? 'var(--demo-pink)' : 'var(--demo-ok)';
+    p.push('<rect x="' + xs(iv[0]) + '" y="' + y + '" width="' + Math.max(10, xs(iv[1]) - xs(iv[0])) + '" height="20" rx="5" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2"/>');
+    p.push('<text x="' + ((xs(iv[0]) + xs(iv[1])) / 2) + '" y="' + (y + 14) + '" text-anchor="middle" style="fill:var(--demo-text);font-size:11px;font-weight:700;font-family:var(--demo-mono)">[' + iv[0] + ',' + iv[1] + ']</text>');
+  });
+  p.push('</svg>');
+
+  const chart = Demo.el('div', 'col');
+  chart.style.width = '100%';
+  chart.innerHTML = p.join('');
+  ctx.stage.appendChild(chart);
+
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.style.textAlign = 'center';
+  panel.innerHTML =
+    '当前待插入区间：<code>[' + step.newIv[0] + ', ' + step.newIv[1] + ']</code>' +
+    ' &nbsp; i = <code>' + (step.i < n ? step.i : n + '（越界）') + '</code>' +
+    (step.phase === 'done' ? ' &nbsp;<span class="tag tag--ok">答案 [[' + step.result.map(function (iv) { return iv[0] + ',' + iv[1]; }).join('], [') + ']]</span>' : '');
+  ctx.stage.appendChild(panel);
 }
-document.addEventListener('keydown',function(e){if(e.key==='ArrowRight')goStep(current+1);if(e.key==='ArrowLeft')goStep(current-1);if(e.key===' '){e.preventDefault();toggleAuto();}});
-render();
+
+Demo.create({
+  title: '50. 插入区间 — 一次遍历，三阶段分类',
+  info: '输入：intervals = [[1,2], [3,5], [6,7], [8,10], [12,16]]，newInterval = [4,8]（示例 2）。输出应与示例一致：[[1,2], [3,10], [12,16]]。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 460,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前判断的区间' },
+    { color: 'var(--demo-pink)', label: '待插入 / 正在合并的新区间' },
+    { color: 'var(--demo-ok)', label: '已确定的输出区间' }
+  ],
+  render: render
+});
 </script>
 </body>
 </html>

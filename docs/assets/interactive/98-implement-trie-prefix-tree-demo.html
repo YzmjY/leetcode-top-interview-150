@@ -2,290 +2,284 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>98. 实现Trie - Implement Trie (Prefix Tree)</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
-.container{background:#fff;border-radius:8px;padding:20px;width:820px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
-h2{font-size:16px;margin-bottom:12px;color:#333}
-.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-button{border:none;border-radius:8px;padding:8px 16px;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s;color:#fff;font-weight:500}
-button:disabled{opacity:.4;cursor:not-allowed}
-.btn-reset{background:#6c757d}
-.btn-prev{background:#0d6efd}
-.btn-next{background:#0d6efd}
-.btn-auto{background:#198754}
-.btn-end{background:#dc3545}
-button:hover:not(:disabled){filter:brightness(1.15)}
-.info-panel{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:#555;background:#f0f4f8;border-radius:8px;padding:10px 14px}
-.step-badge{background:#0d6efd;color:#fff;border-radius:20px;padding:2px 12px;font-weight:600;font-size:12px}
-.info-text{flex:1;margin-left:12px}
-.vis-area{background:#fafafa;border-radius:8px;position:relative;height:500px;overflow:hidden;border:1px solid #e0e0e0}
-svg{width:100%;height:100%}
-.hint{font-size:12px;color:#999;text-align:center;margin-top:8px}
-@media(prefers-color-scheme:dark){
-body{background:#1a1a2e}
-.container{background:#16213e;box-shadow:0 2px 12px rgba(0,0,0,.4)}
-h2{color:#e0e0e0}
-.info-panel{background:#1a1a3e;color:#ccc}
-.vis-area{background:#0f0f23;border-color:#2a2a4a}
-.hint{color:#777}
-}
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>98. 实现 Trie (前缀树) - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>98. 实现 Trie (前缀树) — 插入"apple","app" → 搜索演示</h2>
-<div class="controls">
-<button class="btn-reset" onclick="reset()">⟳ 重置</button>
-<button class="btn-prev" onclick="prevStep()">◀ 上步</button>
-<button class="btn-next" onclick="nextStep()">下步 ▶</button>
-<button class="btn-auto" id="btnAuto" onclick="toggleAuto()">▶ 自动播放</button>
-<button class="btn-end" onclick="jumpEnd()">▶▶ 跳到最后</button>
-</div>
-<div class="info-panel">
-<span class="step-badge" id="stepBadge">步骤 1/10</span>
-<span class="info-text" id="infoText">初始空Trie (只有根节点)</span>
-</div>
-<div class="vis-area"><svg id="svg" viewBox="0 0 820 500"></svg></div>
-<div class="hint">键盘: ← → 切换步骤 | 空格 自动播放</div>
-</div>
+<script src="demo.js"></script>
 <script>
-// Build the trie
-let trieNodes=[];
-let nodeId=0;
-function newNode(char,depth,parent){
-  let id=nodeId++;
-  trieNodes[id]={id,char,depth,parent,children:{},isWord:false};
-  return id;
-}
-let root=newNode('root',0,-1);
-trieNodes[root].isWord=false;
+const OPS = [
+  { op: 'insert', word: 'apple' },
+  { op: 'search', word: 'apple' },
+  { op: 'search', word: 'app' },
+  { op: 'startsWith', word: 'app' },
+  { op: 'insert', word: 'app' },
+  { op: 'search', word: 'app' }
+];
 
-function insert(word){
-  let node=root;
-  let path=[root];
-  for(let ch of word){
-    if(!trieNodes[node].children[ch]){
-      let child=newNode(ch,trieNodes[node].depth+1,node);
-      trieNodes[node].children[ch]=child;
-      node=child;
-    }else{
-      node=trieNodes[node].children[ch];
-    }
-    path.push(node);
-  }
-  trieNodes[node].isWord=true;
-  return path;
+function snapshotTrie(root) {
+  const nodes = {};
+  const order = [];
+  (function walk(n) {
+    const children = {};
+    Object.keys(n.children).sort().forEach(k => { children[k] = n.children[k].id; });
+    nodes[n.id] = {
+      id: n.id, ch: n.ch, isEnd: n.isEnd, word: n.word,
+      parent: n.parent ? n.parent.id : null, children: children
+    };
+    order.push(n.id);
+    Object.keys(n.children).sort().forEach(k => walk(n.children[k]));
+  })(root);
+  return { nodes: nodes, order: order, root: root.id };
 }
 
-function searchPrefix(prefix){
-  let node=root,path=[root];
-  for(let ch of prefix){
-    if(!trieNodes[node].children[ch])return null;
-    node=trieNodes[node].children[ch];
-    path.push(node);
-  }
-  return {node,path};
+function layoutTrie(tree) {
+  const pos = {};
+  let leaf = 0;
+  let depth = 0;
+  (function walk(id, d) {
+    const n = tree.nodes[id];
+    depth = Math.max(depth, d);
+    const keys = Object.keys(n.children);
+    if (keys.length === 0) {
+      pos[id] = { x: d * 78 + 52, y: leaf * 62 + 42 };
+      leaf += 1;
+      return pos[id].y;
+    }
+    let sum = 0;
+    keys.forEach(k => { sum += walk(n.children[k], d + 1); });
+    pos[id] = { x: d * 78 + 52, y: sum / keys.length };
+    return pos[id].y;
+  })(tree.root, 0);
+  return { pos: pos, depth: depth, leaves: Math.max(leaf, 1) };
 }
 
-let steps=[],currentStep=0,totalSteps=0,autoTimer=null;
+function trieSvg(tree, opt) {
+  const o = opt || {};
+  const lay = layoutTrie(tree);
+  const width = lay.depth * 78 + 130;
+  const height = Math.max(lay.leaves * 62 + 90, 150);
+  let out = '';
 
-function buildSteps(){
-  steps=[];
-  // Reset
-  trieNodes=[];nodeId=0;
-  root=newNode('root',0,-1);
-  trieNodes[root].isWord=false;
-
-  steps.push({info:'初始状态: 空Trie, 只有根节点 (Root)',hlNodes:[root],hlEdges:[],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'init'});
-
-  // Insert "apple"
-  let path1=insert('apple');
-  for(let i=1;i<path1.length;i++){
-    let p=path1[i];
-    let ch=trieNodes[p].char;
-    let prefix='apple'.substring(0,i);
-    let extra=path1.length-1===i?' (标记为单词结尾 ✓)':'';
-    steps.push({info:`插入"apple": 创建节点 '${ch}' 前缀"${prefix}"${extra}`,hlNodes:[p],hlEdges:[[path1[i-1],p]],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'insert'});
-  }
-
-  // Insert "app" - reuse existing nodes
-  let path2=insert('app');
-  let reused=true;
-  for(let i=1;i<path2.length;i++){
-    let isReused=trieNodes[path2[i]].isWord||i<path2.length-1;
-    let ch='app'[i-1];
-    if(i===path2.length){
-      steps.push({info:'插入"app": 复用已有路径 a-p-p, 在p标记为单词结尾',hlNodes:[path2[i-1]],hlEdges:[[path2[i-2],path2[i-1]]],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'reuse'});
-    }
-  }
-  steps.push({info:'插入"app"完成: a-p-p全部复用, 在第2个p标记为单词结尾',hlNodes:[path2[path2.length-1]],hlEdges:[],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'doneInsert'});
-
-  // Search "app" -> true
-  let sr=searchPrefix('app');
-  steps.push({info:'搜索"app": 沿Trie走 a→p→p, 找到且isWord=true → true',hlNodes:sr.path,hlEdges:[],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'search',searchResult:true});
-
-  // Search "apple" -> true
-  let sr2=searchPrefix('apple');
-  steps.push({info:'搜索"apple": 沿Trie走 a→p→p→l→e, isWord=true → true',hlNodes:sr2.path,hlEdges:[],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'search',searchResult:true});
-
-  // Prefix "ap" -> true
-  let sr3=searchPrefix('ap');
-  steps.push({info:'前缀查询"ap": 沿Trie走 a→p, 路径存在 → true (前缀匹配)',hlNodes:sr3.path,hlEdges:[],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'prefix',searchResult:'prefix'});
-
-  // Search "appl" -> false
-  let sr4=searchPrefix('appl');
-  if(sr4&&sr4.path.length===4){
-    steps.push({info:'搜索"appl": 沿Trie走 a→p→p→l, 找到但isWord=false → false',hlNodes:sr4.path,hlEdges:[],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'search',searchResult:false});
-  }else{
-    steps.push({info:'搜索"appl": 走到l但无此节点 / isWord=false → false',hlNodes:[],hlEdges:[],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'search',searchResult:false});
-  }
-
-  steps.push({info:'Trie总结: 根到叶路径=完整单词, 内部节点标记=单词结尾',hlNodes:[],hlEdges:[],treeSnapshot:JSON.parse(JSON.stringify(trieNodes)),phase:'done'});
-}
-buildSteps();totalSteps=steps.length;
-
-const svg=document.getElementById('svg');
-
-// Layout trie nodes
-function layoutTrie(ts){
-  // Collect nodes and position them
-  let levels={};
-  for(let id in ts){
-    let n=ts[id];
-    if(!levels[n.depth])levels[n.depth]=[];
-    levels[n.depth].push(n);
-  }
-  let positions={};
-  let maxDepth=Math.max(...Object.keys(levels).map(Number));
-  for(let d in levels){
-    let nodes=levels[d];
-    let y=60+d*70;
-    for(let i=0;i<nodes.length;i++){
-      let x=60+i*90+((maxDepth-d)*20);
-      positions[nodes[i].id]={x,y};
-    }
-  }
-  return positions;
-}
-
-function draw(){
-  let s=steps[currentStep];
-  let ts=s.treeSnapshot;
-  svg.innerHTML='';
-
-  let pos=layoutTrie(ts);
-
-  // Draw edges
-  for(let id in ts){
-    let n=ts[id];
-    if(n.parent>=0){
-      let pe=pos[n.parent],ce=pos[n.id];
-      let l=document.createElementNS('http://www.w3.org/2000/svg','line');
-      l.setAttribute('x1',pe.x);l.setAttribute('y1',pe.y+24);
-      l.setAttribute('x2',ce.x);l.setAttribute('y2',ce.y-24);
-      l.setAttribute('stroke',(s.hlEdges||[]).some(([a,b])=>a===n.parent&&b===n.id)?'#28a745':'#ccc');
-      l.setAttribute('stroke-width',2);
-      svg.appendChild(l);
-
-      // Char label on edge
-      let ll=document.createElementNS('http://www.w3.org/2000/svg','text');
-      ll.setAttribute('x',(pe.x+ce.x)/2);ll.setAttribute('y',(pe.y+ce.y)/2-3);
-      ll.setAttribute('text-anchor','middle');ll.setAttribute('font-size','14');
-      ll.setAttribute('font-family','monospace');ll.setAttribute('fill','#666');
-      ll.textContent=n.char;
-      svg.appendChild(ll);
-    }
-  }
-
-  // Draw nodes
-  for(let id in ts){
-    let n=ts[id];
-    let p=pos[n.id];
-    let isHL=(s.hlNodes||[]).includes(Number(id));
-
-    let c=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    c.setAttribute('cx',p.x);c.setAttribute('cy',p.y);c.setAttribute('r',22);
-    c.setAttribute('fill',isHL?'#ff6b00':(n.isWord?'#28a745':'#5b9bd5'));
-    c.setAttribute('stroke',isHL?'#ff0':'#999');c.setAttribute('stroke-width',isHL?3:2);
-    svg.appendChild(c);
-
-    let t=document.createElementNS('http://www.w3.org/2000/svg','text');
-    t.setAttribute('x',p.x);t.setAttribute('y',p.y+5);
-    t.setAttribute('text-anchor','middle');t.setAttribute('font-size','14');
-    t.setAttribute('font-family','monospace');t.setAttribute('font-weight','bold');
-    t.setAttribute('fill','#fff');
-    t.textContent=n.char==='root'?'R':n.char;
-    svg.appendChild(t);
-
-    if(n.isWord){
-      let w=document.createElementNS('http://www.w3.org/2000/svg','text');
-      w.setAttribute('x',p.x);w.setAttribute('y',p.y+36);
-      w.setAttribute('text-anchor','middle');w.setAttribute('font-size','11');
-      w.setAttribute('fill','#28a745');w.setAttribute('font-weight','bold');
-      w.textContent='END';
-      svg.appendChild(w);
-    }
-  }
-
-  // Result display
-  let rx=520,ry=20;
-  if(s.searchResult!==undefined){
-    let rt=document.createElementNS('http://www.w3.org/2000/svg','rect');
-    rt.setAttribute('x',rx);rt.setAttribute('y',ry);rt.setAttribute('width',260);rt.setAttribute('height',40);
-    rt.setAttribute('rx',8);rt.setAttribute('fill',s.searchResult?'#d4edda':'#f8d7da');
-    svg.appendChild(rt);
-    let rtx=document.createElementNS('http://www.w3.org/2000/svg','text');
-    rtx.setAttribute('x',rx+130);rtx.setAttribute('y',ry+25);
-    rtx.setAttribute('text-anchor','middle');rtx.setAttribute('font-size','15');
-    rtx.setAttribute('fill',s.searchResult?'#155724':'#721c24');rtx.setAttribute('font-weight','bold');
-    rtx.textContent='结果: '+(s.searchResult===true?'true':s.searchResult===false?'false':s.searchResult);
-    svg.appendChild(rtx);
-  }
-
-  // Legend
-  let ly=250;
-  let items=[
-    {color:'#5b9bd5',txt:'普通节点'},
-    {color:'#28a745',txt:'单词结尾(isWord)'},
-    {color:'#ff6b00',txt:'当前搜索路径'},
-  ];
-  items.forEach((it,k)=>{
-    let lc=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    lc.setAttribute('cx',rx+10);lc.setAttribute('cy',ly+k*30);lc.setAttribute('r',8);
-    lc.setAttribute('fill',it.color);
-    svg.appendChild(lc);
-    let lt=document.createElementNS('http://www.w3.org/2000/svg','text');
-    lt.setAttribute('x',rx+24);lt.setAttribute('y',ly+k*30+4);
-    lt.setAttribute('font-size','13');lt.setAttribute('fill','#333');
-    lt.textContent=it.txt;
-    svg.appendChild(lt);
+  tree.order.forEach(id => {
+    const n = tree.nodes[id];
+    Object.keys(n.children).forEach(k => {
+      const cid = n.children[k];
+      const p = lay.pos[id];
+      const q = lay.pos[cid];
+      const onPath = o.chain && o.chain.indexOf(id) >= 0 && o.chain.indexOf(cid) >= 0;
+      out += '<line x1="' + (p.x + 25) + '" y1="' + p.y + '" x2="' + (q.x - 25) + '" y2="' + q.y +
+        '" style="stroke:' + (onPath ? 'var(--demo-accent)' : 'var(--demo-border)') + ';stroke-width:' + (onPath ? 3.5 : 2) + '"/>';
+    });
   });
 
-  document.getElementById('stepBadge').textContent=`步骤 ${currentStep+1}/${totalSteps}`;
-  document.getElementById('infoText').textContent=s.info;
-  let btns=document.querySelectorAll('button');
-  btns.forEach(b=>b.disabled=false);
-  if(currentStep===0)document.querySelector('.btn-prev').disabled=true;
-  if(currentStep===totalSteps-1){document.querySelector('.btn-next').disabled=true;document.querySelector('.btn-end').disabled=true;document.querySelector('.btn-auto').disabled=true;}
+  tree.order.forEach(id => {
+    const n = tree.nodes[id];
+    const p = lay.pos[id];
+    let fill = 'var(--demo-subtle)';
+    let text = 'var(--demo-text)';
+    if (o.chain && o.chain.indexOf(id) >= 0) { fill = 'var(--demo-accent-soft)'; text = 'var(--demo-accent-strong)'; }
+    if (o.created && o.created.indexOf(id) >= 0) { fill = 'var(--demo-ok-soft)'; text = 'var(--demo-ok)'; }
+    if (o.failed && o.failed.indexOf(id) >= 0) { fill = 'var(--demo-danger-soft)'; text = 'var(--demo-danger)'; }
+    if (o.curNode === id) {
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="31" style="fill:none;stroke:var(--demo-warn);stroke-width:3"/>';
+    }
+    if (n.isEnd) {
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="27" style="fill:none;stroke:var(--demo-ok);stroke-width:2.5"/>';
+    }
+    out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="23" style="fill:' + fill + ';stroke:var(--demo-border);stroke-width:2"/>';
+    out += '<text x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle" style="fill:' + text +
+      ';font:600 14px monospace">' + (n.ch === '' ? '根' : n.ch) + '</text>';
+  });
+
+  return '<div style="width:100%"><svg viewBox="0 0 ' + width + ' ' + height + '" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
 }
 
-function nextStep(){if(currentStep<totalSteps-1){currentStep++;draw();}}
-function prevStep(){if(currentStep>0){currentStep--;draw();}}
-function reset(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}buildSteps();totalSteps=steps.length;currentStep=0;draw();}
-function jumpEnd(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=totalSteps-1;draw();}
-function toggleAuto(){
-  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}
-  else{document.getElementById('btnAuto').textContent='⏸ 暂停';autoTimer=setInterval(()=>{if(currentStep<totalSteps-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}},900);}
+function buildSteps() {
+  const steps = [];
+  let nextId = 0;
+  function makeNode(ch, parent) {
+    return { id: nextId++, ch: ch, parent: parent, children: {}, isEnd: false, word: '' };
+  }
+  const root = makeNode('', null);
+  const log = [];
+
+  function snap(note, extra) {
+    const step = {
+      trie: snapshotTrie(root),
+      log: log.map(l => ({ op: l.op, result: l.result })),
+      note: note
+    };
+    if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+    steps.push(step);
+  }
+
+  snap('初始：Trie 只有一个根节点。每个节点包含 26 个子指针和一个 isEnd 标记——isEnd 用来区分「apple 本身是单词」和「app 只是某个单词的前缀」。');
+
+  OPS.forEach(op => {
+    const label = op.op + '("' + op.word + '")';
+    log.push({ op: label, result: '进行中' });
+    const li = log.length - 1;
+    const isInsert = op.op === 'insert';
+
+    if (isInsert) {
+      let node = root;
+      let chain = [root.id];
+      const created = [];
+      const firstNote = 'insert("' + op.word + '")：从根节点出发，沿单词的字符逐层向下走；子节点不存在就新建，存在就复用（共享前缀，不重复建）。';
+      snap(firstNote, { opLabel: label, curWord: op.word, index: -1, matched: 0, curNode: root.id, chain: chain.slice(), created: created.slice(), logActive: li });
+
+      for (let i = 0; i < op.word.length; i++) {
+        const ch = op.word[i];
+        let nxt = node.children[ch];
+        const isNew = !nxt;
+        if (isNew) {
+          nxt = makeNode(ch, node);
+          node.children[ch] = nxt;
+          created.push(nxt.id);
+        }
+        node = nxt;
+        chain = chain.concat(nxt.id);
+        snap('insert("' + op.word + '") 第 ' + (i + 1) + ' 个字符 "' + ch + '"：当前节点下' +
+          (isNew ? '没有这个子节点 → 新建一个节点（绿色）' : '已经有这个子节点 → 直接复用，这就是前缀共享') +
+          '，指针下移。当前已插入前缀 "' + op.word.slice(0, i + 1) + '"。',
+          { opLabel: label, curWord: op.word, index: i, matched: i + 1, curNode: node.id, chain: chain.slice(), created: created.slice(), logActive: li });
+      }
+
+      node.isEnd = true;
+      log[li].result = 'null';
+      snap('走完 "' + op.word + '" 的 ' + op.word.length + ' 个字符后，把最后一个节点的 isEnd 置为 true（图中多出一圈绿色细环）——' +
+        '这一步才真正声明 "' + op.word + '" 是一个完整单词，否则它只是别的前缀。insert 没有返回值。',
+        { opLabel: label, curWord: op.word, index: op.word.length - 1, matched: op.word.length, curNode: node.id, chain: chain.slice(), created: created.slice(), logActive: li, markEnd: true });
+      return;
+    }
+
+    const isSearch = op.op === 'search';
+    snap(op.op + '("' + op.word + '")：和插入一样从根节点逐字符下行，但一个字符对不上就立刻返回 false，不必再看后面的字符。',
+      { opLabel: label, curWord: op.word, index: -1, matched: 0, curNode: root.id, chain: [root.id], logActive: li });
+
+    let node = root;
+    let chain = [root.id];
+    let failed = false;
+
+    for (let i = 0; i < op.word.length; i++) {
+      const ch = op.word[i];
+      const nxt = node.children[ch];
+      if (!nxt) {
+        failed = true;
+        log[li].result = 'false';
+        snap(op.op + '("' + op.word + '")：需要字符 "' + ch + '"（第 ' + (i + 1) + ' 个），但节点"' +
+          (node.ch === '' ? '根' : node.ch) + '"下没有这个子节点 → 路径断裂，直接返回 false。',
+          { opLabel: label, curWord: op.word, index: i, matched: i, curNode: node.id, chain: chain.slice(), failedNode: node.id, logActive: li });
+        break;
+      }
+      node = nxt;
+      chain = chain.concat(nxt.id);
+      snap(op.op + '("' + op.word + '")：第 ' + (i + 1) + ' 个字符 "' + ch + '" 匹配成功，指针下移到前缀 "' +
+        op.word.slice(0, i + 1) + '" 对应的节点。',
+        { opLabel: label, curWord: op.word, index: i, matched: i + 1, curNode: node.id, chain: chain.slice(), logActive: li });
+    }
+
+    if (!failed) {
+      let res;
+      let note;
+      if (isSearch) {
+        res = node.isEnd;
+        note = 'search("' + op.word + '")：' + op.word.length + ' 个字符全部匹配，停在 "' + op.word + '" 的节点上，检查 isEnd = ' + res +
+          ' → 返回 ' + res + '。' + (res ? '（说明这个词被 insert 过）' : '（路径存在只说明它是某个已插入单词的前缀，search 要求整个词被插入过）');
+      } else {
+        res = true;
+        note = 'startsWith("' + op.word + '")：' + op.word.length + ' 个字符全部匹配，节点存在即可返回 true —— startsWith 不检查 isEnd，' +
+          '所以即使 "' + op.word + '" 本身还没被插入，只要它是某个单词的前缀就成立。';
+      }
+      log[li].result = String(res);
+      snap(note, { opLabel: label, curWord: op.word, index: op.word.length - 1, matched: op.word.length, curNode: node.id, chain: chain.slice(), logActive: li, result: res, checkEnd: isSearch });
+    }
+  });
+
+  snap('全部操作结束。Trie 中共 ' + nextId + ' 个节点（含根）。注意 insert("apple") 之后 search("app") 返回 false，' +
+    '而 insert("app") 只是把 "app" 末节点的 isEnd 置为 true，并没有新建任何节点——这就是 isEnd 标记的作用。',
+    { done: true });
+  return steps;
 }
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight'){e.preventDefault();nextStep();}
-  else if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}
-  else if(e.key===' '){e.preventDefault();toggleAuto();}
+
+function wordCells(step) {
+  const row = Demo.el('div', 'row');
+  for (let i = 0; i < step.curWord.length; i++) {
+    const cell = Demo.el('div', 'cell', Demo.esc(step.curWord[i]));
+    if (i < step.matched) {
+      cell.classList.add('is-ok');
+    } else if (i === step.index && i >= step.matched) {
+      cell.classList.add('is-bad');
+    } else {
+      cell.classList.add('cell--dim');
+    }
+    row.appendChild(cell);
+  }
+  return row;
+}
+
+Demo.create({
+  title: '98. 实现 Trie（前缀树）— 逐字符下行与 isEnd 标记',
+  info: '操作序列：insert("apple")、search("apple")、search("app")、startsWith("app")、insert("app")、search("app")，期望结果 [null, true, false, true, null, true]。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 480,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前匹配路径 / 正在处理的节点' },
+    { color: 'var(--demo-ok)', label: '本次新建的节点 / isEnd 单词结尾' },
+    { color: 'var(--demo-warn)', label: '当前指针所在节点' },
+    { color: 'var(--demo-danger)', label: '匹配失败的位置' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const wrap = Demo.el('div');
+    wrap.style.width = '100%';
+    wrap.innerHTML = trieSvg(step.trie, { chain: step.chain, created: step.created, curNode: step.curNode, failed: step.failedNode != null ? [step.failedNode] : [] });
+    ctx.stage.appendChild(wrap);
+
+    const bottom = Demo.el('div', 'row');
+    bottom.style.width = '100%';
+    bottom.style.alignItems = 'flex-start';
+
+    const opPanel = Demo.el('div', 'panel');
+    opPanel.appendChild(Demo.el('div', 'panel__title', '当前操作'));
+    opPanel.appendChild(Demo.el('div', null, 'Trie.' + (step.opLabel || '完成')));
+    if (step.curWord) {
+      const row = Demo.el('div', 'row');
+      row.appendChild(wordCells(step));
+      opPanel.appendChild(row);
+    }
+    if (step.result != null) {
+      opPanel.appendChild(Demo.el('div', null, '返回：<span class="tag ' + (step.result ? 'tag--ok' : 'tag--bad') + '">' + step.result + '</span>'));
+    } else if (step.markEnd) {
+      opPanel.appendChild(Demo.el('div', null, '<span class="tag tag--ok">isEnd = true</span>'));
+    } else if (step.checkEnd) {
+      opPanel.appendChild(Demo.el('div', null, '<span class="tag tag--warn">检查 isEnd</span>'));
+    } else {
+      opPanel.appendChild(Demo.el('div', null, '<span class="tag tag--info">匹配中</span>'));
+    }
+    opPanel.appendChild(Demo.el('div', 'panel__title', 'isEnd 为 true 的节点会在图中多出一圈绿色细环'));
+
+    const logPanel = Demo.el('div', 'panel');
+    logPanel.style.flex = '1';
+    logPanel.appendChild(Demo.el('div', 'panel__title', '操作日志'));
+    let table = '<table class="map-table"><tr><th>操作</th><th>返回</th></tr>';
+    step.log.forEach((entry, k) => {
+      table += '<tr' + (k === step.logActive ? ' class="is-active"' : '') + '><td>' + Demo.esc(entry.op) + '</td><td>' +
+        Demo.esc(entry.result) + '</td></tr>';
+    });
+    if (!step.log.length) table += '<tr><td colspan="2">（还没有操作）</td></tr>';
+    table += '</table>';
+    logPanel.appendChild(Demo.el('div', null, table));
+
+    bottom.appendChild(opPanel);
+    bottom.appendChild(logPanel);
+    ctx.stage.appendChild(bottom);
+  }
 });
-draw();
 </script>
 </body>
 </html>

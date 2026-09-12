@@ -3,132 +3,298 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>121. 数组中的第K个最大元素</title>
-<style>
-:root {
-  --bg: #f5f6fa; --card: #fff; --text: #2d3436; --sub: #636e72;
-  --border: #dfe6e9; --blue: #0984e3; --green: #00b894; --red: #e17055; --orange: #e17055;
-  --blue-bg: #dff6fd; --heap-bg: #dff9e6; --hl: #ffeaa7;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1a1a2e; --card: #16213e; --text: #eee; --sub: #aaa;
-    --border: #2d3436; --blue: #74b9ff; --green: #55efc4; --red: #ff7675; --orange: #fab1a0;
-    --blue-bg: #1a3a5c; --heap-bg: #1a3a2c; --hl: #5c4a1f;
-  }
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:var(--bg); display:flex; justify-content:center; align-items:center; min-height:100vh; }
-.container { width:860px; height:490px; background:var(--card); border-radius:8px; padding:20px 24px; display:flex; flex-direction:column; gap:10px; box-shadow:0 2px 12px rgba(0,0,0,0.1); }
-.header { display:flex; justify-content:space-between; align-items:center; }
-.header h2 { font-size:17px; color:var(--text); }
-.step-badge { font-size:13px; color:var(--sub); background:var(--border); padding:4px 12px; border-radius:8px; font-weight:500; }
-.info-panel { background:var(--blue-bg); border-left:3px solid var(--blue); padding:10px 14px; border-radius:8px; font-size:13px; color:var(--text); min-height:44px; display:flex; align-items:center; }
-.main { display:flex; gap:16px; flex:1; }
-.heap-col { flex:1; display:flex; flex-direction:column; gap:6px; }
-.col-title { font-size:12px; font-weight:600; color:var(--sub); text-align:center; }
-.heap-viz { display:flex; flex-direction:column; gap:4px; flex:1; justify-content:center; }
-.heap-row { display:flex; gap:4px; justify-content:center; }
-.heap-cell { width:42px; height:40px; border-radius:8px; background:var(--border); display:flex; align-items:center; justify-content:center; font-weight:600; font-size:16px; color:var(--text); transition:all 0.3s; }
-.heap-cell.in-heap { background:var(--heap-bg); border:2px solid var(--green); }
-.heap-cell.current { background:var(--hl); box-shadow:0 0 0 2px var(--blue); }
-.heap-cell.top { background:var(--red); color:#fff; }
-.result { text-align:center; font-weight:700; font-size:18px; color:var(--green); padding:6px; border-radius:8px; background:var(--green-bg); }
-.controls { display:flex; gap:8px; justify-content:center; }
-.btn { padding:7px 16px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; font-size:13px; font-family:inherit; transition:all 0.15s; }
-.btn:hover { background:var(--blue-bg); border-color:var(--blue); }
-.btn:active { transform:scale(0.96); }
-.key-hint { font-size:11px; color:var(--sub); text-align:center; }
-</style>
+<title>121. 数组中的第K个最大元素 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <h2>121. 数组中的第K个最大元素 (k=2)</h2>
-    <span class="step-badge" id="stepBadge">步骤 0/8</span>
-  </div>
-  <div class="info-panel" id="info"></div>
-  <div class="main">
-    <div class="heap-col">
-      <div class="col-title">原始数组</div>
-      <div class="heap-viz" id="arrViz"></div>
-    </div>
-    <div class="heap-col">
-      <div class="col-title">小顶堆 (大小k=2)</div>
-      <div class="heap-viz" id="heapViz"></div>
-      <div class="result" id="result">第2大 = ?</div>
-    </div>
-  </div>
-  <div class="controls">
-    <button class="btn" onclick="reset()">重置</button>
-    <button class="btn" onclick="prev()">上步</button>
-    <button class="btn" onclick="next()">下步</button>
-    <button class="btn" id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button class="btn" onclick="goLast()">跳到最后</button>
-  </div>
-  <div class="key-hint">键盘: &#8592; &#8593; 上步 | &#8594; &#8595; 下步 | 空格 自动播放 | R 重置 | End 跳到最后</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const nums = [3,2,1,5,6,4], k = 2;
-let steps = [], cur = 0, autoTimer = null, running = false;
+const NUMS = [3, 2, 1, 5, 6, 4];
+const K = 2;
+
+function marksOf(pairs) {
+  const out = {};
+  pairs.forEach(function (p) { out[p[0]] = p[1]; });
+  return out;
+}
+
+/* 把堆数组画成完全二叉树（中序遍历定横向位置，保证同层不重叠）。 */
+function heapSvg(values, marks) {
+  const n = values.length;
+  if (n === 0) {
+    return '<div class="ptr ptr--dim" style="padding:12px 0">堆为空</div>';
+  }
+  const GAP = 78, LEVEL = 74, PAD = 48;
+  const pos = new Array(n);
+  let order = 0, maxDepth = 0;
+  (function walk(i, depth) {
+    if (i >= n) return;
+    walk(2 * i + 1, depth + 1);
+    pos[i] = { order: order, depth: depth, x: 0, y: 0 };
+    order += 1;
+    if (depth > maxDepth) maxDepth = depth;
+    walk(2 * i + 2, depth + 1);
+  })(0, 0);
+  pos.forEach(function (p) { p.x = PAD + p.order * GAP; p.y = PAD + p.depth * LEVEL; });
+  const width = PAD * 2 + (order - 1) * GAP;
+  const height = PAD * 2 + maxDepth * LEVEL;
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    for (let c = 2 * i + 1; c <= 2 * i + 2; c++) {
+      if (c < n) {
+        out += '<line x1="' + pos[i].x + '" y1="' + (pos[i].y + 22) + '" x2="' + pos[c].x +
+          '" y2="' + (pos[c].y - 22) + '" style="stroke:var(--demo-border);stroke-width:2"></line>';
+      }
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    const st = marks[i] || 'n';
+    let fill = 'var(--demo-subtle)', stroke = 'var(--demo-border)', text = 'var(--demo-text)';
+    if (st === 'cmp') { fill = 'var(--demo-warn-soft)'; stroke = 'var(--demo-warn)'; text = 'var(--demo-warn)'; }
+    if (st === 'swap') { fill = 'var(--demo-pink-soft)'; stroke = 'var(--demo-pink)'; text = 'var(--demo-pink)'; }
+    if (st === 'active') { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; text = 'var(--demo-accent-strong)'; }
+    if (st === 'top') { fill = 'var(--demo-ok-soft)'; stroke = 'var(--demo-ok)'; text = 'var(--demo-ok)'; }
+    out += '<circle cx="' + pos[i].x + '" cy="' + pos[i].y + '" r="22" style="fill:' + fill +
+      ';stroke:' + stroke + ';stroke-width:2.5"></circle>';
+    out += '<text x="' + pos[i].x + '" y="' + (pos[i].y + 5) + '" text-anchor="middle" font-size="15" ' +
+      'font-weight="600" font-family="monospace" style="fill:' + text + '">' + values[i] + '</text>';
+    out += '<text x="' + pos[i].x + '" y="' + (pos[i].y + 40) + '" text-anchor="middle" font-size="11" ' +
+      'style="fill:var(--demo-muted)">[' + i + ']</text>';
+  }
+  return '<svg viewBox="0 0 ' + width + ' ' + height + '" style="width:100%;max-width:' + width +
+    'px;height:auto;display:block;margin:0 auto">' + out + '</svg>';
+}
 
 function buildSteps() {
-  steps = [];
-  let heap = [];
-  steps.push({i:-1,heap:[...heap],desc:`初始化: nums=[${nums}], k=${k}, 用小顶堆维护K个最大元素`});
-  for (let i = 0; i < nums.length; i++) {
-    heap.push(nums[i]);
-    heap.sort((a,b)=>a-b);
-    let desc = `加入 nums[${i}]=${nums[i]}, 堆=[${heap}]`;
-    if (heap.length > k) { let removed = heap.shift(); desc += `, 堆大小>2, 弹出堆顶=${removed}, 堆=[${heap}]`; }
-    desc += `, 堆顶=` + heap[0];
-    steps.push({i,heap:[...heap],desc});
-  }
-  steps.push({i:nums.length-1,heap:[...heap],desc:`最终堆=[${heap}], 堆顶=${heap[0]} 即第${k}大元素=${heap[0]}`,final:true});
-}
-buildSteps();
+  const steps = [];
+  const heap = [];
+  const srcStatus = NUMS.map(function () { return 'idle'; });
+  let i = -1;
 
-function render() {
-  const s = steps[cur];
-  document.getElementById('stepBadge').textContent = `步骤 ${cur}/${steps.length-1}`;
-  document.getElementById('info').textContent = s.desc;
-  document.getElementById('autoBtn').textContent = running ? '停止' : '自动播放';
-  document.getElementById('result').textContent = s.final ? `第${k}大 = ${s.heap[0]}` : `堆顶 = ${s.heap.length?s.heap[0]:'?'}`;
-  // Array viz
-  let arrHtml = '<div class="heap-row">';
-  for (let i = 0; i < nums.length; i++) {
-    let cls = 'heap-cell';
-    if (i === s.i) cls += ' current';
-    arrHtml += `<div class="${cls}">${nums[i]}</div>`;
+  function snap(extra) {
+    const step = {
+      i: i,
+      heap: heap.map(function (e) { return { v: e.v, src: e.src }; }),
+      srcStatus: srcStatus.slice(),
+      marks: {},
+      note: '',
+      done: false
+    };
+    if (extra) Object.keys(extra).forEach(function (key) { step[key] = extra[key]; });
+    steps.push(step);
   }
-  arrHtml += '</div>';
-  document.getElementById('arrViz').innerHTML = arrHtml;
-  // Heap viz
-  let heapHtml = '<div class="heap-row">';
-  for (let i = 0; i < s.heap.length; i++) {
-    let cls = 'heap-cell in-heap';
-    if (i === 0) cls += ' top';
-    heapHtml += `<div class="${cls}">${s.heap[i]}</div>`;
+
+  snap({
+    note: '初始化：小顶堆为空。目标是让堆里始终只装「目前为止最大的 k = ' + K + ' 个数」。' +
+      '堆用数组存放，下标 i 的左孩子是 2i+1、右孩子是 2i+2；堆顶 heap[0] 是堆里最小的，正是第 ' + K + ' 大的候选答案。'
+  });
+
+  for (i = 0; i < NUMS.length; i++) {
+    const value = NUMS[i];
+    heap.push({ v: value, src: i });
+    srcStatus[i] = 'inheap';
+    let cur = heap.length - 1;
+
+    snap({
+      marks: marksOf([[cur, 'active']]),
+      note: '扫描到 nums[' + i + '] = ' + value + '：先把它放到堆尾 heap[' + cur + ']。' +
+        '新元素可能比父节点小，小顶堆性质被破坏，需要向上调整（sift up）。'
+    });
+
+    while (cur > 0) {
+      const parent = (cur - 1) >> 1;
+      const childV = heap[cur].v;
+      const parentV = heap[parent].v;
+      snap({
+        marks: marksOf([[cur, 'cmp'], [parent, 'cmp']]),
+        note: '向上调整：比较子节点 heap[' + cur + '] = ' + childV + ' 与父节点 heap[' + parent + '] = ' + parentV + '。'
+      });
+      if (childV < parentV) {
+        const tmp = heap[cur];
+        heap[cur] = heap[parent];
+        heap[parent] = tmp;
+        snap({
+          marks: marksOf([[parent, 'swap'], [cur, 'swap']]),
+          note: childV + ' < ' + parentV + '，违反小顶堆「父 ≤ 子」，交换两者：' + childV + ' 上浮到 heap[' + parent +
+            ']，' + parentV + ' 下沉到 heap[' + cur + ']。继续拿 ' + childV + ' 和它新的父节点比较。'
+        });
+        cur = parent;
+      } else {
+        snap({
+          marks: marksOf([[cur, 'active'], [parent, 'active']]),
+          note: childV + ' ≥ ' + parentV + '，父节点已经不大于子节点，小顶堆性质满足，停止上浮。'
+        });
+        break;
+      }
+    }
+
+    if (heap.length > K) {
+      const top = heap[0];
+      snap({
+        marks: marksOf([[0, 'top']]),
+        note: '现在堆里有 ' + heap.length + ' 个元素，超过 k = ' + K + '。堆顶 heap[0] = ' + top.v +
+          ' 是堆中最小值，而堆里已经有 ' + K + ' 个数不小于它，它不可能是第 ' + K + ' 大，弹出它。'
+      });
+      srcStatus[top.src] = 'out';
+      if (heap.length === 1) {
+        heap.pop();
+        snap({ note: '堆里只有这一个元素，直接清空，堆恢复为空。' });
+      } else {
+        const lastEntry = heap[heap.length - 1];
+        heap[0] = lastEntry;
+        heap.pop();
+        snap({
+          marks: marksOf([[0, 'active']]),
+          note: '删除堆顶的常规做法：把堆尾元素 ' + lastEntry.v + ' 直接搬到根 heap[0]，再向下调整（sift down），' +
+            '这样不用整体搬移数组。'
+        });
+        let node = 0;
+        while (true) {
+          const l = 2 * node + 1;
+          const r = 2 * node + 2;
+          if (l >= heap.length) {
+            snap({
+              marks: marksOf([[node, 'active']]),
+              note: 'heap[' + node + '] 已经没有子节点，是叶子，向下调整结束，堆重新满足小顶堆性质。'
+            });
+            break;
+          }
+          let smallest = node;
+          if (heap[l].v < heap[smallest].v) smallest = l;
+          if (r < heap.length && heap[r].v < heap[smallest].v) smallest = r;
+          const pairs = [[node, 'cmp'], [l, 'cmp']];
+          if (r < heap.length) pairs.push([r, 'cmp']);
+          let desc = '向下调整：把 heap[' + node + '] = ' + heap[node].v + ' 与子节点 heap[' + l + '] = ' +
+            heap[l].v + (r < heap.length ? '、heap[' + r + '] = ' + heap[r].v : '') + ' 比较。';
+          if (smallest === node) {
+            snap({ marks: marksOf(pairs), note: desc + '父节点已经比所有子节点都小，堆性质满足，调整结束。' });
+            break;
+          }
+          const smallV = heap[smallest].v;
+          const nodeV = heap[node].v;
+          desc += '子节点 heap[' + smallest + '] = ' + smallV + ' 更小，交换：' + smallV + ' 上浮、' + nodeV + ' 下沉，继续向下检查。';
+          const tmp = heap[node];
+          heap[node] = heap[smallest];
+          heap[smallest] = tmp;
+          snap({ marks: marksOf([[node, 'swap'], [smallest, 'swap']]), note: desc });
+          node = smallest;
+        }
+      }
+    }
   }
-  heapHtml += '</div>';
-  document.getElementById('heapViz').innerHTML = heapHtml;
+
+  snap({
+    done: true,
+    marks: marksOf([[0, 'top']]),
+    note: '数组扫描完毕。堆里剩下的恰好是数组中最大的 ' + K + ' 个数 [' +
+      heap.map(function (e) { return e.v; }).join(', ') + ']，堆顶 heap[0] = ' + heap[0].v +
+      ' 是这 ' + K + ' 个数里最小的，也就是整个数组第 ' + K + ' 大的元素。答案 = ' + heap[0].v +
+      '。每个元素最多入堆、出堆各一次，每次 O(log k)，总时间 O(n log k)，空间 O(k)。'
+  });
+
+  return steps;
 }
-function reset() { cur = 0; stopAuto(); render(); }
-function prev() { if (cur > 0) { cur--; render(); } }
-function next() { if (cur < steps.length - 1) { cur++; render(); } else { stopAuto(); } }
-function goLast() { stopAuto(); cur = steps.length - 1; render(); }
-function toggleAuto() { running ? stopAuto() : startAuto(); }
-function startAuto() { running = true; render(); autoStep(); }
-function stopAuto() { running = false; if (autoTimer) clearTimeout(autoTimer); render(); }
-function autoStep() { if (!running) return; if (cur < steps.length - 1) { cur++; render(); autoTimer = setTimeout(autoStep, 600); } else { stopAuto(); } }
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
-  else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); next(); }
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
-  else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); reset(); }
-  else if (e.key === 'End') { e.preventDefault(); goLast(); }
+
+Demo.create({
+  title: '121. 数组中的第 K 个最大元素 — 大小为 k 的小顶堆',
+  info: '输入：nums = [3,2,1,5,6,4]，k = 2，期望输出 5。堆中只保留「目前最大的 k 个数」，堆顶就是答案。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 420,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前插入/调整的节点' },
+    { color: 'var(--demo-warn)', label: '正在比较' },
+    { color: 'var(--demo-pink)', label: '发生交换' },
+    { color: 'var(--demo-info)', label: '仍在堆中' },
+    { color: 'var(--demo-danger)', label: '已被弹出' },
+    { color: 'var(--demo-ok)', label: '堆顶 / 答案' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const arrPanel = Demo.el('div', 'panel');
+    arrPanel.style.width = '100%';
+    arrPanel.appendChild(Demo.el('div', 'panel__title',
+      step.done ? '原数组 nums（已全部扫描完）'
+        : (step.i < 0 ? '原数组 nums（准备从左到右扫描）'
+          : '原数组 nums（正在处理 nums[' + step.i + '] = ' + NUMS[step.i] + '）')));
+    const row = Demo.el('div', 'row');
+    NUMS.forEach(function (value, k) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(value));
+      const st = step.srcStatus[k];
+      if (!step.done && k === step.i) cell.classList.add('is-active');
+      else if (st === 'out') cell.classList.add('is-bad');
+      else if (st === 'inheap') cell.classList.add(step.done ? 'is-ok' : 'is-info');
+      col.appendChild(cell);
+
+      const ptr = Demo.el('div', 'ptr');
+      if (!step.done && k === step.i) { ptr.textContent = 'i'; }
+      else if (st === 'out') { ptr.textContent = '已弹出'; ptr.classList.add('ptr--bad'); }
+      else if (st === 'inheap') { ptr.textContent = '在堆中'; ptr.classList.add('ptr--info'); }
+      else { ptr.textContent = '[' + k + ']'; ptr.classList.add('ptr--dim'); }
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    arrPanel.appendChild(row);
+    ctx.stage.appendChild(arrPanel);
+
+    const heapPanel = Demo.el('div', 'panel');
+    heapPanel.style.width = '100%';
+    heapPanel.appendChild(Demo.el('div', 'panel__title',
+      '小顶堆（数组下标 i → 左孩子 2i+1、右孩子 2i+2）　当前大小 ' + step.heap.length + '，上限 k = ' + K));
+    const wrap = Demo.el('div');
+    wrap.style.width = '100%';
+    wrap.innerHTML = heapSvg(step.heap.map(function (e) { return e.v; }), step.marks);
+    heapPanel.appendChild(wrap);
+
+    if (step.heap.length) {
+      const arow = Demo.el('div', 'row');
+      step.heap.forEach(function (e, k) {
+        const col = Demo.el('div', 'col');
+        const c = Demo.el('div', 'cell cell--sm', Demo.esc(e.v));
+        const mark = step.marks[k];
+        if (mark === 'top') c.classList.add('is-ok');
+        else if (mark === 'active') c.classList.add('is-active');
+        else if (mark === 'cmp') c.classList.add('is-warn');
+        else if (mark === 'swap') c.classList.add('is-pink');
+        else c.classList.add('is-info');
+        col.appendChild(c);
+        col.appendChild(Demo.el('div', 'ptr ptr--dim', '[' + k + ']'));
+        arow.appendChild(col);
+      });
+      heapPanel.appendChild(arow);
+    }
+    ctx.stage.appendChild(heapPanel);
+
+    const statusRow = Demo.el('div', 'row');
+    statusRow.style.width = '100%';
+    statusRow.style.alignItems = 'stretch';
+
+    const s1 = Demo.el('div', 'panel');
+    s1.appendChild(Demo.el('div', 'panel__title', '堆的状态'));
+    s1.appendChild(Demo.el('div', null, '堆大小 <strong>' + step.heap.length + '</strong>　目标 k = <strong>' + K + '</strong>'));
+    s1.appendChild(Demo.el('div', null, '堆顶（第 ' + K + ' 大候选）= <strong>' +
+      (step.heap.length ? step.heap[0].v : '—') + '</strong>'));
+
+    const s2 = Demo.el('div', 'panel');
+    s2.appendChild(Demo.el('div', 'panel__title', '结论'));
+    if (step.done) {
+      s2.appendChild(Demo.el('div', null, '<span class="tag tag--ok">第 ' + K + ' 大 = ' + step.heap[0].v + '</span>'));
+    } else if (step.heap.length) {
+      s2.appendChild(Demo.el('div', null, '<span class="tag tag--info">继续扫描，堆顶 ' + step.heap[0].v + ' 只是当前候选</span>'));
+    } else {
+      s2.appendChild(Demo.el('div', null, '<span class="tag">堆为空，尚未开始扫描</span>'));
+    }
+    s2.appendChild(Demo.el('div', null, step.done
+      ? '遍历结束，堆顶即答案。'
+      : '尚未扫描的元素还可能更大，堆顶会被继续替换。'));
+
+    statusRow.appendChild(s1);
+    statusRow.appendChild(s2);
+    ctx.stage.appendChild(statusRow);
+  }
 });
-render();
 </script>
 </body>
 </html>

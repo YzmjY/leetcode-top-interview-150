@@ -3,173 +3,335 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>排序链表 - 归并排序可视化</title>
-<style>
-:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#555;--border:#dee2e6;--accent:#7c3aed;--accent2:#a78bfa;--hover:#ede9fe;--green:#22c55e;--orange:#f59e0b;--blue:#3b82f6;--red:#ef4444;--btn-bg:#e5e7eb;--btn-txt:#374151;--node-bg:#f3e8ff;--node-border:#c4b5fd;--slow:#3b82f6;--fast:#ef4444;--merged-bg:#f0fdf4}
-.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--node-bg:#1e1b4b;--node-border:#5b21b6;--slow:#60a5fa;--fast:#f87171;--merged-bg:#052e16}
-@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--node-bg:#1e1b4b;--node-border:#5b21b6;--slow:#60a5fa;--fast:#f87171;--merged-bg:#052e16}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
-.container{width:100%;max-width:780px;background:var(--card);border-radius:8px;border:1px solid var(--border);padding:20px 24px}
-h2{font-size:1.1rem;font-weight:600;margin-bottom:6px;color:var(--accent)}
-.info-panel{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:.85rem;color:var(--text2);flex-wrap:wrap}
-.info-panel .step{background:var(--accent);color:#fff;padding:3px 10px;border-radius:8px;font-weight:600;font-size:.8rem}
-.info-panel .desc{flex:1;min-width:200px}
-.vis-area{height:440px;border:1px solid var(--border);border-radius:8px;overflow:auto;background:var(--bg);padding:12px}
-.linked-list{display:flex;align-items:center;gap:0;margin-bottom:16px;flex-wrap:wrap}
-.linked-list .node{width:48px;height:48px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;background:var(--node-bg);border:2px solid var(--node-border);color:var(--text)}
-.linked-list .arrow{width:24px;height:2px;background:var(--border);position:relative}
-.linked-list .arrow::after{content:'';position:absolute;right:-2px;top:-4px;border:5px solid transparent;border-left-color:var(--border)}
-.linked-list .node.slow{border-color:var(--slow);box-shadow:0 0 8px rgba(59,130,246,.3)}
-.linked-list .node.fast{border-color:var(--fast);box-shadow:0 0 8px rgba(239,68,68,.3)}
-.linked-list .node.merged{background:var(--merged-bg);border-color:var(--green)}
-.linked-list .node.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.linked-list .node.highlight{border-color:var(--orange);box-shadow:0 0 10px rgba(245,158,11,.4)}
-.separator{border-top:2px dashed var(--border);margin:12px 0}
-.section-label{font-size:.75rem;color:var(--text2);margin-bottom:6px;font-weight:600}
-.controls{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-.controls button{background:var(--btn-bg);color:var(--btn-txt);border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:inherit;transition:all .15s}
-.controls button:hover{background:var(--hover);border-color:var(--accent)}
-.controls button:active{transform:scale(.96)}
-.controls button.playing{background:var(--accent);color:#fff;border-color:var(--accent)}
-.legend{display:flex;gap:14px;margin-top:6px;font-size:.72rem;color:var(--text2);flex-wrap:wrap}
-.legend span{display:flex;align-items:center;gap:4px}
-.legend .dot{width:10px;height:10px;border-radius:3px}
-</style>
+<title>109. 排序链表 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>109. 排序链表 (归并排序)</h2>
-<div class="info-panel">
-  <span class="step" id="stepLabel">步骤 1/24</span>
-  <span class="desc" id="stepDesc">初始链表: [4,2,1,3]</span>
-</div>
-<div class="vis-area" id="visArea">
-  <div class="section-label">归并排序过程</div>
-  <div id="llDisplay"></div>
-</div>
-<div class="controls">
-  <button onclick="reset()">重置</button>
-  <button onclick="prevStep()">上步</button>
-  <button onclick="nextStep()">下步</button>
-  <button id="playBtn" onclick="togglePlay()">自动播放</button>
-  <button onclick="jumpEnd()">最后</button>
-</div>
-<div class="legend">
-  <span><span class="dot" style="background:var(--slow)"></span>慢指针(slow)</span>
-  <span><span class="dot" style="background:var(--fast)"></span>快指针(fast)</span>
-  <span><span class="dot" style="background:var(--accent)"></span>当前操作节点</span>
-  <span><span class="dot" style="background:var(--green)"></span>已合并</span>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const arr=[4,2,1,3];
-const steps=[];
+const VALS = [4, 2, 1, 3];
 
-function renderLL(arr,highlights={}){
-  let html='<div class="linked-list">';
-  arr.forEach((v,i)=>{
-    let cls='node';
-    if(highlights.slow===i)cls+=' slow';
-    if(highlights.fast===i)cls+=' fast';
-    if(highlights.active===i)cls+=' active';
-    if(highlights.merged&&highlights.merged.includes(i))cls+=' merged';
-    if(highlights.highlight===i)cls+=' highlight';
-    html+='<div class="'+cls+'">'+v+'</div>';
-    if(i<arr.length-1)html+='<div class="arrow"></div>';
+function buildList(values) {
+  let head = null;
+  let prev = null;
+  values.forEach(v => {
+    const node = { val: v, next: null };
+    if (prev) prev.next = node; else head = node;
+    prev = node;
   });
-  html+='</div>';
-  return html;
+  return head;
 }
 
-// Generate merge sort steps
-function splitStep(arr,label){
-  steps.push({type:'split_info',arr:[...arr],label,desc:'分割: ['+arr.join(',')+'] (长度='+arr.length+')'});
+function listValues(head) {
+  const out = [];
+  let cur = head;
+  let guard = 0;
+  while (cur && guard++ < 200) { out.push(cur.val); cur = cur.next; }
+  return out;
 }
 
-function findMidStep(arr){
-  if(arr.length<=1)return;
-  let slow=0,fast=0;
-  while(fast+1<arr.length){
-    slow++;
-    fast+=2;
-    steps.push({type:'find_mid',arr:[...arr],slow,fast:Math.min(fast,arr.length-1),desc:'快慢指针: slow='+arr[slow]+'('+slow+'), fast='+(fast<arr.length?arr[fast]+'('+fast+')':'end')});
+function nodeList(head) {
+  const out = [];
+  let cur = head;
+  let guard = 0;
+  while (cur && guard++ < 200) { out.push(cur); cur = cur.next; }
+  return out;
+}
+
+function buildSteps() {
+  const steps = [];
+  const frames = [];
+
+  function snap(extra) {
+    const s = {
+      phase: 'init', seg: [], left: [], right: [], out: [],
+      slow: null, fast: null, l1: null, l2: null, pickSide: '', pickIdx: -1,
+      stack: frames.slice(), result: null, note: ''
+    };
+    const e = extra || {};
+    Object.keys(e).forEach(k => { s[k] = e[k]; });
+    steps.push(s);
+    return s;
   }
-  steps.push({type:'mid_found',arr:[...arr],mid:slow,desc:'中点: '+arr[slow]+' (索引='+slow+'), 分割为 ['+arr.slice(0,slow).join(',')+'] 和 ['+arr.slice(slow).join(',')+']'});
-}
 
-function mergeStep(left,right,merged){
-  steps.push({type:'merge_start',left:[...left],right:[...right],merged:[],desc:'合并: ['+left.join(',')+'] + ['+right.join(',')+']'});
-  let i=0,j=0;
-  const result=[];
-  while(i<left.length&&j<right.length){
-    if(left[i]<=right[j]){
-      result.push(left[i]);
-      steps.push({type:'merge_pick',left:[...left],right:[...right],merged:[...result],pickFrom:'left',pickIdx:i,desc:'选左: '+left[i]+' <= '+right[j]});
-      i++;
-    }else{
-      result.push(right[j]);
-      steps.push({type:'merge_pick',left:[...left],right:[...right],merged:[...result],pickFrom:'right',pickIdx:j,desc:'选右: '+right[j]+' < '+left[i]});
-      j++;
+  function merge(a, b) {
+    const na = nodeList(a);
+    const nb = nodeList(b);
+    const la = na.map(n => n.val);
+    const lb = nb.map(n => n.val);
+    frames.push('merge([' + la.join(',') + '], [' + lb.join(',') + '])');
+    snap({
+      phase: 'merge-start', left: la, right: lb, out: [], l1: 0, l2: 0,
+      note: '合并两个已排好序的链表 [' + la.join(', ') + '] 与 [' + lb.join(', ') +
+        ']：各自看头节点，谁小就先接进结果，然后把那一侧的指针后移。'
+    });
+
+    const out = [];
+    const dummy = { val: null, next: null };
+    let cur = dummy;
+    let i = 0;
+    let j = 0;
+
+    while (i < la.length && j < lb.length) {
+      const lv = la[i];
+      const rv = lb[j];
+      let from;
+      let idx;
+      let val;
+      if (lv <= rv) {
+        cur.next = na[i];
+        from = 'L';
+        idx = i;
+        val = lv;
+        i++;
+      } else {
+        cur.next = nb[j];
+        from = 'R';
+        idx = j;
+        val = rv;
+        j++;
+      }
+      cur = cur.next;
+      out.push(val);
+      snap({
+        phase: 'merge-pick', left: la, right: lb, out: out.slice(),
+        l1: i, l2: j, pickSide: from, pickIdx: idx,
+        note: '比较左链头 ' + lv + ' 与右链头 ' + rv + '：' + lv + (from === 'L' ? ' ≤ ' : ' > ') + rv +
+          '，把较小的 ' + val + ' 接到结果末尾，' + (from === 'L' ? '左' : '右') + '指针后移。结果前缀 ['
+          + out.join(', ') + ']。'
+      });
     }
+
+    if (i < la.length) {
+      cur.next = na[i];
+      for (let k = i; k < la.length; k++) out.push(la[k]);
+    } else if (j < lb.length) {
+      cur.next = nb[j];
+      for (let k = j; k < lb.length; k++) out.push(lb[k]);
+    }
+
+    snap({
+      phase: 'merge-done', left: la, right: lb, out: out.slice(),
+      l1: la.length, l2: lb.length,
+      note: '其中一条链已经取空，把另一条链剩下的节点整段接到结果末尾即可（它们本来就有序）。合并结果 ['
+        + out.join(', ') + ']。'
+    });
+    frames.pop();
+    return dummy.next;
   }
-  while(i<left.length){result.push(left[i]);steps.push({type:'merge_pick',left:[...left],right:[...right],merged:[...result],pickFrom:'left',pickIdx:i,desc:'剩余左: '+left[i]});i++;}
-  while(j<right.length){result.push(right[j]);steps.push({type:'merge_pick',left:[...left],right:[...right],merged:[...result],pickFrom:'right',pickIdx:j,desc:'剩余右: '+right[j]});j++;}
-  steps.push({type:'merge_done',merged:[...result],desc:'合并完成: ['+result.join(',')+']'});
-  merged.splice(0,merged.length,...result);
-}
 
-function mergeSort(arr,label){
-  splitStep(arr,label);
-  if(arr.length<=1){steps.push({type:'base_case',arr:[...arr],desc:'基础情况: 长度<=1, 返回 ['+arr.join(',')+']'});return;}
-  findMidStep(arr);
-  const mid=steps[steps.length-1].mid;
-  const left=arr.slice(0,mid),right=arr.slice(mid);
-  mergeSort(left,'左半');
-  const leftMerged=left.slice();
-  // after sorting left, left is mutated (but we use returned value)
-  mergeSort(right,'右半');
-  const rightMerged=right.slice();
-  const result=[];
-  mergeStep(leftMerged,rightMerged,result);
-  arr.splice(0,arr.length,...result);
-}
-const workArr=[...arr];
-mergeSort(workArr,'原始');
+  function sortList(head) {
+    const seg = listValues(head);
+    frames.push('sortList([' + seg.join(',') + '])');
+    snap({
+      phase: 'enter', seg: seg,
+      note: seg.length <= 1
+        ? '进入 sortList([' + seg.join(', ') + '])：这一段只有 ' + seg.length + ' 个节点，不需要分割。'
+        : '进入 sortList([' + seg.join(', ') + '])。归并排序三步走：先用快慢指针找中点断开，再分别递归排序两半，最后合并两个有序链表。'
+    });
 
-let curStep=0,playId=null;
+    if (head == null || head.next == null) {
+      snap({
+        phase: 'base', seg: seg,
+        note: '这一段只有 ' + seg.length + ' 个节点（0 或 1 个），天然有序，直接返回，不再分割。'
+      });
+      frames.pop();
+      return head;
+    }
 
-function updateUI(){
-  const step=steps[curStep];
-  document.getElementById('stepLabel').textContent='步骤 '+(curStep+1)+'/'+steps.length;
-  document.getElementById('stepDesc').textContent=step.desc||'';
-  let html='';
-  if(step.type==='split_info'||step.type==='base_case'){
-    html+=renderLL(step.arr);
-    html+='<div style="font-size:.75rem;color:var(--text2);margin-top:4px">'+step.label+'</div>';
-  }else if(step.type==='find_mid'){
-    html+=renderLL(step.arr,{slow:step.slow,fast:step.fast});
-    html+='<div style="font-size:.75rem;color:var(--text2);margin-top:4px">slow='+step.arr[step.slow]+', fast='+(step.fast<step.arr.length?step.arr[step.fast]:'end')+'</div>';
-  }else if(step.type==='mid_found'){
-    html+=renderLL(step.arr,{slow:step.mid});
-    html+='<div style="font-size:.75rem;color:var(--text2);margin-top:4px">中点: '+step.arr[step.mid]+'</div>';
-  }else if(step.type==='merge_start'||step.type==='merge_pick'||step.type==='merge_done'){
-    html+='<div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">';
-    html+='<div><div class="section-label">左</div>'+renderLL(step.left,step.pickFrom==='left'?{active:step.pickIdx}:{})+'</div>';
-    html+='<div><div class="section-label">右</div>'+renderLL(step.right,step.pickFrom==='right'?{active:step.pickIdx}:{})+'</div>';
-    html+='<div><div class="section-label">合并结果</div>'+renderLL(step.merged||[],{merged:step.merged?step.merged.map((_,i)=>i):[]})+'</div>';
-    html+='</div>';
+    let slow = head;
+    let fast = head.next;
+    let si = 0;
+    let fi = 1;
+    snap({
+      phase: 'find', seg: seg, slow: si, fast: fi,
+      note: '快慢指针初始化：slow 指向第 1 个节点 ' + seg[0] + '，fast 指向第 2 个节点 ' + seg[1] +
+        '。fast 每轮走两步，slow 每轮走一步，fast 走到链尾时 slow 刚好在中间。'
+    });
+
+    while (fast != null && fast.next != null) {
+      slow = slow.next;
+      si++;
+      fast = fast.next.next;
+      fi += 2;
+      snap({
+        phase: 'find', seg: seg, slow: si, fast: fi < seg.length ? fi : null,
+        note: 'slow 前进到第 ' + (si + 1) + ' 个节点 ' + seg[si] + '，fast 前进到' +
+          (fi < seg.length ? '第 ' + (fi + 1) + ' 个节点 ' + seg[fi] : '链尾之外（null）') +
+          '。继续判断 fast 及其后继是否为空。'
+      });
+    }
+
+    const midHead = slow.next;
+    slow.next = null;
+    const leftArr = listValues(head);
+    const rightArr = listValues(midHead);
+    snap({
+      phase: 'split', seg: seg, left: leftArr, right: rightArr,
+      note: 'fast 走到链尾，循环结束，slow 停在 ' + slow.val + '（第 ' + (si + 1) +
+        ' 个节点）。从 slow.next 处断开：左半 [' + leftArr.join(', ') + ']，右半 [' + rightArr.join(', ') + ']。'
+    });
+
+    const left = sortList(head);
+    const right = sortList(midHead);
+    const merged = merge(left, right);
+    frames.pop();
+    return merged;
   }
-  document.getElementById('llDisplay').innerHTML=html;
+
+  const head = buildList(VALS);
+  const sorted = sortList(head);
+  snap({
+    phase: 'done', result: listValues(sorted),
+    note: '排序完成：' + listValues(sorted).join(' → ') +
+      '。每层分割把规模减半，共 log n 层，每层合并代价 O(n)，总时间 O(n log n)。'
+  });
+
+  return steps;
 }
-function reset(){curStep=0;stopPlay();updateUI();}
-function nextStep(){if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();}
-function prevStep(){if(curStep>0){curStep--;updateUI();}}
-function jumpEnd(){curStep=steps.length-1;stopPlay();updateUI();}
-function stopPlay(){if(playId){clearInterval(playId);playId=null;document.getElementById('playBtn').classList.remove('playing');document.getElementById('playBtn').textContent='自动播放';}}
-function togglePlay(){if(playId){stopPlay();return;}if(curStep>=steps.length-1)curStep=0;document.getElementById('playBtn').classList.add('playing');document.getElementById('playBtn').textContent='暂停';playId=setInterval(()=>{if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();},600);}
-document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}else if(e.key==='ArrowRight'){e.preventDefault();nextStep();}else if(e.key===' '){e.preventDefault();togglePlay();}});
-updateUI();
+
+function chainRow(values, opt) {
+  opt = opt || {};
+  const row = Demo.el('div', 'row');
+  if (!values.length) {
+    row.appendChild(Demo.el('div', 'ptr ptr--dim', '∅ null'));
+    return row;
+  }
+  const labels = opt.labels || {};
+  values.forEach((v, k) => {
+    const col = Demo.el('div', 'col');
+    const node = Demo.el('div', 'll-node', Demo.esc(v));
+    if (opt.pickIdx === k || opt.activeIdx === k) node.classList.add('is-active');
+    else if (opt.okUpTo != null && k <= opt.okUpTo) node.classList.add('is-ok');
+    col.appendChild(node);
+
+    const label = labels[k];
+    const ptr = Demo.el('div', 'ptr', label ? Demo.esc(label) : '&nbsp;');
+    if (!label) ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+
+    row.appendChild(col);
+    if (k < values.length - 1) row.appendChild(Demo.el('div', 'arrow', '→'));
+  });
+  row.appendChild(Demo.el('div', 'arrow', '→'));
+  row.appendChild(Demo.el('div', 'ptr ptr--dim', '∅'));
+  return row;
+}
+
+function stackPanel(step) {
+  const panel = Demo.el('div', 'panel');
+  panel.appendChild(Demo.el('div', 'panel__title', '递归调用栈'));
+  const stack = Demo.el('div', 'stack');
+  if (!step.stack.length) {
+    stack.appendChild(Demo.el('div', 'stack__item', '（空）'));
+  } else {
+    step.stack.forEach((f, k) => {
+      const item = Demo.el('div', 'stack__item', Demo.esc(f));
+      if (k === step.stack.length - 1) item.classList.add('is-active');
+      stack.appendChild(item);
+    });
+  }
+  panel.appendChild(stack);
+  return panel;
+}
+
+function segPanel(step) {
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  const isMerge = step.phase.indexOf('merge') === 0;
+  panel.appendChild(Demo.el('div', 'panel__title',
+    isMerge ? '本次参与合并的两条链表' : '当前递归处理的子链表'));
+
+  if (step.phase === 'split') {
+    const row = Demo.el('div', 'row');
+    row.style.alignItems = 'flex-start';
+    const b1 = Demo.el('div', 'col');
+    b1.appendChild(Demo.el('div', 'panel__title', '左半'));
+    b1.appendChild(chainRow(step.left, {}));
+    const b2 = Demo.el('div', 'col');
+    b2.appendChild(Demo.el('div', 'panel__title', '右半'));
+    b2.appendChild(chainRow(step.right, {}));
+    row.appendChild(b1);
+    row.appendChild(b2);
+    panel.appendChild(row);
+    return panel;
+  }
+
+  if (isMerge) {
+    const chain = Demo.el('div', 'col');
+    chain.style.width = '100%';
+
+    const l1 = Demo.el('div', 'col');
+    l1.appendChild(Demo.el('div', 'ptr', '左链'));
+    const l1Labels = {};
+    if (step.l1 != null && step.l1 < step.left.length) l1Labels[step.l1] = 'l1';
+    l1.appendChild(chainRow(step.left, {
+      labels: l1Labels,
+      pickIdx: step.pickSide === 'L' ? step.pickIdx : -1,
+      okUpTo: step.pickSide === 'L' && step.phase === 'merge-pick' ? step.pickIdx : null
+    }));
+    chain.appendChild(l1);
+
+    const l2 = Demo.el('div', 'col');
+    l2.appendChild(Demo.el('div', 'ptr', '右链'));
+    const l2Labels = {};
+    if (step.l2 != null && step.l2 < step.right.length) l2Labels[step.l2] = 'l2';
+    l2.appendChild(chainRow(step.right, {
+      labels: l2Labels,
+      pickIdx: step.pickSide === 'R' ? step.pickIdx : -1,
+      okUpTo: step.pickSide === 'R' && step.phase === 'merge-pick' ? step.pickIdx : null
+    }));
+    chain.appendChild(l2);
+
+    const res = Demo.el('div', 'col');
+    res.appendChild(Demo.el('div', 'ptr', '结果'));
+    res.appendChild(chainRow(step.out, {
+      activeIdx: step.phase === 'merge-pick' ? step.out.length - 1 : -1,
+      okUpTo: step.phase === 'merge-pick' ? step.out.length - 2 : step.out.length - 1
+    }));
+    chain.appendChild(res);
+
+    panel.appendChild(chain);
+    return panel;
+  }
+
+  const labels = {};
+  if (step.slow != null) labels[step.slow] = 'slow';
+  if (step.fast != null) labels[step.fast] = 'fast';
+  panel.appendChild(chainRow(step.seg, {
+    labels: labels,
+    activeIdx: step.fast != null ? step.fast : -1
+  }));
+  return panel;
+}
+
+Demo.create({
+  title: '109. 排序链表 — 自顶向下归并排序',
+  info: 'head = [4, 2, 1, 3]，即链表 4 → 2 → 1 → 3。快慢指针找中点断开，递归排序两半，再合并两个有序链表。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 460,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前比较 / 刚接入的节点' },
+    { color: 'var(--demo-ok)', label: '已有序的部分' },
+    { color: 'var(--demo-muted)', label: '节点末尾的 ∅ 表示 next = null' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    if (step.phase !== 'done') {
+      ctx.stage.appendChild(segPanel(step));
+    } else {
+      const done = Demo.el('div', 'panel');
+      done.style.width = '100%';
+      done.appendChild(Demo.el('div', 'panel__title', '最终有序链表'));
+      done.appendChild(chainRow(step.result || [], { okUpTo: (step.result || []).length - 1 }));
+      ctx.stage.appendChild(done);
+    }
+
+    ctx.stage.appendChild(stackPanel(step));
+  }
+});
 </script>
 </body>
 </html>

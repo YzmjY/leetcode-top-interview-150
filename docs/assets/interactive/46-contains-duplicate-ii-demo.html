@@ -1,246 +1,207 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222; --sub-bg: #f5f5f5;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --cur-color: #1976D2; --dup-color: #E53935;
-    --ok-color: #388E3C; --window-color: #FF9800;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
-      --sub-bg: #252540;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 16px 20px;
-  }
-  .container { max-width: 840px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
-  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
-    font-size: 14px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
-
-  .arr-row { display: flex; align-items: center; gap: 4px; justify-content: center; margin-bottom: 6px; flex-wrap: wrap; }
-  .acell {
-    width: 56px; height: 48px; border: 2px solid var(--cell-border); border-radius: 8px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-size: 20px; font-weight: bold; background: var(--cell-bg); color: var(--text);
-    transition: border-color 0.25s, background 0.25s, transform 0.15s;
-  }
-  .acell .ai { font-size: 9px; color: var(--muted); }
-  .acell.cur { border-color: var(--cur-color); background: rgba(25,118,210,0.12); transform: scale(1.06); z-index: 2; }
-  .acell.win { border-color: var(--window-color); background: rgba(255,152,0,0.1); }
-  .acell.dup { border-color: var(--dup-color); background: rgba(229,57,53,0.15); transform: scale(1.06); z-index: 2; }
-  .acell.ok { border-color: var(--ok-color); background: rgba(56,142,60,0.12); }
-
-  .map-panel {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 6px; text-align: center; font-size: 13px;
-  }
-  .map-display { font-family: monospace; font-size: 14px; }
-
-  .result-row {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 6px; font-size: 13px; text-align: center;
-  }
-  .result-row .highlight { font-weight: bold; font-size: 15px; }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-</style>
+<title>46. 存在重复元素 II - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>存在重复元素 II — 滑动窗口+哈希索引演示</h2>
-  <div class="sub-title">nums=[1,2,3,1], k=3 &rarr; nums[0]==nums[3] 且 |0-3| &le; 3 &rarr; true</div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
-  </div>
-
-  <div class="arr-row" id="arrRow"></div>
-
-  <div class="map-panel">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:3px;">哈希索引表 (值 &rarr; 最新索引) · k=3</div>
-    <div class="map-display" id="mapDisplay" style="color:var(--muted);">{}</div>
-  </div>
-
-  <div class="result-row">
-    <span style="color:var(--muted)">判定: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">&#x23EE; 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
-    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const nums = [1, 2, 3, 1];
-const k = 3;
-const n = nums.length;
-const map = {};
+const NUMS = [1, 2, 3, 1, 2, 3];
+const K = 2;
 
-const steps = [];
+function buildSteps() {
+  const steps = [];
+  const lastIndex = {};
+  let found = null;
 
-function simulate() {
-  steps.push({
-    desc: '初始状态 · nums=[1,2,3,1], k=' + k,
-    phase: 'init', idx: -1, map: {}, hl: [],
-    result: 'init'
+  function copyMap() {
+    const out = {};
+    Object.keys(lastIndex).forEach(function (key) { out[key] = lastIndex[key]; });
+    return out;
+  }
+
+  function snap(extra) {
+    const step = { lastIndex: copyMap(), note: extra.note };
+    Object.keys(extra).forEach(function (key) {
+      if (key !== 'note') step[key] = extra[key];
+    });
+    steps.push(step);
+  }
+
+  snap({
+    phase: 'init', i: -1, value: null, prev: -1, dist: null, hit: false,
+    note: `哈希表 lastIndex 记录「每个数值最近一次出现的下标」，初始为空。k = ${K}，也就是说只有下标差 ≤ ${K} 的两个相等元素才算答案。算法的关键：只需要保留最近一次的位置，因为更早的出现位置距离只会更大。`
   });
 
-  for (let i = 0; i < n; i++) {
-    const val = nums[i];
-    const windowStart = Math.max(0, i - k);
-    const windowEnd = i;
-    const winCells = [];
-    for (let w = windowStart; w <= windowEnd; w++) winCells.push(w);
+  for (let i = 0; i < NUMS.length; i++) {
+    const value = NUMS[i];
+    const key = String(value);
+    const hasPrev = Object.prototype.hasOwnProperty.call(lastIndex, key);
+    const prev = hasPrev ? lastIndex[key] : -1;
+    const dist = hasPrev ? i - prev : null;
+    const hit = hasPrev && dist <= K;
 
-    steps.push({
-      desc: '第' + i + '步: nums[' + i + ']=' + val + ', 滑动窗口[' + windowStart + '..' + windowEnd + ']',
-      phase: 'check', idx: i, map: {...map}, hl: [[i, 'cur']],
-      winCells,
-      result: 'checking'
+    snap({
+      phase: hit ? 'hit' : 'scan', i: i, value: value, prev: prev, dist: dist, hit: hit, hasPrev: hasPrev,
+      note: `扫描到 nums[${i}] = ${value}。查 lastIndex：` +
+        (hasPrev
+          ? `它的上一次出现是下标 ${prev}，下标差 ${i} − ${prev} = ${dist}，与 k = ${K} 比较：` +
+            (hit
+              ? `${dist} ≤ ${K}，满足条件，说明存在这样的一对下标，可以返回 true。`
+              : `${dist} > ${K}，这一对距离太远，不满足条件。注意此时仍然要把 ${value} 的最近位置更新为 ${i}，因为后面还可能遇到更近的 ${value}。`)
+          : `此前从未出现过 ${value}，所以它不可能和更早的元素构成答案，直接把 lastIndex[${value}] 记为 ${i}。`)
     });
 
-    if (map[val] !== undefined && i - map[val] <= k) {
-      const j = map[val];
-      steps.push({
-        desc: '找到! nums[' + j + ']=' + val + '==nums[' + i + ']=' + val + ', 差值=' + (i-j) + ' &le; ' + k + ' &rarr; true',
-        phase: 'found', idx: i, map: {...map},
-        hl: [[i, 'dup'], [j, 'dup']],
-        winCells: [],
-        result: 'found'
+    if (hit) {
+      found = [prev, i];
+      snap({
+        phase: 'found', i: i, value: value, prev: prev, dist: dist, hit: true, answer: found,
+        note: `返回 true：nums[${prev}] 和 nums[${i}] 都是 ${value}，下标差 ${dist} ≤ k = ${K}。整个算法只扫描一次数组，每个元素做一次哈希查找，时间 O(n)；哈希表为每个不同的数值保存一条最近位置记录，空间 O(n)。如果改成滑动窗口、及时删掉窗口外的旧下标，空间可以进一步降到 O(min(n, k))。`
       });
-      return;
+      break;
     }
 
-    map[val] = i;
-    steps.push({
-      desc: '将 nums[' + i + ']=' + val + ' 索引 ' + i + ' 存入哈希表',
-      phase: 'store', idx: i, map: {...map},
-      hl: [[i, 'ok']],
-      winCells: [],
-      result: 'checking'
+    lastIndex[key] = i;
+
+    snap({
+      phase: 'update', i: i, value: value, prev: prev, dist: dist, hit: false,
+      note: `更新 lastIndex[${value}] = ${i}，覆盖掉可能存在的旧位置 ${prev >= 0 ? prev : '（无）'}。这一步不能省：留下最近的位置，后续元素判断距离时才不会漏掉合法答案。`
     });
   }
 
-  steps.push({
-    desc: '遍历完毕, 未找到符合条件(k=' + k + ')的重复元素 &rarr; false',
-    phase: 'done', idx: -1, map: {...map}, hl: [], winCells: [],
-    result: 'none'
-  });
-}
-
-simulate();
-
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-const arrRow = document.getElementById('arrRow');
-nums.forEach((v, i) => {
-  const cell = document.createElement('div');
-  cell.className = 'acell'; cell.id = 'ac' + i;
-  cell.innerHTML = v + '<span class="ai">[' + i + ']</span>';
-  arrRow.appendChild(cell);
-});
-
-function render() {
-  const s = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = s.desc;
-
-  for (let i = 0; i < n; i++) document.getElementById('ac' + i).className = 'acell';
-  if (s.hl) s.hl.forEach(([i, cls]) => {
-    document.getElementById('ac' + i).className = 'acell ' + cls;
-  });
-  if (s.winCells) s.winCells.forEach(i => {
-    const el = document.getElementById('ac' + i);
-    if (el.className === 'acell') el.className = 'acell win';
+  snap({
+    phase: 'done', i: NUMS.length, value: null, prev: -1, dist: null, hit: false, ok: found !== null,
+    note: found !== null
+      ? `找到了满足条件的下标对 [${found[0]}, ${found[1]}]，返回 true。`
+      : `数组扫描完毕，所有重复元素的最近距离都大于 k = ${K}，不存在满足条件的下标对，返回 false。以 nums = [1,2,3,1,2,3]、k = 2 为例，每对相同元素的下标差都是 3，所以答案是 false。`
   });
 
-  const mapEntries = Object.entries(s.map);
-  document.getElementById('mapDisplay').textContent = mapEntries.length > 0
-    ? '{' + mapEntries.map(([k,v]) => k + ': ' + v).join(', ') + '}'
-    : '{}';
-
-  const rt = document.getElementById('resultText');
-  if (s.result === 'found') { rt.textContent = 'true - 存在重复!'; rt.style.color = '#388E3C'; }
-  else if (s.result === 'none') { rt.textContent = 'false - 无重复!'; rt.style.color = '#1976D2'; }
-  else if (s.result === 'init') { rt.textContent = '进行中...'; rt.style.color = '#1976D2'; }
-  else { rt.textContent = '检查中...'; rt.style.color = '#1976D2'; }
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+  return steps;
 }
 
-function goStep(n) {
-  current = Math.max(0, Math.min(n, steps.length - 1));
-  render();
+function windowOf(step) {
+  const from = Math.max(0, step.i - K);
+  return { from: from, to: step.i };
 }
 
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer); autoRunning = false;
-    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-    document.getElementById('playBtn').classList.remove('play-btn');
+function arrayPanel(step) {
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.appendChild(Demo.el('div', 'panel__title', `数组 nums（k = ${K}，浅蓝区间是下标只差不超过 ${K} 的范围）`));
+  const row = Demo.el('div', 'row');
+  const win = windowOf(step);
+  NUMS.forEach(function (value, j) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(value));
+    if (j === step.i && step.phase !== 'done') {
+      cell.classList.add(step.hit ? 'is-ok' : 'is-active');
+    } else if (j === step.prev && (step.phase === 'hit' || step.phase === 'found' || step.phase === 'scan')) {
+      cell.classList.add(step.hit ? 'is-ok' : 'is-warn');
+    } else if (step.phase !== 'done' && j >= win.from && j < win.to) {
+      cell.classList.add('is-info');
+    } else if (step.phase === 'done') {
+      cell.classList.add('is-info');
+    } else {
+      cell.classList.add('cell--dim');
+    }
+    col.appendChild(cell);
+    const labels = [];
+    if (j === step.i && step.phase !== 'done') labels.push('i');
+    if (j === step.prev && step.prev >= 0 && step.phase !== 'update') labels.push('上次');
+    const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : String(j));
+    if (!labels.length) ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    row.appendChild(col);
+  });
+  panel.appendChild(row);
+  return panel;
+}
+
+function mapPanel(step) {
+  const panel = Demo.el('div', 'panel');
+  panel.appendChild(Demo.el('div', 'panel__title', '哈希表 lastIndex：数值 → 最近下标'));
+  let html = '<table class="map-table"><tr><th>数值</th><th>最近下标</th></tr>';
+  const keys = Object.keys(step.lastIndex);
+  if (keys.length === 0) {
+    html += '<tr><td colspan="2">（空）</td></tr>';
   } else {
-    autoRunning = true;
-    document.getElementById('playBtn').textContent = '\u23F8 暂停';
-    document.getElementById('playBtn').style.background = '#1976D2';
-    document.getElementById('playBtn').style.color = '#fff';
-    document.getElementById('playBtn').classList.add('play-btn');
-    if (current >= steps.length - 1) goStep(0);
-    autoTimer = setInterval(function() {
-      if (current < steps.length - 1) goStep(current + 1);
-      else toggleAuto();
-    }, 1000);
+    keys.forEach(function (key) {
+      const active = step.value !== null && String(step.value) === key && step.phase !== 'init';
+      html += '<tr' + (active ? ' class="is-active"' : '') + '>' +
+        '<td>' + Demo.esc(key) + '</td><td>' + Demo.esc(step.lastIndex[key]) + '</td></tr>';
+    });
   }
+  html += '</table>';
+  panel.appendChild(Demo.el('div', null, html));
+  return panel;
 }
 
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
-});
+Demo.create({
+  title: '46. 存在重复元素 II — 只记住每个值最近一次的下标',
+  info: `输入：nums = [${NUMS.join(', ')}]，k = ${K}（示例 3，输出 false）。相同数值的两两下标差都是 3，超过 k。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 360,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前扫描的元素' },
+    { color: 'var(--demo-info)', label: '与当前下标相差 ≤ k 的范围' },
+    { color: 'var(--demo-warn)', label: '上一次出现的位置（距离超限）' },
+    { color: 'var(--demo-ok)', label: '满足条件的下标对' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
 
-render();
+    ctx.stage.appendChild(arrayPanel(step));
+
+    const row = Demo.el('div', 'row');
+    row.style.width = '100%';
+    row.style.alignItems = 'flex-start';
+    row.appendChild(mapPanel(step));
+
+    const check = Demo.el('div', 'panel');
+    check.appendChild(Demo.el('div', 'panel__title', '距离判定'));
+    const col = Demo.el('div', 'col');
+    if (step.dist === null || step.i < 0 || step.phase === 'done') {
+      col.appendChild(Demo.el('span', 'tag ' + (step.phase === 'done' ? (step.ok ? 'tag--ok' : 'tag--bad') : 'tag--info'),
+        step.phase === 'done'
+          ? (step.ok ? '存在距离 ≤ k 的重复对' : `所有重复对的距离都大于 k = ${K}`)
+          : '尚无可比较的上一次出现'));
+    } else {
+      col.appendChild(Demo.el('span', 'tag tag--info', `i − 上次 = ${step.i} − ${step.prev} = ${step.dist}`));
+      col.appendChild(Demo.el('span', 'tag tag--violet', `k = ${K}`));
+      col.appendChild(Demo.el('span', 'tag ' + (step.hit ? 'tag--ok' : 'tag--warn'),
+        step.hit ? `${step.dist} ≤ ${K}，满足` : `${step.dist} > ${K}，不满足`));
+    }
+    check.appendChild(col);
+    row.appendChild(check);
+    ctx.stage.appendChild(row);
+
+    const state = Demo.el('div', 'panel');
+    state.style.width = '100%';
+    state.style.textAlign = 'center';
+    if (step.phase === 'init') {
+      state.innerHTML = '准备扫描第一个元素 &nbsp;<span class="tag tag--warn">哈希表为空</span>';
+    } else if (step.phase === 'scan') {
+      state.innerHTML = step.hasPrev
+        ? `距离 ${step.dist} > k = ${K}，这一对不算数 &nbsp;<span class="tag tag--warn">继续扫描</span>`
+        : `lastIndex 中没有 ${Demo.esc(step.value)}，首次出现 &nbsp;<span class="tag tag--info">继续</span>`;
+    } else if (step.phase === 'update') {
+      state.innerHTML = `距离超限，但仍更新 lastIndex[${Demo.esc(step.value)}] = ${step.i} &nbsp;<span class="tag tag--warn">继续扫描</span>`;
+    } else if (step.phase === 'hit') {
+      state.innerHTML = `<span class="tag tag--ok">距离 ${step.dist} ≤ ${K}，满足条件</span>`;
+    } else if (step.phase === 'found') {
+      state.innerHTML = `<span class="tag tag--ok">答案 = true，下标对 [${step.answer.join(', ')}]</span>`;
+    } else {
+      state.innerHTML = step.ok
+        ? '<span class="tag tag--ok">返回 true</span>'
+        : `所有重复元素的距离都超过 ${K} &nbsp;<span class="tag tag--bad">返回 false</span>`;
+    }
+    ctx.stage.appendChild(state);
+  }
+});
 </script>
 </body>
 </html>

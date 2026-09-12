@@ -3,205 +3,161 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>53. 简化路径 - 可视化演示</title>
-<style>
-:root {
-  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
-  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
-  --btn-active-text: #fff; --stack-bg: #f1f3f5; --seg-bg: #e9ecef;
-  --blue: #228be6; --green: #40c057; --red: #fa5252; --gray: #adb5bd;
-  --step-bg: #e7f5ff;
-}
-@media (prefers-color-scheme: dark) {
-:root {
-  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
-  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
-  --btn-active-text: #fff; --stack-bg: #1e1e3a; --seg-bg: #2a2a4a;
-  --step-bg: #1a2a3a; --gray: #666;
-}
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, "Microsoft YaHei", sans-serif;
-  background: var(--bg); color: var(--text);
-  display: flex; justify-content: center; padding: 20px;
-}
-.container {
-  width: 100%; max-width: 900px; height: 500px;
-  background: var(--card-bg); border-radius: 8px;
-  border: 1px solid var(--border); padding: 16px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.step-panel {
-  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: 14px;
-}
-.step-num { font-weight: 700; color: var(--btn-active); }
-.step-desc { flex: 1; margin-left: 16px; }
-.main-area { display: flex; gap: 16px; flex: 1; min-height: 0; }
-.seg-area {
-  flex: 0 0 440px; display: flex; flex-direction: column; gap: 8px;
-}
-.path-display { font-family: "Consolas", monospace; font-size: 15px; padding: 8px 12px; background: var(--stack-bg); border-radius: 8px; border: 1px solid var(--border); word-break: break-all; }
-.seg-grid {
-  flex: 1; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; overflow-y: auto;
-}
-.seg-cell {
-  padding: 4px 10px; border-radius: 8px; background: var(--seg-bg);
-  border: 2px solid var(--border); font-family: "Consolas", monospace;
-  font-size: 14px; font-weight: 600; transition: all 0.3s; min-width: 50px; text-align: center;
-}
-.seg-cell.push { border-color: var(--green); color: var(--green); background: rgba(64,192,87,0.1); }
-.seg-cell.back { border-color: var(--red); color: var(--red); background: rgba(250,82,82,0.1); }
-.seg-cell.skip { border-color: var(--gray); color: var(--gray); background: rgba(173,181,189,0.1); }
-.seg-cell.current { transform: scale(1.1); box-shadow: 0 0 8px rgba(13,110,253,0.4); border-color: var(--blue); }
-.stack-panel {
-  flex: 1; background: var(--stack-bg); border-radius: 8px; padding: 12px;
-  border: 1px solid var(--border); display: flex; flex-direction: column;
-}
-.stack-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
-.stack-items { flex: 1; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
-.stack-item {
-  height: 30px; border-radius: 6px; background: var(--btn-bg);
-  display: flex; align-items: center; padding: 0 10px;
-  font-family: "Consolas", monospace; font-size: 13px; font-weight: 600;
-  border: 1px solid var(--border); transition: all 0.3s;
-}
-.stack-item.enter { background: rgba(64,192,87,0.15); border-color: var(--green); }
-.stack-item.leave { background: rgba(250,82,82,0.15); border-color: var(--red); }
-.result-line {
-  padding: 6px 12px; background: var(--stack-bg); border-radius: 8px; border: 1px solid var(--border);
-  font-family: "Consolas", monospace; font-size: 14px; font-weight: 700; color: var(--green);
-}
-.controls {
-  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-}
-.controls button {
-  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--btn-bg); color: var(--text); cursor: pointer;
-  font-size: 13px; font-family: inherit; transition: all 0.15s;
-}
-.controls button:hover { background: var(--btn-hover); }
-.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
-</style>
+<title>53. 简化路径 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <div class="step-panel">
-    <span class="step-num" id="stepNum">步骤 0 / 0</span>
-    <span class="step-desc" id="stepDesc">初始状态</span>
-  </div>
-  <div class="main-area">
-    <div class="seg-area">
-      <div class="path-display"><strong>输入:</strong> <span id="pathDisplay">/home//foo/</span></div>
-      <div class="seg-grid" id="segGrid"></div>
-      <div class="result-line"><strong>输出:</strong> <span id="resultPath"></span></div>
-    </div>
-    <div class="stack-panel">
-      <div class="stack-label">目录栈 (顶部在上)</div>
-      <div class="stack-items" id="stackItems"></div>
-    </div>
-  </div>
-  <div class="controls">
-    <button onclick="reset()">重置</button>
-    <button onclick="prevStep()">上步</button>
-    <button onclick="nextStep()">下步</button>
-    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button onclick="goEnd()">跳到最后</button>
-  </div>
-</div>
+<script src="demo.js"></script>
 <script>
-const path = "/home//foo/";
-const segments = path.split('/');
-const steps = [];
-let curStack = [];
-let stepIdx = -1;
+const PATH = '/a/./b/../../c/';
+
+function partText(part) {
+  if (part === '') return '∅';
+  return part;
+}
 
 function buildSteps() {
-  steps.length = 0;
-  curStack = [];
-  const cellTypes = Array(segments.length).fill('');
-  steps.push({ stack: [...curStack], desc: '初始状态：准备解析路径段', cells: Array(segments.length).fill('default'), idx: -1 });
+  const parts = PATH.split('/');
+  const stack = [];
+  const steps = [];
 
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i];
-    const cells = Array(segments.length).fill('default');
-    cells[i] = 'current';
-    if (seg === '' || seg === '.') {
-      cells[i] = 'current skip';
-      steps.push({ stack: [...curStack], desc: `第 ${i} 段 "${seg || '(空)'}" — 无意义或当前目录，跳过`, cells: [...cells], idx: i });
-    } else if (seg === '..') {
-      if (curStack.length > 0) { const popped = curStack.pop(); cells[i] = 'current back';
-        steps.push({ stack: [...curStack], desc: `第 ${i} 段 ".." — 返回上级，弹出 "${popped}"`, cells: [...cells], idx: i });
+  function snap(o) {
+    steps.push({
+      k: o.k,
+      part: o.part,
+      stack: stack.slice(),
+      phase: o.phase,
+      action: o.action,
+      note: o.note
+    });
+  }
+
+  snap({
+    k: -1, part: null, phase: 'init', action: '分割路径',
+    note: '初始状态：path = "' + PATH + '"。把它按 "/" 分割成 ' + parts.length + ' 段：'
+      + parts.map(partText).join(' | ') + '。其中空串（∅）来自首尾斜杠或连续斜杠，"." 表示当前目录，".." 表示上级目录，其余是普通目录名。'
+  });
+
+  for (let k = 0; k < parts.length; k++) {
+    const part = parts[k];
+    if (part === '' || part === '.') {
+      snap({
+        k: k, part: part, phase: 'skip', action: '忽略该段',
+        note: '第 ' + k + ' 段是' + (part === '' ? '空串（由斜杠产生，多个连续斜杠都归约为一个）' : '"."（当前目录本身）')
+          + '，对最终路径没有贡献，直接跳过。栈不变：' + (stack.length ? stack.join(' / ') : '（空）') + '。'
+      });
+    } else if (part === '..') {
+      if (stack.length > 0) {
+        const popped = stack.pop();
+        snap({
+          k: k, part: part, phase: 'pop', action: '弹出栈顶',
+          note: '第 ' + k + ' 段是 ".."，表示切换到上一级目录：把栈顶的 "' + popped + '" 弹出。剩余栈：'
+            + (stack.length ? stack.join(' / ') : '（空）') + '。'
+        });
       } else {
-        cells[i] = 'current skip';
-        steps.push({ stack: [...curStack], desc: `第 ${i} 段 ".." — 已在根目录，忽略`, cells: [...cells], idx: i });
+        snap({
+          k: k, part: part, phase: 'root', action: '已在根目录',
+          note: '第 ' + k + ' 段是 ".."，但栈已经空了，说明当前就在根目录 "/"，根目录是能到达的最高层，再往上没有目录可退，所以什么都不做。'
+        });
       }
     } else {
-      curStack.push(seg);
-      cells[i] = 'current push';
-      steps.push({ stack: [...curStack], desc: `第 ${i} 段 "${seg}" — 有效目录，入栈`, cells: [...cells], idx: i });
+      stack.push(part);
+      snap({
+        k: k, part: part, phase: 'push', action: '压入栈',
+        note: '第 ' + k + ' 段 "' + part + '" 是普通目录名（不是 "." 也不是 ".."），压入栈，表示进入该目录。栈：' + stack.join(' / ') + '。'
+      });
     }
   }
-  const result = '/' + curStack.join('/');
-  steps.push({ stack: [...curStack], desc: `完成！简化结果: ${result}`, cells: Array(segments.length).fill('default'), idx: segments.length });
+
+  const result = '/' + stack.join('/');
+  snap({
+    k: parts.length, part: null, phase: 'done', action: '拼接结果',
+    note: '所有段处理完毕，把栈里的目录用 "/" 连接、前面补上根斜杠，得到规范路径 "' + result + '"（栈为空时结果就是 "/"）。'
+      + '分割与遍历各一次，时间 O(n)，栈空间 O(n)。'
+  });
+
+  return steps;
 }
 
-function render() {
-  const st = steps[Math.min(stepIdx, steps.length - 1)];
-  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
-  document.getElementById('stepDesc').textContent = st.desc;
-  document.getElementById('resultPath').textContent = stepIdx === steps.length - 1 ? '/' + st.stack.join('/') : '';
+function render(step, idx, ctx) {
+  ctx.stage.innerHTML = '';
 
-  const grid = document.getElementById('segGrid');
-  grid.innerHTML = '';
-  segments.forEach((seg, i) => {
-    const div = document.createElement('div');
-    div.className = 'seg-cell ' + (st.cells[i] || 'default');
-    div.textContent = seg || '(空)';
-    grid.appendChild(div);
-  });
+  const pathPanel = Demo.el('div', 'panel');
+  pathPanel.style.width = '100%';
+  pathPanel.innerHTML = '<div class="panel__title">输入路径</div><code>' + Demo.esc(PATH) + '</code>';
+  ctx.stage.appendChild(pathPanel);
 
-  const si = document.getElementById('stackItems');
-  si.innerHTML = '';
-  st.stack.forEach(item => {
-    const div = document.createElement('div');
-    div.className = 'stack-item';
-    div.textContent = item;
-    si.appendChild(div);
+  const partsPanel = Demo.el('div', 'panel');
+  partsPanel.style.width = '100%';
+  partsPanel.appendChild(Demo.el('div', 'panel__title', '按 "/" 分割后的段（∅ 表示空串）'));
+  const row = Demo.el('div', 'row');
+  const parts = PATH.split('/');
+  parts.forEach(function (part, k) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell cell--sm', Demo.esc(partText(part)));
+    if (k === step.k && step.phase !== 'init') cell.classList.add('is-active');
+    else if (step.k > k || step.phase === 'done') cell.classList.add('cell--dim');
+    col.appendChild(cell);
+    const ptr = Demo.el('div', 'ptr', k === step.k ? 'k' : String(k));
+    if (k !== step.k) ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    row.appendChild(col);
   });
-  if (st.stack.length === 0) {
-    const empty = document.createElement('div');
-    empty.textContent = '(根目录 /)';
-    empty.style.cssText = 'color:var(--text-secondary);text-align:center;font-size:12px;';
-    si.appendChild(empty);
+  partsPanel.appendChild(row);
+  ctx.stage.appendChild(partsPanel);
+
+  const mainRow = Demo.el('div', 'row');
+  mainRow.style.width = '100%';
+  mainRow.style.alignItems = 'flex-start';
+
+  const stackPanel = Demo.el('div', 'panel');
+  stackPanel.appendChild(Demo.el('div', 'panel__title', '目录栈（自下而上，上方是当前所在目录）'));
+  const stackBox = Demo.el('div', 'stack');
+  if (step.stack.length === 0) {
+    stackBox.appendChild(Demo.el('div', 'stack__item', '（根目录 /）'));
+  } else {
+    step.stack.forEach(function (name, k) {
+      const item = Demo.el('div', 'stack__item', Demo.esc(name));
+      if (k === step.stack.length - 1) item.classList.add('is-active');
+      stackBox.appendChild(item);
+    });
   }
+  stackPanel.appendChild(stackBox);
+  mainRow.appendChild(stackPanel);
 
-  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
+  const infoPanel = Demo.el('div', 'panel');
+  infoPanel.style.flex = '1';
+  infoPanel.appendChild(Demo.el('div', 'panel__title', '本段处理'));
+  infoPanel.appendChild(Demo.el('div', null,
+    '<span class="tag' + (step.phase === 'done' ? ' tag--ok' : (step.phase === 'pop' ? ' tag--warn' : ' tag--info')) + '">'
+    + Demo.esc(step.action) + '</span>'));
+  infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">当前段：<code>'
+    + (step.part == null ? '—' : Demo.esc(partText(step.part))) + '</code></div>'));
+  infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:6px">栈深度：<code>' + step.stack.length + '</code></div>'));
+  infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">当前规范路径：<code>/'
+    + Demo.esc(step.stack.join('/')) + '</code></div>'));
+  if (step.phase === 'done') {
+    infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px"><span class="tag tag--ok">结果 "/'
+      + Demo.esc(step.stack.join('/')) + '"</span></div>'));
+  }
+  mainRow.appendChild(infoPanel);
+
+  ctx.stage.appendChild(mainRow);
 }
 
-function reset() { stepIdx = 0; stopAuto(); render(); }
-function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; render(); }
-function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; render(); }
-function goEnd() { stopAuto(); stepIdx = steps.length - 1; render(); }
-
-let autoRunning = false, autoTimer = null;
-function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
-function startAuto() { autoRunning = true; render(); autoStep(); }
-function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); render(); }
-function autoStep() {
-  if (!autoRunning) return;
-  if (stepIdx < steps.length - 1) { stepIdx++; render(); autoTimer = setTimeout(autoStep, 800); }
-  else stopAuto();
-}
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') nextStep();
-  else if (e.key === 'ArrowLeft') prevStep();
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+Demo.create({
+  title: '53. 简化路径 — 用栈模拟目录进出',
+  info: '输入：path = "/a/./b/../../c/"（示例 4）。先按 "/" 切分，再逐段处理："." 与空串忽略，".." 弹栈（栈空则忽略），其余压栈，最后拼接，期望输出 "/c"。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 380,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前处理的段 / 栈顶目录' },
+    { color: 'var(--demo-warn)', label: '".." 触发弹栈' },
+    { color: 'var(--demo-muted)', label: '已处理过的段' }
+  ],
+  render: render
 });
-buildSteps();
-reset();
 </script>
 </body>
 </html>

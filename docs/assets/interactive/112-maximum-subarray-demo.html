@@ -3,108 +3,177 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>112. 最大子数组和 - Kadane算法</title>
-<style>
-:root {
-  --bg: #f5f6fa; --card: #fff; --text: #2d3436; --sub: #636e72;
-  --border: #dfe6e9; --blue: #0984e3; --red: #e17055; --green: #00b894;
-  --blue-bg: #dff6fd; --hl: #ffeaa7; --focus: #fab1a0;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1a1a2e; --card: #16213e; --text: #eee; --sub: #aaa;
-    --border: #2d3436; --blue: #74b9ff; --red: #ff7675; --green: #55efc4;
-    --blue-bg: #1a3a5c; --hl: #5c4a1f; --focus: #5c2a1f;
-  }
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:var(--bg); display:flex; justify-content:center; align-items:center; min-height:100vh; }
-.container { width:860px; height:480px; background:var(--card); border-radius:8px; padding:20px 24px; display:flex; flex-direction:column; gap:12px; box-shadow:0 2px 12px rgba(0,0,0,0.1); }
-.header { display:flex; justify-content:space-between; align-items:center; }
-.header h2 { font-size:17px; color:var(--text); }
-.step-badge { font-size:13px; color:var(--sub); background:var(--border); padding:4px 12px; border-radius:8px; font-weight:500; }
-.info-panel { background:var(--blue-bg); border-left:3px solid var(--blue); padding:10px 14px; border-radius:8px; font-size:14px; color:var(--text); min-height:44px; display:flex; align-items:center; }
-.array-grid { display:flex; gap:4px; justify-content:center; align-items:flex-end; flex:1; position:relative; }
-.cell { width:64px; height:58px; border-radius:8px; background:var(--border); display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; font-size:20px; color:var(--text); position:relative; z-index:2; transition:all 0.25s; }
-.cell .idx { font-size:10px; color:var(--sub); margin-top:2px; }
-.cell.hl { background:var(--hl); box-shadow:0 0 0 2px var(--blue); }
-.cell.in-window { background:var(--blue-bg); box-shadow:0 0 0 2px var(--blue); }
-.window-overlay { position:absolute; top:0; bottom:0; background:rgba(9,132,227,0.18); border-radius:8px; z-index:1; transition:all 0.35s; pointer-events:none; }
-.controls { display:flex; gap:8px; justify-content:center; }
-.btn { padding:7px 16px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; font-size:13px; font-family:inherit; transition:all 0.15s; }
-.btn:hover { background:var(--blue-bg); border-color:var(--blue); }
-.btn:active { transform:scale(0.96); }
-.key-hint { font-size:11px; color:var(--sub); text-align:center; }
-</style>
+<title>112. 最大子数组和 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container" id="app">
-  <div class="header">
-    <h2>112. 最大子数组和 (Kadane)</h2>
-    <span class="step-badge" id="stepBadge">步骤 0/13</span>
-  </div>
-  <div class="info-panel" id="info"></div>
-  <div class="array-grid" id="grid"></div>
-  <div class="controls">
-    <button class="btn" onclick="reset()">重置</button>
-    <button class="btn" onclick="prev()">上步</button>
-    <button class="btn" onclick="next()">下步</button>
-    <button class="btn" id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button class="btn" onclick="goLast()">跳到最后</button>
-  </div>
-  <div class="key-hint">键盘: &#8592; &#8593; 上步 | &#8594; &#8595; 下步 | 空格 自动播放 | R 重置 | End 跳到最后</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const nums = [-2,1,-3,4,-1,2,1,-5,4];
-const n = nums.length;
-let steps = [];
-let cur = 0, autoTimer = null, running = false;
+const NUMS = [-2, 1, -3, 4, -1, 2, 1, -5, 4];
 
 function buildSteps() {
-  steps = [];
-  let curSum = 0, maxSum = -Infinity, start = 0, bestL = 0, bestR = 0;
-  steps.push({curSum:0,maxSum:-Infinity,start:0,end:-1,bestL:0,bestR:0,desc:'初始化：当前和=0，最大和=-inf'});
-  for (let i = 0; i < n; i++) {
-    if (curSum <= 0) { curSum = nums[i]; start = i; }
-    else { curSum += nums[i]; }
-    steps.push({curSum,maxSum:Math.max(maxSum,curSum),start,end:i,bestL,bestR,desc:`i=${i} nums[${i}]=${nums[i]}，当前和=${curSum}`});
-    if (curSum > maxSum) { maxSum = curSum; bestL = start; bestR = i; steps[steps.length-1].maxSum=maxSum; steps[steps.length-1].bestL=bestL; steps[steps.length-1].bestR=bestR; steps[steps.length-1].desc+=`，更新最大和=${maxSum} [${bestL},${bestR}]`; }
-  }
-  steps.push({curSum,maxSum,bestL,bestR,start:bestL,end:bestR,desc:`最终答案：最大子数组和=${maxSum}，子数组[${bestL},${bestR}]=[${nums.slice(bestL,bestR+1)}]`});
-}
-buildSteps();
+  const nums = NUMS;
+  const n = nums.length;
+  const steps = [];
 
-function render() {
-  const s = steps[cur];
-  document.getElementById('stepBadge').textContent = `步骤 ${cur}/${steps.length-1}`;
-  document.getElementById('info').textContent = s.desc;
-  document.getElementById('autoBtn').textContent = running ? '停止' : '自动播放';
-  const grid = document.getElementById('grid');
-  let html = '';
-  for (let i = 0; i < n; i++) {
-    let cls = 'cell';
-    if (s.bestL <= i && i <= s.bestR) cls += ' in-window';
-    if (s.end >= 0 && s.start <= i && i <= s.end) cls += ' hl';
-    html += `<div class="${cls}"><span>${nums[i]}</span><span class="idx">${i}</span></div>`;
+  let maxEndingHere = nums[0];
+  let maxSoFar = nums[0];
+  let start = 0;
+  let bestL = 0;
+  let bestR = 0;
+
+  steps.push({
+    i: 0, cur: maxEndingHere, best: maxSoFar, start: start,
+    bestL: bestL, bestR: bestR,
+    extend: null, restart: null, beat: false, done: false,
+    note: `初始化：先只看 nums[0] = ${nums[0]}。以它结尾的子数组只能是它自己，所以 maxEndingHere = ${nums[0]}；全局最大 maxSoFar 也先记为 ${nums[0]}。`
+  });
+
+  for (let i = 1; i < n; i++) {
+    const prevCur = maxEndingHere;
+    const prevBest = maxSoFar;
+    const extend = prevCur + nums[i];
+    const restart = nums[i];
+
+    const joined = extend > restart;
+    if (joined) {
+      maxEndingHere = extend;
+    } else {
+      maxEndingHere = restart;
+      start = i;
+    }
+
+    const beat = maxEndingHere > maxSoFar;
+    if (beat) {
+      maxSoFar = maxEndingHere;
+      bestL = start;
+      bestR = i;
+    }
+
+    let note = `i = ${i}，nums[${i}] = ${nums[i]}。两种选择：接在旧窗口后面 → ${prevCur} + (${nums[i]}) = ${extend}；从当前元素重新开始 → ${nums[i]}。`;
+    if (joined) {
+      note += `因为 ${extend} > ${restart}，旧窗口对后面的元素还有正的贡献，选择「接上」，窗口拉长为 nums[${start}..${i}]，maxEndingHere = ${maxEndingHere}。`;
+    } else {
+      note += `因为 ${extend} ≤ ${restart}（等价于旧窗口的和 maxEndingHere = ${prevCur} ≤ 0），再背着旧窗口只会让和更小，选择「重新开始」，窗口缩为 nums[${i}..${i}]，maxEndingHere = ${maxEndingHere}。`;
+    }
+    note += beat
+      ? ` 再和历史最大 maxSoFar = ${prevBest} 比较：${maxEndingHere} > ${prevBest}，刷新答案为 ${maxSoFar}，并记下它对应的区间 nums[${bestL}..${bestR}]。`
+      : ` 再和历史最大 maxSoFar = ${prevBest} 比较：${maxEndingHere} ≤ ${prevBest}，答案不变，但这段窗口仍可能继续变长。`;
+
+    steps.push({
+      i: i, cur: maxEndingHere, best: maxSoFar, start: start,
+      bestL: bestL, bestR: bestR,
+      extend: extend, restart: restart, beat: beat, done: false,
+      note: note
+    });
   }
-  grid.innerHTML = html;
+
+  steps.push({
+    i: n - 1, cur: maxEndingHere, best: maxSoFar, start: start,
+    bestL: bestL, bestR: bestR,
+    extend: null, restart: null, beat: false, done: true,
+    note: `数组扫描完毕。整个过程只维护了 maxEndingHere 和 maxSoFar 两个变量，所以空间复杂度 O(1)。最终答案 = ${maxSoFar}，对应子数组 nums[${bestL}..${bestR}] = [${nums.slice(bestL, bestR + 1).join(', ')}]，其元素和 = ${nums.slice(bestL, bestR + 1).reduce((a, b) => a + b, 0)}。`
+  });
+
+  return steps;
 }
-function reset() { cur = 0; stopAuto(); render(); }
-function prev() { if (cur > 0) { cur--; render(); } }
-function next() { if (cur < steps.length - 1) { cur++; render(); } else { stopAuto(); } }
-function goLast() { stopAuto(); cur = steps.length - 1; render(); }
-function toggleAuto() { running ? stopAuto() : startAuto(); }
-function startAuto() { running = true; render(); autoStep(); }
-function stopAuto() { running = false; if (autoTimer) clearTimeout(autoTimer); render(); }
-function autoStep() { if (!running) return; if (cur < steps.length - 1) { cur++; render(); autoTimer = setTimeout(autoStep, 500); } else { stopAuto(); } }
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
-  else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); next(); }
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
-  else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); reset(); }
-  else if (e.key === 'End') { e.preventDefault(); goLast(); }
+
+function numsRow(step) {
+  const row = Demo.el('div', 'row');
+  NUMS.forEach(function (value, idx) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(value));
+    const inWindow = idx >= step.start && idx <= step.i;
+
+    if (!step.done && idx === step.i) cell.classList.add('is-active');
+    else if (step.done && idx >= step.bestL && idx <= step.bestR) cell.classList.add('is-ok');
+    else if (inWindow) cell.classList.add('is-info');
+    col.appendChild(cell);
+
+    const labels = [];
+    if (!step.done) {
+      if (idx === step.i) labels.push('i');
+      if (idx === step.start && step.start < step.i) labels.push('start');
+      if (idx === step.bestL && step.bestR > step.bestL) labels.push('L');
+      if (idx === step.bestR && step.bestR > step.bestL) labels.push('R');
+    }
+
+    const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : String(idx));
+    if (!labels.length) ptr.classList.add('ptr--dim');
+    else if (labels.indexOf('i') >= 0) { /* 默认强调色 */ }
+    else if (labels.indexOf('start') >= 0) ptr.classList.add('ptr--info');
+    else ptr.classList.add('ptr--ok');
+    col.appendChild(ptr);
+
+    row.appendChild(col);
+  });
+  return row;
+}
+
+function windowPanel(title, l, r, cellClass, sumText, tagClass) {
+  const panel = Demo.el('div', 'panel');
+  panel.appendChild(Demo.el('div', 'panel__title', Demo.esc(title)));
+  const row = Demo.el('div', 'row');
+  for (let k = l; k <= r; k++) {
+    row.appendChild(Demo.el('div', 'cell cell--sm ' + cellClass, Demo.esc(NUMS[k])));
+  }
+  panel.appendChild(row);
+  const tagRow = Demo.el('div', 'row');
+  tagRow.appendChild(Demo.el('span', 'tag ' + tagClass, Demo.esc(sumText)));
+  panel.appendChild(tagRow);
+  return panel;
+}
+
+Demo.create({
+  title: '112. 最大子数组和 — Kadane 一次扫描，O(1) 空间',
+  info: `输入：nums = [${NUMS.join(', ')}]（示例 1）。关键状态只有「以当前位置结尾的最大和 maxEndingHere」和「历史最大 maxSoFar」。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 320,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前元素 i' },
+    { color: 'var(--demo-info)', label: '以 i 结尾的候选窗口 [start..i]' },
+    { color: 'var(--demo-ok)', label: '历史最优窗口（答案）' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const arrayPanel = Demo.el('div', 'panel');
+    arrayPanel.style.width = '100%';
+    arrayPanel.appendChild(Demo.el('div', 'panel__title',
+      step.done ? '数组 nums（最优区间已确定）' : `数组 nums（正在处理 i = ${step.i}）`));
+    arrayPanel.appendChild(numsRow(step));
+    ctx.stage.appendChild(arrayPanel);
+
+    if (step.done) {
+      ctx.stage.appendChild(windowPanel(
+        `最终答案窗口 nums[${step.bestL}..${step.bestR}]`,
+        step.bestL, step.bestR, 'is-ok',
+        `子数组和 = ${step.best}`, 'tag--ok'));
+    } else {
+      const row = Demo.el('div', 'row');
+      row.appendChild(windowPanel(
+        `当前候选窗口 nums[${step.start}..${step.i}]`,
+        step.start, step.i, 'is-info',
+        `maxEndingHere = ${step.cur}`, 'tag--info'));
+      row.appendChild(windowPanel(
+        `目前最优窗口 nums[${step.bestL}..${step.bestR}]`,
+        step.bestL, step.bestR, 'is-ok',
+        `maxSoFar = ${step.best}`, 'tag--ok'));
+      ctx.stage.appendChild(row);
+    }
+
+    const result = Demo.el('div', 'panel',
+      (step.done
+        ? `最后一个窗口 nums[${step.start}..${step.i}] 的和 maxEndingHere = <strong>${step.cur}</strong> ｜ `
+        : `maxEndingHere = <strong>${step.cur}</strong> ｜ `) +
+      `maxSoFar = <strong>${step.best}</strong>` +
+      (step.done ? ` &nbsp;<span class="tag tag--ok">答案 ${step.best}</span>` : ''));
+    result.style.width = '100%';
+    result.style.textAlign = 'center';
+    ctx.stage.appendChild(result);
+  }
 });
-render();
 </script>
 </body>
 </html>

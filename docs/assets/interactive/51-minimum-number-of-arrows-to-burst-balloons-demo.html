@@ -1,155 +1,185 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root { --bg:#fff; --text:#333; --muted:#888; --cell-bg:#fafafa; --cell-border:#d0d0d0; --header:#222; --sub-bg:#f5f5f5; --btn-bg:#f0f0f0; --btn-hover:#e0e0e0; }
-  @media (prefers-color-scheme:dark) { :root { --bg:#1a1a2e; --text:#ddd; --muted:#aaa; --cell-bg:#222; --cell-border:#444; --header:#ddd; --btn-bg:#333; --btn-hover:#444; --sub-bg:#252540; } }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; padding:14px 20px; }
-  .container { max-width:900px; width:100%; }
-  h2 { text-align:center; color:var(--header); font-size:17px; margin-bottom:2px; }
-  .sub-title { text-align:center; color:var(--muted); font-size:12px; margin-bottom:6px; }
-  .info-bar { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:4px; font-size:14px; flex-wrap:wrap; }
-  .step-num { font-weight:bold; font-size:22px; color:#1976D2; min-width:32px; text-align:center; }
-  .step-desc { color:var(--muted); font-size:13px; max-width:600px; text-align:center; }
-  svg { display:block; margin:0 auto; width:100%; }
-  .result-row { background:var(--sub-bg); border-radius:8px; padding:8px 14px; margin-bottom:4px; font-size:13px; text-align:center; }
-  .result-row .highlight { font-weight:bold; font-size:15px; }
-  .legend { display:flex; gap:14px; justify-content:center; margin-top:4px; font-size:11px; color:var(--muted); flex-wrap:wrap; }
-  .legend-item { display:flex; align-items:center; gap:5px; }
-  .legend-dot { width:14px; height:14px; border-radius:3px; }
-  .controls { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:6px; }
-  button { padding:7px 15px; border:1px solid var(--cell-border); border-radius:6px; background:var(--btn-bg); color:var(--text); font-size:13px; cursor:pointer; transition:0.15s; }
-  button:hover { background:var(--btn-hover); }
-  button:active { transform:scale(0.96); }
-  button:disabled { opacity:0.35; cursor:default; }
-  button.play-btn { background:#1976D2; color:#fff; border-color:#1565C0; }
-</style>
+<title>51. 用最少数量的箭引爆气球 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>用最少数量的箭引爆气球 — 排序右边界</h2>
-  <div class="sub-title">points=[[10,16],[2,8],[1,6],[7,12]] → 按右边界排序: [[1,6],[2,8],[7,12],[10,16]] → 2支箭</div>
-  <div class="info-bar"><span class="step-num" id="stepNum">0</span><span class="step-desc" id="stepDesc">初始状态 · 点击下一步开始</span></div>
-  <svg id="svg" viewBox="0 0 880 380"></svg>
-  <div class="result-row"><span style="color:var(--muted)">箭数量: </span><span id="resultText" class="highlight" style="color:#1976D2;">0</span></div>
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#42A5F5;"></div>待处理气球</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#66BB6A;"></div>当前气球</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#FF7043;"></div>新箭发射</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#AB47BC;"></div>已射破</div>
-    <div class="legend-item">🏹 箭位置</div>
-  </div>
-  <div class="controls">
-    <button onclick="goStep(0)">&#x23EE; 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
-    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
-  </div>
-</div>
+<script src="demo.js"></script>
 <script>
-const points=[[10,16],[2,8],[1,6],[7,12]];
-const sorted=[...points].sort((a,b)=>a[1]-b[1]);
-const xMin=0, xMax=18;
-const axisY=180, barH=28;
-const xScale=v=>60+(v-xMin)*760/(xMax-xMin);
+const POINTS = [[10, 16], [2, 8], [1, 6], [7, 12]];
 
-const steps=[];
-(function sim(){
-  steps.push({desc:'初始 · 按右边界排序: '+sorted.map(p=>'['+p[0]+','+p[1]+']').join(', '), phase:'init', arrowPos:null, aCount:0, curIdx:-1, bStates:['','','',''], rRanges:[]});
-  let ap=null, ac=0;
-  for(let i=0;i<sorted.length;i++){
-    const[s,e]=sorted[i];
-    if(ap===null||s>ap){
-      ap=e; ac++;
-      steps.push({desc:'气球['+s+','+e+']: start='+s+' > 箭位置'+(ap===e?'(空)':ap)+' → 需要新箭! 箭在x='+e+'处发射', phase:'new-arrow', arrowPos:ap, aCount:ac, curIdx:i, bStates:sorted.map((_,j)=>j<i?'done':(j===i?'cur-arrow':'')), rRanges:[]});
-    }else{
-      steps.push({desc:'气球['+s+','+e+']: start='+s+' ≤ 箭位置='+ap+' → 被当前箭射破!', phase:'burst', arrowPos:ap, aCount:ac, curIdx:i, bStates:sorted.map((_,j)=>j<i?'done':(j===i?'cur-burst':'')), rRanges:[]});
+function buildSteps() {
+  const arr = POINTS.map(function (p) { return [p[0], p[1]]; });
+  const n = arr.length;
+  const steps = [];
+  let arrows = [];
+  let arrowPos = null;
+
+  function snap(o) {
+    steps.push({
+      arr: arr.map(function (p) { return [p[0], p[1]]; }),
+      arrows: arrows.map(function (a) { return { pos: a.pos, covers: a.covers.slice() }; }),
+      arrowPos: arrowPos,
+      cur: o.cur == null ? -1 : o.cur,
+      key: o.key == null ? -1 : o.key,
+      phase: o.phase,
+      note: o.note
+    });
+  }
+
+  snap({
+    phase: 'init',
+    note: '初始状态：points = [[10,16], [2,8], [1,6], [7,12]]，一共 4 个气球，起点顺序是乱的。贪心策略是「按右端点升序排序，每次把箭射在当前最紧迫气球的右端点上」，所以先排序。'
+  });
+
+  for (let k = 1; k < n; k++) {
+    const key = arr[k];
+    snap({
+      phase: 'sort-pick', key: k,
+      note: '插入排序：取出 [' + key[0] + ', ' + key[1] + ']，按右端点 x_end = ' + key[1] + ' 在左边已排序的区间里找位置。'
+    });
+    let j = k - 1;
+    while (j >= 0 && arr[j][1] > key[1]) {
+      const moved = arr[j];
+      arr[j + 1] = arr[j];
+      snap({
+        phase: 'sort-move', key: k, cur: j,
+        note: '比较右端点：' + moved[1] + ' > ' + key[1] + '，区间 [' + moved[0] + ', ' + moved[1] + '] 的右端点更大、没那么紧迫，把它后移一位让位。'
+      });
+      j -= 1;
+    }
+    arr[j + 1] = key;
+    snap({
+      phase: 'sort-put', key: j + 1,
+      note: '把 [' + key[0] + ', ' + key[1] + '] 放到下标 ' + (j + 1) + '。右端点越小越先被处理，这样一支箭射在它的右端点时，最有可能顺带覆盖后面更多的气球。'
+    });
+  }
+
+  snap({
+    phase: 'sorted',
+    note: '排序完成：' + arr.map(function (p) { return '[' + p[0] + ',' + p[1] + ']'; }).join('、') + '，右端点单调不减。接下来一趟线性扫描即可。'
+  });
+
+  arrows = [{ pos: arr[0][1], covers: [0] }];
+  arrowPos = arr[0][1];
+  snap({
+    phase: 'shoot-first', cur: 0,
+    note: '第一个气球 [' + arr[0][0] + ', ' + arr[0][1] + '] 的右端点 ' + arr[0][1] + ' 是所有右端点里最小的。把第一支箭射在 x = ' + arrowPos + '：这是能引爆它、又尽量靠右的位置。箭数 arrows = 1。'
+  });
+
+  for (let i = 1; i < n; i++) {
+    const p = arr[i];
+    if (p[0] > arrowPos) {
+      arrows.push({ pos: p[1], covers: [i] });
+      arrowPos = p[1];
+      snap({
+        phase: 'new-arrow', cur: i,
+        note: '气球 [' + p[0] + ', ' + p[1] + '] 的起点 ' + p[0] + ' > 当前箭的位置 ' + arrowPos + '，说明现在这支箭够不到它。必须再射一支：射在它的右端点 ' + p[1] + '（同样取右端点，给后面的气球留出最大覆盖范围）。arrows = ' + arrows.length + '。'
+      });
+    } else {
+      arrows[arrows.length - 1].covers.push(i);
+      snap({
+        phase: 'covered', cur: i,
+        note: '气球 [' + p[0] + ', ' + p[1] + '] 的起点 ' + p[0] + ' ≤ 当前箭的位置 ' + arrowPos + ' ≤ 它的右端点 ' + p[1] + '，所以被第 ' + arrows.length + ' 支箭顺带引爆，不用增加箭数。'
+      });
     }
   }
-  const arrs=[];
-  let ap2=null;
-  for(let i=0;i<sorted.length;i++){
-    const[s,e]=sorted[i];
-    if(ap2===null||s>ap2){ap2=e; arrs.push(ap2);}
-  }
-  steps.push({desc:'完成! 共需'+ac+'支箭, 位置在 x='+arrs.join('、x='), phase:'done', arrowPos:ap, aCount:ac, curIdx:-1, bStates:sorted.map(()=>'done'), rRanges:[]});
-})();
 
-function colorFor(st){
-  if(st==='done')return'#AB47BC';
-  if(st==='cur-arrow')return'#FF7043';
-  if(st==='cur-burst')return'#66BB6A';
-  return'#42A5F5';
+  snap({
+    phase: 'done',
+    note: '所有气球都处理完，最少需要 ' + arrows.length + ' 支箭，位置分别在 x = ' + arrows.map(function (a) { return a.pos; }).join(' 和 x = ')
+      + '。按右端点排序保证每次都能用一支箭覆盖尽量多的气球，所以这个贪心得到的就是最优解。复杂度 O(n log n)。'
+  });
+
+  return steps;
 }
 
-let current=0,autoTimer=null,autoRun=false;
-const svg=document.getElementById('svg');
+function render(step, idx, ctx) {
+  ctx.stage.innerHTML = '';
 
-function render(){
-  const s=steps[current];
-  document.getElementById('stepNum').textContent=current;
-  document.getElementById('stepDesc').textContent=s.desc;
-  document.getElementById('prevBtn').disabled=current<=0;
-  document.getElementById('nextBtn').disabled=current>=steps.length-1;
-  document.getElementById('resultText').textContent=s.aCount;
+  const xMin = 0, xMax = 18, X0 = 44, X1 = 756;
+  function xs(v) { return X0 + v * (X1 - X0) / (xMax - xMin); }
 
-  let html='';
-  // axis
-  html+='<line x1="60" y1="'+axisY+'" x2="820" y2="'+axisY+'" stroke="#888" stroke-width="1.5"/>';
-  html+='<polygon points="820,'+(axisY-5)+' 820,'+(axisY+5)+' 828,'+axisY+'" fill="#888"/>';
-  for(let v=0;v<=18;v+=2){
-    const x=xScale(v);
-    html+='<line x1="'+x+'" y1="'+axisY+'" x2="'+x+'" y2="'+(axisY+6)+'" stroke="#888" stroke-width="1"/>';
-    html+='<text x="'+x+'" y="'+(axisY+20)+'" text-anchor="middle" fill="var(--muted)" font-size="11">'+v+'</text>';
+  const n = step.arr.length;
+  const rowsTop = 30, rowH = 30;
+  const rowsBottom = rowsTop + n * rowH;
+  const axisY = rowsBottom + 8;
+  const H = axisY + 40;
+
+  const isSortPhase = step.phase.indexOf('sort-') === 0 || step.phase === 'init';
+
+  const p = [];
+  p.push('<svg viewBox="0 0 800 ' + H + '" style="width:100%;max-width:800px;height:auto;display:block" role="img">');
+  p.push('<text x="8" y="16" style="fill:var(--demo-muted);font-size:12px;font-weight:700">'
+    + (isSortPhase ? '气球（按右端点排序进行中）' : '气球（已按右端点升序）') + '</text>');
+
+  for (let k = 0; k < n; k++) {
+    const pt = step.arr[k];
+    const y = rowsTop + k * rowH;
+    const covered = step.arrows.some(function (a) { return pt[0] <= a.pos && a.pos <= pt[1]; });
+    let fill = 'var(--demo-subtle)';
+    let stroke = 'var(--demo-border)';
+    if (k === step.key) { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; }
+    else if (k === step.cur) { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; }
+    else if (covered) { fill = 'var(--demo-ok-soft)'; stroke = 'var(--demo-ok)'; }
+    else if (step.cur >= 0 && k < step.cur) { fill = 'var(--demo-subtle)'; stroke = 'var(--demo-border)'; }
+
+    const dim = step.cur >= 0 && k < step.cur && k !== step.cur ? ';opacity:0.5' : '';
+    p.push('<rect x="' + xs(pt[0]) + '" y="' + y + '" width="' + Math.max(10, xs(pt[1]) - xs(pt[0])) + '" height="20" rx="10" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2' + dim + '"/>');
+    p.push('<text x="' + ((xs(pt[0]) + xs(pt[1])) / 2) + '" y="' + (y + 14) + '" text-anchor="middle" style="fill:var(--demo-text);font-size:11px;font-weight:700;font-family:var(--demo-mono)">[' + pt[0] + ',' + pt[1] + ']</text>');
+    p.push('<text x="20" y="' + (y + 14) + '" text-anchor="middle" style="fill:var(--demo-muted);font-size:10px;font-family:var(--demo-mono)">' + k + '</text>');
   }
 
-  // Balloon bars above axis, staggered by overlap
-  const rowYs=[axisY-45,axisY-88,axisY-45,axisY-88];
-  for(let j=0;j<sorted.length;j++){
-    const[a,b]=sorted[j];
-    const st=s.bStates[j]||'';
-    const c=colorFor(st);
-    const x1=xScale(a),x2=xScale(b);
-    const y=(rowYs[j]||axisY-45);
-    html+='<rect x="'+x1+'" y="'+y+'" width="'+Math.max(16,x2-x1)+'" height="'+(barH+4)+'" rx="14" fill="'+c+'" opacity="0.85" stroke="'+c+'" stroke-width="1.5"/>';
-    html+='<text x="'+(Math.round((x1+x2)/2))+'" y="'+(y+barH/2+6)+'" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">['+a+','+b+']</text>';
-    // endpoints on axis
-    html+='<circle cx="'+x1+'" cy="'+axisY+'" r="4" fill="'+c+'"/>';
-    html+='<circle cx="'+x2+'" cy="'+axisY+'" r="4" fill="'+c+'"/>';
-    if(s.curIdx===j){
-      html+='<text x="'+((x1+x2)/2)+'" y="'+(y-18)+'" text-anchor="middle" fill="'+c+'" font-size="13" font-weight="bold">▼ 当前</text>';
-    }
+  step.arrows.forEach(function (a, k) {
+    const x = xs(a.pos);
+    p.push('<line x1="' + x + '" y1="' + (rowsTop - 6) + '" x2="' + x + '" y2="' + (rowsBottom - 4) + '" style="stroke:var(--demo-danger);stroke-width:2;stroke-dasharray:5 3"/>');
+    p.push('<polygon points="' + (x - 6) + ',' + (rowsTop - 16) + ' ' + (x + 6) + ',' + (rowsTop - 16) + ' ' + x + ',' + (rowsTop - 6) + '" style="fill:var(--demo-danger)"/>');
+    p.push('<text x="' + x + '" y="' + (rowsTop - 20) + '" text-anchor="middle" style="fill:var(--demo-danger);font-size:11px;font-weight:700;font-family:var(--demo-mono)">箭' + (k + 1) + '</text>');
+  });
+
+  p.push('<line x1="' + (X0 - 10) + '" y1="' + axisY + '" x2="' + (X1 + 10) + '" y2="' + axisY + '" style="stroke:var(--demo-border);stroke-width:1.5"/>');
+  for (let v = xMin; v <= xMax; v++) {
+    p.push('<line x1="' + xs(v) + '" y1="' + axisY + '" x2="' + xs(v) + '" y2="' + (axisY + 4) + '" style="stroke:var(--demo-border);stroke-width:1"/>');
+    if (v % 2 === 0) p.push('<text x="' + xs(v) + '" y="' + (axisY + 16) + '" text-anchor="middle" style="fill:var(--demo-muted);font-size:9px;font-family:var(--demo-mono)">' + v + '</text>');
   }
+  p.push('<text x="' + (X1 + 4) + '" y="' + (axisY + 16) + '" style="fill:var(--demo-muted);font-size:10px">x</text>');
+  p.push('</svg>');
 
-  // Arrow markers below axis
-  if(s.arrowPos!==null&&s.phase!=='init'){
-    const ax=xScale(s.arrowPos);
-    // Arrow line
-    html+='<line x1="'+ax+'" y1="'+(axisY+35)+'" x2="'+ax+'" y2="'+(axisY+100)+'" stroke="#FF5722" stroke-width="2.5"/>';
-    // Arrow head
-    html+='<polygon points="'+(ax-8)+','+(axisY+35)+' '+(ax+8)+','+(axisY+35)+' '+ax+','+(axisY+25)+'" fill="#FF5722"/>';
-    // Arrow label
-    html+='<text x="'+ax+'" y="'+(axisY+120)+'" text-anchor="middle" fill="#FF5722" font-size="12" font-weight="bold">箭#'+s.aCount+'  x='+s.arrowPos+'</text>';
-    // Vertical dashed up
-    html+='<line x1="'+ax+'" y1="'+axisY+'" x2="'+ax+'" y2="'+(axisY-95)+'" stroke="#FF5722" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>';
-  }
+  const chart = Demo.el('div', 'col');
+  chart.style.width = '100%';
+  chart.innerHTML = p.join('');
+  ctx.stage.appendChild(chart);
 
-  html+='<text x="60" y="'+(axisY+140)+'" text-anchor="start" fill="var(--muted)" font-size="11">总箭数: '+s.aCount+'</text>';
-
-  svg.innerHTML=html;
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.style.textAlign = 'center';
+  const arrowTags = step.arrows.map(function (a, k) {
+    return '<span class="tag tag--bad">箭 ' + (k + 1) + ' @ x = ' + a.pos + '（覆盖 ' + a.covers.length + ' 个）</span>';
+  }).join(' &nbsp; ');
+  panel.innerHTML = (isSortPhase || step.arrows.length === 0
+    ? '<span class="tag tag--warn">还没有射箭</span>'
+    : arrowTags)
+    + ' &nbsp; 当前箭数：<code>' + step.arrows.length + '</code>'
+    + (step.phase === 'done' ? ' &nbsp;<span class="tag tag--ok">答案 ' + step.arrows.length + ' 支箭</span>' : '');
+  ctx.stage.appendChild(panel);
 }
 
-function goStep(n){current=Math.max(0,Math.min(n,steps.length-1));render()}
-function toggleAuto(){
-  if(autoRun){clearInterval(autoTimer);autoRun=false;document.getElementById('playBtn').textContent='\u25B6 自动播放';document.getElementById('playBtn').style.background='';document.getElementById('playBtn').style.color='';document.getElementById('playBtn').classList.remove('play-btn');}
-  else{autoRun=true;document.getElementById('playBtn').textContent='\u23F8 暂停';document.getElementById('playBtn').style.background='#1976D2';document.getElementById('playBtn').style.color='#fff';document.getElementById('playBtn').classList.add('play-btn');if(current>=steps.length-1)goStep(0);autoTimer=setInterval(function(){if(current<steps.length-1)goStep(current+1);else toggleAuto()},1200);}
-}
-document.addEventListener('keydown',function(e){if(e.key==='ArrowRight')goStep(current+1);if(e.key==='ArrowLeft')goStep(current-1);if(e.key===' '){e.preventDefault();toggleAuto();}});
-render();
+Demo.create({
+  title: '51. 用最少数量的箭引爆气球 — 按右端点排序的贪心',
+  info: '输入：points = [[10,16], [2,8], [1,6], [7,12]]（示例 1）。每支箭是一条竖线，射在 x = 6 和 x = 12 处可引爆全部 4 个气球，答案为 2。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 300,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前处理的气球' },
+    { color: 'var(--demo-danger)', label: '射出的箭（竖线位置）' },
+    { color: 'var(--demo-ok)', label: '已被某支箭覆盖的气球' }
+  ],
+  render: render
+});
 </script>
 </body>
 </html>

@@ -3,136 +3,157 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>129. 只出现一次的数字 II - 位计数取模3</title>
-<style>
-:root {
-  --bg: #f5f6fa; --card: #fff; --text: #2d3436; --sub: #636e72;
-  --border: #dfe6e9; --blue: #0984e3; --green: #00b894; --red: #e17055;
-  --blue-bg: #dff6fd; --hl: #ffeaa7;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1a1a2e; --card: #16213e; --text: #eee; --sub: #aaa;
-    --border: #2d3436; --blue: #74b9ff; --green: #55efc4; --red: #ff7675;
-    --blue-bg: #1a3a5c; --hl: #5c4a1f;
-  }
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:var(--bg); display:flex; justify-content:center; align-items:center; min-height:100vh; }
-.container { width:860px; height:500px; background:var(--card); border-radius:8px; padding:20px 24px; display:flex; flex-direction:column; gap:10px; box-shadow:0 2px 12px rgba(0,0,0,0.1); }
-.header { display:flex; justify-content:space-between; align-items:center; }
-.header h2 { font-size:17px; color:var(--text); }
-.step-badge { font-size:13px; color:var(--sub); background:var(--border); padding:4px 12px; border-radius:8px; font-weight:500; }
-.info-panel { background:var(--blue-bg); border-left:3px solid var(--blue); padding:10px 14px; border-radius:8px; font-size:13px; color:var(--text); min-height:44px; display:flex; align-items:center; }
-.main { display:flex; gap:16px; flex:1; }
-.num-col { display:flex; flex-direction:column; gap:6px; align-items:center; min-width:100px; }
-.num-col .n-title { font-size:13px; font-weight:600; color:var(--sub); }
-.num-row { display:flex; gap:4px; }
-.n-cell { width:40px; height:36px; border-radius:6px; background:var(--border); display:flex; align-items:center; justify-content:center; font-weight:600; font-size:14px; color:var(--text); transition:all 0.3s; }
-.n-cell.hl { background:var(--green); color:#fff; }
-.bit-cols { display:flex; gap:8px; flex:1; justify-content:center; align-items:flex-start; }
-.bit-col { display:flex; flex-direction:column; gap:4px; align-items:center; min-width:36px; }
-.bit-col .b-idx { font-size:10px; font-weight:600; color:var(--sub); }
-.bit-col .b-count { font-size:12px; font-weight:700; color:var(--blue); padding:2px 6px; border-radius:4px; background:var(--blue-bg); }
-.bit-col .b-val { font-size:10px; color:var(--sub); }
-.bit-col .b-res { font-size:14px; font-weight:700; color:var(--green); }
-.res-box { text-align:center; font-weight:700; font-size:20px; color:var(--green); padding:4px; border-radius:8px; border:2px solid var(--green); background:var(--green-bg); }
-.controls { display:flex; gap:8px; justify-content:center; }
-.btn { padding:7px 16px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; font-size:13px; font-family:inherit; transition:all 0.15s; }
-.btn:hover { background:var(--blue-bg); border-color:var(--blue); }
-.btn:active { transform:scale(0.96); }
-.key-hint { font-size:11px; color:var(--sub); text-align:center; }
-</style>
+<title>129. 只出现一次的数字 II - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <h2>129. 只出现一次的数字 II (nums=[2,2,3,2])</h2>
-    <span class="step-badge" id="stepBadge">步骤 0/5</span>
-  </div>
-  <div class="info-panel" id="info"></div>
-  <div class="main">
-    <div class="num-col">
-      <div class="n-title">数组</div>
-      <div id="numList"></div>
-    </div>
-    <div class="bit-cols" id="bitCols"></div>
-  </div>
-  <div class="res-box" id="result">结果: ?</div>
-  <div class="controls">
-    <button class="btn" onclick="reset()">重置</button>
-    <button class="btn" onclick="prev()">上步</button>
-    <button class="btn" onclick="next()">下步</button>
-    <button class="btn" id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button class="btn" onclick="goLast()">跳到最后</button>
-  </div>
-  <div class="key-hint">键盘: &#8592; &#8593; 上步 | &#8594; &#8595; 下步 | 空格 自动播放</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const nums = [2,2,3,2];
-const BIT_COUNT = 4; // enough for 0-3 range
-let steps = [], cur = 0, autoTimer = null, running = false;
+const NUMS = [2, 2, 3, 2];
+
+const BITS = NUMS.reduce((w, v) => Math.max(w, (v >>> 0).toString(2).length), 1);
+
+function bitsOf(v, width) {
+  return (v >>> 0).toString(2).padStart(width, '0').split('');
+}
+
+function resultFrom(counts) {
+  let ans = 0;
+  for (let b = 0; b < counts.length; b++) {
+    if (counts[b] % 3 !== 0) ans |= 1 << b;
+  }
+  return ans;
+}
 
 function buildSteps() {
-  steps = [];
-  let counts = Array(BIT_COUNT).fill(0);
-  steps.push({i:-1,counts:[...counts],processed:[],desc:'初始化位计数器, 每个元素出现3次(除了一个)'});
-  for (let i = 0; i < nums.length; i++) {
-    for (let b = 0; b < BIT_COUNT; b++) {
-      if (nums[i] & (1 << b)) counts[b]++;
-    }
-    let result = 0;
-    for (let b = 0; b < BIT_COUNT; b++) {
-      if (counts[b] % 3 !== 0) result |= (1 << b);
-    }
-    steps.push({i,counts:[...counts],processed:[...nums.slice(0,i+1)],result,desc:`加入 ${nums[i]} (${nums[i].toString(2).padStart(4,'0')}): 各位计数=[${counts.slice(0,4)}], 当前结果=${result}`});
-  }
-  steps.push({i:nums.length-1,counts:[...counts],processed:[...nums],result:3,desc:`最终: 各位计数%3 → 只出现一次的数字=3`,final:true});
-}
-buildSteps();
+  const steps = [];
+  const counts = new Array(BITS).fill(0);
 
-function render() {
-  const s = steps[cur];
-  document.getElementById('stepBadge').textContent = `步骤 ${cur}/${steps.length-1}`;
-  document.getElementById('info').textContent = s.desc;
-  document.getElementById('autoBtn').textContent = running ? '停止' : '自动播放';
-  document.getElementById('result').textContent = s.result !== undefined ? `答案: ${s.result}` : '答案: ?';
-  // Num list
-  let nl = '';
-  for (let i = 0; i < nums.length; i++) {
-    let cls = 'n-cell';
-    if (i <= s.i) cls += ' hl';
-    nl += `<div class="${cls}">${nums[i]}</div>`;
+  steps.push({
+    counts: counts.slice(), i: -1, contrib: [], ans: 0, done: false,
+    note: `初始化：为二进制的每一位准备一个计数器。${BITS} 个计数器全部清零（实际代码固定统计 32 位，本题示例的数值不超过 3，用 ${BITS} 位就够）。`
+  });
+
+  for (let i = 0; i < NUMS.length; i++) {
+    const v = NUMS[i];
+    const contrib = [];
+    for (let b = 0; b < BITS; b++) {
+      if ((v >> b) & 1) {
+        counts[b] += 1;
+        contrib.push(b);
+      }
+    }
+    const ans = resultFrom(counts);
+    steps.push({
+      counts: counts.slice(), i, contrib, ans, done: false,
+      note: `加入 nums[${i}] = ${v}（二进制 ${bitsOf(v, BITS).join('')}）：它在 ${contrib.map(b => `位 ${b}`).join('、')} 上是 1，` +
+        `对应的计数器各加 1，当前各位计数为 ${counts.map((c, b) => `位${b}=${c}`).join('、')}。` +
+        `把每个计数对 3 取余再拼回去，得到当前的候选值 ${ans}。`
+    });
   }
-  document.getElementById('numList').innerHTML = `<div class="num-row">${nl}</div>`;
-  // Bit columns
-  let bc = '';
-  for (let b = BIT_COUNT-1; b >= 0; b--) {
-    bc += `<div class="bit-col">`;
-    bc += `<div class="b-idx">位${b}</div>`;
-    bc += `<div class="b-count">${s.counts[b]}</div>`;
-    bc += `<div class="b-val">%3=${s.counts[b]%3}</div>`;
-    bc += `<div class="b-res">${s.counts[b]%3}</div>`;
-    bc += `</div>`;
-  }
-  document.getElementById('bitCols').innerHTML = bc;
+
+  steps.push({
+    counts: counts.slice(), i: NUMS.length - 1, contrib: [], ans: resultFrom(counts), done: true,
+    note: `遍历结束。出现三次的元素在每一位上都贡献了 3 个 1，取余后被消掉；只有出现一次的元素留下余数，` +
+      `所以答案 = ${resultFrom(counts)}（二进制 ${bitsOf(resultFrom(counts), BITS).join('')}）。`
+  });
+
+  return steps;
 }
-function reset() { cur = 0; stopAuto(); render(); }
-function prev() { if (cur > 0) { cur--; render(); } }
-function next() { if (cur < steps.length - 1) { cur++; render(); } else { stopAuto(); } }
-function goLast() { stopAuto(); cur = steps.length - 1; render(); }
-function toggleAuto() { running ? stopAuto() : startAuto(); }
-function startAuto() { running = true; render(); autoStep(); }
-function stopAuto() { running = false; if (autoTimer) clearTimeout(autoTimer); render(); }
-function autoStep() { if (!running) return; if (cur < steps.length - 1) { cur++; render(); autoTimer = setTimeout(autoStep, 600); } else { stopAuto(); } }
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
-  else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); next(); }
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
-  else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); reset(); }
-  else if (e.key === 'End') { e.preventDefault(); goLast(); }
+
+function td(text, cls) {
+  const cell = document.createElement('td');
+  cell.textContent = String(text);
+  if (cls) cell.className = cls;
+  cell.style.padding = '3px 7px';
+  return cell;
+}
+
+Demo.create({
+  title: '129. 只出现一次的数字 II — 按位统计 1 的个数并对 3 取模',
+  info: `输入：nums = [${NUMS.join(', ')}]，除某个元素只出现一次外，其余元素都恰好出现三次。演示按位统计（示例数值最大为 ${(1 << BITS) - 1}，故只显示 ${BITS} 位）。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前统计的元素' },
+    { color: 'var(--demo-ok)', label: '计数对 3 取余后为 1 的位' },
+    { color: 'var(--demo-border)', label: '尚未统计的元素' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const arrLabel = Demo.el('div', 'panel__title',
+      step.done ? '数组 nums（已全部统计）' : (step.i < 0 ? '数组 nums（尚未开始统计）' : `数组 nums（本次统计下标 ${step.i}）`));
+    arrLabel.style.marginBottom = '4px';
+    ctx.stage.appendChild(arrLabel);
+
+    const arrRow = Demo.el('div', 'row');
+    NUMS.forEach((v, idx) => {
+      const cell = Demo.el('div', 'cell');
+      cell.textContent = String(v);
+      if (idx === step.i && !step.done) cell.classList.add('is-active');
+      else if (idx > step.i) cell.classList.add('cell--dim');
+      arrRow.appendChild(cell);
+    });
+    ctx.stage.appendChild(arrRow);
+
+    const table = document.createElement('table');
+    table.className = 'map-table';
+    const head = document.createElement('tr');
+    head.appendChild(td('位'));
+    NUMS.forEach((v, idx) => head.appendChild(td(`nums[${idx}]`)));
+    head.appendChild(td('计数'));
+    head.appendChild(td('% 3'));
+    const thead = document.createElement('thead');
+    thead.appendChild(head);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    for (let b = BITS - 1; b >= 0; b--) {
+      const row = document.createElement('tr');
+      if (step.i >= 0 && !step.done && step.contrib.indexOf(b) >= 0) row.classList.add('is-active');
+      const th = document.createElement('th');
+      th.textContent = `位 ${b}`;
+      th.style.padding = '3px 7px';
+      row.appendChild(th);
+
+      NUMS.forEach((v, idx) => {
+        const known = idx <= step.i;
+        const bit = (v >> b) & 1;
+        const cell = td(known ? bit : '·');
+        if (!known) cell.style.color = 'var(--demo-muted)';
+        if (idx === step.i && !step.done) cell.style.background = 'var(--demo-accent-soft)';
+        row.appendChild(cell);
+      });
+
+      const cCell = td(step.counts[b]);
+      if (step.i >= 0 && !step.done && step.contrib.indexOf(b) >= 0) {
+        cCell.innerHTML = `<span class="tag">${step.counts[b]}</span>`;
+      }
+      row.appendChild(cCell);
+
+      const mod = step.counts[b] % 3;
+      const mCell = td(mod);
+      if (mod !== 0) mCell.innerHTML = `<span class="tag tag--ok">${mod}</span>`;
+      row.appendChild(mCell);
+      tbody.appendChild(row);
+    }
+    table.appendChild(tbody);
+    ctx.stage.appendChild(table);
+
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.style.textAlign = 'center';
+    const perBit = [];
+    for (let b = BITS - 1; b >= 0; b--) {
+      perBit.push(`位 ${b}：${step.counts[b]} % 3 = ${step.counts[b] % 3} → ${step.counts[b] % 3}`);
+    }
+    panel.innerHTML = perBit.join('　　') +
+      `<br>当前候选结果 <strong>${step.ans}</strong>（二进制 ${Demo.esc(bitsOf(step.ans, BITS).join(''))}）` +
+      (step.done ? '　<span class="tag tag--ok">答案确定</span>' : '　<span class="tag">仍在统计中</span>');
+    ctx.stage.appendChild(panel);
+  }
 });
-render();
 </script>
 </body>
 </html>

@@ -2,194 +2,174 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>90. 被围绕的区域 - Surrounded Regions</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
-.container{background:#fff;border-radius:8px;padding:20px;width:720px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
-h2{font-size:16px;margin-bottom:12px;color:#333}
-.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-button{border:none;border-radius:8px;padding:8px 16px;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s;color:#fff;font-weight:500}
-button:disabled{opacity:.4;cursor:not-allowed}
-.btn-reset{background:#6c757d}
-.btn-prev{background:#0d6efd}
-.btn-next{background:#0d6efd}
-.btn-auto{background:#198754}
-.btn-end{background:#dc3545}
-button:hover:not(:disabled){filter:brightness(1.15)}
-.info-panel{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:#555;background:#f0f4f8;border-radius:8px;padding:10px 14px}
-.step-badge{background:#0d6efd;color:#fff;border-radius:20px;padding:2px 12px;font-weight:600;font-size:12px}
-.info-text{flex:1;margin-left:12px}
-.vis-area{background:#fafafa;border-radius:8px;position:relative;height:440px;overflow:hidden;border:1px solid #e0e0e0}
-canvas{display:block}
-.hint{font-size:12px;color:#999;text-align:center;margin-top:8px}
-@media(prefers-color-scheme:dark){
-body{background:#1a1a2e}
-.container{background:#16213e;box-shadow:0 2px 12px rgba(0,0,0,.4)}
-h2{color:#e0e0e0}
-.info-panel{background:#1a1a3e;color:#ccc}
-.vis-area{background:#0f0f23;border-color:#2a2a4a}
-.hint{color:#777}
-}
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>90. 被围绕的区域 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>90. 被围绕的区域 (Surrounded Regions) — 边界DFS标记 → 翻转</h2>
-<div class="controls">
-<button class="btn-reset" onclick="reset()">⟳ 重置</button>
-<button class="btn-prev" onclick="prevStep()">◀ 上步</button>
-<button class="btn-next" onclick="nextStep()">下步 ▶</button>
-<button class="btn-auto" id="btnAuto" onclick="toggleAuto()">▶ 自动播放</button>
-<button class="btn-end" onclick="jumpEnd()">▶▶ 跳到最后</button>
-</div>
-<div class="info-panel">
-<span class="step-badge" id="stepBadge">步骤 1/8</span>
-<span class="info-text" id="infoText">初始4x4棋盘</span>
-</div>
-<div class="vis-area"><canvas id="cvs"></canvas></div>
-<div class="hint">键盘: ← → 切换步骤 | 空格 自动播放</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const board=[['X','X','X','X'],['X','O','O','X'],['X','X','O','X'],['X','O','X','X']];
-const R=4,C=4;
-let steps=[],currentStep=0,totalSteps=0,autoTimer=null;
+const BOARD = [
+  ['X', 'X', 'X', 'X'],
+  ['X', 'O', 'O', 'X'],
+  ['X', 'X', 'O', 'X'],
+  ['X', 'O', 'X', 'X']
+];
+const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
-function boardCopy(b){return b.map(r=>[...r]);}
-function buildSteps(){
-  steps=[];
-  let b=boardCopy(board);
-  let marked=Array.from({length:R},()=>Array(C).fill(false));
-  steps.push({board:boardCopy(b),marked:marked.map(r=>[...r]),info:'初始4x4棋盘: 边界上的O不会被围绕',highlight:[]});
+function buildSteps() {
+  const R = BOARD.length;
+  const C = BOARD[0].length;
+  const board = BOARD.map(row => row.slice());
+  const kept = BOARD.map(row => row.map(() => false));
+  const steps = [];
+  let markedCount = 0;
 
-  // BFS from boundary O's
-  let q=[];
-  for(let j=0;j<C;j++){
-    if(b[0][j]==='O'&&!marked[0][j]){marked[0][j]=true;q.push([0,j]);}
-    if(b[R-1][j]==='O'&&!marked[R-1][j]){marked[R-1][j]=true;q.push([R-1,j]);}
+  function snap(note, extra) {
+    const step = {
+      board: board.map(row => row.slice()),
+      kept: kept.map(row => row.slice()),
+      marked: markedCount,
+      note: note
+    };
+    if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+    steps.push(step);
   }
-  for(let i=1;i<R-1;i++){
-    if(b[i][0]==='O'&&!marked[i][0]){marked[i][0]=true;q.push([i,0]);}
-    if(b[i][C-1]==='O'&&!marked[i][C-1]){marked[i][C-1]=true;q.push([i,C-1]);}
+
+  function dfs(sr, sc) {
+    const stack = [[sr, sc]];
+    board[sr][sc] = '#';
+    kept[sr][sc] = true;
+    markedCount += 1;
+    snap('从边界 (' + sr + ',' + sc + ') 出发：它是 O，一定不会被围绕，临时标记为 #，并压入搜索栈。', { active: [sr, sc] });
+
+    while (stack.length > 0) {
+      const cur = stack.pop();
+      snap('取出 (' + cur[0] + ',' + cur[1] + ')，沿上下左右找还没有标记过的 O。', { active: cur });
+      for (const d of DIRS) {
+        const nr = cur[0] + d[0];
+        const nc = cur[1] + d[1];
+        if (nr < 0 || nr >= R || nc < 0 || nc >= C) continue;
+        if (board[nr][nc] !== 'O') continue;
+        board[nr][nc] = '#';
+        kept[nr][nc] = true;
+        markedCount += 1;
+        stack.push([nr, nc]);
+        snap('邻居 (' + nr + ',' + nc + ') 仍是 O → 它与边界连通，同样不会被围绕，标记为 # 并压栈继续扩散。', { active: cur, added: [nr, nc] });
+      }
+    }
+
+    snap('以 (' + sr + ',' + sc + ') 为起点的搜索结束，这一整片与边界连通的 O 都已标成 #。');
   }
 
-  if(q.length>0){
-    steps.push({board:boardCopy(b),marked:marked.map(r=>[...r]),info:`从边界发现 ${q.length} 个边界O, 开始BFS标记`,highlight:q.map(p=>[...p])});
-    let idx=0;
-    while(idx<q.length){
-      let [r,c]=q[idx++];
-      for(let [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
-        let nr=r+dr,nc=c+dc;
-        if(nr>=0&&nr<R&&nc>=0&&nc<C&&b[nr][nc]==='O'&&!marked[nr][nc]){
-          marked[nr][nc]=true;q.push([nr,nc]);
-          steps.push({board:boardCopy(b),marked:marked.map(r=>[...r]),info:`BFS: 标记 (${nr},${nc}) 为边界连通O`,highlight:[[nr,nc]]});
+  snap('初始棋盘：X 是墙，O 是待判定的区域。目标是把「没有与边界连通」的 O 全部改写成 X。直接找内部的 O 很难，所以反过来先保住与边界连通的 O。');
+
+  for (let i = 0; i < R; i++) {
+    for (const j of [0, C - 1]) {
+      if (board[i][j] === 'O') dfs(i, j);
+    }
+  }
+  snap('左、右两列扫描完毕' + (markedCount > 0 ? '，目前共标记 ' + markedCount + ' 个 #。' : '，两列上都没有 O，没有新的搜索起点。'), { scan: 'lr' });
+
+  for (let j = 0; j < C; j++) {
+    for (const i of [0, R - 1]) {
+      if (board[i][j] === 'O') dfs(i, j);
+    }
+  }
+  snap('上、下两行扫描完毕，共标记 ' + markedCount + ' 个与边界连通的 O。接下来的 O 都是被 X 完全包围的。', { scan: 'tb' });
+
+  let flipped = 0;
+  for (let i = 0; i < R; i++) {
+    for (let j = 0; j < C; j++) {
+      if (board[i][j] === 'O') {
+        board[i][j] = 'X';
+        flipped += 1;
+        snap('遍历到 (' + i + ',' + j + ') 仍是 O：它没有被边界搜索标记过，说明被 X 完全包围 → 翻转为 X（捕获）。', { active: [i, j], phase: 'flip' });
+      }
+    }
+  }
+  snap('捕获阶段结束，共翻转 ' + flipped + ' 个 O。', { phase: 'flip' });
+
+  let restored = 0;
+  for (let i = 0; i < R; i++) {
+    for (let j = 0; j < C; j++) {
+      if (board[i][j] === '#') {
+        board[i][j] = 'O';
+        restored += 1;
+      }
+    }
+  }
+  snap('最后把 ' + restored + ' 个临时标记 # 还原成 O：它们与边界连通，必须保留。', { phase: 'restore' });
+
+  snap('完成。每个格子最多被访问常数次，时间 O(m×n)，额外空间是搜索栈（最坏 O(m×n)）。', { done: true });
+  return steps;
+}
+
+Demo.create({
+  title: '90. 被围绕的区域 — 边界出发的逆向标记',
+  info: 'board 为 4×4。先从四条边上的 O 出发标 #，再把内部剩余的 O 翻成 X，最后把 # 还原为 O。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 300,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前处理的格子' },
+    { color: 'var(--demo-warn)', label: '待判定的 O' },
+    { color: 'var(--demo-ok)', label: '与边界连通（保留）' },
+    { color: 'var(--demo-danger)', label: '被围绕，翻转为 X' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const gridPanel = Demo.el('div', 'panel');
+    gridPanel.style.width = '100%';
+    gridPanel.appendChild(Demo.el('div', 'panel__title', '棋盘（虚线边框 = 与边界相邻的格子）'));
+
+    const grid = Demo.el('div', 'grid');
+    grid.style.gridTemplateColumns = 'repeat(' + BOARD[0].length + ', 52px)';
+    grid.style.justifyContent = 'center';
+
+    const active = step.active;
+    const added = step.added;
+    let retained = 0;
+    let captured = 0;
+
+    for (let r = 0; r < BOARD.length; r++) {
+      for (let c = 0; c < BOARD[r].length; c++) {
+        const value = step.board[r][c];
+        const cell = Demo.el('div', 'cell', Demo.esc(value === '#' ? '#' : value));
+
+        if (value === '#') cell.classList.add('is-ok');
+        else if (value === 'O' && step.kept[r][c]) cell.classList.add('is-ok');
+        else if (value === 'O') cell.classList.add('is-warn');
+        else if (BOARD[r][c] === 'O') cell.classList.add('is-bad');
+        else cell.classList.add('cell--dim');
+
+        if (step.kept[r][c]) retained += 1;
+        if (BOARD[r][c] === 'O' && value === 'X') captured += 1;
+
+        if (r === 0 || r === BOARD.length - 1 || c === 0 || c === BOARD[r].length - 1) {
+          cell.style.boxShadow = 'inset 0 0 0 2px var(--demo-muted)';
         }
+        if ((active && active[0] === r && active[1] === c) || (added && added[0] === r && added[1] === c)) {
+          cell.classList.add('is-active');
+        }
+        grid.appendChild(cell);
       }
     }
-    steps.push({board:boardCopy(b),marked:marked.map(r=>[...r]),info:`边界BFS完成, 所有边界连通的O已标记(绿色边框)`,highlight:[],phase:'marked'});
-    // Flip
-    let nb=boardCopy(b);
-    for(let i=0;i<R;i++)for(let j=0;j<C;j++)if(b[i][j]==='O'&&!marked[i][j])nb[i][j]='X';
-    steps.push({board:nb,marked:marked.map(r=>[...r]),info:'翻转内部O为X (红色高亮)',highlight:[],phase:'flip',flipCells:[]});
-    let fc=[];
-    for(let i=0;i<R;i++)for(let j=0;j<C;j++)if(b[i][j]==='O'&&!marked[i][j])fc.push([i,j]);
-    if(fc.length>0){
-      steps[steps.length-1].flipCells=fc;
-      steps.push({board:nb,marked:marked.map(r=>[...r]),info:`完成! ${fc.length} 个内部O被翻转为X`,highlight:[],phase:'done'});
-    }
-  }else{
-    steps.push({board:boardCopy(b),marked:marked.map(r=>[...r]),info:'无边界O, 无需标记',highlight:[]});
+    gridPanel.appendChild(grid);
+    ctx.stage.appendChild(gridPanel);
+
+    const statusPanel = Demo.el('div', 'panel');
+    statusPanel.style.width = '100%';
+    statusPanel.appendChild(Demo.el('div', 'panel__title', '状态'));
+    statusPanel.appendChild(Demo.el('div', null,
+      '与边界连通（#）：' + step.marked + ' 个 &nbsp;·&nbsp; 已翻转为 X：' + captured + ' 个'));
+    statusPanel.appendChild(Demo.el('div', null, step.done
+      ? '<span class="tag tag--ok">完成：保留 ' + retained + ' 个 O</span>'
+      : '<span class="tag tag--info">阶段：' + (step.phase === 'flip' ? '翻转内部 O' : step.phase === 'restore' ? '还原临时标记' : '边界搜索') + '</span>'));
+    ctx.stage.appendChild(statusPanel);
   }
-}
-buildSteps();
-totalSteps=steps.length;
-
-const cvs=document.getElementById('cvs');
-const ctx=cvs.getContext('2d');
-function resizeCanvas(){
-  let a=cvs.parentElement;
-  cvs.width=a.clientWidth;cvs.height=a.clientHeight;
-}
-resizeCanvas();
-window.addEventListener('resize',()=>{resizeCanvas();draw();});
-const CELL=90,OFFX=60,OFFY=50;
-
-function draw(){
-  let s=steps[currentStep];
-  ctx.clearRect(0,0,cvs.width,cvs.height);
-  for(let i=0;i<R;i++){
-    for(let j=0;j<C;j++){
-      let x=OFFX+j*(CELL+10),y=OFFY+i*(CELL+10);
-      let val=s.board[i][j];
-      let isFlipCell=(s.flipCells||[]).some(([r,c])=>r===i&&c===j);
-      let isMarked=s.marked[i][j];
-      let isHL=(s.highlight||[]).some(([r,c])=>r===i&&c===j);
-
-      if(val==='O'&&isMarked){
-        ctx.fillStyle='#5cb85c';
-      }else if(val==='X'){
-        ctx.fillStyle='#444';
-      }else{
-        ctx.fillStyle='#fff';
-      }
-      ctx.fillRect(x,y,CELL,CELL);
-
-      if(isFlipCell){
-        ctx.strokeStyle='#d9534f';ctx.lineWidth=4;
-        ctx.strokeRect(x-3,y-3,CELL+6,CELL+6);
-      }
-      if(isMarked){
-        ctx.strokeStyle='#5cb85c';ctx.lineWidth=3;
-        ctx.strokeRect(x-2,y-2,CELL+4,CELL+4);
-      }
-      if(isHL&&!isMarked&&!isFlipCell){
-        ctx.strokeStyle='#ff0';ctx.lineWidth=3;
-        ctx.strokeRect(x-2,y-2,CELL+4,CELL+4);
-      }
-      ctx.strokeStyle='#999';ctx.lineWidth=1;
-      ctx.strokeRect(x,y,CELL,CELL);
-
-      ctx.fillStyle=val==='X'?'#eee':'#333';
-      ctx.font='bold 36px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText(val,x+CELL/2,y+CELL/2);
-    }
-  }
-  let lx=OFFX+C*(CELL+10)+30,ly=OFFY;
-  ctx.fillStyle='#333';ctx.font='14px sans-serif';ctx.textAlign='left';
-  ctx.fillText('图例:',lx,ly);
-  let items=[
-    {color:'#5cb85c',txt:'边界连通O(保留)'},
-    {color:'#fff',txt:'内部O(将被翻)',stroke:'#999'},
-    {color:'#444',txt:'X'},
-  ];
-  items.forEach((it,k)=>{
-    ctx.fillStyle=it.color;ctx.fillRect(lx,ly+20+k*28,20,20);
-    ctx.strokeStyle=it.stroke||'#999';ctx.strokeRect(lx,ly+20+k*28,20,20);
-    ctx.fillStyle='#333';ctx.fillText(it.txt,lx+26,ly+34+k*28);
-  });
-  document.getElementById('stepBadge').textContent=`步骤 ${currentStep+1}/${totalSteps}`;
-  document.getElementById('infoText').textContent=s.info;
-  let btns=document.querySelectorAll('button');
-  btns.forEach(b=>b.disabled=false);
-  if(currentStep===0)document.querySelector('.btn-prev').disabled=true;
-  if(currentStep===totalSteps-1){document.querySelector('.btn-next').disabled=true;document.querySelector('.btn-end').disabled=true;document.querySelector('.btn-auto').disabled=true;}
-}
-
-function nextStep(){if(currentStep<totalSteps-1){currentStep++;draw();}}
-function prevStep(){if(currentStep>0){currentStep--;draw();}}
-function reset(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=0;draw();}
-function jumpEnd(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}currentStep=totalSteps-1;draw();}
-function toggleAuto(){
-  if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}
-  else{document.getElementById('btnAuto').textContent='⏸ 暂停';autoTimer=setInterval(()=>{if(currentStep<totalSteps-1)nextStep();else{clearInterval(autoTimer);autoTimer=null;document.getElementById('btnAuto').textContent='▶ 自动播放';}},900);}
-}
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight'){e.preventDefault();nextStep();}
-  else if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}
-  else if(e.key===' '){e.preventDefault();toggleAuto();}
 });
-draw();
 </script>
 </body>
 </html>

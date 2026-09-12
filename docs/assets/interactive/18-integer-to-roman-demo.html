@@ -1,280 +1,164 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --hl-color: #1976D2; --skip-color: #ccc;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd;
-      --btn-bg: #333; --btn-hover: #444;
-      --skip-color: #555;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 20px;
-  }
-  .container { max-width: 750px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 8px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 12px;
-    margin-bottom: 8px; font-size: 13px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 22px; color: #1976D2; min-width: 35px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 12px; max-width: 460px; }
-
-  .main-row {
-    display: flex; gap: 20px; justify-content: center; margin-bottom: 8px;
-    align-items: flex-start;
-  }
-
-  /* Left: current state */
-  .state-panel {
-    background: #F5F5F5; border-radius: 8px; padding: 12px 16px;
-    text-align: center; min-width: 180px;
-  }
-  @media (prefers-color-scheme: dark) { .state-panel { background: #2a2a3e; } }
-  .state-panel .label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-  .state-panel .num-display {
-    font-size: 36px; font-weight: bold; color: #E65100;
-    transition: all 0.3s;
-  }
-  .state-panel .roman-display {
-    font-size: 24px; font-weight: bold; color: #1976D2; min-height: 36px;
-    letter-spacing: 2px; word-break: break-all;
-    transition: all 0.3s;
-  }
-
-  /* Right: value table */
-  .table-wrap {
-    flex: 1; max-width: 400px;
-  }
-  .value-table {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 3px;
-  }
-  .val-row {
-    display: contents;
-  }
-  .val-cell {
-    padding: 5px 8px; border-radius: 8px; font-size: 13px; font-weight: bold;
-    text-align: center;
-    border: 2px solid transparent;
-    transition: all 0.25s;
-    display: flex; align-items: center; justify-content: center;
-    gap: 4px;
-  }
-  .val-cell.skip { opacity: 0.35; border-color: transparent; }
-  .val-cell.active { border-color: #E65100; background: #FFF3E0; transform: scale(1.04); }
-  .val-cell.used { border-color: #43A047; background: #E8F5E9; }
-  @media (prefers-color-scheme: dark) {
-    .val-cell.active { background: #3e2a1a; }
-    .val-cell.used { background: #1a3e1a; }
-  }
-  .val-int { color: var(--text); font-family: monospace; }
-  .val-rom { color: var(--muted); font-size: 11px; }
-
-  .history-bar {
-    background: #F5F5F5; border-radius: 8px; padding: 6px 14px;
-    margin-bottom: 8px; text-align: center; font-size: 12px;
-  }
-  @media (prefers-color-scheme: dark) { .history-bar { background: #2a2a3e; } }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-
-  .phase-badge {
-    display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px;
-    font-weight: bold;
-  }
-  .badge-init { background: #eee; color: #666; }
-  .badge-active { background: #FFF3E0; color: #E65100; }
-  .badge-done { background: #E8F5E9; color: #2E7D32; }
-  @media (prefers-color-scheme: dark) {
-    .badge-init { background: #444; color: #ccc; }
-    .badge-active { background: #3e2a1a; color: #FFB74D; }
-    .badge-done { background: #1a3e1a; color: #81C784; }
-  }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>18. 整数转罗马数字 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>整数转罗马数字 — 贪心算法逐步演示</h2>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">/ 4 步 · 点击「下一步」开始</span>
-    <span class="phase-badge badge-init" id="phaseBdg">初始</span>
-  </div>
-
-  <div class="main-row">
-    <div class="state-panel">
-      <div class="label">当前数字 num</div>
-      <div class="num-display" id="numDisplay">1994</div>
-      <div class="label" style="margin-top:8px;">累积罗马字符串</div>
-      <div class="roman-display" id="romanDisplay"></div>
-    </div>
-
-    <div class="table-wrap">
-      <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:4px;">价值表 (从大到小贪心匹配)</div>
-      <div class="value-table" id="valueTable"></div>
-    </div>
-  </div>
-
-  <div class="history-bar" id="historyBar">
-    步骤记录: (无)
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">自动播放</button>
-    <button onclick="goStep(totalSteps)" id="endBtn">跳到最后</button>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const pairs = [
-  [1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],
-  [100,'C'],[90,'XC'],[50,'L'],[40,'XL'],
-  [10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']
+const NUM = 1994;
+const PAIRS = [
+  [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+  [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+  [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']
 ];
-const totalSteps = 4;
+const GRID_COLS = 7;
 
-// Simulate greedy
-const steps = [];
-let num = 1994;
-let roman = '';
+function buildSteps() {
+  const steps = [];
+  const used = PAIRS.map(function () { return false; });
+  let num = NUM;
+  let roman = '';
 
-steps.push({
-  num, roman, activePairIdx: -1,
-  used: [], desc: '初始化: num = 1994',
-  history: '开始转换 1994'
-});
-
-for (let i = 0; i < pairs.length; i++) {
-  const [val, sym] = pairs[i];
-  if (num >= val) {
-    const oldNum = num;
-    const oldRoman = roman;
-    num -= val;
-    roman += sym;
-    const used = [];
-    for (let j = 0; j <= i; j++) used.push(j);
-    steps.push({
-      num, roman, activePairIdx: i,
-      used: [...used],
-      desc: oldNum + ' >= ' + val + ' (' + sym + '), num=' + oldNum + '-' + val + '=' + num + ', roman="' + oldRoman + '"+"' + sym + '"="' + roman + '"',
-      history: '第 ' + (steps.length) + ' 步: ' + oldNum + ' - ' + val + ' = ' + num + ', +"' + sym + '"'
-    });
-    // Re-check same value (may be needed multiple times for same pair)
-    // Actually for this dataset each pair is used at most once since we have 900,90,9,4 etc.
-  }
-}
-
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-// Build value table
-const table = document.getElementById('valueTable');
-pairs.forEach(([val, sym], i) => {
-  const vc = document.createElement('div');
-  vc.className = 'val-cell';
-  vc.dataset.idx = i;
-  vc.innerHTML = '<span class="val-int">' + val + '</span><span class="val-rom">' + sym + '</span>';
-  table.appendChild(vc);
-});
-
-function render() {
-  const st = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = current === 0
-    ? '/ ' + totalSteps + ' 步 · 点击「下一步」开始'
-    : '第 ' + current + ' 步 · ' + st.desc;
-  document.getElementById('numDisplay').textContent = st.num;
-  document.getElementById('romanDisplay').textContent = st.roman || '(空)';
-  document.getElementById('historyBar').textContent = st.history;
-
-  const bdg = document.getElementById('phaseBdg');
-  if (current === 0) { bdg.textContent = '初始'; bdg.className = 'phase-badge badge-init'; }
-  else if (st.num === 0) { bdg.textContent = '完成'; bdg.className = 'phase-badge badge-done'; }
-  else { bdg.textContent = '贪心'; bdg.className = 'phase-badge badge-active'; }
-
-  document.querySelectorAll('.val-cell').forEach(el => {
-    el.classList.remove('skip','active','used');
-    const i = parseInt(el.dataset.idx);
-    if (i === st.activePairIdx) {
-      el.classList.add('active');
-    } else if (st.used.includes(i)) {
-      el.classList.add('used');
-    } else if (current > 0 && i < pairs.length) {
-      // Check if we've passed this value
-      const minUsed = Math.min(...st.used);
-      if (i < minUsed && !st.used.includes(i)) {
-        el.classList.add('skip');
-      }
-    }
+  steps.push({
+    i: -1, num: num, roman: roman, symbol: null, value: null, taken: false,
+    used: used.slice(), done: false,
+    note: `初始化：num = ${NUM}，roman = ""。先把 13 个罗马数字符号（含 IV/IX/XL/XC/CD/CM 六个减法特例）按数值从大到小排好，准备贪心匹配。`
   });
 
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= totalSteps;
-  document.getElementById('endBtn').disabled = current >= totalSteps;
-}
+  for (let i = 0; i < PAIRS.length && num > 0; i++) {
+    const value = PAIRS[i][0];
+    const symbol = PAIRS[i][1];
 
-function goStep(n) {
-  current = Math.max(0, Math.min(n, totalSteps));
-  render();
-}
+    if (num < value) {
+      steps.push({
+        i: i, num: num, roman: roman, symbol: symbol, value: value, taken: false,
+        used: used.slice(), done: false,
+        note: `检查 ${value}（${symbol}）：当前 num = ${num} < ${value}，这个符号太大、用不上，跳过它去试更小的符号。`
+      });
+      continue;
+    }
 
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer); autoRunning = false;
-    document.getElementById('playBtn').textContent = '自动播放';
-    document.getElementById('playBtn').style.background = '#1976D2';
-  } else {
-    autoRunning = true;
-    if (current >= totalSteps) goStep(0);
-    autoTimer = setInterval(() => {
-      if (current < totalSteps) goStep(current + 1);
-      else { clearInterval(autoTimer); autoRunning = false;
-        document.getElementById('playBtn').textContent = '自动播放'; }
-    }, 800);
+    while (num >= value) {
+      const before = num;
+      num -= value;
+      roman += symbol;
+      used[i] = true;
+      steps.push({
+        i: i, num: num, roman: roman, symbol: symbol, value: value, taken: true,
+        before: before, used: used.slice(), done: false,
+        note: `贪心命中：${value}（${symbol}）是当前能用的最大符号（${before} ≥ ${value}），于是 num = ${before} − ${value} = ${num}，并把 "${symbol}" 追加到 roman 末尾。`
+      });
+    }
   }
+
+  steps.push({
+    i: PAIRS.length, num: num, roman: roman, symbol: null, value: null, taken: false,
+    used: used.slice(), done: true,
+    note: `num 已经减到 0，贪心结束（num 归零后后面更小的符号无需再看）。结果 roman = "${roman}"，共 ${roman.length} 个罗马字符，与示例输出一致。`
+  });
+
+  return steps;
 }
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
-});
+function pairGrid(step) {
+  const grid = Demo.el('div', 'grid');
+  grid.style.gridTemplateColumns = 'repeat(' + GRID_COLS + ', minmax(0, 1fr))';
+  grid.style.width = '100%';
 
-render();
+  PAIRS.forEach(function (pair, idx) {
+    const value = pair[0];
+    const symbol = pair[1];
+    const col = Demo.el('div', 'col');
+
+    const cell = Demo.el('div', 'grid-cell', Demo.esc(symbol));
+    if (idx === step.i && !step.done) cell.classList.add('is-active');
+    else if (step.used[idx]) cell.classList.add('is-ok');
+    else if (step.i >= 0 && idx < step.i) cell.classList.add('is-dim');
+    if (step.done && !step.used[idx]) cell.classList.add('is-dim');
+    col.appendChild(cell);
+
+    const ptr = Demo.el('div', 'ptr', String(value));
+    if (idx === step.i && !step.done) ptr.classList.add('ptr--info');
+    else ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+
+    grid.appendChild(col);
+  });
+
+  return grid;
+}
+
+Demo.create({
+  title: '18. 整数转罗马数字 — 从大到小贪心减数',
+  info: `输入：num = ${NUM}（示例 5）。贪心表按数值降序排列，每次尽量使用能装下的最大符号。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 340,
+  legend: [
+    { color: 'var(--demo-accent)', label: '本步检查的符号' },
+    { color: 'var(--demo-ok)', label: '已经用过的符号' },
+    { color: 'var(--demo-muted)', label: '数值过大、被跳过的符号' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const tablePanel = Demo.el('div', 'panel');
+    tablePanel.style.width = '100%';
+    tablePanel.appendChild(Demo.el('div', 'panel__title',
+      step.done ? '贪心表（已停止匹配）' : '贪心表：13 个符号按数值从大到小排列'));
+    tablePanel.appendChild(pairGrid(step));
+    ctx.stage.appendChild(tablePanel);
+
+    const stateRow = Demo.el('div', 'row');
+    stateRow.style.width = '100%';
+    stateRow.style.alignItems = 'stretch';
+
+    const numPanel = Demo.el('div', 'panel');
+    numPanel.style.flex = '1';
+    numPanel.style.textAlign = 'center';
+    numPanel.appendChild(Demo.el('div', 'panel__title', '当前 num'));
+    numPanel.appendChild(Demo.el('div', null,
+      '<span style="font-size:26px;font-weight:700;color:var(--demo-warn);font-family:var(--demo-mono)">' +
+      step.num + '</span>'));
+    stateRow.appendChild(numPanel);
+
+    const romanPanel = Demo.el('div', 'panel');
+    romanPanel.style.flex = '2';
+    romanPanel.appendChild(Demo.el('div', 'panel__title', '累积的 roman'));
+    const romanRow = Demo.el('div', 'row');
+    if (step.roman) {
+      step.roman.split('').forEach(function (ch, idx) {
+        romanRow.appendChild(Demo.el('div', 'cell cell--sm is-ok', Demo.esc(ch)));
+      });
+    } else {
+      romanRow.appendChild(Demo.el('span', 'tag', '（空）'));
+    }
+    romanPanel.appendChild(romanRow);
+    stateRow.appendChild(romanPanel);
+
+    ctx.stage.appendChild(stateRow);
+
+    const result = Demo.el('div', 'panel');
+    result.style.width = '100%';
+    result.style.textAlign = 'center';
+    if (step.done) {
+      result.innerHTML = `最终结果：roman = <code>"${Demo.esc(step.roman)}"</code>` +
+        ` &nbsp;<span class="tag tag--ok">完成</span>`;
+    } else if (step.i < 0) {
+      result.innerHTML = `num = <strong>${step.num}</strong>，等待第一次贪心匹配`;
+    } else {
+      const verb = step.taken
+        ? `采用 ${step.value}（${step.symbol}）：num ${step.before} → <strong>${step.num}</strong>`
+        : `跳过 ${step.value}（${step.symbol}）：num 保持 <strong>${step.num}</strong>`;
+      result.innerHTML = verb + ` &nbsp;|&nbsp; roman = <code>"${Demo.esc(step.roman)}"</code>`;
+    }
+    ctx.stage.appendChild(result);
+  }
+});
 </script>
 </body>
 </html>

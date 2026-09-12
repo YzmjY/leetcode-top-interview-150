@@ -1,439 +1,226 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --sub-bg: #f5f5f5;
-    --row-color: #1976D2; --row-bg: #E3F2FD;
-    --col-color: #FF9800; --col-bg: #FFF3E0;
-    --box-color: #388E3C; --box-bg: #E8F5E9;
-    --dup-color: #E53935; --dup-bg: #FFEBEE;
-    --valid-color: #2E7D32;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd;
-      --btn-bg: #333; --btn-hover: #444;
-      --sub-bg: #252540;
-      --row-bg: rgba(25,118,210,0.15);
-      --col-bg: rgba(255,152,0,0.15);
-      --box-bg: rgba(56,142,60,0.18);
-      --dup-bg: rgba(229,57,53,0.22);
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 16px 20px;
-  }
-  .container { max-width: 860px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
-  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
-    font-size: 14px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 580px; text-align: center; }
-
-  .board-wrap { display: flex; justify-content: center; margin-bottom: 6px; }
-  .board { display: grid; grid-template-columns: repeat(9, 44px); gap: 2px; }
-  .cell {
-    width: 44px; height: 44px; border: 2px solid var(--cell-border); border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; font-weight: bold; color: var(--text); background: var(--cell-bg);
-    position: relative; transition: border-color 0.25s, background 0.25s, transform 0.15s;
-    cursor: default;
-  }
-  .cell .mini-tag {
-    position: absolute; top: 2px; right: 3px;
-    font-size: 8px; color: var(--muted); line-height: 1;
-  }
-  .cell.c-row { border-color: var(--row-color); background: var(--row-bg); }
-  .cell.c-col { border-color: var(--col-color); background: var(--col-bg); }
-  .cell.c-box { border-color: var(--box-color); background: var(--box-bg); }
-  .cell.c-dup { border-color: var(--dup-color); background: var(--dup-bg); transform: scale(1.08); z-index: 2; }
-  .cell.c-valid { border-color: var(--valid-color); background: rgba(56,142,60,0.12); }
-
-  .state-row {
-    display: flex; justify-content: center; gap: 14px;
-    background: var(--sub-bg); border-radius: 8px;
-    padding: 8px 14px; margin-bottom: 6px; font-size: 13px;
-    flex-wrap: wrap;
-  }
-  .state-item { text-align: center; min-width: 50px; }
-  .state-val { font-size: 16px; font-weight: bold; font-family: monospace; }
-  .state-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .sv-row .state-val { color: var(--row-color); }
-  .sv-col .state-val { color: var(--col-color); }
-  .sv-box .state-val { color: var(--box-color); }
-
-  .result-row {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 8px; font-size: 13px; text-align: center; color: var(--text);
-  }
-  .result-row .highlight { font-weight: bold; font-size: 15px; }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-
-  .legend {
-    display: flex; gap: 14px; justify-content: center; margin-top: 8px;
-    font-size: 12px; color: var(--muted); flex-wrap: wrap;
-  }
-  .legend-item { display: flex; align-items: center; gap: 5px; }
-  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
-
-  @media (max-width: 650px) {
-    .board { grid-template-columns: repeat(9, 36px); }
-    .cell { width: 36px; height: 36px; font-size: 14px; }
-  }
-</style>
+<title>34. 有效的数独 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>有效的数独 — 逐步检查演示</h2>
-  <div class="sub-title">对 9x9 棋盘逐步检查每行、每列和每个 3x3 宫是否有重复数字</div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始检查</span>
-  </div>
-
-  <div class="state-row">
-    <div class="state-item sv-row"><div class="state-val" id="rowIdx">--</div><div class="state-label">当前行</div></div>
-    <div class="state-item sv-col"><div class="state-val" id="colIdx">--</div><div class="state-label">当前列</div></div>
-    <div class="state-item sv-box"><div class="state-val" id="boxIdx">--</div><div class="state-label">当前 3x3 宫</div></div>
-    <div class="state-item"><div class="state-val" id="seenVal" style="color:var(--text)">--</div><div class="state-label">已见集合</div></div>
-  </div>
-
-  <div class="board-wrap"><div class="board" id="board"></div></div>
-
-  <div class="result-row">
-    <span style="color:var(--muted)">判定: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">&#x23EE; 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
-    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
-  </div>
-
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:var(--row-color)"></div>行检查</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--col-color)"></div>列检查</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--box-color)"></div>3x3 宫检查</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--dup-color)"></div>发现重复</div>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const board = [
-  ['5','3','.','.','7','.','.','.','.'],
-  ['6','.','.','1','9','5','.','.','.'],
-  ['.','9','8','.','.','.','.','6','.'],
-  ['8','.','.','.','6','.','.','.','3'],
-  ['4','.','.','8','.','3','.','.','1'],
-  ['7','.','.','.','2','.','.','.','6'],
-  ['.','6','.','.','.','.','2','8','.'],
-  ['.','.','.','4','1','9','.','.','5'],
-  ['.','.','.','.','8','.','.','7','9']
+const BOARD = [
+  ['8', '3', '.', '.', '7', '.', '.', '.', '.'],
+  ['6', '.', '.', '1', '9', '5', '.', '.', '.'],
+  ['.', '9', '8', '.', '.', '.', '.', '6', '.'],
+  ['8', '.', '.', '.', '6', '.', '.', '.', '3'],
+  ['4', '.', '.', '8', '.', '3', '.', '.', '1'],
+  ['7', '.', '.', '.', '2', '.', '.', '.', '6'],
+  ['.', '6', '.', '.', '.', '.', '2', '8', '.'],
+  ['.', '.', '.', '4', '1', '9', '.', '.', '5'],
+  ['.', '.', '.', '.', '8', '.', '.', '7', '9']
 ];
 
-const steps = [];
+function boxOf(r, c) {
+  return Math.floor(r / 3) * 3 + Math.floor(c / 3);
+}
 
-// simulate checks
-function simulate() {
-  steps.push({
-    desc: '初始状态 · 点击「下一步」开始逐行检查',
-    checkType: 'init', idx: -1, seen: [], highlight: [], dupCells: [],
-    result: 'init'
-  });
+function buildSteps() {
+  const rows = [], cols = [], boxes = [];
+  const rowsAt = [], colsAt = [], boxesAt = [];
+  for (let k = 0; k < 9; k++) {
+    rows.push({}); cols.push({}); boxes.push({});
+    rowsAt.push({}); colsAt.push({}); boxesAt.push({});
+  }
+  const marked = [];
+  const steps = [];
 
-  // 1. check rows
-  for (let r = 0; r < 9; r++) {
-    const seen = new Set();
-    const dupCells = [];
-    for (let c = 0; c < 9; c++) {
-      const val = board[r][c];
-      if (val === '.') continue;
-      const highlight = [];
-      for (let cc = 0; cc < 9; cc++) highlight.push([r, cc, 'row']);
-      steps.push({
-        desc: '第 ' + (r+1) + ' 行: 检查 [' + r + ',' + c + ']=' + val + (seen.has(val) ? ' 重复! 无效' : ' 新数字'),
-        checkType: 'row', idx: r, subIdx: c, seen: [...seen], val,
-        highlight, dupCells: [...dupCells],
-        result: seen.has(val) ? 'invalid' : 'checking',
-        isNew: !seen.has(val)
-      });
-      if (seen.has(val)) {
-        dupCells.push([r, c]);
-        steps.push({
-          desc: '第 ' + (r+1) + ' 行: 发现重复 ' + val + ' 于 [' + r + ',' + c + '] 和之前位置! 不是有效数独.',
-          checkType: 'row', idx: r, subIdx: c, seen: [...seen], val,
-          highlight, dupCells: [...dupCells],
-          result: 'invalid'
-        });
-        // mark done and return early indicating invalid
-        steps.push({
-          desc: '验证失败: 第 ' + (r+1) + ' 行中有重复数字 ' + val + '. 不是有效数独.',
-          checkType: 'done', idx: -1, seen: [], highlight: [], dupCells: [...dupCells],
-          result: 'invalid'
-        });
-        return;
-      }
-      seen.add(val);
-    }
-    const highlight = [];
-    for (let cc = 0; cc < 9; cc++) highlight.push([r, cc, 'valid']);
-    steps.push({
-      desc: '第 ' + (r+1) + ' 行: 检查完毕, 无重复, 通过!',
-      checkType: 'row-done', idx: r, subIdx: -1, seen: [...seen], val: null,
-      highlight, dupCells: [],
-      result: 'row-ok'
-    });
+  function digits(map) {
+    return Object.keys(map).sort();
   }
 
-  // 2. check columns
-  for (let c = 0; c < 9; c++) {
-    const seen = new Set();
-    const dupCells = [];
-    for (let r = 0; r < 9; r++) {
-      const val = board[r][c];
-      if (val === '.') continue;
-      const highlight = [];
-      for (let rr = 0; rr < 9; rr++) highlight.push([rr, c, 'col']);
-      steps.push({
-        desc: '第 ' + (c+1) + ' 列: 检查 [' + r + ',' + c + ']=' + val + (seen.has(val) ? ' 重复! 无效' : ' 新数字'),
-        checkType: 'col', idx: c, subIdx: r, seen: [...seen], val,
-        highlight, dupCells: [...dupCells],
-        result: seen.has(val) ? 'invalid' : 'checking',
-        isNew: !seen.has(val)
-      });
-      if (seen.has(val)) {
-        dupCells.push([r, c]);
-        steps.push({
-          desc: '验证失败: 第 ' + (c+1) + ' 列中有重复数字 ' + val + '. 不是有效数独.',
-          checkType: 'done', idx: -1, seen: [], highlight: [], dupCells: [...dupCells],
-          result: 'invalid'
-        });
-        return;
-      }
-      seen.add(val);
-    }
-    const highlight = [];
-    for (let rr = 0; rr < 9; rr++) highlight.push([rr, c, 'valid']);
-    steps.push({
-      desc: '第 ' + (c+1) + ' 列: 检查完毕, 无重复, 通过!',
-      checkType: 'col-done', idx: c, subIdx: -1, seen: [...seen], val: null,
-      highlight, dupCells: [],
-      result: 'col-ok'
-    });
+  function fmt(list) {
+    return list.length ? '{' + list.join(',') + '}' : '空';
   }
 
-  // 3. check 3x3 boxes
-  for (let box = 0; box < 9; box++) {
-    const br = Math.floor(box / 3) * 3;
-    const bc = (box % 3) * 3;
-    const seen = new Set();
-    const dupCells = [];
-    for (let i = 0; i < 3; i++) {
-      for (let j = 0; j < 3; j++) {
-        const r = br + i, c = bc + j;
-        const val = board[r][c];
-        if (val === '.') continue;
-        const highlight = [];
-        for (let ii = 0; ii < 3; ii++)
-          for (let jj = 0; jj < 3; jj++)
-            highlight.push([br + ii, bc + jj, 'box']);
-        steps.push({
-          desc: '第 ' + (box+1) + ' 宫 [' + br + '-' + (br+2) + ',' + bc + '-' + (bc+2) + ']: 检查 [' + r + ',' + c + ']=' + val + (seen.has(val) ? ' 重复! 无效' : ' 新数字'),
-          checkType: 'box', idx: box, subIdx: i*3+j, seen: [...seen], val,
-          highlight, dupCells: [...dupCells],
-          result: seen.has(val) ? 'invalid' : 'checking',
-          isNew: !seen.has(val)
-        });
-        if (seen.has(val)) {
-          dupCells.push([r, c]);
-          steps.push({
-            desc: '验证失败: 第 ' + (box+1) + ' 宫中有重复数字 ' + val + '. 不是有效数独.',
-            checkType: 'done', idx: -1, seen: [], highlight: [], dupCells: [...dupCells],
-            result: 'invalid'
-          });
-          return;
+  function snapshot(r, c, b, extra) {
+    return Object.assign({
+      r: r, c: c, boxIdx: b,
+      conflictWith: null,
+      marked: marked.map(function (p) { return p.slice(); }),
+      rowDigits: r == null ? [] : digits(rows[r]),
+      colDigits: c == null ? [] : digits(cols[c]),
+      boxDigits: b == null ? [] : digits(boxes[b])
+    }, extra);
+  }
+
+  steps.push(snapshot(null, null, null, {
+    kind: 'init',
+    note: '开始扫描 9×9 棋盘。为每一行、每一列、每个 3×3 宫各维护一张「已出现数字」表；遇到空白格 . 直接跳过。'
+  }));
+
+  let stop = false;
+  for (let r = 0; r < 9 && !stop; r++) {
+    for (let c = 0; c < 9 && !stop; c++) {
+      const v = BOARD[r][c];
+      if (v === '.') continue;
+
+      const b = boxOf(r, c);
+      const inRow = !!rows[r][v];
+      const inCol = !!cols[c][v];
+      const inBox = !!boxes[b][v];
+      const where = inRow ? rowsAt[r][v] : (inCol ? colsAt[c][v] : boxesAt[b][v]);
+
+      if (inRow || inCol || inBox) {
+        const hitName = inRow ? ('行 ' + r) : (inCol ? ('列 ' + c) : ('宫 ' + (b + 1)));
+        steps.push(snapshot(r, c, b, {
+          kind: 'conflict',
+          conflictWith: where.slice(),
+          note: '检查 (' + r + ',' + c + ') 的数字 ' + v + '：' +
+            hitName + ' 里已经在 (' + where[0] + ',' + where[1] + ') 出现过 ' + v +
+            '，重复了 → 立即返回 false。'
+        }));
+        stop = true;
+        break;
+      }
+
+      steps.push(snapshot(r, c, b, {
+        kind: 'check',
+        note: '检查 (' + r + ',' + c + ') 的数字 ' + v + '：行 ' + r + ' 已有 ' + fmt(digits(rows[r])) +
+          '，列 ' + c + ' 已有 ' + fmt(digits(cols[c])) + '，宫 ' + (b + 1) + ' 已有 ' +
+          fmt(digits(boxes[b])) + '，三处都没有 ' + v + '，可以记录。'
+      }));
+
+      rows[r][v] = true; rowsAt[r][v] = [r, c];
+      cols[c][v] = true; colsAt[c][v] = [r, c];
+      boxes[b][v] = true; boxesAt[b][v] = [r, c];
+      marked.push([r, c]);
+
+      steps.push(snapshot(r, c, b, {
+        kind: 'mark',
+        note: '把 ' + v + ' 记入 行 ' + r + '、列 ' + c + '、宫 ' + (b + 1) + ' 三张表，' +
+          '该格状态变为「已确定」，之后同范围内的格子再出现 ' + v + ' 就会被判为重复。'
+      }));
+    }
+  }
+
+  const conflictStep = steps[steps.length - 1];
+
+  steps.push(snapshot(conflictStep.kind === 'conflict' ? conflictStep.r : null,
+    conflictStep.kind === 'conflict' ? conflictStep.c : null,
+    conflictStep.kind === 'conflict' ? conflictStep.boxIdx : null, {
+    kind: 'done',
+    conflictWith: conflictStep.kind === 'conflict' ? conflictStep.conflictWith.slice() : null,
+    note: conflictStep.kind === 'conflict'
+      ? '结论：返回 false。算法一旦发现重复就提前结束，本次只检查了 ' + (marked.length + 1) + ' 个已填数字。'
+      : '结论：返回 true。81 格全部扫描完都没有出现行、列、宫冲突。'
+  }));
+
+  return steps;
+}
+
+function cellClass(step, r, c) {
+  const value = BOARD[r][c];
+  if (step.r === r && step.c === c) {
+    return step.kind === 'conflict' ? 'is-bad' : 'is-active';
+  }
+  if (step.conflictWith && step.conflictWith[0] === r && step.conflictWith[1] === c) return 'is-bad';
+  let isMarked = false;
+  for (let i = 0; i < step.marked.length; i++) {
+    if (step.marked[i][0] === r && step.marked[i][1] === c) { isMarked = true; break; }
+  }
+  if (isMarked) return 'is-ok';
+  if (value === '.') return 'is-dim';
+  if (step.r != null && (r === step.r || c === step.c || boxOf(r, c) === step.boxIdx)) return 'is-info';
+  return '';
+}
+
+function sudokuCell(step, r, c) {
+  const value = BOARD[r][c];
+  const cls = cellClass(step, r, c);
+  const node = Demo.el('div', 'grid-cell' + (cls ? ' ' + cls : ''), value === '.' ? '·' : Demo.esc(value));
+  if (value === '.') node.style.color = 'var(--demo-muted)';
+  return node;
+}
+
+function digitStrip(label, present, active, isConflict) {
+  const row = Demo.el('div', 'row');
+  row.style.justifyContent = 'flex-start';
+  row.style.marginTop = '4px';
+  const tag = Demo.el('div', 'ptr', label);
+  tag.style.minWidth = '52px';
+  tag.style.textAlign = 'right';
+  row.appendChild(tag);
+  for (let d = 1; d <= 9; d++) {
+    const s = String(d);
+    const cell = Demo.el('div', 'grid-cell', s);
+    cell.style.minWidth = '24px';
+    cell.style.width = '24px';
+    cell.style.height = '24px';
+    cell.style.fontSize = '12px';
+    if (s === active) cell.classList.add(isConflict ? 'is-bad' : 'is-active');
+    else if (present.indexOf(s) >= 0) cell.classList.add('is-ok');
+    else cell.classList.add('is-dim');
+    row.appendChild(cell);
+  }
+  return row;
+}
+
+Demo.create({
+  title: '34. 有效的数独 — 行 / 列 / 宫三重去重',
+  info: '输入：示例 2 的棋盘（左上角 5 改成 8，其余与示例 1 相同），判定 9×9 数独是否有效。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前检查的格子' },
+    { color: 'var(--demo-ok)', label: '已记录的数字' },
+    { color: 'var(--demo-info)', label: '同行 / 同列 / 同宫范围' },
+    { color: 'var(--demo-danger)', label: '重复冲突' }
+  ],
+  render: function (step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const wrap = Demo.el('div', 'col');
+    for (let br = 0; br < 3; br++) {
+      const rowEl = Demo.el('div', 'row');
+      rowEl.style.gap = '10px';
+      rowEl.style.alignItems = 'flex-start';
+      for (let bc = 0; bc < 3; bc++) {
+        const b = br * 3 + bc;
+        const panel = Demo.el('div', 'panel');
+        if (step.boxIdx === b) panel.style.borderColor = 'var(--demo-accent)';
+        panel.appendChild(Demo.el('div', 'panel__title', '宫 ' + (b + 1)));
+        const grid = Demo.el('div', 'grid');
+        grid.style.gridTemplateColumns = 'repeat(3, 34px)';
+        for (let dr = 0; dr < 3; dr++) {
+          for (let dc = 0; dc < 3; dc++) {
+            grid.appendChild(sudokuCell(step, br * 3 + dr, bc * 3 + dc));
+          }
         }
-        seen.add(val);
+        panel.appendChild(grid);
+        rowEl.appendChild(panel);
       }
+      wrap.appendChild(rowEl);
     }
-    const highlight = [];
-    for (let ii = 0; ii < 3; ii++)
-      for (let jj = 0; jj < 3; jj++)
-        highlight.push([br + ii, bc + jj, 'valid']);
-    steps.push({
-      desc: '第 ' + (box+1) + ' 宫: 检查完毕, 无重复, 通过!',
-      checkType: 'box-done', idx: box, subIdx: -1, seen: [...seen], val: null,
-      highlight, dupCells: [],
-      result: 'box-ok'
-    });
-  }
+    ctx.stage.appendChild(wrap);
 
-  steps.push({
-    desc: '全部检查完毕! 每行、每列、每宫均无重复. 此数独有效!',
-    checkType: 'done', idx: -1, seen: [], highlight: [], dupCells: [],
-    result: 'valid'
-  });
-}
-
-simulate();
-
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-// Build board
-const boardEl = document.getElementById('board');
-for (let r = 0; r < 9; r++) {
-  for (let c = 0; c < 9; c++) {
-    const cell = document.createElement('div');
-    cell.className = 'cell';
-    cell.id = 'cell' + r + '_' + c;
-    const val = board[r][c];
-    cell.innerHTML = val === '.' ? '<span class="mini-tag">' + r + ',' + c + '</span>' : '<span>' + val + '</span>';
-    boardEl.appendChild(cell);
-  }
-}
-
-function resetCells() {
-  for (let r = 0; r < 9; r++)
-    for (let c = 0; c < 9; c++) {
-      const cell = document.getElementById('cell' + r + '_' + c);
-      cell.className = 'cell';
+    if (step.r == null) {
+      const tag = Demo.el('div', 'tag' + (step.kind === 'done' && step.conflictWith ? ' tag--bad' : ''),
+        step.kind === 'init' ? '等待开始扫描' : '扫描结束');
+      ctx.stage.appendChild(tag);
+      return;
     }
-}
 
-function render() {
-  const s = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = s.desc;
-
-  if (s.checkType === 'row' || s.checkType === 'row-done') {
-    document.getElementById('rowIdx').textContent = s.idx + 1;
-    document.getElementById('colIdx').textContent = '--';
-    document.getElementById('boxIdx').textContent = '--';
-  } else if (s.checkType === 'col' || s.checkType === 'col-done') {
-    document.getElementById('rowIdx').textContent = '--';
-    document.getElementById('colIdx').textContent = s.idx + 1;
-    document.getElementById('boxIdx').textContent = '--';
-  } else if (s.checkType === 'box' || s.checkType === 'box-done') {
-    document.getElementById('rowIdx').textContent = '--';
-    document.getElementById('colIdx').textContent = '--';
-    document.getElementById('boxIdx').textContent = s.idx + 1;
-  } else {
-    document.getElementById('rowIdx').textContent = '--';
-    document.getElementById('colIdx').textContent = '--';
-    document.getElementById('boxIdx').textContent = '--';
+    const active = BOARD[step.r][step.c];
+    const isConflict = step.kind === 'conflict';
+    const table = Demo.el('div', 'panel');
+    table.appendChild(Demo.el('div', 'panel__title', '当前格 (' + step.r + ',' + step.c + ') = ' + Demo.esc(active) + ' 的三张占用表'));
+    table.appendChild(digitStrip('行 ' + step.r, step.rowDigits, active, isConflict));
+    table.appendChild(digitStrip('列 ' + step.c, step.colDigits, active, isConflict));
+    table.appendChild(digitStrip('宫 ' + (step.boxIdx + 1), step.boxDigits, active, isConflict));
+    ctx.stage.appendChild(table);
   }
-
-  document.getElementById('seenVal').textContent =
-    (s.seen && s.seen.length > 0) ? '{' + s.seen.join(', ') + '}' : '--';
-
-  // Reset cells
-  resetCells();
-
-  // Apply highlights
-  if (s.highlight) {
-    s.highlight.forEach(([r, c, type]) => {
-      const cell = document.getElementById('cell' + r + '_' + c);
-      if (type === 'row') cell.className = 'cell c-row';
-      else if (type === 'col') cell.className = 'cell c-col';
-      else if (type === 'box') cell.className = 'cell c-box';
-      else if (type === 'valid') cell.className = 'cell c-valid';
-    });
-  }
-
-  // Duplicate cells
-  if (s.dupCells) {
-    s.dupCells.forEach(([r, c]) => {
-      document.getElementById('cell' + r + '_' + c).className = 'cell c-dup';
-    });
-  }
-
-  const resultEl = document.getElementById('resultText');
-  if (s.result === 'valid') {
-    resultEl.textContent = '是有效的数独!';
-    resultEl.style.color = '#2E7D32';
-  } else if (s.result === 'invalid') {
-    resultEl.textContent = '不是有效的数独!';
-    resultEl.style.color = '#E53935';
-  } else if (s.result === 'init') {
-    resultEl.textContent = '进行中...';
-    resultEl.style.color = '#1976D2';
-  } else {
-    resultEl.textContent = '检查中...';
-    resultEl.style.color = '#1976D2';
-  }
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
-}
-
-function goStep(n) {
-  current = Math.max(0, Math.min(n, steps.length - 1));
-  render();
-}
-
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer);
-    autoRunning = false;
-    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-    document.getElementById('playBtn').classList.remove('play-btn');
-  } else {
-    autoRunning = true;
-    document.getElementById('playBtn').textContent = '\u23F8 暂停';
-    document.getElementById('playBtn').style.background = '#1976D2';
-    document.getElementById('playBtn').style.color = '#fff';
-    document.getElementById('playBtn').classList.add('play-btn');
-    if (current >= steps.length - 1) goStep(0);
-    autoTimer = setInterval(function() {
-      if (current < steps.length - 1) goStep(current + 1);
-      else toggleAuto();
-    }, 1000);
-  }
-}
-
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
 });
-
-render();
 </script>
 </body>
 </html>

@@ -1,369 +1,170 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --bar-bg: #e0e0e0;
-    --h-line: #1976D2; --meet-green: #388E3C;
-    --active-orange: #FF9800; --fail-red: #EF5350;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd;
-      --btn-bg: #333; --btn-hover: #444;
-      --bar-bg: #333;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 20px;
-  }
-  .container { max-width: 600px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 12px; }
-
-  .chart-area {
-    display: flex; justify-content: center; align-items: flex-end;
-    gap: 16px; height: 170px; margin-bottom: 10px;
-    padding: 0 8px;
-    position: relative;
-  }
-  .bar-wrap {
-    display: flex; flex-direction: column; align-items: center;
-    width: 48px;
-  }
-  .bar {
-    width: 34px; border-radius: 6px 6px 0 0;
-    background: var(--bar-bg);
-    transition: background 0.3s;
-    position: relative;
-  }
-  .bar .step-tag {
-    position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
-    background: #1976D2; color: #fff;
-    font-size: 8px; font-weight: bold; width: 18px; height: 18px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; transition: opacity 0.25s;
-  }
-  .bar .step-tag.show { opacity: 1; }
-  .bar-label { font-size: 12px; font-weight: bold; margin-top: 4px; color: var(--text); }
-  .bar-rank { font-size: 10px; color: var(--muted); }
-
-  .h-line-el {
-    position: absolute; left: 0; right: 0; height: 2px;
-    background: var(--h-line);
-    opacity: 0; transition: opacity 0.3s, top 0.4s;
-  }
-  .h-line-el.show { opacity: 0.7; }
-  .h-label {
-    position: absolute; right: 0; font-size: 11px; font-weight: bold;
-    color: var(--h-line); opacity: 0; transition: opacity 0.3s;
-    transform: translateY(-50%);
-  }
-  .h-label.show { opacity: 1; }
-
-  .cell-grid {
-    display: flex; justify-content: center; gap: 6px; margin-bottom: 10px;
-  }
-  .cell {
-    width: 62px; height: 48px;
-    background: var(--cell-bg);
-    border: 2px solid var(--cell-border);
-    border-radius: 8px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-size: 17px; font-weight: bold; color: var(--text);
-    position: relative;
-    transition: border-color 0.25s, background 0.25s, transform 0.15s;
-  }
-  .cell .cell-rank {
-    font-size: 9px; font-weight: normal; color: var(--muted);
-  }
-  .cell .step-tag {
-    position: absolute; top: -7px; right: -7px;
-    background: #1976D2; color: #fff;
-    font-size: 9px; font-weight: bold; width: 20px; height: 20px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; transform: scale(0.5);
-    transition: opacity 0.25s, transform 0.25s;
-  }
-  .cell .step-tag.show { opacity: 1; transform: scale(1); }
-  .cell.meets-h { border-color: var(--meet-green); background: rgba(56,142,60,0.1); }
-  .cell.active { border-color: var(--active-orange); transform: scale(1.06); }
-  .cell.fails-h { border-color: var(--fail-red); background: rgba(239,83,80,0.1); }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    margin-bottom: 6px; font-size: 14px;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: var(--h-line); min-width: 36px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; }
-
-  .state-row {
-    display: flex; justify-content: center; gap: 24px;
-    background: rgba(25,118,210,0.06); border-radius: 8px;
-    padding: 8px 14px; margin-bottom: 10px; font-size: 13px;
-  }
-  .state-item { text-align: center; }
-  .state-val { font-size: 18px; font-weight: bold; color: var(--h-line); }
-  .state-label { font-size: 11px; color: var(--muted); }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-
-  .legend {
-    display: flex; gap: 20px; justify-content: center; margin-top: 10px;
-    font-size: 12px; color: var(--muted);
-  }
-  .legend-item { display: flex; align-items: center; gap: 5px; }
-  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>11. H 指数 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>H 指数 — 逐步交互演示</h2>
-
-  <div class="chart-area" id="chartArea">
-    <div class="h-line-el" id="hline"></div>
-    <div class="h-label" id="hlabel">H</div>
-  </div>
-
-  <div class="cell-grid" id="cellGrid"></div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">/ 7 步 · 点击「下一步」开始</span>
-  </div>
-
-  <div class="state-row">
-    <div class="state-item">
-      <div class="state-val" id="idxVal">--</div>
-      <div class="state-label">当前论文排名 i</div>
-    </div>
-    <div class="state-item">
-      <div class="state-val" id="citVal">--</div>
-      <div class="state-label">引用数 citations[i]</div>
-    </div>
-    <div class="state-item">
-      <div class="state-val" id="checkVal">--</div>
-      <div class="state-label">条件 >= i+1 ?</div>
-    </div>
-    <div class="state-item">
-      <div class="state-val" id="hVal" style="color:var(--meet-green)">0</div>
-      <div class="state-label">当前 H 指数</div>
-    </div>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">⏮ 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">◀ 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 ▶</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">▶ 自动播放</button>
-    <button onclick="goStep(totalSteps)" title="跳到最终状态">⏭ 跳到最后</button>
-  </div>
-
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#388E3C"></div> 满足 h条件</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div> 当前检查</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#EF5350"></div> 不满足</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#1976D2"></div> H 线</div>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const citations = [3, 0, 6, 1, 5];
-const sorted = [...citations].sort((a, b) => b - a); // [6,5,3,1,0]
-const totalSteps = 7; // 0:init, 1:show sorted, 2-6: scan
+const CITATIONS = [3, 0, 6, 1, 5];
 
-const steps = [];
-{
-  steps.push({ i: -1, cit: null, h: 0, meets: null, desc: '原始数组: [3,0,6,1,5] → 降序排列' });
+function buildSteps() {
+  const n = CITATIONS.length;
+  const count = [];
+  for (let i = 0; i <= n; i++) count.push(0);
 
-  let h = 0;
-  for (let i = 0; i < sorted.length; i++) {
-    const meets = sorted[i] >= i + 1;
-    if (meets) h = i + 1;
-    const desc = meets
-      ? `排名${i+1}: citations[${i}]=${sorted[i]} >= ${i+1} → 满足! h=${h}`
-      : `排名${i+1}: citations[${i}]=${sorted[i]} < ${i+1} → 不满足! 停止, h=${h}`;
-    steps.push({ i, cit: sorted[i], h, meets, desc });
-    if (!meets) break;
-  }
-}
+  const steps = [];
+  let total = 0;
+  let h = null;
 
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-// Build chart
-const chartArea = document.getElementById('chartArea');
-const bars = [];
-const maxCit = Math.max(...sorted);
-sorted.forEach((v, i) => {
-  const wrap = document.createElement('div');
-  wrap.className = 'bar-wrap';
-  const h = Math.max(20, (v / maxCit) * 140);
-  wrap.innerHTML = `
-    <div class="bar" style="height:${h}px">
-      <span class="step-tag"></span>
-    </div>
-    <span class="bar-label">${v}</span>
-    <span class="bar-rank">#${i+1}</span>
-  `;
-  chartArea.appendChild(wrap);
-  bars.push(wrap.querySelector('.bar'));
-});
-
-// Build cells
-const cellGrid = document.getElementById('cellGrid');
-const cells = [];
-sorted.forEach((v, i) => {
-  const div = document.createElement('div');
-  div.className = 'cell';
-  div.innerHTML = `${v}<span class="cell-rank">#${i+1}</span><span class="step-tag"></span>`;
-  cellGrid.appendChild(div);
-  cells.push(div);
-});
-
-// Index cells for h-line positioning
-const barWraps = chartArea.querySelectorAll('.bar-wrap');
-
-function render() {
-  const s = steps[current];
-
-  // Reset
-  bars.forEach((b, i) => {
-    b.style.background = 'var(--bar-bg)';
-    b.style.border = 'none';
-    const tag = b.querySelector('.step-tag');
-    tag.classList.remove('show');
-  });
-  cells.forEach((cell, i) => {
-    cell.classList.remove('meets-h', 'active', 'fails-h');
-    const tag = cell.querySelector('.step-tag');
-    tag.classList.remove('show');
-    tag.textContent = '';
+  steps.push({
+    count: count.slice(), seen: 0, activeBucket: -1, scanI: -1, total: 0, h: null, done: false,
+    note: `初始化：一共 n = ${n} 篇论文。h 指数不可能超过论文总数，所以只需要关心引用次数落在 0 ~ ${n} 之间的论文。开一个长度 n + 1 = ${n + 1} 的计数数组 count[0..${n}]：count[i] 统计「引用次数恰好为 i」的论文数，引用次数 ≥ ${n} 的一律归到 count[${n}]。`
   });
 
-  const hline = document.getElementById('hline');
-  const hlabel = document.getElementById('hlabel');
-  hline.classList.remove('show');
-  hlabel.classList.remove('show');
-
-  if (current > 0 && s.i >= 0) {
-    // Mark meets-h for previous indices
-    for (let j = 0; j < s.i; j++) {
-      bars[j].style.background = '#388E3C';
-      cells[j].classList.add('meets-h');
-    }
-    // Current
-    if (s.meets) {
-      bars[s.i].style.background = '#388E3C';
-      cells[s.i].classList.add('meets-h');
-    } else {
-      bars[s.i].style.background = '#EF5350';
-      cells[s.i].classList.add('fails-h');
-    }
-    cells[s.i].classList.add('active');
-    bars[s.i].style.border = '3px solid #FF9800';
+  // 第一遍：计数排序统计每篇论文落在哪个桶
+  for (let k = 0; k < n; k++) {
+    const c = CITATIONS[k];
+    const bucket = Math.min(c, n);
+    count[bucket] += 1;
+    const why = c >= n
+      ? `引用次数 ${c} ≥ n = ${n}，已经超出 h 可能取到的范围，按规则并入 count[${n}]`
+      : `引用次数 ${c} < n，直接计入 count[${c}]`;
+    steps.push({
+      count: count.slice(), seen: k + 1, activeBucket: bucket, scanI: -1, total: 0, h: null, done: false,
+      note: `处理第 ${k + 1} 篇论文：它被引用了 ${c} 次。${why}，于是 count[${bucket}] 从 ${count[bucket] - 1} 增加到 ${count[bucket]}。`
+    });
   }
 
-  // Step tags for processed cells
-  for (let t = 0; t < current && t < cells.length; t++) {
-    const tag = cells[t].querySelector('.step-tag');
-    tag.textContent = t + 1;
-    tag.classList.add('show');
+  // 第二遍：从大到小累计，找最大的 h
+  for (let i = n; i >= 0; i--) {
+    const prevTotal = total;
+    total += count[i];
+    const ok = total >= i;
+    if (ok && h === null) h = i;
+
+    let why = `先看 h 能不能取到 ${i}：把引用次数 ≥ ${i + 1} 的论文数 ${prevTotal} 加上引用次数恰好为 ${i} 的 ${count[i]} 篇，得到「至少被引用 ${i} 次」的论文数 total = ${total}。`;
+    why += ok
+      ? ` 判断 total ≥ h，即 ${total} ≥ ${i} 成立——有 ${total} 篇论文每篇至少被引用 ${i} 次，满足 H 指数定义，而我们从大到小第一次遇到成立的值，所以 h = ${i} 就是最大可能的 h 指数，可以直接返回。`
+      : ` 判断 total ≥ h，即 ${total} ≥ ${i} 不成立——只有 ${total} 篇论文够得上「至少被引用 ${i} 次」，达不到 i 篇的要求，h = ${i} 不可能，继续往小试。`;
+
+    steps.push({
+      count: count.slice(), seen: n, activeBucket: -1, scanI: i, total: total, h: ok ? i : null, done: false,
+      note: why
+    });
+
+    if (ok) break;
   }
 
-  // H line
-  if (s.h > 0) {
-    // Position H line across bars
-    const hVal = s.h;
-    // Find the bar for rank hVal
-    const targetBarIdx = hVal - 1; // 0-indexed
-    if (targetBarIdx < bars.length) {
-      const targetBar = bars[targetBarIdx];
-      const barRect = targetBar.getBoundingClientRect();
-      const areaRect = chartArea.getBoundingClientRect();
-      const top = barRect.bottom - areaRect.top;
-      hline.style.top = top + 'px';
-      hline.style.opacity = '0.7';
-      hline.classList.add('show');
-      hlabel.style.top = top + 'px';
-      hlabel.textContent = 'H=' + hVal;
-      hlabel.classList.add('show');
-    }
-  } else {
-    hline.classList.remove('show');
-    hlabel.classList.remove('show');
-  }
+  steps.push({
+    count: count.slice(), seen: n, activeBucket: -1, scanI: -1, total: total, h: h, done: true,
+    note: `结论：H 指数 = ${h}，也就是有 ${total} 篇论文每篇至少被引用 ${h} 次。整个过程只做了一次计数统计和一次从后向前的扫描，没有排序：时间 O(n)，空间 O(n)（计数数组）。`
+  });
 
-  // Info
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = s.desc;
-  document.getElementById('idxVal').textContent = s.i >= 0 ? s.i + 1 : '--';
-  document.getElementById('citVal').textContent = s.cit !== null ? s.cit : '--';
-  document.getElementById('checkVal').textContent = s.meets === null ? '--' : s.meets ? s.cit + ' >= ' + (s.i + 1) + ' Yes' : s.cit + ' < ' + (s.i + 1) + ' No';
-  document.getElementById('hVal').textContent = s.h;
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= totalSteps;
+  return steps;
 }
 
-function goStep(n) {
-  current = Math.max(0, Math.min(n, totalSteps));
-  render();
+function citationsRow(step) {
+  const row = Demo.el('div', 'row');
+  CITATIONS.forEach(function (c, idx) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(c));
+    if (idx === step.seen - 1 && !step.done) cell.classList.add('is-active');
+    else if (idx < step.seen) cell.classList.add('is-ok');
+    else cell.classList.add('cell--dim');
+    if (step.done) cell.classList.remove('cell--dim');
+    col.appendChild(cell);
+    const ptr = Demo.el('div', 'ptr', '第 ' + (idx + 1) + ' 篇');
+    ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    row.appendChild(col);
+  });
+  return row;
 }
 
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer);
-    autoRunning = false;
-    document.getElementById('playBtn').textContent = '▶ 自动播放';
-    document.getElementById('playBtn').classList.remove('play-btn');
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-  } else {
-    document.getElementById('playBtn').textContent = '⏸ 暂停';
-    document.getElementById('playBtn').classList.add('play-btn');
-    document.getElementById('playBtn').style.background = '#1976D2';
-    document.getElementById('playBtn').style.color = '#fff';
-    autoRunning = true;
-    if (current >= totalSteps) goStep(0);
-    autoTimer = setInterval(() => {
-      if (current < totalSteps) goStep(current + 1);
-      else toggleAuto();
-    }, 700);
+function countRow(step) {
+  const row = Demo.el('div', 'row');
+  step.count.forEach(function (value, i) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(value));
+    if (i === step.activeBucket) cell.classList.add('is-active');
+    else if (step.scanI >= 0 && i > step.scanI) cell.classList.add('is-ok');
+    else if (value > 0) cell.classList.add('is-info');
+    if (step.scanI === i) cell.classList.add('is-active');
+    if (step.done && step.h != null && i === step.h) cell.classList.add('is-ok');
+    col.appendChild(cell);
+    const ptr = Demo.el('div', 'ptr', 'h=' + i);
+    ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    row.appendChild(col);
+  });
+  return row;
+}
+
+Demo.create({
+  title: '11. H 指数 — 计数排序 + 从后向前累计',
+  info: '输入：citations = [3,0,6,1,5]（示例 1），输出 3。h 指数不会超过论文数 n = 5，所以只需统计 0~5 各引用次数各有多少篇。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 340,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前处理的论文 / 当前考察的 h' },
+    { color: 'var(--demo-ok)', label: '已统计 / 已累计（引用次数 ≥ 当前 h）' },
+    { color: 'var(--demo-info)', label: '该引用次数有论文落入' }
+  ],
+  render: function (step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const n = CITATIONS.length;
+
+    const papers = Demo.el('div', 'panel');
+    papers.style.width = '100%';
+    papers.appendChild(Demo.el('div', 'panel__title',
+      '论文引用次数 citations（第 ' + step.seen + ' / ' + n + ' 篇已归类）'));
+    papers.appendChild(citationsRow(step));
+    ctx.stage.appendChild(papers);
+
+    const buckets = Demo.el('div', 'panel');
+    buckets.style.width = '100%';
+    buckets.appendChild(Demo.el('div', 'panel__title',
+      '计数数组 count（下标 = 引用次数，值 = 论文篇数；引用次数 ≥ ' + n + ' 的都并入 count[' + n + ']）'));
+    buckets.appendChild(countRow(step));
+    ctx.stage.appendChild(buckets);
+
+    const bottom = Demo.el('div', 'row');
+
+    const barPanel = Demo.el('div', 'panel');
+    barPanel.style.minWidth = '320px';
+    barPanel.appendChild(Demo.el('div', 'panel__title',
+      step.scanI >= 0 ? '累计「至少被引用 ' + step.scanI + ' 次」的论文数' : '等待进入从大到小的累计扫描'));
+    const bar = Demo.el('div', 'bar');
+    const fill = Demo.el('div', 'bar__fill');
+    const pct = Math.min(100, Math.round((step.total / n) * 100));
+    fill.style.width = pct + '%';
+    fill.style.background = step.done ? 'var(--demo-ok)' : 'var(--demo-accent)';
+    bar.appendChild(fill);
+    bar.appendChild(Demo.el('div', 'bar__label', 'total = ' + step.total + ' / n = ' + n));
+    barPanel.appendChild(bar);
+    bottom.appendChild(barPanel);
+
+    const conclusion = Demo.el('div', 'panel');
+    conclusion.appendChild(Demo.el('div', 'panel__title', '判断 total ≥ h ?'));
+    conclusion.appendChild(Demo.el('span',
+      'tag ' + (step.done ? 'tag--ok' : (step.scanI >= 0 && step.total >= step.scanI ? 'tag--ok' : 'tag--info')),
+      step.done
+        ? 'H 指数 = ' + step.h
+        : (step.scanI < 0 ? '统计阶段：先数清楚每个引用次数有多少篇' : 'h = ' + step.scanI + '：total = ' + step.total + ' ' + (step.total >= step.scanI ? '≥' : '<') + ' ' + step.scanI)));
+    if (step.total >= step.scanI && step.scanI >= 0) {
+      conclusion.appendChild(Demo.el('div', 'panel__title', '条件成立，取得最大 h'));
+    }
+    bottom.appendChild(conclusion);
+
+    ctx.stage.appendChild(bottom);
   }
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
 });
-
-render();
 </script>
 </body>
 </html>

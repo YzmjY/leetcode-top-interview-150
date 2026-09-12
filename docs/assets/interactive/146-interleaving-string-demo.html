@@ -3,133 +3,205 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>146. 交错字符串 - 可视化演示</title>
-<style>
-:root{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--sub:#666;--border:#e0e0e0;--accent:#2563eb;--step-bg:#f0f4ff;--grid-bg:#fafafa;--radius:8px;--font:system-ui,-apple-system,sans-serif}
-@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--sub:#a0a0b0;--border:#334;--accent:#60a5fa;--step-bg:#1e293b;--grid-bg:#0f172a}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:var(--font);background:var(--bg);display:flex;justify-content:center;align-items:center;min-height:100vh}
-.demo-container{width:100%;max-width:960px;height:500px;background:var(--card);border-radius:var(--radius);box-shadow:0 4px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
-.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--step-bg)}
-.header .title{font-size:15px;font-weight:600;color:var(--text)}
-.header .step-info{font-size:13px;color:var(--accent);font-weight:500}
-.controls{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.controls button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
-.controls button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
-.controls button:disabled{opacity:.4;cursor:not-allowed}
-.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.main-area{flex:1;display:flex;flex-direction:column;padding:12px 16px;gap:10px;overflow-y:auto}
-.info-panel{padding:10px 14px;background:var(--step-bg);border-radius:var(--radius);border:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.6}
-.info-panel strong{color:var(--accent)}
-.vis-area{flex:1;display:flex;flex-direction:column;gap:8px;align-items:center}
-.str-info{font-size:13px;color:var(--text);text-align:center;font-family:monospace}
-.grid-wrap{overflow:auto;max-width:100%}
-.grid{display:inline-grid;gap:2px}
-.grid-cell{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-weight:600;font-size:12px;border:1px solid var(--border);background:var(--grid-bg);color:var(--text);transition:all .3s}
-.grid-cell.true{background:#bbf7d0;border-color:#22c55e;color:#166534}
-.grid-cell.false{background:#fecaca;border-color:#ef4444;color:#991b1b}
-.grid-cell.cur{border:2px solid var(--accent);background:var(--step-bg)}
-.grid-cell.hdr{background:var(--step-bg);font-size:11px;color:var(--sub)}
-.step-detail{font-size:13px;color:var(--sub);text-align:center}
-.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
-@media(prefers-color-scheme:dark){.grid-cell.true{background:#14532d;border-color:#22c55e;color:#86efac}.grid-cell.false{background:#7f1d1d;border-color:#ef4444;color:#fca5a5}}
-</style>
+<title>146. 交错字符串 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="demo-container">
-<div class="header">
-<span class="title">146. 交错字符串 (Interleaving String)</span>
-<span class="step-info" id="stepLabel">步骤 0 / 0</span>
-</div>
-<div class="controls">
-<button onclick="reset()">重置</button>
-<button onclick="prevStep()">上步</button>
-<button onclick="nextStep()">下步</button>
-<button onclick="toggleAuto()" id="autoBtn">自动播放</button>
-<button onclick="jumpEnd()">跳到最后</button>
-</div>
-<div class="main-area">
-<div class="info-panel" id="info"><strong>输入:</strong> s1="aabcc", s2="dbbca", s3="aadbbcbcac" &nbsp;|&nbsp; <strong>思路:</strong> dp[i][j]表示s1[0:i)和s2[0:j)能否交错成s3[0:i+j)</div>
-<div class="vis-area">
-<div class="str-info">s1="aabcc" &nbsp; s2="dbbca" &nbsp; s3="aadbbcbcac"</div>
-<div class="grid-wrap"><div class="grid" id="grid"></div></div>
-<div class="step-detail" id="stepDetail"></div>
-<div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
-</div>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const S1='aabcc',S2='dbbca',S3='aadbbcbcac';
-let steps=[],stepIdx=0,autoTimer=null,playing=false;
+const S1 = 'aabcc';
+const S2 = 'dbbca';
+const S3 = 'aadbbcbcac';
+const M = S1.length;
+const N = S2.length;
 
-function buildSteps(){
-  steps=[];
-  let n1=S1.length,n2=S2.length;
-  let dp=Array.from({length:n1+1},()=>Array(n2+1).fill(false));
-  dp[0][0]=true;
-  steps.push({dp:dp.map(r=>[...r]),i:0,j:0,note:'dp[0][0]=true (空串交错成空串)',done:false});
-  for(let i=1;i<=n1;i++){
-    dp[i][0]=dp[i-1][0]&&S1[i-1]===S3[i-1];
-    steps.push({dp:dp.map(r=>[...r]),i,j:0,note:`dp[${i}][0] = dp[${i-1}][0] && s1[${i-1}]==s3[${i-1}] => ${dp[i][0]}`,done:false});
+function buildSteps() {
+  const m = M, n = N;
+  const dp = [];
+  for (let i = 0; i <= m; i++) dp.push(new Array(n + 1).fill(null));
+  const steps = [];
+
+  function snap() {
+    return dp.map(function (row) { return row.slice(); });
   }
-  for(let j=1;j<=n2;j++){
-    dp[0][j]=dp[0][j-1]&&S2[j-1]===S3[j-1];
-    steps.push({dp:dp.map(r=>[...r]),i:0,j,note:`dp[0][${j}] = dp[0][${j-1}] && s2[${j-1}]==s3[${j-1}] => ${dp[0][j]}`,done:false});
-  }
-  for(let i=1;i<=n1;i++){
-    for(let j=1;j<=n2;j++){
-      let k=i+j-1;
-      dp[i][j]=(dp[i-1][j]&&S1[i-1]===S3[k])||(dp[i][j-1]&&S2[j-1]===S3[k]);
-      steps.push({dp:dp.map(r=>[...r]),i,j,note:`dp[${i}][${j}]: s3[${k}]=${S3[k]}, 从s1取=${dp[i-1][j]&&S1[i-1]===S3[k]}, 从s2取=${dp[i][j-1]&&S2[j-1]===S3[k]} => ${dp[i][j]}`,done:i===n1&&j===n2});
+
+  steps.push({
+    phase: 'init', i: 0, j: 0, k: -1, dp: snap(),
+    srcA: null, srcB: null, branchA: null, branchB: null,
+    note: '先做长度检查：len(s1) + len(s2) = ' + m + ' + ' + n + ' = ' + (m + n) + '，而 len(s3) = ' + S3.length +
+      '，两者相等才能继续（否则 s3 里多出或少掉的字符无法解释）。' +
+      'dp[i][j] 表示「s1 的前 i 个字符与 s2 的前 j 个字符，能否交错拼出 s3 的前 i+j 个字符」。表先全部留空。'
+  });
+
+  for (let i = 0; i <= m; i++) {
+    for (let j = 0; j <= n; j++) {
+      const k = i + j - 1;
+      const srcA = i > 0 ? [i - 1, j] : null;
+      const srcB = j > 0 ? [i, j - 1] : null;
+      let branchA = null;
+      let branchB = null;
+      let note;
+
+      if (i === 0 && j === 0) {
+        dp[i][j] = true;
+        note = 'dp[0][0] = true：两个空串可以交错拼出空串，这是整张表的原点。';
+      } else if (i === 0) {
+        branchB = dp[0][j - 1] === true && S2[j - 1] === S3[j - 1];
+        dp[i][j] = branchB;
+        note = '第一行：s1 一个字符也没用，s3 的前 ' + j + ' 个字符只能全部来自 s2。' +
+          '比较 s2[' + (j - 1) + '] = \'' + S2[j - 1] + '\' 与 s3[' + (j - 1) + '] = \'' + S3[j - 1] + '\'：' +
+          (branchB ? '相等，且前缀 dp[0][' + (j - 1) + '] = true，所以 dp[0][' + j + '] = true。'
+            : '不相等（或前缀本身已经不可行），所以 dp[0][' + j + '] = false，这一格之后的第一行都不可行。');
+      } else if (j === 0) {
+        branchA = dp[i - 1][0] === true && S1[i - 1] === S3[i - 1];
+        dp[i][j] = branchA;
+        note = '第一列：s2 一个字符也没用，s3 的前 ' + i + ' 个字符只能全部来自 s1。' +
+          '比较 s1[' + (i - 1) + '] = \'' + S1[i - 1] + '\' 与 s3[' + (i - 1) + '] = \'' + S3[i - 1] + '\'：' +
+          (branchA ? '相等，且前缀 dp[' + (i - 1) + '][0] = true，所以 dp[' + i + '][0] = true。'
+            : '不相等（或前缀本身已经不可行），所以 dp[' + i + '][0] = false，这一列之后的格子也都不行。');
+      } else {
+        branchA = dp[i - 1][j] === true && S1[i - 1] === S3[k];
+        branchB = dp[i][j - 1] === true && S2[j - 1] === S3[k];
+        dp[i][j] = branchA || branchB;
+        note = 'dp[' + i + '][' + j + '] 对应 s3 的第 ' + k + ' 个字符 \'' + S3[k] + '\'（下标 i+j-1 = ' + i + '+' + j + '-1）。' +
+          '两条路选一条走：①这个字符来自 s1 → 需要 s1[' + (i - 1) + '] = \'' + S1[i - 1] + '\' 与 \'' + S3[k] +
+          '\' 相等，并且去掉它之后的前缀仍然可行，即 dp[' + (i - 1) + '][' + j + '] = ' + dp[i - 1][j] +
+          '，本分支为 ' + branchA + '；' +
+          '②这个字符来自 s2 → 需要 s2[' + (j - 1) + '] = \'' + S2[j - 1] + '\' 与 \'' + S3[k] + '\' 相等，且 dp[' + i +
+          '][' + (j - 1) + '] = ' + dp[i][j - 1] + '，本分支为 ' + branchB + '。' +
+          '两条分支是「或」的关系——只要有一条走得通，这个前缀就能拼出来，所以 dp[' + i + '][' + j + '] = ' + dp[i][j] + '。';
+      }
+
+      steps.push({
+        phase: 'calc', i: i, j: j, k: k, dp: snap(),
+        srcA: srcA, srcB: srcB, branchA: branchA, branchB: branchB,
+        note: note
+      });
     }
   }
-  let last=steps[steps.length-1];
-  steps[steps.length-1]={...last,note:last.note+` | 结果: ${dp[n1][n2]}`,done:true};
-}
-function render(){
-  let s=steps[stepIdx]||steps[steps.length-1]||{};
-  let total=steps.length;
-  document.getElementById('stepLabel').textContent=`步骤 ${stepIdx+1} / ${total}`;
-  document.getElementById('progress').style.width=((stepIdx+1)/total*100)+'%';
-  document.getElementById('info').innerHTML=`<strong>s1="aabcc", s2="dbbca"</strong> &nbsp;|&nbsp; ${s.note||''}`;
 
-  let dp=s.dp||[],n1=S1.length,n2=S2.length;
-  let gh='';
-  // Header row
-  gh+=`<div class="grid-cell hdr">s1\\s2</div>`;
-  gh+=`<div class="grid-cell hdr">#</div>`;
-  for(let j=0;j<n2;j++)gh+=`<div class="grid-cell hdr">${S2[j]}</div>`;
-  for(let i=0;i<=n1;i++){
-    gh+=`<div class="grid-cell hdr">${i===0?'#':S1[i-1]}</div>`;
-    for(let j=0;j<=n2;j++){
-      let v=dp[i]?.[j];
-      let cls='';
-      if(v===true)cls='true';
-      else if(v===false&&(i>0||j>0))cls='false';
-      if(s.i===i&&s.j===j)cls+=' cur';
-      gh+=`<div class="grid-cell ${cls}">${v===true?'T':v===false?'F':''}</div>`;
+  steps.push({
+    phase: 'done', i: m, j: n, k: -1, dp: snap(),
+    srcA: null, srcB: null, branchA: null, branchB: null,
+    note: '右上角是整张表的目标：dp[' + m + '][' + n + '] = ' + dp[m][n] +
+      '，说明 s3 = "' + S3 + '" 确实由 s1 = "' + S1 + '" 和 s2 = "' + S2 + '" 交错而成（示例 1 的答案）。' +
+      '如果换成长度相同但字符对不上的 s3 = "aadbbbaccc"，同一份代码会在右下角得到 false（示例 2）。' +
+      '复杂度：状态共 (m+1)·(n+1) 个，每个 O(1) 转移，时间 O(m·n)；用一维滚动数组可把空间压到 O(n)。'
+  });
+
+  return steps;
+}
+
+function strRow(label, str, hi, cls) {
+  const row = Demo.el('div', 'row');
+  row.appendChild(Demo.el('span', 'tag', Demo.esc(label)));
+  for (let c = 0; c < str.length; c++) {
+    const mark = c === hi && hi >= 0 ? cls : '';
+    row.appendChild(Demo.el('div', 'cell cell--sm' + (mark ? ' ' + mark : ''), Demo.esc(str[c])));
+  }
+  return row;
+}
+
+function gcell(text, cls) {
+  const cell = Demo.el('div', 'grid-cell' + (cls ? ' ' + cls : ''), Demo.esc(text));
+  cell.style.minWidth = '40px';
+  cell.style.height = '32px';
+  cell.style.fontSize = '12px';
+  return cell;
+}
+
+function tableView(step) {
+  const grid = Demo.el('div', 'grid');
+  grid.style.gridTemplateColumns = 'repeat(' + (N + 2) + ', 44px)';
+
+  const corner = gcell('s1＼s2', 'is-dim');
+  grid.appendChild(corner);
+  for (let j = 0; j <= N; j++) {
+    const head = gcell(j === 0 ? 'ε' : S2[j - 1], '');
+    head.style.color = 'var(--demo-muted)';
+    grid.appendChild(head);
+  }
+
+  for (let i = 0; i <= M; i++) {
+    const head = gcell(i === 0 ? 'ε' : S1[i - 1], '');
+    head.style.color = 'var(--demo-muted)';
+    grid.appendChild(head);
+    for (let j = 0; j <= N; j++) {
+      const v = step.dp[i][j];
+      const isCur = i === step.i && j === step.j;
+      const isA = step.srcA && step.srcA[0] === i && step.srcA[1] === j;
+      const isB = step.srcB && step.srcB[0] === i && step.srcB[1] === j;
+      let cls = v === true ? 'is-ok' : '';
+      if (v == null) cls = 'is-dim';
+      if (isA) cls = 'is-violet';
+      if (isB) cls = 'is-info';
+      if (isCur) cls = 'is-active';
+      const cell = gcell(v === true ? 'T' : (v === false ? 'F' : '·'), cls);
+      if (v === false && !isCur && !isA && !isB) cell.style.opacity = '0.7';
+      grid.appendChild(cell);
     }
   }
-  document.getElementById('grid').innerHTML=gh;
-  document.getElementById('grid').style.gridTemplateColumns=`repeat(${n2+2},1fr)`;
-  document.getElementById('stepDetail').textContent=(s.i!==undefined&&s.j!==undefined)?`dp[${s.i}][${s.j}]: s1前${s.i}个 + s2前${s.j}个`:'';
+  return grid;
 }
-function reset(){stepIdx=0; stopAuto();buildSteps();render();}
-function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
-function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
-function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}
-function toggleAuto(){
-  if(playing){stopAuto();}else{playing=true;document.getElementById('autoBtn').classList.add('active');document.getElementById('autoBtn').textContent='停止';
-    autoTimer=setInterval(()=>{if(stepIdx<steps.length-1){stepIdx++;render();}else{stopAuto();}},800);}
-}
-function stopAuto(){playing=false;clearInterval(autoTimer);document.getElementById('autoBtn').classList.remove('active');document.getElementById('autoBtn').textContent='自动播放';}
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight')nextStep();
-  else if(e.key==='ArrowLeft')prevStep();
-  else if(e.key===' '){e.preventDefault();toggleAuto();}
+
+Demo.create({
+  title: '146. 交错字符串 — 双序列二维 DP',
+  info: '输入：s1 = "aabcc"，s2 = "dbbca"，s3 = "aadbbcbcac"（示例 1）。转移：dp[i][j] = (dp[i-1][j] && s1[i-1]==s3[i+j-1]) || (dp[i][j-1] && s2[j-1]==s3[i+j-1])。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 420,
+  legend: [
+    { color: 'var(--demo-accent)', label: '正在计算 dp[i][j]' },
+    { color: 'var(--demo-violet)', label: '来源①：dp[i-1][j]（这一位取自 s1）' },
+    { color: 'var(--demo-info)', label: '来源②：dp[i][j-1]（这一位取自 s2）' },
+    { color: 'var(--demo-ok)', label: 'true，前缀可以交错拼出' },
+    { color: 'var(--demo-warn)', label: '本步在 s3 中对应的字符' }
+  ],
+  render: function (step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const strPanel = Demo.el('div', 'panel');
+    strPanel.style.width = '100%';
+    strPanel.style.textAlign = 'center';
+    strPanel.appendChild(Demo.el('div', 'panel__title', '三个字符串（高亮＝本步正在使用的字符）'));
+    strPanel.appendChild(strRow('s1', S1, step.i - 1, 'is-active'));
+    strPanel.appendChild(strRow('s2', S2, step.j - 1, 'is-active'));
+    strPanel.appendChild(strRow('s3', S3, step.k, 'is-warn'));
+    ctx.stage.appendChild(strPanel);
+
+    const tblPanel = Demo.el('div', 'panel');
+    tblPanel.style.width = '100%';
+    tblPanel.style.textAlign = 'center';
+    tblPanel.appendChild(Demo.el('div', 'panel__title',
+      'dp 表：行 = s1 的前 i 个字符，列 = s2 的前 j 个字符，格子里的 T/F 表示能否拼出 s3 的前 i+j 个字符'));
+    tblPanel.appendChild(tableView(step));
+    ctx.stage.appendChild(tblPanel);
+
+    const info = Demo.el('div', 'panel');
+    info.style.width = '100%';
+    info.style.textAlign = 'center';
+    if (step.phase === 'init') {
+      info.innerHTML = '长度检查：' + M + ' + ' + N + ' = ' + (M + N) + ' = len(s3) = ' + S3.length +
+        ' &nbsp;<span class="tag tag--ok">通过，可以开始填表</span>';
+    } else if (step.phase === 'done') {
+      info.innerHTML = 's3 是否由 s1、s2 交错而成：<strong>' + step.dp[M][N] + '</strong>' +
+        ' &nbsp;<span class="tag tag--ok">dp[' + M + '][' + N + ']</span>' +
+        ' &nbsp;<span class="tag tag--info">时间 O(m·n) · 空间 O(n)（一维滚动）</span>';
+    } else {
+      let html = 'dp[' + step.i + '][' + step.j + ']';
+      if (step.i + step.j === 0) {
+        html += ' = <strong>true</strong> &nbsp;<span class="tag">原点：两个空串</span>';
+      } else {
+        html += ' = <span class="tag tag--violet">取自 s1：' + (step.branchA == null ? '—' : step.branchA) + '</span>' +
+          ' <span class="tag tag--info">取自 s2：' + (step.branchB == null ? '—' : step.branchB) + '</span>' +
+          ' → <strong>' + step.dp[step.i][step.j] + '</strong>';
+        if (step.k >= 0) html += ' &nbsp;<span class="tag tag--warn">对应 s3[' + step.k + '] = \'' + S3[step.k] + '\'</span>';
+      }
+      info.innerHTML = html;
+    }
+    ctx.stage.appendChild(info);
+  }
 });
-buildSteps();render();
 </script>
 </body>
 </html>

@@ -3,134 +3,176 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>135. Pow(x,n) - 可视化演示</title>
-<style>
-:root{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--sub:#666;--border:#e0e0e0;--accent:#2563eb;--step-bg:#f0f4ff;--grid-bg:#fafafa;--radius:8px;--font:system-ui,-apple-system,sans-serif}
-@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--sub:#a0a0b0;--border:#334;--accent:#60a5fa;--step-bg:#1e293b;--grid-bg:#0f172a}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:var(--font);background:var(--bg);display:flex;justify-content:center;align-items:center;min-height:100vh}
-.demo-container{width:100%;max-width:960px;height:500px;background:var(--card);border-radius:var(--radius);box-shadow:0 4px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
-.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--step-bg)}
-.header .title{font-size:15px;font-weight:600;color:var(--text)}
-.header .step-info{font-size:13px;color:var(--accent);font-weight:500}
-.controls{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.controls button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
-.controls button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
-.controls button:disabled{opacity:.4;cursor:not-allowed}
-.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.main-area{flex:1;display:flex;flex-direction:column;padding:12px 16px;gap:10px;overflow-y:auto}
-.info-panel{padding:10px 14px;background:var(--step-bg);border-radius:var(--radius);border:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.6}
-.info-panel strong{color:var(--accent)}
-.vis-area{flex:1;display:flex;flex-direction:column;gap:10px}
-.binary-row{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;padding:6px 0}
-.bin-box{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-weight:700;font-size:15px;border:2px solid var(--border);background:var(--grid-bg);color:var(--text);transition:all .3s}
-.bin-box.hl{background:#ddd6fe;border-color:#8b5cf6;color:#5b21b6}
-.bin-box.bit1{background:#bbf7d0;border-color:#22c55e;color:#166534}
-.step-rows{margin-top:6px;display:flex;flex-direction:column;gap:5px}
-.step-row{display:flex;gap:14px;font-size:13px;color:var(--text);font-family:monospace;padding:3px 10px;border-radius:4px;align-items:center}
-.step-row.active{background:var(--step-bg);font-weight:700}
-.step-row .x-val{color:var(--accent);font-weight:700;min-width:60px}
-.step-row .n-val{min-width:50px}
-.step-row .res-val{color:#22c55e;font-weight:700}
-.step-detail{font-size:13px;color:var(--sub);text-align:center}
-.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
-@media(prefers-color-scheme:dark){.bin-box.hl{background:#3b0764;border-color:#8b5cf6;color:#c4b5fd}.bin-box.bit1{background:#14532d;border-color:#22c55e;color:#86efac}}
-</style>
+<title>135. Pow(x, n) - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="demo-container">
-<div class="header">
-<span class="title">135. Pow(x,n) - 快速幂</span>
-<span class="step-info" id="stepLabel">步骤 0 / 0</span>
-</div>
-<div class="controls">
-<button onclick="reset()">重置</button>
-<button onclick="prevStep()">上步</button>
-<button onclick="nextStep()">下步</button>
-<button onclick="toggleAuto()" id="autoBtn">自动播放</button>
-<button onclick="jumpEnd()">跳到最后</button>
-</div>
-<div class="main-area">
-<div class="info-panel" id="info"><strong>输入:</strong> x = 2.0, n = 10 &nbsp;|&nbsp; <strong>思路:</strong> 快速幂: 将n按二进制分解，x不断平方倍增。</div>
-<div class="vis-area">
-<div class="binary-row" id="binaryRow"></div>
-<div class="step-rows" id="stepRows"></div>
-<div class="step-detail" id="stepDetail"></div>
-<div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
-</div>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const X=2.0,N=10;
-let steps=[],stepIdx=0,autoTimer=null,playing=false;
+const XV = 2;
+const NV = 10;
 
-function buildSteps(){
-  steps=[];
-  let n=N,x=X,res=1;
-  // binary representation
-  let binStr=n.toString(2);
-  steps.push({x,n,res,binIdx:-1,note:`n=${n} 的二进制: ${binStr}, 从低位到高位遍历`,done:false});
-
-  let i=0;
-  for(let idx=binStr.length-1;idx>=0;idx--){
-    let bit=binStr[idx];
-    if(bit==='1'){res*=x;steps.push({x,n,res,binIdx:idx,bit:'1',note:`二进制位[${idx}] = 1, result *= x => ${res.toFixed(1)}`,done:false});}
-    else{steps.push({x,n,res,binIdx:idx,bit:'0',note:`二进制位[${idx}] = 0, 跳过`,done:false});}
-    if(idx>0){x*=x;steps.push({x,n,res,binIdx:idx,bit:'*',note:`x = x^2 = ${x}`,done:false});}
-    i++;
-  }
-  let last=steps[steps.length-1];
-  steps[steps.length-1]={...last,note:last.note+` | 最终结果: ${res}`,done:true};
+function bin(n) {
+  return n.toString(2);
 }
-function render(){
-  let s=steps[stepIdx]||steps[steps.length-1]||{};
-  let total=steps.length;
-  document.getElementById('stepLabel').textContent=`步骤 ${stepIdx+1} / ${total}`;
-  document.getElementById('progress').style.width=((stepIdx+1)/total*100)+'%';
-  document.getElementById('info').innerHTML=`<strong>x = ${X}, n = ${N}</strong> &nbsp;|&nbsp; <strong>操作:</strong> ${s.note||''}`;
 
-  let binStr=N.toString(2);
-  let bh='';
-  for(let j=0;j<binStr.length;j++){
-    let cls='';
-    if(s.binIdx===j)cls=s.bit==='1'?'bit1':'hl';
-    bh+=`<div class="bin-box ${cls}">${binStr[j]}</div>`;
-  }
-  document.getElementById('binaryRow').innerHTML=bh;
+function buildSteps() {
+  const steps = [];
+  let x = XV;
+  let n = NV;
+  const bits = bin(Math.abs(NV));
 
-  let rh='';
-  for(let i=0;i<=stepIdx;i++){
-    let si=steps[i];
-    let detail='';
-    if(si.bit==='1')detail=`bit=1 -> res *= x_seed`;
-    else if(si.bit==='0')detail=`bit=0 -> 跳过`;
-    else if(si.bit==='*')detail=`x_seed = x_seed^2`;
-    else detail='初始化';
-    rh+=`<div class="step-row ${i===stepIdx?'active':''}">
-      <span class="x-val">x_seed=${si.x}</span>
-      <span class="res-val">result=${si.res}</span>
-      <span>${detail}</span>
-    </div>`;
+  let negated = false;
+  if (n < 0) {
+    x = 1 / x;
+    n = -n;
+    negated = true;
   }
-  document.getElementById('stepRows').innerHTML=rh;
-  document.getElementById('stepDetail').textContent=`当前: x=${s.x}, result=${s.res}`;
+
+  let result = 1;
+  let base = x;
+  const history = [];
+
+  steps.push({
+    n, result, base, k: 0, bits, history: [],
+    note: `初始状态：x = ${XV}，n = ${NV}（二进制 ${bits}）。`
+      + (negated
+        ? `n 是负数，先取倒数：x = 1 / ${XV} = ${x}，n = ${n}，指数转成正数后再算。`
+        : `n 不小于 0，不需要取倒数，直接进入快速幂。`)
+      + `result = 1 是乘法的单位元，base = x = ${base} 表示当前二进制位对应的权重 x^(2^k)。`
+  });
+
+  while (n > 0) {
+    const bit = n & 1;
+    const weight = Math.pow(2, history.length);
+    const usedBase = base;
+    let action;
+    if (bit === 1) {
+      result = result * base;
+      action = `当前位是 1：把权重乘进结果，result = ${result / usedBase} × ${usedBase} = ${result}`;
+    } else {
+      action = `当前位是 0：这一位不贡献，result 保持不变（仍为 ${result}）`;
+    }
+    base = base * base;
+    n = n >> 1;
+    history.push({
+      k: history.length, weight, bit, base: usedBase,
+      action, result, nextBase: base
+    });
+    steps.push({
+      n, result, base, k: history.length - 1, bits, bit, weight, usedBase,
+      history: history.map(h => Object.assign({}, h)),
+      note: `看 n = ${n * 2 + bit} 的最低位（权重 2^${history.length - 1} = ${weight}）：`
+        + `这一位是 ${bit}。${action}。接着把权重平方：base = ${usedBase}² = ${base}，n 右移一位得 ${n}。`
+    });
+  }
+
+  steps.push({
+    n, result, base, k: history.length - 1, bits, history: history.map(h => Object.assign({}, h)), done: true,
+    note: `n 已经移位到 0，循环结束。n = ${NV} 的二进制 ${bits} 中为 1 的位是 2^${history.filter(h => h.bit === 1).map(h => h.k).join(' 与 2^')}，`
+      + `所以 ${XV}^${NV} = ${history.filter(h => h.bit === 1).map(h => h.base).join(' × ')} = ${result}。`
+      + `乘法的次数只有二进制位数 ${history.length} 次，远少于连乘 ${NV} 次。`
+  });
+
+  return steps;
 }
-function reset(){stepIdx=0; stopAuto();buildSteps();render();}
-function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
-function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
-function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}
-function toggleAuto(){
-  if(playing){stopAuto();}else{playing=true;document.getElementById('autoBtn').classList.add('active');document.getElementById('autoBtn').textContent='停止';
-    autoTimer=setInterval(()=>{if(stepIdx<steps.length-1){stepIdx++;render();}else{stopAuto();}},900);}
+
+function valueCells(value, cls, extra) {
+  const row = Demo.el('div', 'row');
+  const text = String(value);
+  for (let i = 0; i < text.length; i++) {
+    const cell = Demo.el('div', 'cell', Demo.esc(text[i]));
+    if (cls) cell.classList.add(cls);
+    if (extra && i === text.length - 1) cell.classList.add(extra);
+    row.appendChild(cell);
+  }
+  return row;
 }
-function stopAuto(){playing=false;clearInterval(autoTimer);document.getElementById('autoBtn').classList.remove('active');document.getElementById('autoBtn').textContent='自动播放';}
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight')nextStep();
-  else if(e.key==='ArrowLeft')prevStep();
-  else if(e.key===' '){e.preventDefault();toggleAuto();}
+
+Demo.create({
+  title: '135. Pow(x, n) — 快速幂（二进制拆分指数）',
+  info: `输入：x = ${XV}，n = ${NV}。把指数写成二进制，x^n 拆成若干个 x^(2^k) 的乘积，指数每轮减半，复杂度 O(log n)。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前处理的二进制位' },
+    { color: 'var(--demo-muted)', label: '已处理过的低位' },
+    { color: 'var(--demo-ok)', label: '该位为 1，权重已乘入 result' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const len = step.bits.length;
+    const curIdx = len - 1 - step.k;
+
+    const bitsPanel = Demo.el('div', 'panel');
+    bitsPanel.appendChild(Demo.el('div', 'panel__title',
+      `n = ${NV} 的二进制 ${step.bits}（指针指向当前最低位，从右往左一位一位处理）`));
+    bitsPanel.style.width = '100%';
+    const bitRow = Demo.el('div', 'row');
+    step.bits.split('').forEach((ch, idx) => {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(ch));
+      if (idx === curIdx && !step.done) cell.classList.add('is-active');
+      else if (idx > curIdx || step.done) cell.classList.add('cell--dim');
+      if (ch === '1' && (idx > curIdx || step.done)) cell.classList.add('is-ok');
+      col.appendChild(cell);
+      col.appendChild(Demo.el('div', 'ptr' + (idx === curIdx && !step.done ? '' : ' ptr--dim'),
+        idx === curIdx && !step.done ? `2^${len - 1 - idx}` : ''));
+      bitRow.appendChild(col);
+    });
+    bitsPanel.appendChild(bitRow);
+    ctx.stage.appendChild(bitsPanel);
+
+    const values = Demo.el('div', 'panel');
+    values.appendChild(Demo.el('div', 'panel__title', 'result 累乘结果 与 base 当前权重'));
+    values.style.width = '100%';
+    const valueRow = Demo.el('div', 'row');
+    const resultCol = Demo.el('div', 'col');
+    resultCol.appendChild(Demo.el('div', 'panel__title', `result = ${step.result}`));
+    resultCol.appendChild(valueCells(step.result, step.done ? 'is-ok' : null, step.result > 1 && !step.done ? 'is-active' : null));
+    valueRow.appendChild(resultCol);
+    valueRow.appendChild(Demo.el('span', 'arrow', '×'));
+    const baseCol = Demo.el('div', 'col');
+    baseCol.appendChild(Demo.el('div', 'panel__title', `base = ${step.base}`));
+    baseCol.appendChild(valueCells(step.base, 'is-violet'));
+    valueRow.appendChild(baseCol);
+    values.appendChild(valueRow);
+    ctx.stage.appendChild(values);
+
+    if (step.history.length) {
+      const table = Demo.el('table', 'map-table');
+      const head = Demo.el('tr');
+      ['第几位 k', '权重 2^k', '该位', 'base = x^(2^k)', '操作', 'result'].forEach(h => head.appendChild(Demo.el('th', null, h)));
+      table.appendChild(head);
+      step.history.forEach((h, k) => {
+        const tr = Demo.el('tr');
+        if (k === step.history.length - 1 && !step.done) tr.classList.add('is-active');
+        [h.k, Math.pow(2, h.k), h.bit, h.base, h.bit === 1 ? 'result ×= base' : '跳过', h.result]
+          .forEach(v => tr.appendChild(Demo.el('td', null, Demo.esc(v))));
+        table.appendChild(tr);
+      });
+      const wrap = Demo.el('div', 'panel');
+      wrap.appendChild(Demo.el('div', 'panel__title', '每轮看一位，指数右移直到为 0'));
+      wrap.style.width = '100%';
+      wrap.style.overflowX = 'auto';
+      wrap.appendChild(table);
+      ctx.stage.appendChild(wrap);
+    }
+
+    if (step.done) {
+      const ones = step.history.filter(h => h.bit === 1);
+      const out = Demo.el('div', 'panel',
+        `<span class="tag tag--ok">${XV}^${NV} = ${step.result}</span>&nbsp; 指数拆解：`
+        + `${NV} = ${ones.map(h => Math.pow(2, h.k)).join(' + ')}，于是 `
+        + `${XV}^${NV} = ${ones.map(h => h.base).join(' × ')} = ${step.result}。`
+        + `循环只跑 ${step.history.length} 轮，每轮指数减半。`);
+      out.style.width = '100%';
+      out.style.textAlign = 'center';
+      ctx.stage.appendChild(out);
+    }
+  }
 });
-buildSteps();render();
 </script>
 </body>
 </html>

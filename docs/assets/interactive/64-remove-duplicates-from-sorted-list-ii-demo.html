@@ -3,197 +3,195 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>64. 删除排序链表中的重复元素II - 可视化演示</title>
-<style>
-:root {
-  --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-secondary: #6c757d;
-  --border: #dee2e6; --btn-bg: #e9ecef; --btn-hover: #dee2e6; --btn-active: #0d6efd;
-  --btn-active-text: #fff; --node-bg: #e9ecef;
-  --blue: #228be6; --green: #40c057; --red: #fa5252; --orange: #fd7e14;
-  --step-bg: #e7f5ff;
-}
-@media (prefers-color-scheme: dark) {
-:root {
-  --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-secondary: #a0a0a0;
-  --border: #3a3a5c; --btn-bg: #2a2a4a; --btn-hover: #3a3a5c; --btn-active: #339af0;
-  --btn-active-text: #fff; --node-bg: #2a2a4a; --step-bg: #1a2a3a;
-}
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, "Microsoft YaHei", sans-serif;
-  background: var(--bg); color: var(--text);
-  display: flex; justify-content: center; padding: 20px;
-}
-.container {
-  width: 100%; max-width: 950px; height: 500px;
-  background: var(--card-bg); border-radius: 8px;
-  border: 1px solid var(--border); padding: 16px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.step-panel {
-  background: var(--step-bg); border-radius: 8px; padding: 8px 16px;
-  display: flex; justify-content: space-between; align-items: center; font-size: 14px;
-}
-.step-num { font-weight: 700; color: var(--btn-active); }
-.step-desc { flex: 1; margin-left: 16px; }
-.svg-area { flex: 1; display: flex; justify-content: center; align-items: center; }
-.controls {
-  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-}
-.controls button {
-  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--btn-bg); color: var(--text); cursor: pointer;
-  font-size: 13px; font-family: inherit; transition: all 0.15s;
-}
-.controls button:hover { background: var(--btn-hover); }
-.controls button.active { background: var(--btn-active); color: var(--btn-active-text); border-color: var(--btn-active); }
-</style>
+<title>64. 删除排序链表中的重复元素 II - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <div class="step-panel">
-    <span class="step-num" id="stepNum">步骤 0 / 0</span>
-    <span class="step-desc" id="stepDesc">初始状态</span>
-  </div>
-  <div class="svg-area"><svg id="svg" viewBox="0 0 900 220"></svg></div>
-  <div class="controls">
-    <button onclick="reset()">重置</button>
-    <button onclick="prevStep()">上步</button>
-    <button onclick="nextStep()">下步</button>
-    <button id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button onclick="goEnd()">跳到最后</button>
-  </div>
-</div>
+<script src="demo.js"></script>
 <script>
-// [1,2,3,3,4,4,5] -> [1,2,5]
-const vals = [1, 2, 3, 3, 4, 4, 5];
-const pos = [];
-for (let i = 0; i < vals.length; i++) pos.push({x: 40 + i * 120, y: 110});
-const R = 22;
-const steps = [];
-let stepIdx = -1;
+const VALS = [1, 2, 3, 3, 4, 4, 5];
+// 节点 id：0 是 dummy 哨兵，1..7 对应 VALS
+const NODE_VALS = [null].concat(VALS);
+
+function valText(id) {
+  return id === 0 ? 'dummy' : String(NODE_VALS[id]);
+}
 
 function buildSteps() {
-  steps.length = 0;
-  const display = vals.map(v => ({ val: v, removed: false, highlight: false, scanning: false }));
+  // 真实链表：dummy → 1 → 2 → 3 → 3 → 4 → 4 → 5 → nil，next 存节点 id
+  const nodes = [{ id: 0, val: null, next: null }];
+  VALS.forEach(function (v, i) { nodes.push({ id: i + 1, val: v, next: null }); });
+  for (let i = 0; i < nodes.length - 1; i++) nodes[i].next = nodes[i + 1].id;
 
-  steps.push({ items: JSON.parse(JSON.stringify(display)), desc: '初始状态: [1,2,3,3,4,4,5]', curr: -1 });
+  const steps = [];
+  const removed = [];
+  let cur = 0;
 
-  // Scan and remove duplicates
-  // Step 1: check 1
-  let items = vals.map(v => ({ val: v, removed: false, highlight: false, scanning: false }));
-  items[0].scanning = true;
-  steps.push({ items: JSON.parse(JSON.stringify(items)), desc: '检查节点1: 值不重复，保留', curr: 0 });
+  function chain() {
+    const out = [];
+    let p = 0;
+    while (p !== null) { out.push(p); p = nodes[p].next; }
+    return out;
+  }
 
-  // Step 2: check 2
-  items = JSON.parse(JSON.stringify(items));
-  items.forEach(it => { it.scanning = false; it.highlight = false; });
-  items[1].scanning = true;
-  steps.push({ items: JSON.parse(JSON.stringify(items)), desc: '检查节点2: 值不重复，保留', curr: 1 });
+  function push(note, extra) {
+    const step = { chain: chain(), cur: cur, removed: removed.slice(), pair: null, dupe: null, victim: null, cleared: null, note: note };
+    if (extra) Object.keys(extra).forEach(function (k) { step[k] = extra[k]; });
+    steps.push(step);
+  }
 
-  // Step 3: check 3,3
-  items = JSON.parse(JSON.stringify(items));
-  items.forEach(it => { it.scanning = false; it.highlight = false; });
-  items[2].scanning = true; items[3].scanning = true;
-  items[2].removed = true; items[3].removed = true;
-  items[2].highlight = true; items[3].highlight = true;
-  steps.push({ items: JSON.parse(JSON.stringify(items)), desc: '检查节点3,3: 值重复，删除所有值为3的节点', curr: 2 });
+  push('初始化：dummy 哨兵指向 head，cur 从 dummy 出发。与「重复元素保留一个」的第 I 题不同，本题要把重复值全部删光，头节点也可能被删（如 [1,1,1,2,3] 结果是 [2,3]），所以必须有 dummy。');
 
-  // Step 4: check 4,4
-  items = JSON.parse(JSON.stringify(items));
-  items.forEach(it => { it.scanning = false; it.highlight = false; });
-  items[4].scanning = true; items[5].scanning = true;
-  items[4].removed = true; items[5].removed = true;
-  items[4].highlight = true; items[5].highlight = true;
-  steps.push({ items: JSON.parse(JSON.stringify(items)), desc: '检查节点4,4: 值重复，删除所有值为4的节点', curr: 4 });
+  while (nodes[cur].next !== null && nodes[nodes[cur].next].next !== null) {
+    const a = nodes[cur].next;
+    const b = nodes[a].next;
 
-  // Step 5: check 5
-  items = JSON.parse(JSON.stringify(items));
-  items.forEach(it => { it.scanning = false; it.highlight = false; });
-  items[6].scanning = true;
-  steps.push({ items: JSON.parse(JSON.stringify(items)), desc: '检查节点5: 值不重复，保留', curr: 6 });
+    if (nodes[a].val === nodes[b].val) {
+      const val = nodes[a].val;
+      push('比较 cur.Next = 节点 ' + a + '（值 ' + nodes[a].val + '）与 cur.Next.Next = 节点 ' + b + '（值 ' + nodes[b].val +
+        '）：值相等 → 发现重复值 ' + val + '。因为重复节点一个都不能留，cur 先原地不动，把值为 ' + val + ' 的节点全部跳过。',
+        { pair: [a, b], dupe: val });
 
-  // Result
-  items = JSON.parse(JSON.stringify(items));
-  items.forEach(it => { it.scanning = false; });
-  steps.push({ items: JSON.parse(JSON.stringify(items)), desc: '完成！结果: 1->2->5 (删除了所有重复元素)', curr: -1 });
-}
-
-function renderSVG() {
-  const st = steps[Math.min(stepIdx, steps.length - 1)];
-  document.getElementById('stepNum').textContent = `步骤 ${stepIdx + 1} / ${steps.length}`;
-  document.getElementById('stepDesc').textContent = st.desc;
-
-  const svg = document.getElementById('svg');
-  let html = `<defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="var(--text-secondary)"/>
-    </marker>
-  </defs>`;
-
-  const items = st.items;
-  // Draw arrows between non-removed nodes
-  let prev = -1;
-  for (let i = 0; i < items.length; i++) {
-    if (!items[i].removed) {
-      if (prev >= 0) {
-        html += `<line x1="${pos[prev].x + R + 2}" y1="${pos[prev].y}" x2="${pos[i].x - R - 2}" y2="${pos[i].y}" stroke="var(--text-secondary)" stroke-width="2" marker-end="url(#arrow)"/>`;
+      while (nodes[cur].next !== null && nodes[nodes[cur].next].val === val) {
+        const victim = nodes[cur].next;
+        nodes[cur].next = nodes[victim].next;
+        removed.push(victim);
+        push('跳过值为 ' + val + ' 的节点 ' + victim + '：cur.Next = cur.Next.Next。cur 原地不动，继续检查新的 cur.Next 是否仍等于 ' + val + '。',
+          { pair: [a, b], dupe: val, victim: victim });
       }
-      prev = i;
+
+      push('新的 cur.Next 已经不是 ' + val + ' 了，说明值为 ' + val + ' 的节点被清空。注意 cur 始终没有前进，它现在指向最后一个「已确认不重复」的节点，可以继续检查它的后继。',
+        { pair: null, dupe: null, cleared: val });
+    } else {
+      push('比较 cur.Next = 节点 ' + a + '（值 ' + nodes[a].val + '）与 cur.Next.Next = 节点 ' + b + '（值 ' + nodes[b].val +
+        '）：值不相等 → 节点 ' + a + ' 不重复，保留它，cur 前进一步到节点 ' + a + '。',
+        { pair: [a, b] });
+      cur = a;
     }
   }
 
-  for (let i = 0; i < items.length; i++) {
-    const it = items[i];
-    let stroke = 'var(--blue)', fill = 'var(--node-bg)';
+  const result = chain().slice(1).map(function (id) { return nodes[id].val; });
+  push('cur.Next 或 cur.Next.Next 为 nil，循环结束（后面只剩 0 或 1 个节点，不可能再有重复）。返回 dummy.Next，得到 [' + result.join(', ') +
+    ']。链表已经有序，相等的值必然相邻，所以每个节点只需被看一次：时间 O(n)，空间 O(1)。', { done: true });
 
-    if (it.removed) {
-      stroke = 'var(--red)'; fill = 'rgba(250,82,82,0.15)';
-    } else if (it.highlight) {
-      stroke = 'var(--orange)'; fill = 'rgba(253,126,20,0.1)';
+  return steps;
+}
+
+function arrowCol() {
+  const col = Demo.el('div', 'col');
+  col.appendChild(Demo.el('div', 'arrow', '→'));
+  col.appendChild(Demo.el('div', 'ptr ptr--dim', '&nbsp;'));
+  return col;
+}
+
+function listRow(step) {
+  const row = Demo.el('div', 'row');
+  step.chain.forEach(function (id) {
+    const col = Demo.el('div', 'col');
+    const node = Demo.el('div', 'll-node', Demo.esc(valText(id)));
+    const labels = [];
+
+    if (id === step.cur) {
+      node.classList.add('is-active');
+      labels.push('cur');
+    } else if (step.pair && step.pair.indexOf(id) >= 0) {
+      node.style.borderColor = 'var(--demo-warn)';
+      node.style.background = 'var(--demo-warn-soft)';
+      node.style.color = 'var(--demo-warn)';
+      labels.push(id === step.pair[0] ? 'cur.Next' : 'cur.Next.Next');
     }
-    if (it.scanning && !it.removed) {
-      stroke = 'var(--green)'; fill = 'rgba(64,192,87,0.1)';
+    if (id === 0) node.style.borderStyle = 'dashed';
+
+    col.appendChild(node);
+    const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : '&nbsp;');
+    if (!labels.length) ptr.classList.add('ptr--dim');
+    else if (labels.indexOf('cur') < 0) ptr.classList.add('ptr--warn');
+    col.appendChild(ptr);
+    row.appendChild(col);
+    row.appendChild(arrowCol());
+  });
+
+  const nilCol = Demo.el('div', 'col');
+  const nilNode = Demo.el('div', 'll-node', 'nil');
+  nilNode.style.borderStyle = 'dashed';
+  nilNode.style.color = 'var(--demo-muted)';
+  nilCol.appendChild(nilNode);
+  nilCol.appendChild(Demo.el('div', 'ptr ptr--dim', '&nbsp;'));
+  row.appendChild(nilCol);
+  return row;
+}
+
+function removedRow(ids, title, note) {
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.appendChild(Demo.el('div', 'panel__title', title));
+  const row = Demo.el('div', 'row');
+  ids.forEach(function (id) {
+    const node = Demo.el('div', 'll-node', Demo.esc(valText(id)));
+    node.style.borderColor = 'var(--demo-danger)';
+    node.style.background = 'var(--demo-danger-soft)';
+    node.style.color = 'var(--demo-danger)';
+    node.style.textDecoration = 'line-through';
+    row.appendChild(node);
+  });
+  if (note) row.appendChild(Demo.el('span', 'tag tag--bad', note));
+  panel.appendChild(row);
+  return panel;
+}
+
+Demo.create({
+  title: '64. 删除排序链表中的重复元素 II — dummy + 原地跳过所有重复节点',
+  info: '输入：head = [1, 2, 3, 3, 4, 4, 5]（已升序）。只要 cur.Next 与 cur.Next.Next 相等，就把值为它的节点全部删掉，一个不留。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 340,
+  legend: [
+    { color: 'var(--demo-accent)', label: 'cur 当前节点' },
+    { color: 'var(--demo-warn)', label: '正在比较的 cur.Next / cur.Next.Next' },
+    { color: 'var(--demo-danger)', label: '被删除的重复节点' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const listPanel = Demo.el('div', 'panel');
+    listPanel.style.width = '100%';
+    listPanel.appendChild(Demo.el('div', 'panel__title', '当前链表（cur 之前的部分都已处理完毕）'));
+    listPanel.appendChild(listRow(step));
+    ctx.stage.appendChild(listPanel);
+
+    const status = Demo.el('div', 'row');
+    status.appendChild(Demo.el('span', 'tag', 'cur → ' + (step.cur === 0 ? 'dummy' : '节点 ' + step.cur)));
+    if (i === 0) {
+      status.appendChild(Demo.el('span', 'tag tag--info', '初始状态：准备比较 cur.Next 与 cur.Next.Next'));
+    } else if (step.done) {
+      status.appendChild(Demo.el('span', 'tag tag--ok', '遍历结束，返回 dummy.Next'));
+    } else if (step.dupe !== null) {
+      status.appendChild(Demo.el('span', 'tag tag--bad', '发现重复值 ' + step.dupe + '：全部删除'));
+    } else if (step.cleared !== null) {
+      status.appendChild(Demo.el('span', 'tag tag--ok', '重复值 ' + step.cleared + ' 已清空，cur 原地不动，继续检查新的 cur.Next'));
+    } else {
+      status.appendChild(Demo.el('span', 'tag tag--ok', 'cur.Next 与 cur.Next.Next 不相等，保留并前进'));
     }
-    if (it.scanning && it.removed) {
-      stroke = 'var(--red)'; fill = 'rgba(250,82,82,0.2)';
+    status.appendChild(Demo.el('span', 'tag tag--info', '已删除 ' + step.removed.length + ' 个节点'));
+    ctx.stage.appendChild(status);
+
+    if (step.victim !== null) {
+      ctx.stage.appendChild(removedRow([step.victim], '刚刚摘下的节点（cur.Next 已经指向它的后继）', 'cur.Next = cur.Next.Next'));
     }
 
-    html += `<circle cx="${pos[i].x}" cy="${pos[i].y}" r="${R}" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>
-      <text x="${pos[i].x}" y="${pos[i].y + 5}" text-anchor="middle" font-size="14" font-weight="700" fill="${it.removed ? 'var(--red)' : 'var(--text)'}" font-family="Consolas,monospace">${it.val}</text>`;
+    if (step.removed.length > 0 && !step.done) {
+      ctx.stage.appendChild(removedRow(step.removed, '累计已删除的节点（值为重复，全部丢弃）', null));
+    }
 
-    if (it.removed) {
-      html += `<line x1="${pos[i].x - R + 4}" y1="${pos[i].y - R + 4}" x2="${pos[i].x + R - 4}" y2="${pos[i].y + R - 4}" stroke="var(--red)" stroke-width="2" opacity="0.6"/>`;
-      html += `<line x1="${pos[i].x + R - 4}" y1="${pos[i].y - R + 4}" x2="${pos[i].x - R + 4}" y2="${pos[i].y + R - 4}" stroke="var(--red)" stroke-width="2" opacity="0.6"/>`;
+    if (step.done) {
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.appendChild(Demo.el('div', 'panel__title', '结果链表（仍然升序，且不含任何重复值）'));
+      panel.appendChild(listRow({ chain: step.chain, cur: -1, pair: null }));
+      ctx.stage.appendChild(panel);
     }
   }
-
-  svg.innerHTML = html;
-  document.getElementById('autoBtn').classList.toggle('active', autoRunning);
-}
-
-function reset() { stepIdx = 0; stopAuto(); renderSVG(); }
-function prevStep() { stopAuto(); if (stepIdx > 0) stepIdx--; renderSVG(); }
-function nextStep() { stopAuto(); if (stepIdx < steps.length - 1) stepIdx++; renderSVG(); }
-function goEnd() { stopAuto(); stepIdx = steps.length - 1; renderSVG(); }
-
-let autoRunning = false, autoTimer = null;
-function toggleAuto() { autoRunning ? stopAuto() : startAuto(); }
-function startAuto() { autoRunning = true; renderSVG(); autoStep(); }
-function stopAuto() { autoRunning = false; if (autoTimer) clearTimeout(autoTimer); renderSVG(); }
-function autoStep() {
-  if (!autoRunning) return;
-  if (stepIdx < steps.length - 1) { stepIdx++; renderSVG(); autoTimer = setTimeout(autoStep, 900); }
-  else stopAuto();
-}
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') nextStep();
-  else if (e.key === 'ArrowLeft') prevStep();
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
 });
-buildSteps();
-reset();
 </script>
 </body>
 </html>

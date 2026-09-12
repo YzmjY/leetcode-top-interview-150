@@ -1,364 +1,170 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0; --btn-active: #1565C0;
-    --prefix-color: #1976D2; --suffix-color: #F57C00; --result-color: #388E3C;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd;
-      --btn-bg: #333; --btn-hover: #444;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 20px;
-  }
-  .container {
-    max-width: 700px; width: 100%;
-  }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 12px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 16px;
-    margin-bottom: 10px; font-size: 14px;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 40px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 420px; }
-
-  .var-panel {
-    background: #F5F5F5; border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 10px; font-family: monospace; font-size: 12px;
-    color: var(--text); text-align: center;
-  }
-  @media (prefers-color-scheme: dark) { .var-panel { background: #2a2a3e; } }
-
-  .row-label {
-    font-size: 12px; font-weight: bold; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;
-  }
-  .row-label .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
-
-  .array-row {
-    display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 10px;
-  }
-  .array-label {
-    font-size: 12px; font-weight: bold; width: 70px; text-align: right;
-    flex-shrink: 0;
-  }
-  .cell {
-    width: 70px; height: 52px;
-    border: 2px solid var(--cell-border);
-    border-radius: 8px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-size: 20px; font-weight: bold; color: var(--text);
-    background: var(--cell-bg);
-    transition: border-color 0.25s, background 0.25s, transform 0.15s;
-    position: relative;
-    gap: 2px;
-  }
-  .cell .sub {
-    font-size: 10px; color: var(--muted); font-weight: normal;
-  }
-  .cell.highlight {
-    transform: scale(1.08);
-  }
-  .cell.prefix-hl { border-color: var(--prefix-color); background: #E3F2FD; }
-  .cell.suffix-hl { border-color: var(--suffix-color); background: #FFF3E0; }
-  .cell.result-hl { border-color: var(--result-color); background: #E8F5E9; }
-  @media (prefers-color-scheme: dark) {
-    .cell.prefix-hl { background: #1a3a5e; }
-    .cell.suffix-hl { background: #3e2a1a; }
-    .cell.result-hl { background: #1a3e1a; }
-  }
-
-  .phase-badge {
-    display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px;
-    margin-left: 4px; font-weight: bold;
-  }
-  .phase-init { background: #eee; color: #666; }
-  .phase-prefix { background: #E3F2FD; color: #1565C0; }
-  .phase-suffix { background: #FFF3E0; color: #E65100; }
-  .phase-result { background: #E8F5E9; color: #2E7D32; }
-  @media (prefers-color-scheme: dark) {
-    .phase-init { background: #444; color: #ccc; }
-    .phase-prefix { background: #1a3a5e; color: #64B5F6; }
-    .phase-suffix { background: #3e2a1a; color: #FFB74D; }
-    .phase-result { background: #1a3e1a; color: #81C784; }
-  }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>13. 除自身以外数组的乘积 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>除自身以外数组的乘积 — 逐步交互演示</h2>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">/ 8 步 · 点击「下一步」开始</span>
-    <span class="phase-badge phase-init" id="phaseBadge">初始</span>
-  </div>
-
-  <div class="var-panel" id="varPanel">
-    输入: nums = [1, 2, 3, 4]
-  </div>
-
-  <div class="row-label" id="numsLabel" style="justify-content:center;margin-bottom:6px;">
-    <span class="dot" style="background:#666;"></span> 原始数组 nums
-  </div>
-  <div class="array-row" id="numsRow"></div>
-
-  <div class="row-label" style="justify-content:center;margin-bottom:4px;">
-    <span class="dot" style="background:var(--prefix-color);"></span> 前缀积累积 (prefix)
-  </div>
-  <div class="array-row" id="prefixRow"></div>
-
-  <div class="row-label" style="justify-content:center;margin-bottom:4px;">
-    <span class="dot" style="background:var(--suffix-color);"></span> 后缀积 &times; 前缀积 (suffix)
-  </div>
-  <div class="array-row" id="suffixRow"></div>
-
-  <div class="row-label" style="justify-content:center;margin-bottom:4px;">
-    <span class="dot" style="background:var(--result-color);"></span> 最终结果 answer
-  </div>
-  <div class="array-row" id="resultRow"></div>
-
-  <div class="controls" style="margin-top:12px;">
-    <button onclick="goStep(0)" title="重置">重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">自动播放</button>
-    <button onclick="goStep(totalSteps)" id="endBtn">跳到最后</button>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const nums = [1, 2, 3, 4];
-const n = nums.length;
-const totalSteps = 8;
+const NUMS = [1, 2, 3, 4];
 
-// Build step data
-const steps = [];
-// Step 0: initial
-steps.push({
-  phase: 'init', desc: '初始化：answer 全部为 1',
-  answer: [1, 1, 1, 1], prefix: [1, 0, 0, 0], suffix: 1,
-  highlightIdx: -1, highlightRow: '', varText: '输入: nums = [1, 2, 3, 4]'
-});
+/* 真实模拟题解的两趟做法：answer 先存前缀积，再乘上后缀积 */
+function buildSteps() {
+  const n = NUMS.length;
+  const answer = [];
+  for (let i = 0; i < n; i++) answer.push(null);
 
-// Steps 1-4: prefix phase
-const prefixVals = [1, 0, 0, 0];
-let prefix = 1;
-for (let i = 0; i < n; i++) {
-  const prevPrefix = i === 0 ? 1 : prefixVals[i - 1];
-  if (i > 0) prefixVals[i] = prevPrefix * nums[i - 1];
+  const steps = [];
+
   steps.push({
-    phase: 'prefix',
-    desc: i === 0
-      ? '前缀积: answer[0] = 1 (左侧无元素)'
-      : '前缀积: answer[' + i + '] = answer[' + (i - 1) + '] &times; nums[' + (i - 1) + '] = ' + prevPrefix + ' &times; ' + nums[i - 1] + ' = ' + (prevPrefix * nums[i - 1]),
-    answer: [...prefixVals],
-    prefix: [...prefixVals],
-    suffix: 1,
-    highlightIdx: i,
-    highlightRow: 'prefix',
-    varText: '前缀阶段 · prefix = [' + prefixVals.map((v, j) => j <= i ? v : '?').join(', ') + ']'
+    nums: NUMS, answer: answer.slice(), phase: 'init', i: -1, suffix: 1, old: null, done: false,
+    note: `初始化：不开额外数组，直接把答案数组 answer[0..${n - 1}] 当成草稿纸。题目禁止用除法，所以答案是「左边所有元素的乘积 × 右边所有元素的乘积」。第一趟先只算左边的乘积（前缀积），第二趟再乘上右边的乘积（后缀积）。`
   });
-}
 
-// Steps 5-8: suffix phase (backwards)
-let suffix = 1;
-const answerVals = [...prefixVals];
-for (let i = n - 1; i >= 0; i--) {
-  const oldAnswer = answerVals[i];
-  answerVals[i] = oldAnswer * suffix;
+  // 第一趟：前缀积
+  for (let i = 0; i < n; i++) {
+    if (i === 0) {
+      answer[0] = 1;
+      steps.push({
+        nums: NUMS, answer: answer.slice(), phase: 'prefix', i: 0, suffix: 1, old: null, done: false,
+        note: `第一趟（从左到右）i = 0：answer[0] = 1。因为下标 0 的左边没有任何元素，空乘积规定为 1，这样后面乘起来才不会破坏结果。`
+      });
+    } else {
+      const left = answer[i - 1];
+      const mult = NUMS[i - 1];
+      answer[i] = left * mult;
+      steps.push({
+        nums: NUMS, answer: answer.slice(), phase: 'prefix', i: i, suffix: 1, old: null, done: false,
+        note: `第一趟（从左到右）i = ${i}：answer[${i}] = answer[${i - 1}] × nums[${i - 1}] = ${left} × ${mult} = ${answer[i]}。` +
+          (i === 1
+            ? `answer[0] = 1 代表「下标 0 左边（空区间）的乘积」，再补上 nums[0]，就得到「下标 1 左边所有元素的乘积」。`
+            : `answer[${i - 1}] 已经含了 nums[0..${i - 2}] 的乘积，再补上 nums[${i - 1}]，就得到「下标 ${i} 左边所有元素的乘积」，不必每步重新连乘。`)
+      });
+    }
+  }
+
+  // 第二趟：后缀积
+  let suffix = 1;
+  for (let i = n - 1; i >= 0; i--) {
+    const old = answer[i];
+    answer[i] = old * suffix;
+    const usedSuffix = suffix;
+    suffix *= NUMS[i];
+    steps.push({
+      nums: NUMS, answer: answer.slice(), phase: 'suffix', i: i, suffix: usedSuffix, old: old, done: false,
+      note: `第二趟（从右到左）i = ${i}：` +
+        (i === n - 1
+          ? `下标 ${i} 右边一个元素都没有，空乘积规定为 1，所以此时 suffix = 1。`
+          : `此时 suffix 里装的是 nums[${i + 1}..${n - 1}] 的乘积 = ${usedSuffix}，正是下标 ${i} 右边所有元素的乘积。`) +
+        `于是 answer[${i}] = 前缀积 ${old} × 后缀积 ${usedSuffix} = ${answer[i]}，左右两边都不含 nums[${i}] 自己，答案就此定型。` +
+        (i === 0
+          ? `接着代码还会更新 suffix = ${usedSuffix} × nums[0] = ${suffix}，但最左边的下标已经算完，这个值不会再被用到。`
+          : `接着更新 suffix = ${usedSuffix} × nums[${i}] = ${suffix}，供更左边的下标使用。`)
+    });
+  }
+
   steps.push({
-    phase: 'suffix',
-    desc: '后缀积: answer[' + i + '] = ' + oldAnswer + ' &times; ' + suffix + ' = ' + answerVals[i] + ', 然后 suffix = ' + suffix + ' &times; nums[' + i + '] = ' + (suffix * nums[i]),
-    answer: [...answerVals],
-    prefix: [...prefixVals],
-    suffix: suffix,
-    highlightIdx: i,
-    highlightRow: 'suffix',
-    varText: '后缀阶段 · suffix = ' + suffix + ' (右侧乘积)'
+    nums: NUMS, answer: answer.slice(), phase: 'done', i: -1, suffix: suffix, old: null, done: true,
+    note: `结论：answer = [${answer.join(', ')}]，正是「除自身以外其余元素的乘积」。整个过程 answer 只被写了两次、并且没有额外数组，所以时间复杂度 O(n)，额外空间 O(1)（答案数组不计入）。`
   });
-  suffix *= nums[i];
+
+  return steps;
 }
 
-// Check step 8 (last step): update suffix for the next iteration simulation
-// Actually on the last step, suffix already accounts for nums[i]; let's adjust
-// We want the display of suffix to be what was used BEFORE multiplying by nums[i]
-let suffix2 = 1;
-const answerVals2 = [...prefixVals];
-for (let i = n - 1; i >= 0; i--) {
-  const oldAnswer = answerVals2[i];
-  answerVals2[i] = oldAnswer * suffix2;
-  const oldSuffix = suffix2;
-  suffix2 *= nums[i];
-  const stepIdx = n - 1 - i + n; // n prefix steps + this offset
-  steps[stepIdx].suffix = oldSuffix;
-  steps[stepIdx].answer = [...answerVals2];
-  steps[stepIdx].varText = '后缀阶段 · suffix = ' + oldSuffix + ' (右侧乘积)';
+function numsRow(step) {
+  const row = Demo.el('div', 'row');
+  NUMS.forEach(function (v, idx) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(v));
+    if (idx === step.i && !step.done) cell.classList.add('is-active');
+    else if (idx === step.i - 1 || idx === step.i + 1) cell.classList.add('is-info');
+    col.appendChild(cell);
+    const ptr = Demo.el('div', 'ptr', String(idx));
+    if (idx === step.i && !step.done) ptr.classList.add('ptr--info');
+    else ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    row.appendChild(col);
+  });
+  return row;
 }
 
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
+function answerRow(step) {
+  const row = Demo.el('div', 'row');
+  step.answer.forEach(function (v, idx) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', v == null ? '?' : Demo.esc(v));
+    if (v == null) cell.classList.add('cell--empty');
+    else if (idx === step.i && !step.done) cell.classList.add('is-active');
+    else if (step.phase === 'suffix' && idx > step.i) cell.classList.add('is-ok');
+    else if (step.done) cell.classList.add('is-ok');
+    else cell.classList.add('is-info');
 
-function createCells(id, count) {
-  const row = document.getElementById(id);
-  row.innerHTML = '';
-  for (let i = 0; i < count; i++) {
-    const div = document.createElement('div');
-    div.className = 'cell';
-    div.dataset.idx = i;
-    div.innerHTML = '<span class="val"></span><span class="sub"></span>';
-    row.appendChild(div);
+    col.appendChild(cell);
+    const tags = [];
+    if (step.phase === 'prefix' && idx === step.i) tags.push('前缀积');
+    if (step.phase === 'suffix' && idx === step.i) tags.push('× suffix');
+    if (step.phase === 'suffix' && idx > step.i) tags.push('已完成');
+    if (step.done) tags.push('answer');
+    const ptr = Demo.el('div', 'ptr', tags.join(' '));
+    if (!tags.length) ptr.classList.add('ptr--dim');
+    else if (step.phase === 'suffix' && idx === step.i) ptr.classList.add('ptr--pink');
+    col.appendChild(ptr);
+    row.appendChild(col);
+  });
+  return row;
+}
+
+Demo.create({
+  title: '13. 除自身以外数组的乘积 — 前缀积 × 后缀积，两趟扫描',
+  info: '输入：nums = [1,2,3,4]（示例 1），期望输出 [24,12,8,6]。全程不使用除法，答案数组复用为前缀积草稿。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 340,
+  legend: [
+    { color: 'var(--demo-accent)', label: '本步正在计算的 answer[i]' },
+    { color: 'var(--demo-info)', label: '只含左侧乘积（前缀积）' },
+    { color: 'var(--demo-ok)', label: '左右两侧都乘完，答案定型' }
+  ],
+  render: function (step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const numsPanel = Demo.el('div', 'panel');
+    numsPanel.style.width = '100%';
+    numsPanel.appendChild(Demo.el('div', 'panel__title', '原始数组 nums'));
+    numsPanel.appendChild(numsRow(step));
+    ctx.stage.appendChild(numsPanel);
+
+    const ansPanel = Demo.el('div', 'panel');
+    ansPanel.style.width = '100%';
+    ansPanel.appendChild(Demo.el('div', 'panel__title',
+      step.done ? 'answer（最终结果）'
+        : step.phase === 'prefix' ? 'answer（第一趟：只填左侧元素的乘积 = 前缀积）'
+          : step.phase === 'suffix' ? 'answer（第二趟：从右向左乘上右侧元素的乘积 = 后缀积）'
+            : 'answer（还没有开始填）'));
+    ansPanel.appendChild(answerRow(step));
+    ctx.stage.appendChild(ansPanel);
+
+    const info = Demo.el('div', 'row');
+
+    const suffixBox = Demo.el('div', 'panel');
+    suffixBox.appendChild(Demo.el('div', 'panel__title', '后缀积 suffix（右边元素的乘积）'));
+    suffixBox.appendChild(Demo.el('div', 'tag ' + (step.phase === 'suffix' ? 'tag--violet' : ''),
+      'suffix = ' + (step.phase === 'prefix' || step.phase === 'init' ? '1（还没开始）' : String(step.suffix))));
+    info.appendChild(suffixBox);
+
+    const stepBox = Demo.el('div', 'panel');
+    stepBox.appendChild(Demo.el('div', 'panel__title', '当前位置'));
+    stepBox.appendChild(Demo.el('div', 'tag ' + (step.done ? 'tag--ok' : 'tag--info'),
+      step.done ? '完成，answer = [' + step.answer.join(', ') + ']'
+        : 'i = ' + step.i + '（nums[' + step.i + '] = ' + NUMS[step.i] + '）'));
+    info.appendChild(stepBox);
+
+    ctx.stage.appendChild(info);
   }
-}
-
-createCells('numsRow', n);
-createCells('prefixRow', n);
-createCells('suffixRow', n);
-createCells('resultRow', n);
-
-function render() {
-  const s = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = current === 0
-    ? '/ ' + totalSteps + ' 步 · 点击「下一步」开始'
-    : '第 ' + current + ' 步 · ' + s.desc;
-  document.getElementById('varPanel').textContent = s.varText;
-
-  const badge = document.getElementById('phaseBadge');
-  badge.textContent = s.phase === 'init' ? '初始' : s.phase === 'prefix' ? '前缀' : '后缀';
-  badge.className = 'phase-badge phase-' + s.phase;
-
-  // Clear all highlights
-  document.querySelectorAll('.cell').forEach(el => {
-    el.classList.remove('highlight', 'prefix-hl', 'suffix-hl', 'result-hl');
-  });
-
-  // Update nums row (static)
-  document.querySelectorAll('#numsRow .cell').forEach((el, i) => {
-    el.querySelector('.val').textContent = nums[i];
-    el.querySelector('.sub').textContent = 'i=' + i;
-    if (i === s.highlightIdx) el.classList.add('highlight');
-    el.style.borderColor = 'var(--cell-border)';
-  });
-
-  // Prefix row
-  document.querySelectorAll('#prefixRow .cell').forEach((el, i) => {
-    el.querySelector('.val').textContent = s.prefix[i];
-    el.querySelector('.sub').textContent = '';
-    if (s.phase === 'prefix' && i <= s.highlightIdx) {
-      el.classList.add('prefix-hl');
-    }
-    if (s.highlightRow === 'prefix' && i === s.highlightIdx) {
-      el.classList.add('highlight');
-    }
-  });
-
-  // Suffix row
-  document.querySelectorAll('#suffixRow .cell').forEach((el, i) => {
-    if (s.phase === 'suffix' && i >= s.highlightIdx) {
-      el.querySelector('.val').textContent = s.answer[i];
-      el.querySelector('.sub').textContent = '&times;' + s.suffix;
-      el.classList.add('suffix-hl');
-    } else if (s.phase === 'init') {
-      el.querySelector('.val').textContent = '?';
-      el.querySelector('.sub').textContent = '';
-    } else if (s.phase === 'prefix') {
-      el.querySelector('.val').textContent = '?';
-      el.querySelector('.sub').textContent = '';
-    } else {
-      el.querySelector('.val').textContent = s.answer[i];
-      el.querySelector('.sub').textContent = '';
-      el.classList.add('suffix-hl');
-    }
-    if (s.highlightRow === 'suffix' && i === s.highlightIdx) {
-      el.classList.add('highlight');
-    }
-  });
-
-  // Result row
-  document.querySelectorAll('#resultRow .cell').forEach((el, i) => {
-    if (s.phase === 'suffix' && i >= s.highlightIdx) {
-      el.querySelector('.val').textContent = s.answer[i];
-      el.querySelector('.sub').textContent = '';
-      el.classList.add('result-hl');
-    } else if (current === totalSteps) {
-      el.querySelector('.val').textContent = s.answer[i];
-      el.querySelector('.sub').textContent = '';
-      el.classList.add('result-hl');
-    } else if (s.phase === 'init') {
-      el.querySelector('.val').textContent = '1';
-      el.querySelector('.sub').textContent = '';
-    } else {
-      el.querySelector('.val').textContent = '';
-      el.querySelector('.sub').textContent = '';
-    }
-    if (s.highlightRow === 'suffix' && i === s.highlightIdx) {
-      el.classList.add('highlight');
-    }
-  });
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= totalSteps;
-  document.getElementById('endBtn').disabled = current >= totalSteps;
-}
-
-function goStep(n) {
-  current = Math.max(0, Math.min(n, totalSteps));
-  render();
-}
-
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer);
-    autoRunning = false;
-    document.getElementById('playBtn').textContent = '自动播放';
-    document.getElementById('playBtn').style.background = '#1976D2';
-  } else {
-    autoRunning = true;
-    if (current >= totalSteps) goStep(0);
-    autoTimer = setInterval(() => {
-      if (current < totalSteps) goStep(current + 1);
-      else { clearInterval(autoTimer); autoRunning = false;
-        document.getElementById('playBtn').textContent = '自动播放'; }
-    }, 750);
-  }
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
 });
-
-render();
 </script>
 </body>
 </html>

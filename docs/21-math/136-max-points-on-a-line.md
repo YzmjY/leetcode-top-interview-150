@@ -29,32 +29,33 @@
 
 ### 算法思路
 
-**核心思想：枚举每个点作为基准，统计经过该点的所有直线的斜率分布。**
+**朴素想法**：枚举所有点对确定一条直线，再数这条直线包含多少点，共 O(n³)（n ≤ 300 时约千万量级，勉强可行但存在大量重复计算）。
 
-对于每个点 `i`：
+**关键观察**：一条直线上的所有点，从其中任一点出发看，彼此斜率都相同；反过来，从某个固定点出发斜率相同的点必然与它共线。因此可以**枚举基准点 i，统计点 i 到其余各点连线的斜率分布**，出现次数最多的斜率对应的点数（再加 i 自己）就是以 i 为起点的最多共线点数。对所有 i 取最大值即可，复杂度降为 O(n²)。
 
-1. 使用哈希表记录从点 `i` 到其他点的斜率及其出现次数。
-2. 斜率用分数（最简分数）表示，避免浮点数精度问题。
-   - dx = x2 - x1, dy = y2 - y1
-   - 将 dx, dy 除以它们的最大公约数（gcd）化为最简分式。
-   - 用字符串 `"dy/dx"` 作为 key 存储。
-3. 统计所有斜率中频率最高的，加上点 `i` 自身即为经过点 `i` 的直线上的最大点数。
-4. 对所有点取最大值。
+**用最简分数表示斜率**：斜率 `dy/dx` 若用浮点数存储，接近的斜率可能因精度被错误地合并或区分。正确做法是把 `(dx, dy)` 同时除以 `gcd(|dx|, |dy|)` 化为最简分数，并把符号统一（例如固定让 `dx > 0`），再用字符串 `"dy/dx"` 作为 map 的 key，保证同样的斜率得到同样的 key、不同的斜率得到不同的 key。
 
-**处理特殊情况：**
-- dx = 0（垂直线）：斜率定义为 `"vertical"`。
-- dy = 0（水平线）：斜率定义为 `"horizontal"`。
+**特殊情况**：`dx == 0` 是竖直线，`dy == 0` 是水平线，它们不能参与约分，分别用字符串 `"vertical"`、`"horizontal"` 作 key。
+
+**算法步骤**：
+1. `n <= 2` 时任意两点必共线，直接返回 n。
+2. `maxCount = 0`。
+3. 对每个基准点 i：清空哈希表；对每个 j ≠ i 计算 `getSlope(points[i], points[j])` 并计数；遍历哈希表，用 `count+1`（+1 是点 i 自身）更新 `maxCount`。
+4. 返回 `maxCount`。
+
+**为什么正确**：对固定的 i，所有与 i 共线的点 j 与 i 连线的斜率完全相同，会被统计到同一个 key 下；反过来，同一 key 下的任意两点与 i 的斜率都等于该 key，所以它们都与 i 共线。因此「key 的最大计数 + 1」正好是经过 i 的直线上的最多点数。任何一条直线都至少经过某个点 i，对所有 i 取最大值就是全局答案。n ≥ 3 时哈希表必然非空（至少有 n-1 ≥ 2 个点被统计），`maxCount` 一定会被更新，不需要额外兜底。
 
 ### 复杂度分析
 
-- **时间复杂度**：O(n^2)，对每个点枚举其余点，每次计算 gcd 为 O(log M)，M 为坐标范围。总体 O(n^2 log M)。
-- **空间复杂度**：O(n)，哈希表存储斜率计数。
+- **时间复杂度**：O(n² log M)。对每个 i 枚举其余 n-1 个点（共 O(n²)），每次求斜率做一次 gcd，代价 O(log M)，M 为坐标范围（|dx|, |dy| ≤ 2×10^4）。由于 M 很小，也可近似看作 O(n²)。
+- **空间复杂度**：O(n)，哈希表最多存 n-1 个斜率。
 
 ### 关键点
 
-- 使用分数（最简分式）而非浮点数表示斜率，避免精度问题。
-- 注意重复点的情况（本题保证点互不相同，但 LeetCode 原题可能有重复点）。
-- 使用 GCD 化简分数。
+- 用最简分数而非浮点数表示斜率，避免精度问题。
+- 符号要统一后再拼 key，否则 `1/-2` 与 `-1/2` 会被当成两个不同的斜率。
+- 竖直线、水平线要单独处理；本题保证点互不相同，因此不会出现 `dx = dy = 0`（重合点）的情况。
+- n ≤ 2 要直接返回 n。
 
 
 ### 交互演示
@@ -71,6 +72,8 @@
 
 ```go
 package main
+
+import "fmt"
 
 func maxPoints(points [][]int) int {
     n := len(points)
@@ -96,11 +99,6 @@ func maxPoints(points [][]int) int {
                 maxCount = count + 1
             }
         }
-
-        // 如果所有点都与当前点不共线（或无其他点），至少有一个点
-        if len(slopeMap) == 0 && maxCount == 0 {
-            maxCount = 1
-        }
     }
 
     return maxCount
@@ -123,79 +121,6 @@ func getSlope(p1, p2 []int) string {
     dy /= g
 
     // 保证符号一致性（把符号统一放在 dx 上）
-    if dx < 0 {
-        dx = -dx
-        dy = -dy
-    }
-
-    return fmt.Sprintf("%d/%d", dy, dx)
-}
-
-func gcd(a, b int) int {
-    for b != 0 {
-        a, b = b, a%b
-    }
-    return a
-}
-
-func abs(x int) int {
-    if x < 0 {
-        return -x
-    }
-    return x
-}
-```
-
-注意：上述代码需要引入 `"fmt"` 包。完整可运行版本：
-
-```go
-package main
-
-import "fmt"
-
-func maxPoints(points [][]int) int {
-    n := len(points)
-    if n <= 2 {
-        return n
-    }
-
-    maxCount := 0
-
-    for i := 0; i < n; i++ {
-        slopeMap := make(map[string]int)
-        for j := 0; j < n; j++ {
-            if i == j {
-                continue
-            }
-            slope := getSlope(points[i], points[j])
-            slopeMap[slope]++
-        }
-
-        for _, count := range slopeMap {
-            if count+1 > maxCount {
-                maxCount = count + 1
-            }
-        }
-    }
-
-    return maxCount
-}
-
-func getSlope(p1, p2 []int) string {
-    dx := p2[0] - p1[0]
-    dy := p2[1] - p1[1]
-
-    if dx == 0 {
-        return "vertical"
-    }
-    if dy == 0 {
-        return "horizontal"
-    }
-
-    g := gcd(abs(dx), abs(dy))
-    dx /= g
-    dy /= g
-
     if dx < 0 {
         dx = -dx
         dy = -dy

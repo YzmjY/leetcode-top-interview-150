@@ -3,114 +3,178 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>137. 爬楼梯 - 可视化演示</title>
-<style>
-:root{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--sub:#666;--border:#e0e0e0;--accent:#2563eb;--step-bg:#f0f4ff;--grid-bg:#fafafa;--radius:8px;--font:system-ui,-apple-system,sans-serif}
-@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--sub:#a0a0b0;--border:#334;--accent:#60a5fa;--step-bg:#1e293b;--grid-bg:#0f172a}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:var(--font);background:var(--bg);display:flex;justify-content:center;align-items:center;min-height:100vh}
-.demo-container{width:100%;max-width:960px;height:480px;background:var(--card);border-radius:var(--radius);box-shadow:0 4px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
-.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--step-bg)}
-.header .title{font-size:15px;font-weight:600;color:var(--text)}
-.header .step-info{font-size:13px;color:var(--accent);font-weight:500}
-.controls{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.controls button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
-.controls button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
-.controls button:disabled{opacity:.4;cursor:not-allowed}
-.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.main-area{flex:1;display:flex;flex-direction:column;padding:12px 16px;gap:10px;overflow-y:auto}
-.info-panel{padding:10px 14px;background:var(--step-bg);border-radius:var(--radius);border:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.6}
-.info-panel strong{color:var(--accent)}
-.vis-area{flex:1;display:flex;flex-direction:column;gap:10px}
-.dp-table{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:8px 0}
-.dp-cell{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:56px}
-.dp-cell .idx{font-size:11px;color:var(--sub)}
-.dp-cell .val{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-weight:700;font-size:16px;border:2px solid var(--border);background:var(--grid-bg);color:var(--text);transition:all .3s}
-.dp-cell .val.current{background:#bbf7d0;border-color:#22c55e;color:#166534}
-.dp-cell .val.pending{opacity:.3}
-.formula{text-align:center;font-size:14px;color:var(--sub);padding:4px 0}
-.step-detail{font-size:13px;color:var(--sub);text-align:center}
-.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
-.stairs-vis{display:flex;align-items:flex-end;gap:3px;justify-content:center;padding:6px 0}
-.stair{width:30px;border-radius:3px 3px 0 0;transition:all .3s}
-@media(prefers-color-scheme:dark){.dp-cell .val.current{background:#14532d;border-color:#22c55e;color:#86efac}}
-</style>
+<title>137. 爬楼梯 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="demo-container">
-<div class="header">
-<span class="title">137. 爬楼梯 (Climbing Stairs)</span>
-<span class="step-info" id="stepLabel">步骤 0 / 0</span>
-</div>
-<div class="controls">
-<button onclick="reset()">重置</button>
-<button onclick="prevStep()">上步</button>
-<button onclick="nextStep()">下步</button>
-<button onclick="toggleAuto()" id="autoBtn">自动播放</button>
-<button onclick="jumpEnd()">跳到最后</button>
-</div>
-<div class="main-area">
-<div class="info-panel" id="info"><strong>输入:</strong> n = 5 &nbsp;|&nbsp; <strong>思路:</strong> dp[i] = dp[i-1] + dp[i-2], 斐波那契数列 1,2,3,5,8</div>
-<div class="vis-area">
-<div class="dp-table" id="dpTable"></div>
-<div class="formula">dp[n] = dp[n-1] (一步) + dp[n-2] (两步)</div>
-<div class="step-detail" id="stepDetail"></div>
-<div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
-</div>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const N=5;
-let steps=[],stepIdx=0,autoTimer=null,playing=false;
+const N = 5;
 
-function buildSteps(){
-  steps=[];
-  let dp=Array(N+1).fill(0);
-  steps.push({dp:[...dp],cur:-1,note:'初始化 dp[0..'+N+'] = 0',done:false});
-  dp[0]=1;
-  steps.push({dp:[...dp],cur:0,note:'dp[0] = 1 (0级台阶有1种方法)',done:false});
-  dp[1]=1;
-  steps.push({dp:[...dp],cur:1,note:'dp[1] = 1 (1级台阶只有1种方法)',done:false});
-  for(let i=2;i<=N;i++){
-    dp[i]=dp[i-1]+dp[i-2];
-    steps.push({dp:[...dp],cur:i,note:`dp[${i}] = dp[${i-1}] + dp[${i-2}] = ${dp[i-1]} + ${dp[i-2]} = ${dp[i]}`,done:i===N});
-  }
-  let last=steps[steps.length-1];
-  steps[steps.length-1]={...last,note:last.note+` | ${N}级台阶共 ${dp[N]} 种方法`,done:true};
-}
-function render(){
-  let s=steps[stepIdx]||steps[steps.length-1]||{};
-  let total=steps.length;
-  document.getElementById('stepLabel').textContent=`步骤 ${stepIdx+1} / ${total}`;
-  document.getElementById('progress').style.width=((stepIdx+1)/total*100)+'%';
-  document.getElementById('info').innerHTML=`<strong>n = ${N}</strong> &nbsp;|&nbsp; <strong>操作:</strong> ${s.note||''}`;
+/* 真实跑一遍「一维 DP（斐波那契递推）」：从边界 dp[0]、dp[1] 出发，
+   逐级用 dp[i] = dp[i-1] + dp[i-2] 填表，每一步都记录 dp 快照与转移来源。 */
+function buildSteps() {
+  const steps = [];
+  const dp = new Array(N + 1).fill(null);
 
-  let dp=s.dp||[];
-  let ht='';
-  for(let i=0;i<=N;i++){
-    let cls=(i===s.cur)?'current':(s.done?'':'');
-    if(i>s.cur&&!s.done)cls='pending';
-    ht+=`<div class="dp-cell"><span class="idx">dp[${i}]</span><div class="val ${cls}">${dp[i]}</div></div>`;
+  function snap(i, cur, src, note, done) {
+    steps.push({
+      dp: dp.slice(),
+      i: i,
+      prev1: i >= 1 && dp[i - 1] != null ? dp[i - 1] : null,
+      prev2: i >= 2 && dp[i - 2] != null ? dp[i - 2] : null,
+      cur: cur,
+      src: src || [],
+      done: !!done,
+      note: note
+    });
   }
-  document.getElementById('dpTable').innerHTML=ht;
-  document.getElementById('stepDetail').textContent=`斐波那契数列: ${dp.slice(0,s.cur+1).join(' → ')}`;
+
+  snap(-1, null, [],
+    '初始化：开一个长度 ' + (N + 1) + ' 的数组 dp，dp[i] 表示爬到第 i 级台阶的方法数。此刻数组全是待定值，递推还没有开始。');
+
+  dp[0] = 1;
+  snap(0, 1, [],
+    '填边界 dp[0] = 1：站在地面（第 0 级）本身就是唯一一种「一步都不走」的方案，它作为递推的起点。');
+
+  dp[1] = 1;
+  snap(1, 1, [],
+    '填边界 dp[1] = 1：要上到第 1 级，只能从地面跨 1 级，没有第二种走法。');
+
+  for (let i = 2; i <= N; i++) {
+    const one = dp[i - 1];
+    const two = dp[i - 2];
+    dp[i] = one + two;
+    snap(i, dp[i], [i - 1, i - 2],
+      '处理第 ' + i + ' 级：最后一步要么从第 ' + (i - 1) + ' 级跨 1 级上来（有 ' + one + ' 种走法），要么从第 ' +
+      (i - 2) + ' 级跨 2 级上来（有 ' + two + ' 种走法）。两类走法的最后一步不同，互不重叠，又合起来覆盖了全部方案，' +
+      '所以 dp[' + i + '] = dp[' + (i - 1) + '] + dp[' + (i - 2) + '] = ' + one + ' + ' + two + ' = ' + dp[i] + '。');
+  }
+
+  steps.push({
+    dp: dp.slice(),
+    i: N,
+    prev1: dp[N - 1],
+    prev2: dp[N - 2],
+    cur: dp[N],
+    src: [],
+    done: true,
+    note: '递推结束：dp[' + N + '] = ' + dp[N] + '，也就是爬 ' + N + ' 级台阶共有 ' + dp[N] +
+      ' 种走法。由于每个 dp[i] 只依赖前两项，实际写代码时可以只用 prev2、prev1 两个滚动变量，把空间压到 O(1)。'
+  });
+
+  return steps;
 }
-function reset(){stepIdx=0; stopAuto();buildSteps();render();}
-function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
-function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
-function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}
-function toggleAuto(){
-  if(playing){stopAuto();}else{playing=true;document.getElementById('autoBtn').classList.add('active');document.getElementById('autoBtn').textContent='停止';
-    autoTimer=setInterval(()=>{if(stepIdx<steps.length-1){stepIdx++;render();}else{stopAuto();}},800);}
+
+function dpColumn(step, i) {
+  const col = Demo.el('div', 'col');
+  const cell = Demo.el('div', 'cell cell--lg');
+  const value = step.dp[i];
+
+  if (value == null) {
+    cell.classList.add('cell--empty');
+    cell.innerHTML = '?';
+  } else {
+    cell.innerHTML = Demo.esc(value);
+  }
+
+  let labels = 'dp[' + i + ']';
+  let ptrClass = 'ptr ptr--dim';
+
+  if (step.done) {
+    if (i === N) {
+      cell.classList.add('is-ok');
+      labels = '答案';
+      ptrClass = 'ptr ptr--ok';
+    }
+  } else if (i === step.i) {
+    cell.classList.add('is-active');
+    labels = 'i = ' + i;
+    ptrClass = 'ptr';
+  } else if (step.src[0] === i) {
+    cell.classList.add('is-info');
+    labels = '跨 1 级';
+    ptrClass = 'ptr ptr--info';
+  } else if (step.src[1] === i) {
+    cell.classList.add('is-violet');
+    labels = '跨 2 级';
+    ptrClass = 'ptr ptr--violet';
+  }
+
+  col.appendChild(cell);
+  col.appendChild(Demo.el('div', ptrClass, Demo.esc(labels)));
+  return col;
 }
-function stopAuto(){playing=false;clearInterval(autoTimer);document.getElementById('autoBtn').classList.remove('active');document.getElementById('autoBtn').textContent='自动播放';}
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight')nextStep();
-  else if(e.key==='ArrowLeft')prevStep();
-  else if(e.key===' '){e.preventDefault();toggleAuto();}
+
+function varColumn(label, value, cls) {
+  const col = Demo.el('div', 'col');
+  const cell = Demo.el('div', 'cell', value == null ? '—' : Demo.esc(value));
+  if (value == null) cell.classList.add('cell--empty');
+  else if (cls) cell.classList.add(cls);
+  col.appendChild(cell);
+  col.appendChild(Demo.el('div', 'ptr ptr--dim', Demo.esc(label)));
+  return col;
+}
+
+Demo.create({
+  title: '137. 爬楼梯 — 一维 DP 逐级填表 dp[i] = dp[i-1] + dp[i-2]',
+  info: '输入：n = ' + N + '（示例取 n = 5）。dp[i] 表示爬到第 i 级台阶的方法数，每次只能跨 1 级或 2 级。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 330,
+  legend: [
+    { color: 'var(--demo-accent)', label: '正在计算的 dp[i]' },
+    { color: 'var(--demo-info)', label: 'dp[i-1]：跨 1 级上来' },
+    { color: 'var(--demo-violet)', label: 'dp[i-2]：跨 2 级上来' },
+    { color: 'var(--demo-ok)', label: '最终答案' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const arrayPanel = Demo.el('div', 'panel');
+    arrayPanel.style.width = '100%';
+    arrayPanel.appendChild(Demo.el('div', 'panel__title', 'dp 数组（已填出的位置显示数值，灰色的 ? 表示还没算到）'));
+    const row = Demo.el('div', 'row');
+    for (let k = 0; k <= N; k++) row.appendChild(dpColumn(step, k));
+    arrayPanel.appendChild(row);
+    ctx.stage.appendChild(arrayPanel);
+
+    const formula = Demo.el('div', 'panel');
+    formula.style.width = '100%';
+    formula.style.textAlign = 'center';
+    let html;
+    if (step.done) {
+      html = '答案：dp[' + N + '] = <strong>' + step.dp[N] + '</strong> &nbsp;' +
+        '<span class="tag tag--ok">n = ' + N + ' 时共 ' + step.dp[N] + ' 种走法</span>';
+    } else if (step.i >= 2) {
+      html = 'dp[' + step.i + '] = dp[' + (step.i - 1) + '] + dp[' + (step.i - 2) + '] = <code>' +
+        step.dp[step.i - 1] + '</code> + <code>' + step.dp[step.i - 2] + '</code> = <strong>' +
+        step.dp[step.i] + '</strong>' +
+        ' &nbsp;<span class="tag tag--info">来源 dp[' + (step.i - 1) + ']</span>' +
+        ' <span class="tag tag--violet">来源 dp[' + (step.i - 2) + ']</span>';
+    } else if (step.i === 0 || step.i === 1) {
+      html = '边界：dp[' + step.i + '] = <strong>' + step.dp[step.i] + '</strong> ' +
+        '<span class="tag tag--warn">递推起点，不由公式得出</span>';
+    } else {
+      html = '状态转移公式：dp[i] = dp[i-1]（最后跨 1 级）+ dp[i-2]（最后跨 2 级），等右侧边界填好后再逐级套用。';
+    }
+    formula.innerHTML = html;
+    ctx.stage.appendChild(formula);
+
+    const roll = Demo.el('div', 'panel');
+    roll.style.width = '100%';
+    roll.appendChild(Demo.el('div', 'panel__title',
+      '滚动变量视角：dp[i] 只用到前两项，所以两个变量即可，空间 O(1)' +
+      (step.i >= 0 ? '（当前 i = ' + step.i + '）' : '')));
+    const rrow = Demo.el('div', 'row');
+    rrow.appendChild(varColumn('prev2', step.prev2, 'is-violet'));
+    rrow.appendChild(varColumn('prev1', step.prev1, 'is-info'));
+    rrow.appendChild(Demo.el('div', 'arrow', '→'));
+    rrow.appendChild(varColumn('current = prev1 + prev2', step.cur, step.done ? 'is-ok' : 'is-active'));
+    roll.appendChild(rrow);
+    ctx.stage.appendChild(roll);
+  }
 });
-buildSteps();render();
 </script>
 </body>
 </html>

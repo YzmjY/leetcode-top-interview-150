@@ -1,330 +1,150 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222; --sub-bg: #f5f5f5;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --ransom-color: #E53935; --mag-color: #1976D2;
-    --ok-color: #388E3C;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
-      --sub-bg: #252540;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 16px 20px;
-  }
-  .container { max-width: 800px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
-  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
-    font-size: 14px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
-
-  .char-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; align-items: center; }
-  .char-row { display: flex; align-items: center; gap: 8px; }
-  .char-row-title { font-size: 12px; font-weight: bold; width: 100px; text-align: right; }
-  .char-cells { display: flex; gap: 4px; }
-  .ccell {
-    width: 48px; height: 48px; border: 2px solid var(--cell-border); border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px; font-weight: bold; background: var(--cell-bg); color: var(--text);
-    transition: border-color 0.25s, background 0.25s, transform 0.15s;
-    position: relative;
-  }
-  .ccell .cidx { font-size: 9px; color: var(--muted); position: absolute; bottom: 2px; }
-  .ccell.hl-r { border-color: var(--ransom-color); background: rgba(229,57,53,0.12); transform: scale(1.08); z-index: 2; }
-  .ccell.hl-m { border-color: var(--mag-color); background: rgba(25,118,210,0.12); }
-  .ccell.matched { border-color: var(--ok-color); background: rgba(56,142,60,0.12); }
-  .ccell.used { border-color: var(--muted); opacity: 0.4; }
-
-  .freq-panel {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 6px; text-align: center; font-size: 13px;
-    display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;
-  }
-  .freq-item { text-align: center; }
-  .freq-val { font-size: 20px; font-weight: bold; font-family: monospace; }
-  .freq-label { font-size: 11px; color: var(--muted); }
-  .fi-mag .freq-val { color: var(--mag-color); }
-  .fi-rans .freq-val { color: var(--ransom-color); }
-
-  .result-row {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 6px; font-size: 13px; text-align: center;
-  }
-  .result-row .highlight { font-weight: bold; font-size: 15px; }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-</style>
+<title>39. 赎金信 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>赎金信 — 字符频率统计演示</h2>
-  <div class="sub-title">ransomNote="aa", magazine="aab" &rarr; magazine 能否构成 ransomNote?</div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
-  </div>
-
-  <div class="freq-panel">
-    <div class="freq-item fi-mag"><div class="freq-val" id="freqMag">--</div><div class="freq-label">magazine 频率</div></div>
-    <div class="freq-item fi-rans"><div class="freq-val" id="freqRans">--</div><div class="freq-label">需要字符</div></div>
-    <div class="freq-item"><div class="freq-val" id="freqResult" style="color:var(--text)">--</div><div class="freq-label">判定</div></div>
-  </div>
-
-  <div class="char-grid">
-    <div class="char-row">
-      <span class="char-row-title" style="color:var(--mag-color)">magazine:</span>
-      <div class="char-cells" id="magCells"></div>
-    </div>
-    <div class="char-row">
-      <span class="char-row-title" style="color:var(--ransom-color)">ransomNote:</span>
-      <div class="char-cells" id="ransCells"></div>
-    </div>
-  </div>
-
-  <div class="result-row">
-    <span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">&#x23EE; 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
-    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const magazine = 'aab';
-const ransomNote = 'aa';
+const RANSOM = 'aa';
+const MAGAZINE = 'aab';
+const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
 
-const steps = [];
-
-function simulate() {
-  const freq = {};
-  const magUsed = magazine.split('').map(() => false);
+function buildSteps() {
+  const mag = MAGAZINE.split('');
+  const ran = RANSOM.split('');
+  const cnt = new Array(26).fill(0);
+  const steps = [];
+  let result = null;
 
   steps.push({
-    desc: '初始状态 · ransomNote="aa", magazine="aab"',
-    phase: 'init',
-    magHL: [], ransHL: [], magUsed: [...magUsed],
-    freq, freqChar: null, freqAction: null,
-    result: 'init'
+    phase: 'init', cnt: cnt.slice(), magIdx: -1, ranIdx: -1, changed: -1,
+    note: `初始化长度为 26 的频次数组 cnt，26 个格子全部为 0。cnt[k] 的含义是「magazine 里还剩几个能用的字母 k」。第一遍先完整扫描 magazine = "${MAGAZINE}"，把它的字符库存记进 cnt。`
   });
 
-  // Phase 1: count magazine
-  for (let i = 0; i < magazine.length; i++) {
-    const ch = magazine[i];
-    freq[ch] = (freq[ch] || 0) + 1;
+  for (let j = 0; j < mag.length; j++) {
+    const k = mag[j].charCodeAt(0) - 97;
+    const before = cnt[k];
+    cnt[k] += 1;
     steps.push({
-      desc: '统计 magazine[' + i + ']=' + ch + ' &rarr; freq[' + ch + ']=' + freq[ch],
-      phase: 'count',
-      magHL: [[i, 'mag']], ransHL: [],
-      magUsed: [...magUsed],
-      freq: {...freq}, freqChar: ch, freqAction: 'count',
-      result: 'counting'
+      phase: 'count', cnt: cnt.slice(), magIdx: j, ranIdx: -1, changed: k, before: before,
+      note: `统计 magazine[${j}] = "${mag[j]}"：cnt['${mag[j]}'] 由 ${before} 加 1 变成 ${cnt[k]}。因为只有小写字母，用下标 ${k} 直接定位，不需要真正的哈希函数，这也是用数组代替 map 的原因。`
     });
   }
 
+  for (let i = 0; i < ran.length; i++) {
+    const k = ran[i].charCodeAt(0) - 97;
+    const before = cnt[k];
+    cnt[k] -= 1;
+    const fail = cnt[k] < 0;
+    steps.push({
+      phase: fail ? 'fail' : 'spend', cnt: cnt.slice(), magIdx: mag.length, ranIdx: i, changed: k,
+      before: before, fail: fail,
+      note: fail
+        ? `ransomNote[${i}] = "${ran[i]}"：查表得 cnt['${ran[i]}'] = ${before}，减 1 后变成 ${cnt[k]}，出现负数，说明 magazine 里的 "${ran[i]}" 已经被前面的字符用光了。字符只能使用一次，因此返回 false。`
+        : `ransomNote[${i}] = "${ran[i]}"：需要一个 "${ran[i]}"，把 cnt['${ran[i]}'] 由 ${before} 减到 ${cnt[k]}。减完仍然 ≥ 0，说明库存够用，继续处理下一个字符。`
+    });
+    if (fail) { result = false; break; }
+  }
+
+  if (result === null) result = true;
+
   steps.push({
-    desc: 'magazine 统计完成: freq={a:2, b:1}',
-    phase: 'count-done',
-    magHL: [[0,'matched'],[1,'matched'],[2,'matched']], ransHL: [],
-    magUsed: [...magUsed],
-    freq: {...freq}, freqChar: null, freqAction: 'done',
-    result: 'counted'
+    phase: 'done', cnt: cnt.slice(), magIdx: mag.length, ranIdx: ran.length, changed: -1, ok: result,
+    note: result
+      ? `ransomNote 的 ${ran.length} 个字符全部扣减完成，中途没有任何计数变成负数，说明 magazine 的字符足以拼出 ransomNote，返回 true。不变量：扣减到第 i 个字符时，每个 cnt[k] 都等于「magazine 中 k 的总数 − ransomNote 前 i 个字符里 k 的个数」，一旦它为负就说明某个字符被重复使用了。`
+      : `扣减过程中出现负数，magazine 的字符不足以拼出 ransomNote，返回 false。`
   });
 
-  // Phase 2: check ransomNote
-  let ransMatched = ransomNote.split('').map(() => false);
-  for (let i = 0; i < ransomNote.length; i++) {
-    const ch = ransomNote[i];
-    steps.push({
-      desc: '检查 ransomNote[' + i + ']=' + ch + ' &rarr; freq[' + ch + ']=' + (freq[ch] || 0),
-      phase: 'check',
-      magHL: [], ransHL: [[i, 'rans']],
-      magUsed: [...magUsed],
-      freq: {...freq}, freqChar: ch, freqAction: 'check',
-      ransMatched: [...ransMatched],
-      result: 'checking'
-    });
+  return steps;
+}
 
-    if (!freq[ch] || freq[ch] <= 0) {
-      steps.push({
-        desc: '失败! freq[' + ch + '] 不足, 无法构成 ransomNote.',
-        phase: 'fail',
-        magHL: [], ransHL: [[i, 'rans']],
-        magUsed: [...magUsed],
-        freq: {...freq}, freqChar: ch, freqAction: 'fail',
-        ransMatched: [...ransMatched],
-        result: 'fail'
-      });
-      return;
+function stringPanel(title, chars, activeIdx, doneCount) {
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.appendChild(Demo.el('div', 'panel__title', title));
+  const row = Demo.el('div', 'row');
+  chars.forEach(function (ch, idx) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(ch));
+    if (idx === activeIdx) cell.classList.add('is-active');
+    else if (idx < doneCount) cell.classList.add('is-ok');
+    col.appendChild(cell);
+    const ptr = Demo.el('div', 'ptr', String(idx));
+    if (idx !== activeIdx) ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    row.appendChild(col);
+  });
+  panel.appendChild(row);
+  return panel;
+}
+
+function freqPanel(step) {
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.appendChild(Demo.el('div', 'panel__title', '频次数组 cnt[26]：字母 → 剩余可用次数'));
+  const row = Demo.el('div', 'row');
+  ALPHABET.forEach(function (ch, k) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell cell--sm', String(step.cnt[k]));
+    if (step.changed === k) cell.classList.add(step.phase === 'fail' ? 'is-bad' : 'is-active');
+    else if (step.cnt[k] > 0) cell.classList.add('is-ok');
+    else if (step.cnt[k] < 0) cell.classList.add('is-bad');
+    else if (step.phase === 'done') cell.classList.add('cell--dim');
+    col.appendChild(cell);
+    const ptr = Demo.el('div', 'ptr', Demo.esc(ch));
+    if (step.changed !== k) ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    row.appendChild(col);
+  });
+  panel.appendChild(row);
+  return panel;
+}
+
+Demo.create({
+  title: '39. 赎金信 — 26 格频次数组当字符库存',
+  info: `输入：ransomNote = "${RANSOM}"，magazine = "${MAGAZINE}"（示例 3，输出 true）。先把 magazine 的字符计进 cnt，再用 ransomNote 逐个扣减。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 380,
+  legend: [
+    { color: 'var(--demo-accent)', label: '本步读入的字符 / 被改动的计数格' },
+    { color: 'var(--demo-ok)', label: '已统计完的字符 / 库存为正的字母' },
+    { color: 'var(--demo-danger)', label: '计数为负：字符不够用' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const magActive = step.magIdx >= 0 && step.magIdx < MAGAZINE.length ? step.magIdx : -1;
+    const magDone = step.phase === 'count' ? step.magIdx : MAGAZINE.length;
+    ctx.stage.appendChild(stringPanel(
+      `magazine = "${MAGAZINE}"（正在统计频次的字符）`, MAGAZINE.split(''), magActive, magDone));
+
+    const ranActive = step.ranIdx >= 0 && step.ranIdx < RANSOM.length ? step.ranIdx : -1;
+    const ranDone = step.ranIdx > 0 ? step.ranIdx : 0;
+    ctx.stage.appendChild(stringPanel(
+      `ransomNote = "${RANSOM}"（正在消耗库存的字符）`, RANSOM.split(''), ranActive, ranDone));
+
+    ctx.stage.appendChild(freqPanel(step));
+
+    const state = Demo.el('div', 'panel');
+    state.style.width = '100%';
+    state.style.textAlign = 'center';
+    if (step.phase === 'done') {
+      state.innerHTML = step.ok
+        ? '全部字符都能从 magazine 中取到 &nbsp;<span class="tag tag--ok">返回 true</span>'
+        : '某个字符库存不足 &nbsp;<span class="tag tag--bad">返回 false</span>';
+    } else if (step.phase === 'fail') {
+      state.innerHTML = `<span class="tag tag--bad">cnt['${Demo.esc(RANSOM[step.ranIdx])}'] = -1 &lt; 0，立即返回 false</span>`;
+    } else {
+      state.innerHTML = `当前共统计了 ${step.phase === 'init' ? 0 : Math.min(step.magIdx < 0 ? 0 : step.magIdx + 1, MAGAZINE.length)} 个 magazine 字符，尚未出现负数 &nbsp;<span class="tag tag--warn">处理中</span>`;
     }
-
-    freq[ch]--;
-    ransMatched[i] = true;
-    steps.push({
-      desc: 'freq[' + ch + '] 足够, 消耗1个 &rarr; freq[' + ch + ']=' + freq[ch],
-      phase: 'check-ok',
-      magHL: [], ransHL: [[i, 'matched']],
-      magUsed: [...magUsed],
-      freq: {...freq}, freqChar: ch, freqAction: 'consume',
-      ransMatched: [...ransMatched],
-      result: 'checking'
-    });
+    ctx.stage.appendChild(state);
   }
-
-  steps.push({
-    desc: '所有字符检查完毕! magazine 中的字符足够构成 ransomNote.',
-    phase: 'done',
-    magHL: [[0,'matched'],[1,'matched']], ransHL: [[0,'matched'],[1,'matched']],
-    magUsed: [...magUsed],
-    freq: {...freq}, freqChar: null, freqAction: 'done',
-    ransMatched: [true, true],
-    result: 'success'
-  });
-}
-
-simulate();
-
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-// Build cells
-const magEl = document.getElementById('magCells');
-magazine.split('').forEach((ch, i) => {
-  const cell = document.createElement('div');
-  cell.className = 'ccell';
-  cell.id = 'mag' + i;
-  cell.innerHTML = ch + '<span class="cidx">[' + i + ']</span>';
-  magEl.appendChild(cell);
 });
-
-const ransEl = document.getElementById('ransCells');
-ransomNote.split('').forEach((ch, i) => {
-  const cell = document.createElement('div');
-  cell.className = 'ccell';
-  cell.id = 'rans' + i;
-  cell.innerHTML = ch + '<span class="cidx">[' + i + ']</span>';
-  ransEl.appendChild(cell);
-});
-
-function resetAll() {
-  for (let i = 0; i < magazine.length; i++) document.getElementById('mag' + i).className = 'ccell';
-  for (let i = 0; i < ransomNote.length; i++) document.getElementById('rans' + i).className = 'ccell';
-}
-
-function render() {
-  const s = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = s.desc;
-
-  // Freq display
-  const freqKeys = Object.keys(s.freq);
-  document.getElementById('freqMag').textContent = freqKeys.length > 0
-    ? '{' + freqKeys.map(k => k + ':' + s.freq[k]).join(', ') + '}'
-    : '--';
-  document.getElementById('freqRans').textContent = s.freqChar ? '\'' + s.freqChar + '\'' : '--';
-  const fr = document.getElementById('freqResult');
-  if (s.freqAction === 'count') { fr.textContent = '统计中...'; fr.style.color = 'var(--mag-color)'; }
-  else if (s.freqAction === 'check') { fr.textContent = '检查中...'; fr.style.color = 'var(--ransom-color)'; }
-  else if (s.freqAction === 'consume') { fr.textContent = '消耗1个'; fr.style.color = 'var(--ok-color)'; }
-  else if (s.freqAction === 'fail') { fr.textContent = '不足!'; fr.style.color = 'var(--ransom-color)'; }
-  else if (s.freqAction === 'done') { fr.textContent = '完成'; fr.style.color = 'var(--ok-color)'; }
-  else { fr.textContent = '--'; fr.style.color = 'var(--muted)'; }
-
-  resetAll();
-
-  // Apply highlights
-  if (s.magHL) s.magHL.forEach(([i, type]) => {
-    const el = document.getElementById('mag' + i);
-    if (type === 'mag') el.className = 'ccell hl-m';
-    else if (type === 'matched') el.className = 'ccell matched';
-  });
-
-  if (s.ransHL) s.ransHL.forEach(([i, type]) => {
-    const el = document.getElementById('rans' + i);
-    if (type === 'rans') el.className = 'ccell hl-r';
-    else if (type === 'matched') el.className = 'ccell matched';
-  });
-
-  const rt = document.getElementById('resultText');
-  if (s.result === 'success') { rt.textContent = 'true - 可以构成!'; rt.style.color = '#388E3C'; }
-  else if (s.result === 'fail') { rt.textContent = 'false - 不能构成!'; rt.style.color = '#E53935'; }
-  else if (s.result === 'init') { rt.textContent = '进行中...'; rt.style.color = '#1976D2'; }
-  else { rt.textContent = '统计/检查中...'; rt.style.color = '#1976D2'; }
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
-}
-
-function goStep(n) {
-  current = Math.max(0, Math.min(n, steps.length - 1));
-  render();
-}
-
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer); autoRunning = false;
-    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-    document.getElementById('playBtn').classList.remove('play-btn');
-  } else {
-    autoRunning = true;
-    document.getElementById('playBtn').textContent = '\u23F8 暂停';
-    document.getElementById('playBtn').style.background = '#1976D2';
-    document.getElementById('playBtn').style.color = '#fff';
-    document.getElementById('playBtn').classList.add('play-btn');
-    if (current >= steps.length - 1) goStep(0);
-    autoTimer = setInterval(function() {
-      if (current < steps.length - 1) goStep(current + 1);
-      else toggleAuto();
-    }, 1000);
-  }
-}
-
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
-});
-
-render();
 </script>
 </body>
 </html>

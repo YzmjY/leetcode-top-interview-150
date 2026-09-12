@@ -1,348 +1,117 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0; --btn-active: #1565C0;
-    --sub-bg: #f5f5f5;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd;
-      --btn-bg: #333; --btn-hover: #444;
-      --sub-bg: #252540;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 20px;
-  }
-  .container { max-width: 750px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 12px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 12px; font-size: 14px;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 40px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 520px; }
-
-  .phase-label {
-    text-align: center; font-size: 13px; font-weight: bold; margin-bottom: 4px;
-    padding: 3px 0; border-radius: 4px;
-    transition: color 0.3s;
-  }
-
-  .section-label { font-size: 12px; font-weight: bold; color: var(--muted); text-align: center; margin-bottom: 4px; }
-  .array-row {
-    display: flex; align-items: flex-end; justify-content: center; gap: 5px; margin-bottom: 4px;
-  }
-  .cell {
-    background: var(--cell-bg);
-    border: 2px solid var(--cell-border);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px; font-weight: bold; color: var(--text);
-    width: 52px; height: 52px;
-    position: relative;
-    transition: border-color 0.25s, background 0.25s, transform 0.15s;
-  }
-  .cell.rev { border-color: #FF9800; background: #FFF3E0; }
-  .cell.rev-a { border-color: #E91E63; background: #FCE4EC; }
-  .cell.rev-b { border-color: #9C27B0; background: #F3E5F5; }
-  .cell.final { border-color: #4CAF50; background: #E8F5E9; }
-  .cell.active { transform: scale(1.06); }
-
-  .swap-arrow-row {
-    display: flex; align-items: center; justify-content: center; gap: 5px;
-    margin-bottom: 4px; min-height: 22px;
-  }
-  .swap-slot {
-    width: 52px; text-align: center; font-size: 14px; color: #FF9800; font-weight: bold;
-    opacity: 0; transition: opacity 0.3s;
-  }
-  .swap-slot.show { opacity: 1; }
-
-  .step-tag {
-    position: absolute; top: -8px; right: -8px;
-    background: #1976D2; color: #fff;
-    font-size: 9px; font-weight: bold; width: 20px; height: 20px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; transform: scale(0.5);
-    transition: opacity 0.25s, transform 0.25s;
-  }
-  .step-tag.show { opacity: 1; transform: scale(1); }
-
-  .result-row {
-    background: var(--sub-bg); border-radius: 8px; padding: 10px 14px;
-    margin-bottom: 10px; font-family: monospace; font-size: 13px;
-    word-break: break-all; color: var(--text); text-align: center;
-  }
-  .result-row .highlight { color: #1976D2; font-weight: bold; font-size: 14px; }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-
-  .legend {
-    display: flex; gap: 16px; justify-content: center; margin-top: 12px;
-    font-size: 12px; color: var(--muted); flex-wrap: wrap;
-  }
-  .legend-item { display: flex; align-items: center; gap: 5px; }
-  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
-</style>
+<title>6. 轮转数组 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>轮转数组 — 三步反转法演示 (k=3)</h2>
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">点击「下一步」开始 · 三步反转法</span>
-  </div>
-
-  <div class="phase-label" id="phaseLabel" style="color:var(--muted)">准备开始</div>
-
-  <div class="section-label" id="arrLabel">nums = [1, 2, 3, 4, 5, 6, 7]</div>
-  <div class="array-row" id="numsRow"></div>
-  <div class="swap-arrow-row" id="swapRow"></div>
-
-  <div class="result-row" id="resultBar">
-    <span style="color:var(--muted)">当前结果 = </span><span id="resultText" class="highlight"></span>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">⏮ 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">◀ 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 ▶</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">▶ 自动播放</button>
-    <button onclick="goStep(steps.length - 1)">⏭ 跳到最后</button>
-  </div>
-
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div>第1步: 整体反转</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#E91E63"></div>第2步: 前k反转</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#9C27B0"></div>第3步: 后n-k反转</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div>完成</div>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const numsInit = [1,2,3,4,5,6,7];
-const k = 3;
-const N = 7;
+const NUMS = [1, 2, 3, 4, 5, 6, 7];
+const K = 3;
 
-// Helper: generate swap steps within [L, R]
-function reverseRange(arr, L, R) {
-  const swaps = [];
-  let i = L, j = R;
-  while (i < j) {
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-    swaps.push({ arr: [...arr], i, j });
-    i++;
-    j--;
-  }
-  return swaps;
-}
+function buildSteps() {
+  const nums = NUMS.slice();
+  const n = nums.length;
+  const k = K % n;
+  const steps = [];
 
-const steps = [];
-(function simulate() {
-  const arr = [...numsInit];
-
-  // Phase 0: initial
-  steps.push({ arr: [...arr], desc: '初始状态：nums = [' + numsInit.join(',') + '], k=' + k, phase: 0, highlight: null });
-
-  // Phase 1: reverse whole array [0, N-1]
-  const p1Swaps = reverseRange(arr, 0, N - 1);
-  p1Swaps.forEach((s, si) => {
-    steps.push({
-      arr: s.arr, desc: `第1步: 整体反转 - 交换 nums[${s.i}] 和 nums[${s.j}]`,
-      phase: 1, highlight: [s.i, s.j], subStep: si + 1
-    });
+  steps.push({
+    nums: nums.slice(), phase: 0, i: null, j: null, l: null, r: null, k,
+    note: `初始化：k = ${K} % n = ${K} % ${n} = ${k}。向右轮转 ${k} 位等价于「三次翻转」：① 翻转整个数组；② 翻转前 ${k} 个；③ 翻转后 ${n - k} 个。`
   });
 
-  // Phase 2: reverse first k [0, k-1]
-  const p2Swaps = reverseRange(arr, 0, k - 1);
-  p2Swaps.forEach((s, si) => {
-    steps.push({
-      arr: s.arr, desc: `第2步: 前 ${k} 个反转 - 交换 nums[${s.i}] 和 nums[${s.j}]`,
-      phase: 2, highlight: [s.i, s.j], subStep: si + 1
-    });
-  });
-
-  // Phase 3: reverse last N-k [k, N-1]
-  const p3Swaps = reverseRange(arr, k, N - 1);
-  p3Swaps.forEach((s, si) => {
-    steps.push({
-      arr: s.arr, desc: `第3步: 后 ${N-k} 个反转 - 交换 nums[${s.i}] 和 nums[${s.j}]`,
-      phase: 3, highlight: [s.i, s.j], subStep: si + 1
-    });
-  });
-
-  // Done
-  steps.push({ arr: [...arr], desc: '完成! 轮转结果: [' + arr.join(',') + ']', phase: 4, highlight: null, done: true });
-})();
-
-const phases = ['初始状态', '第一步: 整体反转 (reverse 0..6)', '第二步: 前k个反转 (reverse 0..2)', '第三步: 后n-k个反转 (reverse 3..6)', '完成'];
-const phaseColors = ['', '#FF9800', '#E91E63', '#9C27B0', '#4CAF50'];
-const phaseClasses = ['', 'rev', 'rev-a', 'rev-b', 'final'];
-
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-const numsRow = document.getElementById('numsRow');
-const swapRow = document.getElementById('swapRow');
-
-for (let i = 0; i < N; i++) {
-  const cell = document.createElement('div');
-  cell.className = 'cell';
-  cell.id = 'nc' + i;
-  cell.innerHTML = `<span class="cell-val">${numsInit[i]}</span><span class="step-tag"></span>`;
-  numsRow.appendChild(cell);
-
-  const slot = document.createElement('div');
-  slot.className = 'swap-slot';
-  slot.id = 'sw' + i;
-  swapRow.appendChild(slot);
-}
-
-function render() {
-  const s = steps[current];
-  const stepNumEl = document.getElementById('stepNum');
-  const stepDescEl = document.getElementById('stepDesc');
-  const resultText = document.getElementById('resultText');
-  const phaseLabel = document.getElementById('phaseLabel');
-  const arrLabel = document.getElementById('arrLabel');
-  const prevBtn = document.getElementById('prevBtn');
-  const nextBtn = document.getElementById('nextBtn');
-
-  for (let i = 0; i < N; i++) {
-    const c = document.getElementById('nc' + i);
-    c.className = 'cell';
-    c.querySelector('.cell-val').textContent = s.arr[i];
-    const tag = c.querySelector('.step-tag');
-    tag.classList.remove('show');
-    tag.textContent = '';
-    document.getElementById('sw' + i).className = 'swap-slot';
-    document.getElementById('sw' + i).textContent = '';
-  }
-
-  phaseLabel.style.color = phaseColors[s.phase] || 'var(--muted)';
-  phaseLabel.textContent = phases[s.phase];
-  arrLabel.textContent = 'nums = [' + s.arr.join(', ') + ']';
-
-  if (s.done) {
-    stepNumEl.textContent = current;
-    stepDescEl.textContent = s.desc;
-    for (let i = 0; i < N; i++) {
-      document.getElementById('nc' + i).classList.add('final');
-    }
-  } else if (s.phase === 0) {
-    stepNumEl.textContent = '0';
-    stepDescEl.textContent = '初始状态 · 共 ' + (steps.length - 2) + ' 步 · 三步反转法';
-  } else {
-    stepNumEl.textContent = current;
-    stepDescEl.textContent = '第 ' + current + ' 步 · ' + s.desc;
-
-    // Color the cells involved in current swap
-    if (s.highlight) {
-      const [a, b] = s.highlight;
-      const cls = phaseClasses[s.phase];
-      document.getElementById('nc' + a).classList.add(cls, 'active');
-      document.getElementById('nc' + b).classList.add(cls, 'active');
-
-      // Show swap arrows
-      document.getElementById('sw' + a).className = 'swap-slot show';
-      document.getElementById('sw' + a).textContent = '↔';
-      document.getElementById('sw' + b).className = 'swap-slot show';
-      document.getElementById('sw' + b).textContent = '↔';
-
-      const tagA = document.getElementById('nc' + a).querySelector('.step-tag');
-      tagA.textContent = current;
-      tagA.classList.add('show');
-      const tagB = document.getElementById('nc' + b).querySelector('.step-tag');
-      tagB.textContent = current;
-      tagB.classList.add('show');
-    }
-
-    // Mark all cells with current phase color for already-fixed ranges
-    // Phase 1: none fixed yet (we're working on whole array)
-    // Phase 2: all cells show phase 1 color (whole array reversed)
-    // Phase 3: cells 0..k-1 show phase 2 color, rest phase 1
-    if (s.phase >= 2) {
-      for (let i = 0; i < N; i++) {
-        if (i < k) {
-          // Already in final position for range [0,k-1] after phase 2
-          if (!s.highlight || (i !== s.highlight[0] && i !== s.highlight[1])) {
-            document.getElementById('nc' + i).classList.add('rev-a');
-          }
-        } else {
-          if (!s.highlight || (i !== s.highlight[0] && i !== s.highlight[1])) {
-            document.getElementById('nc' + i).classList.add('rev');
-          }
-        }
-      }
-    } else if (s.phase === 1) {
-      // During phase 1, nothing is final yet
-      // Already swapped positions don't get special marking beyond the step tag
+  function reverse(l, r, phase, label) {
+    let i = l;
+    let j = r;
+    while (i < j) {
+      const left = nums[i];
+      const right = nums[j];
+      nums[i] = right;
+      nums[j] = left;
+      steps.push({
+        nums: nums.slice(), phase, i, j, l, r, k,
+        note: `${label}，区间 [${l}, ${r}]：交换 nums[${i}] = ${left} 与 nums[${j}] = ${right}，得到 ${right} … ${left}。交换后 i 右移、j 左移，继续向中间收拢。`
+      });
+      i++;
+      j--;
     }
   }
 
-  resultText.textContent = '[' + s.arr.join(', ') + ']';
-
-  prevBtn.disabled = current <= 0;
-  nextBtn.disabled = current >= steps.length - 1;
-}
-
-function goStep(n) {
-  current = Math.max(0, Math.min(n, steps.length - 1));
-  render();
-}
-
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer);
-    autoRunning = false;
-    document.getElementById('playBtn').textContent = '▶ 自动播放';
-    document.getElementById('playBtn').classList.remove('play-btn');
-  } else {
-    document.getElementById('playBtn').textContent = '⏸ 暂停';
-    document.getElementById('playBtn').classList.add('play-btn');
-    autoRunning = true;
-    if (current >= steps.length - 1) goStep(0);
-    autoTimer = setInterval(() => {
-      if (current < steps.length - 1) goStep(current + 1);
-      else toggleAuto();
-    }, 700);
+  if (k !== 0) {
+    reverse(0, n - 1, 1, `① 翻转整个数组 [0, ${n - 1}]`);
+    reverse(0, k - 1, 2, `② 翻转前 ${k} 个`);
+    reverse(k, n - 1, 3, `③ 翻转后 ${n - k} 个`);
   }
+
+  steps.push({
+    nums: nums.slice(), phase: 4, i: null, j: null, l: null, r: null, k, done: true,
+    note: `三次翻转完成，结果 [${nums.join(', ')}]，恰好是原数组向右轮转 ${k} 位。为什么对：整体翻转让末尾 ${k} 个元素来到最前面（但顺序反了），再翻转前 ${k} 个把它们正回来；后 ${n - k} 个同理。全程只用交换，额外空间 O(1)。`
+  });
+
+  return steps;
 }
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+const PHASES = ['初始状态', '① 整体翻转', '② 翻转前 k 个', '③ 翻转后 n-k 个', '完成'];
+
+Demo.create({
+  title: `6. 轮转数组 — 三次翻转（k = ${K}）`,
+  info: `nums = [${NUMS.join(', ')}]，k = ${K}，要求原地把数组向右轮转 k 位。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  legend: [
+    { color: 'var(--demo-accent)', label: '本次交换的两个位置' },
+    { color: 'var(--demo-warn)', label: '当前正在翻转的区间' },
+    { color: 'var(--demo-ok)', label: '已就位的元素' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const k = step.k;
+    const n = NUMS.length;
+
+    const phaseRow = Demo.el('div', 'row');
+    for (let p = 1; p <= 3; p++) {
+      const tag = Demo.el('div', 'tag', PHASES[p]);
+      if (step.phase === p) tag.classList.add('tag--warn');
+      else if (step.phase > p || step.phase === 4) tag.classList.add('tag--ok');
+      phaseRow.appendChild(tag);
+    }
+    ctx.stage.appendChild(phaseRow);
+
+    const row = Demo.el('div', 'row');
+    step.nums.forEach((value, idx) => {
+      const col = Demo.el('div', 'col');
+      let cls = 'cell';
+      if (step.i === idx || step.j === idx) cls += ' is-active';
+      else if (step.l != null && idx >= step.l && idx <= step.r) cls += ' is-warn';
+      else if (step.phase === 4) cls += ' is-ok';
+      else if (step.phase >= 3 && idx < k) cls += ' is-ok';
+      col.appendChild(Demo.el('div', cls, Demo.esc(value)));
+
+      const labels = [];
+      if (step.i === idx) labels.push('i');
+      if (step.j === idx) labels.push('j');
+      const ptr = Demo.el('div', 'ptr', labels.join(' '));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+
+      row.appendChild(col);
+    });
+    ctx.stage.appendChild(row);
+
+    const panel = Demo.el('div', 'panel');
+    let swapInfo = '本步尚未发生交换';
+    if (step.i != null) swapInfo = `交换 nums[${step.i}] ↔ nums[${step.j}]`;
+    panel.innerHTML =
+      '<span class="tag">当前阶段</span> ' + PHASES[step.phase] +
+      '&nbsp;&nbsp;<span class="tag tag--info">' + swapInfo + '</span>' +
+      '<div style="margin-top:6px">nums = [ ' + Demo.esc(step.nums.join(', ')) + ' ]</div>';
+    ctx.stage.appendChild(panel);
+  }
 });
-
-render();
 </script>
 </body>
 </html>

@@ -1,345 +1,202 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222; --sub-bg: #f5f5f5;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --axis-color: #666;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
-      --sub-bg: #252540; --axis-color: #888;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 14px 20px;
-  }
-  .container { max-width: 900px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 17px; margin-bottom: 2px; }
-  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 4px;
-    font-size: 14px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 22px; color: #1976D2; min-width: 32px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 580px; text-align: center; }
-
-  svg { display: block; margin: 0 auto; width: 100%; }
-
-  .result-row {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 4px; font-size: 13px; text-align: center;
-  }
-  .result-row .highlight { font-weight: bold; font-size: 15px; }
-
-  .legend {
-    display: flex; gap: 16px; justify-content: center; margin-top: 4px;
-    font-size: 11px; color: var(--muted); flex-wrap: wrap;
-  }
-  .legend-item { display: flex; align-items: center; gap: 5px; }
-  .legend-dot { width: 14px; height: 14px; border-radius: 3px; }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 6px;
-  }
-  button {
-    padding: 7px 15px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-</style>
+<title>49. 合并区间 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>合并区间 — 直观可视化演示</h2>
-  <div class="sub-title">intervals=[[1,3],[2,6],[8,10],[15,18]] &rarr; [[1,6],[8,10],[15,18]]</div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
-  </div>
-
-  <svg id="svg" viewBox="0 0 880 360"></svg>
-
-  <div class="result-row">
-    <span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
-  </div>
-
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#42A5F5;"></div>参照区间</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#66BB6A;"></div>当前检查</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#FF7043;"></div>重叠(合并)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#AB47BC;"></div>已合并结果</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#BDBDBD;"></div>待处理</div>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">&#x23EE; 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
-    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const intervals = [[1,3],[2,6],[8,10],[15,18]];
-const allVals = intervals.flat();
-const xMin = 0, xMax = 19;
+const INPUT = [[8, 10], [1, 3], [15, 18], [2, 6]];
 
-// Layout: SVG viewBox 0 0 880 360
-const graphH = 180, graphTop = 40;
-const axisY = graphTop + graphH;
-const barBaseY = axisY - 4;
-const xScale = (v) => 60 + (v - xMin) * (760 / (xMax - xMin));
-// Each interval gets its own row (staggered vertically)
-const rowH = 38;
-const barH = 28;
+function buildSteps() {
+  const n = INPUT.length;
+  const arr = INPUT.map(function (iv) { return [iv[0], iv[1]]; });
+  let merged = [];
+  const steps = [];
 
-const steps = [];
-
-(function simulate() {
-  steps.push({
-    desc: '初始状态 · 四个区间等处理 · 点击下一步开始合并',
-    phase: 'init', curIdx: -1, mergeIdx: -1,
-    barStyles: [{color:'#BDBDBD',y:0},{color:'#BDBDBD',y:0},{color:'#BDBDBD',y:0},{color:'#BDBDBD',y:0}],
-    result: null
-  });
-
-  const merged = [];
-  const mergedLevels = []; // track which row each result is on
-
-  // Step 1: pick first interval
-  const first = intervals[0];
-  merged.push([first[0], first[1], 0]); // [start, end, originalIdx]
-  steps.push({
-    desc: '取第1个区间 [1,3] 作为参照基准',
-    phase: 'start', curIdx: 0, mergeIdx: 0,
-    barStyles: [{color:'#42A5F5',y:0},{color:'#BDBDBD',y:0},{color:'#BDBDBD',y:0},{color:'#BDBDBD',y:0}],
-    result: [[1,3]],
-    mergedRanges: [[0, 1, 3, 0]] // [mergedIndex, start, end, row]
-  });
-
-  for (let i = 1; i < intervals.length; i++) {
-    const cur = intervals[i];
-    const last = merged[merged.length - 1];
-
-    // Show comparison
+  function snap(o) {
     steps.push({
-      desc: '检查区间 [' + cur[0] + ',' + cur[1] + ']: ' + cur[0] + ' <= ' + last[1] + ' (前区间end)?',
-      phase: 'compare', curIdx: i, mergeIdx: merged.length - 1,
-      barStyles: buildBarStyles(i, merged, 'compare'),
-      result: merged.map(m => [m[0], m[1]]),
-      mergedRanges: buildMergedRanges(merged)
+      arr: arr.map(function (iv) { return [iv[0], iv[1]]; }),
+      merged: merged.map(function (iv) { return [iv[0], iv[1]]; }),
+      phase: o.phase,
+      cur: o.cur == null ? -1 : o.cur,
+      last: o.last == null ? -1 : o.last,
+      key: o.key == null ? -1 : o.key,
+      note: o.note
     });
-
-    if (cur[0] <= last[1]) {
-      // Overlap → merge
-      const oldEnd = last[1];
-      last[1] = Math.max(last[1], cur[1]);
-      steps.push({
-        desc: '重叠! ' + cur[0] + '≤' + oldEnd + ' → 合并: end从' + oldEnd + '扩展到' + last[1],
-        phase: 'merge', curIdx: i, mergeIdx: merged.length - 1,
-        barStyles: buildBarStyles(i, merged, 'merge'),
-        result: merged.map(m => [m[0], m[1]]),
-        mergedRanges: buildMergedRanges(merged)
-      });
-    } else {
-      // No overlap → add new
-      merged.push([cur[0], cur[1], i]);
-      steps.push({
-        desc: '不重叠! ' + cur[0] + '>' + last[1] + ' → 新增合并结果区间 [' + cur[0] + ',' + cur[1] + ']',
-        phase: 'nomerge', curIdx: i, mergeIdx: merged.length - 1,
-        barStyles: buildBarStyles(i, merged, 'nomerge'),
-        result: merged.map(m => [m[0], m[1]]),
-        mergedRanges: buildMergedRanges(merged)
-      });
-    }
   }
 
-  steps.push({
-    desc: '完成! 合并结果: [[1,6],[8,10],[15,18]]',
-    phase: 'done', curIdx: -1, mergeIdx: -1,
-    barStyles: [{color:'#AB47BC',y:0},{color:'#AB47BC',y:1},{color:'#AB47BC',y:2},{color:'#AB47BC',y:3}],
-    result: [[1,6],[8,10],[15,18]],
-    mergedRanges: buildMergedRanges(merged)
+  snap({
+    phase: 'init',
+    note: '初始状态：区间按题目给定的顺序排列，起点并不单调。合并算法的第一步必须先按起点升序排序，否则「相邻的区间才可能重叠」这个前提不成立。'
   });
-})();
 
-function buildBarStyles(curIdx, merged, phase) {
-  const styles = [];
-  for (let k = 0; k < intervals.length; k++) {
-    if (k === curIdx) {
-      styles.push({color: phase === 'merge' ? '#FF7043' : '#66BB6A', y: 0});
-    } else if (phase === 'merge' && k < curIdx && merged.some(m => m[2] === k || (k >= m[2] && k <= curIdx))) {
-      // Part of the merging group
-      styles.push({color: '#FF7043', y: 1});
-    } else if (k < curIdx) {
-      styles.push({color: '#AB47BC', y: 0});
-    } else {
-      styles.push({color: '#BDBDBD', y: 0});
+  for (let k = 1; k < n; k++) {
+    const key = arr[k];
+    snap({
+      phase: 'sort-pick', key: k,
+      note: '插入排序：取出下标 ' + k + ' 的区间 [' + key[0] + ', ' + key[1] + '] 作为待插入的 key，在它左边已经排好序的区间里从右往左找位置。'
+    });
+    let j = k - 1;
+    while (j >= 0 && arr[j][0] > key[0]) {
+      const moved = arr[j];
+      arr[j + 1] = arr[j];
+      snap({
+        phase: 'sort-move', key: k, cur: j,
+        note: '比较起点：key 的起点 ' + key[0] + ' < 区间 [' + moved[0] + ', ' + moved[1] + '] 的起点 ' + moved[0] + '，说明 ' + moved[0] + ' 应该排在 key 后面，把它整体后移一位腾出空位。'
+      });
+      j -= 1;
     }
-  }
-  return styles;
-}
-
-function buildMergedRanges(merged) {
-  return merged.map((m, idx) => ({ idx, start: m[0], end: m[1], row: idx }));
-}
-
-let current = 0;
-let autoTimer = null, autoRunning = false;
-const svg = document.getElementById('svg');
-
-function render() {
-  const s = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = s.desc;
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
-
-  // Result text
-  const rt = document.getElementById('resultText');
-  if (s.result && s.result.length > 0 && s.phase === 'done') {
-    rt.textContent = '[' + s.result.map(r => '[' + r[0] + ',' + r[1] + ']').join(', ') + ']';
-    rt.style.color = '#388E3C';
-  } else if (s.result && s.result.length > 0) {
-    rt.textContent = '[' + (s.result || []).map(r => '[' + r[0] + ',' + r[1] + ']').join(', ') + ']';
-    rt.style.color = '#1976D2';
-  } else {
-    rt.textContent = '进行中...';
-    rt.style.color = '#1976D2';
-  }
-
-  let html = '';
-
-  // --- DRAW AXIS ---
-  html += '<line x1="60" y1="' + axisY + '" x2="820" y2="' + axisY + '" stroke="' + (isDark() ? '#888' : '#666') + '" stroke-width="1.5"/>';
-  html += '<polygon points="820,' + (axisY-5) + ' 820,' + (axisY+5) + ' 828,' + axisY + '" fill="' + (isDark() ? '#888' : '#666') + '"/>';
-
-  // Tick marks and labels every 1 or 2 units
-  for (let v = 0; v <= 19; v++) {
-    const x = xScale(v);
-    if (v % 1 === 0) {
-      html += '<line x1="' + x + '" y1="' + axisY + '" x2="' + x + '" y2="' + (axisY + 6) + '" stroke="' + (isDark() ? '#888' : '#666') + '" stroke-width="1"/>';
-      html += '<text x="' + x + '" y="' + (axisY + 20) + '" text-anchor="middle" fill="var(--muted)" font-size="11">' + v + '</text>';
-    }
-  }
-
-  // --- DRAW STAGGERED INTERVAL BARS ---
-  // Each original interval: show as a horizontal bar at a different vertical height
-  // The y position varies to show overlap clearly
-  const rowOffsets = [0, 1, 0, 0]; // row stagger: intervals 0 and 1 overlap so use different rows
-
-  const s1 = s.barStyles || [];
-  for (let i = 0; i < intervals.length; i++) {
-    const [start, end] = intervals[i];
-    const x1 = xScale(start);
-    const x2 = xScale(end);
-    const row = rowOffsets[i];
-    const y = axisY - 50 - row * 42;
-    const style = s1[i] || {color:'#BDBDBD', y:0};
-    const color = style.color;
-
-    // Bar
-    html += '<rect x="' + x1 + '" y="' + y + '" width="' + Math.max(8, x2 - x1) + '" height="' + barH + '" rx="6" fill="' + color + '" opacity="0.85" stroke="' + color + '" stroke-width="1.5"/>';
-    // Label inside bar
-    html += '<text x="' + ((x1 + x2) / 2) + '" y="' + (y + barH/2 + 5) + '" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">[' + start + ',' + end + ']</text>';
-
-    // Pin start/end markers
-    html += '<circle cx="' + x1 + '" cy="' + axisY + '" r="4" fill="' + color + '"/>';
-    html += '<circle cx="' + x2 + '" cy="' + axisY + '" r="4" fill="' + color + '"/>';
-  }
-
-  // --- DRAW MERGED RESULT BARS (below axis) ---
-  if (s.mergedRanges) {
-    s.mergedRanges.forEach((mr, idx) => {
-      const x1 = xScale(mr.start);
-      const x2 = xScale(mr.end);
-      const y = axisY + 34 + idx * 36;
-      const w = Math.max(40, x2 - x1);
-
-      let mc = '#AB47BC';
-      if (current >= steps.length - 1) mc = '#388E3C';
-
-      html += '<rect x="' + x1 + '" y="' + y + '" width="' + w + '" height="' + barH + '" rx="6" fill="' + mc + '" opacity="0.8" stroke="' + mc + '" stroke-width="1.5"/>';
-      html += '<text x="' + ((x1 + x2) / 2) + '" y="' + (y + barH/2 + 5) + '" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">[' + mr.start + ',' + mr.end + ']</text>';
-
-      // Vertical connector line from original intervals to merged result
-      html += '<line x1="' + ((x1 + x2) / 2) + '" y1="' + (axisY + 30) + '" x2="' + ((x1 + x2) / 2) + '" y2="' + y + '" stroke="' + mc + '" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>';
+    arr[j + 1] = key;
+    snap({
+      phase: 'sort-put', key: j + 1,
+      note: '位置确定：把 [' + key[0] + ', ' + key[1] + '] 放到下标 ' + (j + 1) + '，它左边所有区间的起点都 ≤ ' + key[0] + '，插入后前 ' + (k + 1) + ' 个区间仍然有序。'
     });
   }
 
-  // Label
-  html += '<text x="820" y="' + (axisY - 10) + '" text-anchor="end" fill="var(--muted)" font-size="10">值</text>';
-  html += '<text x="60" y="' + (axisY + 33) + '" text-anchor="start" fill="var(--muted)" font-size="11">合并结果:</text>';
+  snap({
+    phase: 'sorted',
+    note: '排序完成，区间已按起点升序排列：' + arr.map(function (iv) { return '[' + iv[0] + ',' + iv[1] + ']'; }).join('、')
+      + '。这一步耗时 O(n log n)，是整道题的主要开销；后面的合并只需线性扫描一次。'
+  });
 
-  // Phase indicator
-  if (s.curIdx >= 0) {
-    const [cs, ce] = intervals[s.curIdx];
-    const cx = xScale(cs);
-    // Arrow pointing at current interval
-    html += '<text x="' + cx + '" y="' + (axisY - 100) + '" text-anchor="middle" fill="' + (s.phase==='merge'?'#FF7043':'#66BB6A') + '" font-size="14" font-weight="bold">▼ 当前</text>';
+  merged = [arr[0]];
+  snap({
+    phase: 'merge-init', last: 0,
+    note: '结果列表先放入排序后的第一个区间 [' + arr[0][0] + ', ' + arr[0][1] + ']。之后每个区间只和「结果列表的最后一个区间」比较，因为列表始终有序且互不重叠。'
+  });
+
+  for (let i = 1; i < n; i++) {
+    const last = merged[merged.length - 1];
+    const curr = arr[i];
+    const overlap = curr[0] <= last[1];
+    snap({
+      phase: 'compare', cur: i, last: merged.length - 1,
+      note: '拿 [' + curr[0] + ', ' + curr[1] + '] 的起点 ' + curr[0] + ' 与结果列表末尾区间 [' + last[0] + ', ' + last[1] + '] 的终点 ' + last[1] + ' 比较：'
+        + (overlap ? curr[0] + ' ≤ ' + last[1] + '，两者有交集。' : curr[0] + ' > ' + last[1] + '，两者之间有空隙，不可能重叠。')
+    });
+
+    if (overlap) {
+      const oldEnd = last[1];
+      if (curr[1] > last[1]) last[1] = curr[1];
+      snap({
+        phase: 'merge', cur: i, last: merged.length - 1,
+        note: '重叠 → 合并：末尾区间的终点从 ' + oldEnd + ' 更新为 max(' + oldEnd + ', ' + curr[1] + ') = ' + last[1] + '。'
+          + (curr[1] > oldEnd ? '新区间伸得更远，所以终点被拉长。' : '新区间完全被包含，终点不变。')
+          + ' 起点不动（排序保证它已经是最小的）。'
+      });
+    } else {
+      merged.push([curr[0], curr[1]]);
+      snap({
+        phase: 'add', cur: i, last: merged.length - 1,
+        note: '不重叠 → 追加：把 [' + curr[0] + ', ' + curr[1] + '] 作为新的结果区间放进列表。此后它成为新的「末尾区间」，供下一个区间比较。'
+      });
+    }
   }
 
-  svg.innerHTML = html;
+  snap({
+    phase: 'done',
+    note: '所有区间处理完毕，结果 = ' + merged.map(function (iv) { return '[' + iv[0] + ',' + iv[1] + ']'; }).join('、')
+      + '。它恰好覆盖全部输入区间且互不重叠。总复杂度 O(n log n)，其中排序 O(n log n)、合并 O(n)。'
+  });
+
+  return steps;
 }
 
-function isDark() {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-}
+function render(step, idx, ctx) {
+  ctx.stage.innerHTML = '';
 
-function goStep(n) {
-  current = Math.max(0, Math.min(n, steps.length - 1));
-  render();
-}
+  const xMin = 0, xMax = 20, X0 = 44, X1 = 756;
+  function xs(v) { return X0 + v * (X1 - X0) / (xMax - xMin); }
 
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer); autoRunning = false;
-    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-    document.getElementById('playBtn').classList.remove('play-btn');
-  } else {
-    autoRunning = true;
-    document.getElementById('playBtn').textContent = '\u23F8 暂停';
-    document.getElementById('playBtn').style.background = '#1976D2';
-    document.getElementById('playBtn').style.color = '#fff';
-    document.getElementById('playBtn').classList.add('play-btn');
-    if (current >= steps.length - 1) goStep(0);
-    autoTimer = setInterval(function() {
-      if (current < steps.length - 1) goStep(current + 1);
-      else toggleAuto();
-    }, 1200);
+  const n = step.arr.length;
+  const H = 334;
+  const p = [];
+  p.push('<svg viewBox="0 0 800 ' + H + '" style="width:100%;max-width:800px;height:auto;display:block" role="img">');
+
+  p.push('<text x="8" y="16" style="fill:var(--demo-muted);font-size:12px;font-weight:700">'
+    + (step.phase.indexOf('sort-') === 0 || step.phase === 'init' ? '当前数组（排序进行中）' : '排序后的区间（按起点升序）') + '</text>');
+
+  for (let k = 0; k < n; k++) {
+    const iv = step.arr[k];
+    const y = 26 + k * 30;
+    let fill = 'var(--demo-subtle)';
+    let stroke = 'var(--demo-border)';
+    if (k === step.key) { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; }
+    else if (k === step.cur && step.phase === 'compare') { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; }
+    else if (k === step.cur && step.phase === 'sort-move') { fill = 'var(--demo-warn-soft)'; stroke = 'var(--demo-warn)'; }
+    else if ((step.phase === 'merge' || step.phase === 'add') && k === step.cur) { fill = 'var(--demo-violet-soft)'; stroke = 'var(--demo-violet)'; }
+
+    p.push('<rect x="' + xs(iv[0]) + '" y="' + y + '" width="' + Math.max(10, xs(iv[1]) - xs(iv[0])) + '" height="20" rx="5" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2"/>');
+    p.push('<text x="' + ((xs(iv[0]) + xs(iv[1])) / 2) + '" y="' + (y + 14) + '" text-anchor="middle" style="fill:var(--demo-text);font-size:11px;font-weight:700;font-family:var(--demo-mono)">[' + iv[0] + ',' + iv[1] + ']</text>');
+    p.push('<text x="20" y="' + (y + 14) + '" text-anchor="middle" style="fill:var(--demo-muted);font-size:10px;font-family:var(--demo-mono)">' + k + '</text>');
+    if (step.phase.indexOf('sort') === 0 && k === step.key) {
+      p.push('<text x="' + xs(iv[0]) + '" y="' + (y - 4) + '" text-anchor="middle" style="fill:var(--demo-accent);font-size:10px;font-weight:700">key</text>');
+    }
   }
+
+  const axisY = 26 + n * 30 + 12;
+  p.push('<line x1="' + (X0 - 10) + '" y1="' + axisY + '" x2="' + (X1 + 10) + '" y2="' + axisY + '" style="stroke:var(--demo-border);stroke-width:1.5"/>');
+  for (let v = xMin; v <= xMax; v++) {
+    p.push('<line x1="' + xs(v) + '" y1="' + axisY + '" x2="' + xs(v) + '" y2="' + (axisY + 4) + '" style="stroke:var(--demo-border);stroke-width:1"/>');
+    if (v % 2 === 0) {
+      p.push('<text x="' + xs(v) + '" y="' + (axisY + 16) + '" text-anchor="middle" style="fill:var(--demo-muted);font-size:9px;font-family:var(--demo-mono)">' + v + '</text>');
+    }
+  }
+
+  p.push('<text x="8" y="' + (axisY + 34) + '" style="fill:var(--demo-muted);font-size:12px;font-weight:700">合并结果 merged</text>');
+
+  const baseY = axisY + 42;
+  if (step.merged.length === 0) {
+    p.push('<text x="' + (X0 + 10) + '" y="' + (baseY + 16) + '" style="fill:var(--demo-muted);font-size:12px">（还没有区间进入结果列表）</text>');
+  }
+  step.merged.forEach(function (iv, k) {
+    const y = baseY + k * 28;
+    let fill = 'var(--demo-ok-soft)';
+    let stroke = 'var(--demo-ok)';
+    if (k === step.last && (step.phase === 'compare' || step.phase === 'merge')) {
+      fill = 'var(--demo-warn-soft)'; stroke = 'var(--demo-warn)';
+    }
+    p.push('<rect x="' + xs(iv[0]) + '" y="' + y + '" width="' + Math.max(10, xs(iv[1]) - xs(iv[0])) + '" height="20" rx="5" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2"/>');
+    p.push('<text x="' + ((xs(iv[0]) + xs(iv[1])) / 2) + '" y="' + (y + 14) + '" text-anchor="middle" style="fill:var(--demo-text);font-size:11px;font-weight:700;font-family:var(--demo-mono)">[' + iv[0] + ',' + iv[1] + ']</text>');
+  });
+
+  p.push('<text x="8" y="' + (H - 6) + '" style="fill:var(--demo-muted);font-size:10px">横轴为 x（区间端点取值），每个区间画成一条横条</text>');
+  p.push('</svg>');
+
+  const chart = Demo.el('div', 'col');
+  chart.style.width = '100%';
+  chart.innerHTML = p.join('');
+  ctx.stage.appendChild(chart);
+
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.style.textAlign = 'center';
+  panel.innerHTML = '结果：'
+    + (step.merged.length
+      ? '<code>[' + step.merged.map(function (iv) { return '[' + iv[0] + ',' + iv[1] + ']'; }).join(', ') + ']</code>'
+      : '<span class="tag tag--warn">未生成</span>')
+    + (step.phase === 'done' ? ' &nbsp;<span class="tag tag--ok">答案 ' + step.merged.length + ' 个区间</span>' : '');
+  ctx.stage.appendChild(panel);
 }
 
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+Demo.create({
+  title: '49. 合并区间 — 先按起点排序，再线性合并',
+  info: '输入：intervals = [[8,10], [1,3], [15,18], [2,6]]（示例 1 的四个区间打乱顺序，用来展示排序这一步）。排序后合并，结果与示例一致：[[1,6], [8,10], [15,18]]。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 430,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前处理 / 待插入的区间' },
+    { color: 'var(--demo-warn)', label: '结果列表的末尾区间（比较对象）' },
+    { color: 'var(--demo-ok)', label: '已确定的合并结果' },
+    { color: 'var(--demo-violet)', label: '刚并入结果或新增的区间' }
+  ],
+  render: render
 });
-
-render();
 </script>
 </body>
 </html>

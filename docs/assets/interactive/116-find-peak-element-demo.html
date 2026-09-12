@@ -3,120 +3,246 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>116. 寻找峰值</title>
-<style>
-:root {
-  --bg: #f5f6fa; --card: #fff; --text: #2d3436; --sub: #636e72;
-  --border: #dfe6e9; --blue: #0984e3; --green: #00b894; --red: #e17055;
-  --blue-bg: #dff6fd; --hl-mid: #ffeaa7;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1a1a2e; --card: #16213e; --text: #eee; --sub: #aaa;
-    --border: #2d3436; --blue: #74b9ff; --green: #55efc4; --red: #ff7675;
-    --blue-bg: #1a3a5c; --hl-mid: #5c4a1f;
-  }
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:var(--bg); display:flex; justify-content:center; align-items:center; min-height:100vh; }
-.container { width:860px; height:480px; background:var(--card); border-radius:8px; padding:20px 24px; display:flex; flex-direction:column; gap:10px; box-shadow:0 2px 12px rgba(0,0,0,0.1); }
-.header { display:flex; justify-content:space-between; align-items:center; }
-.header h2 { font-size:17px; color:var(--text); }
-.step-badge { font-size:13px; color:var(--sub); background:var(--border); padding:4px 12px; border-radius:8px; font-weight:500; }
-.info-panel { background:var(--blue-bg); border-left:3px solid var(--blue); padding:10px 14px; border-radius:8px; font-size:14px; color:var(--text); min-height:44px; display:flex; align-items:center; }
-.viz { display:flex; gap:4px; justify-content:center; align-items:flex-end; flex:1; }
-.cell { width:100px; border-radius:8px 8px 0 0; background:var(--border); display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding-bottom:8px; font-weight:600; font-size:20px; color:var(--text); transition:all 0.3s; position:relative; }
-.cell .idx { font-size:11px; color:var(--sub); margin-top:2px; }
-.cell.mid { background:var(--hl-mid); box-shadow:0 0 0 3px var(--blue); }
-.cell.peak { background:var(--green); color:#fff; box-shadow:0 0 0 3px var(--green); }
-.cell.up { background:#dff9e6; }
-.arrow { position:absolute; bottom:50%; font-size:28px; color:var(--blue); font-weight:700; }
-.pointers { display:flex; gap:24px; justify-content:center; font-size:13px; font-weight:600; color:var(--sub); }
-.controls { display:flex; gap:8px; justify-content:center; }
-.btn { padding:7px 16px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; font-size:13px; font-family:inherit; transition:all 0.15s; }
-.btn:hover { background:var(--blue-bg); border-color:var(--blue); }
-.btn:active { transform:scale(0.96); }
-.key-hint { font-size:11px; color:var(--sub); text-align:center; }
-</style>
+<title>116. 寻找峰值 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <h2>116. 寻找峰值 (二分爬坡)</h2>
-    <span class="step-badge" id="stepBadge">步骤 0/5</span>
-  </div>
-  <div class="info-panel" id="info"></div>
-  <div class="pointers" id="pointers"></div>
-  <div class="viz" id="viz"></div>
-  <div class="controls">
-    <button class="btn" onclick="reset()">重置</button>
-    <button class="btn" onclick="prev()">上步</button>
-    <button class="btn" onclick="next()">下步</button>
-    <button class="btn" id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button class="btn" onclick="goLast()">跳到最后</button>
-  </div>
-  <div class="key-hint">键盘: &#8592; &#8593; 上步 | &#8594; &#8595; 下步 | 空格 自动播放 | R 重置 | End 跳到最后</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const nums = [1,2,3,1];
-const n = nums.length;
-const maxH = Math.max(...nums);
-let steps = [], cur = 0, autoTimer = null, running = false;
+const NUMS = [1, 2, 1, 3, 5, 6, 4];
 
 function buildSteps() {
-  steps = [];
-  let l = 0, r = n - 1;
-  steps.push({l,r,mid:-1,desc:'初始化 left=0, right=3, nums=[1,2,3,1]',done:false});
-  while (l < r) {
-    let mid = Math.floor((l + r) / 2);
-    let desc = `mid=(${l}+${r})/2=${mid}, nums[${mid}]=${nums[mid]}`;
-    if (nums[mid] < nums[mid + 1]) {
-      desc += ` < nums[${mid+1}]=${nums[mid+1]}, 峰值在右侧, left=mid+1=${mid+1}`;
-      l = mid + 1;
-    } else {
-      desc += ` > nums[${mid+1}]=${nums[mid+1]}, 峰值在左侧(含mid), right=mid=${mid}`;
-      r = mid;
-    }
-    steps.push({l,r,mid,desc,done:l===r});
-  }
-  steps.push({l,r,mid:l,desc:`峰值索引=${l}, nums[${l}]=${nums[l]}`,done:true});
-}
-buildSteps();
+  const nums = NUMS;
+  const n = nums.length;
+  const steps = [];
+  let left = 0;
+  let right = n - 1;      // 闭区间 [left, right]
+  let checks = 0;
 
-function render() {
-  const s = steps[cur];
-  document.getElementById('stepBadge').textContent = `步骤 ${cur}/${steps.length-1}`;
-  document.getElementById('info').textContent = s.desc;
-  document.getElementById('autoBtn').textContent = running ? '停止' : '自动播放';
-  document.getElementById('pointers').innerHTML = `left = ${s.l} &nbsp;|&nbsp; mid = ${s.mid>=0?s.mid:'?'} &nbsp;|&nbsp; right = ${s.r}`;
-  const viz = document.getElementById('viz');
-  let html = '';
-  for (let i = 0; i < n; i++) {
-    let cls = 'cell';
-    let h = (nums[i] / maxH) * 140 + 60;
-    if (i === s.mid && s.done) cls += ' peak';
-    else if (i === s.mid) cls += ' mid';
-    if (i === s.l && i === s.r && s.done) cls += ' peak';
-    html += `<div class="${cls}" style="height:${h}px"><span>${nums[i]}</span><span class="idx">${i}</span></div>`;
+  steps.push({
+    left: left, right: right, mid: -1, cmp: null, a: null, b: null,
+    checks: checks, done: false, peak: -1,
+    note: `初始化闭区间 [left, right] = [0, ${n - 1}]，整个数组都可能是峰值所在的位置。题目保证相邻元素不相等，并把两端视为 −∞，所以区间内一定存在峰值。每一轮比较 nums[mid] 与 nums[mid+1]，判断山坡往哪边升。`
+  });
+
+  while (left < right) {
+    const mid = left + Math.floor((right - left) / 2);
+    const a = nums[mid];
+    const b = nums[mid + 1];
+    checks += 1;
+
+    if (a < b) {
+      const oldLeft = left;
+      left = mid + 1;
+      steps.push({
+        left: left, right: right, mid: mid, cmp: 'up', a: a, b: b,
+        checks: checks, done: false, peak: -1,
+        note: `第 ${checks} 次比较：mid = left + ⌊(right − left) / 2⌋ = ${oldLeft} + ⌊(${right} − ${oldLeft}) / 2⌋ = ${mid}，nums[${mid}] = ${a} < nums[${mid + 1}] = ${b}，这一段是上坡。沿着上坡一直往右走，海拔只会先升到峰顶再下降，所以峰值一定在 mid + 1 及其右边；丢掉 [${oldLeft}, ${mid}]，令 left = mid + 1 = ${left}。`
+      });
+    } else {
+      const oldRight = right;
+      right = mid;
+      steps.push({
+        left: left, right: right, mid: mid, cmp: 'down', a: a, b: b,
+        checks: checks, done: false, peak: -1,
+        note: `第 ${checks} 次比较：mid = left + ⌊(right − left) / 2⌋ = ${left} + ⌊(${oldRight} − ${left}) / 2⌋ = ${mid}，nums[${mid}] = ${a} > nums[${mid + 1}] = ${b}，这一段是下坡。既然从 mid 开始已经在下降，右边的海拔只会更低，峰值不可能出现在 mid + 1 及其右边；令 right = mid = ${right}，把 mid 自己继续保留为候选。`
+      });
+    }
   }
-  viz.innerHTML = html;
+
+  const peak = left;
+  steps.push({
+    left: left, right: right, mid: -1, cmp: null, a: null, b: null,
+    checks: checks, done: true, peak: peak,
+    note: `left == right == ${peak}，区间只剩一个位置，它一定是峰值：往左看 nums[${peak - 1}] = ${peak > 0 ? nums[peak - 1] : '−∞'}，` +
+      `往右看 nums[${peak + 1}] = ${peak < n - 1 ? nums[peak + 1] : '−∞'}，中间 nums[${peak}] = ${nums[peak]} 都比两边大。` +
+      `一共比较了 ${checks} 次，每轮至少砍掉一半区间，时间复杂度 O(log n)，只用了 left / right / mid，空间复杂度 O(1)。` +
+      (numPeaks() > 1 ? ` 数组里其实不止一个峰值（例如下标 ${otherPeak()} 也是），但题目只要求返回任意一个。` : '')
+  });
+
+  function numPeaks() {
+    let count = 0;
+    for (let k = 0; k < n; k++) {
+      const l = k > 0 ? nums[k - 1] : -Infinity;
+      const r = k < n - 1 ? nums[k + 1] : -Infinity;
+      if (nums[k] > l && nums[k] > r) count += 1;
+    }
+    return count;
+  }
+  function otherPeak() {
+    for (let k = 0; k < n; k++) {
+      if (k === peak) continue;
+      const l = k > 0 ? nums[k - 1] : -Infinity;
+      const r = k < n - 1 ? nums[k + 1] : -Infinity;
+      if (nums[k] > l && nums[k] > r) return k;
+    }
+    return -1;
+  }
+
+  return steps;
 }
-function reset() { cur = 0; stopAuto(); render(); }
-function prev() { if (cur > 0) { cur--; render(); } }
-function next() { if (cur < steps.length - 1) { cur++; render(); } else { stopAuto(); } }
-function goLast() { stopAuto(); cur = steps.length - 1; render(); }
-function toggleAuto() { running ? stopAuto() : startAuto(); }
-function startAuto() { running = true; render(); autoStep(); }
-function stopAuto() { running = false; if (autoTimer) clearTimeout(autoTimer); render(); }
-function autoStep() { if (!running) return; if (cur < steps.length - 1) { cur++; render(); autoTimer = setTimeout(autoStep, 600); } else { stopAuto(); } }
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
-  else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); next(); }
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
-  else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); reset(); }
-  else if (e.key === 'End') { e.preventDefault(); goLast(); }
+
+function mountainView(step) {
+  const n = NUMS.length;
+  const W = 620;
+  const H = 250;
+  const padL = 44;
+  const padR = 44;
+  const base = 196;
+  const topY = 46;
+  const maxVal = Math.max.apply(null, NUMS);
+  const scale = (base - topY) / maxVal;
+
+  function x(k) { return padL + ((W - padL - padR) * k) / (n - 1); }
+  function y(k) { return base - NUMS[k] * scale; }
+
+  const parts = [];
+  parts.push('<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:620px;height:auto;display:block" role="img">');
+
+  parts.push('<rect x="' + (x(step.left) - 26).toFixed(1) + '" y="' + (topY - 20) + '" width="' +
+    (x(step.right) - x(step.left) + 52).toFixed(1) + '" height="' + (base - topY + 30) +
+    '" rx="8" style="fill:var(--demo-accent-soft);opacity:0.5"/>');
+  parts.push('<line x1="' + (padL - 24) + '" y1="' + base + '" x2="' + (W - padR + 24) + '" y2="' + base +
+    '" style="stroke:var(--demo-border);stroke-width:1.5"/>');
+
+  const pts = NUMS.map(function (v, k) { return x(k).toFixed(1) + ',' + y(k).toFixed(1); }).join(' ');
+  parts.push('<polygon points="' + x(0).toFixed(1) + ',' + base + ' ' + pts + ' ' + x(n - 1).toFixed(1) + ',' + base +
+    '" style="fill:var(--demo-accent-soft);opacity:0.8"/>');
+  parts.push('<polyline points="' + pts + '" style="fill:none;stroke:var(--demo-accent);stroke-width:2.5;stroke-linejoin:round"/>');
+
+  for (let k = 0; k < n; k++) {
+    const inRange = k >= step.left && k <= step.right;
+    const isPeak = step.done && k === step.peak;
+    const isMid = k === step.mid;
+    let stroke = 'var(--demo-accent)';
+    let fill = 'var(--demo-card)';
+    if (isPeak) { stroke = 'var(--demo-ok)'; fill = 'var(--demo-ok-soft)'; }
+    else if (isMid) { stroke = 'var(--demo-warn)'; fill = 'var(--demo-warn-soft)'; }
+    else if (!inRange) { stroke = 'var(--demo-border)'; fill = 'var(--demo-subtle)'; }
+
+    parts.push('<circle cx="' + x(k).toFixed(1) + '" cy="' + y(k).toFixed(1) + '" r="' + (isPeak || isMid ? 7 : 4.5) +
+      '" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2.5"/>');
+    parts.push('<text x="' + x(k).toFixed(1) + '" y="' + (y(k) - 12).toFixed(1) +
+      '" text-anchor="middle" style="fill:var(--demo-muted);font-size:12px;font-weight:700;font-family:var(--demo-mono)">' + NUMS[k] + '</text>');
+    parts.push('<text x="' + x(k).toFixed(1) + '" y="' + (base + 17) +
+      '" text-anchor="middle" style="fill:var(--demo-muted);font-size:10px;font-family:var(--demo-mono)">#' + k + '</text>');
+
+    if (isPeak) {
+      parts.push('<text x="' + x(k).toFixed(1) + '" y="' + (y(k) - 28).toFixed(1) +
+        '" text-anchor="middle" style="fill:var(--demo-ok);font-size:12px;font-weight:700">峰值</text>');
+    }
+  }
+
+  if (step.mid >= 0 && step.cmp) {
+    const k1 = step.mid;
+    const k2 = step.mid + 1;
+    const x1 = x(k1), y1 = y(k1), x2 = x(k2), y2 = y(k2);
+    const col = step.cmp === 'up' ? 'var(--demo-warn)' : 'var(--demo-pink)';
+    parts.push('<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) +
+      '" style="stroke:' + col + ';stroke-width:7;stroke-linecap:round;opacity:0.5"/>');
+    const ang = Math.atan2(y2 - y1, x2 - x1);
+    const ah = 14;
+    const a1x = x2 - ah * Math.cos(ang - 0.42), a1y = y2 - ah * Math.sin(ang - 0.42);
+    const a2x = x2 - ah * Math.cos(ang + 0.42), a2y = y2 - ah * Math.sin(ang + 0.42);
+    parts.push('<polygon points="' + x2.toFixed(1) + ',' + y2.toFixed(1) + ' ' + a1x.toFixed(1) + ',' + a1y.toFixed(1) + ' ' +
+      a2x.toFixed(1) + ',' + a2y.toFixed(1) + '" style="fill:' + col + '"/>');
+    parts.push('<text x="' + ((x1 + x2) / 2).toFixed(1) + '" y="' + (Math.min(y1, y2) - 26).toFixed(1) +
+      '" text-anchor="middle" style="fill:' + col + ';font-size:11px;font-weight:700">' +
+      (step.cmp === 'up' ? '上坡：峰值在右' : '下坡：峰值在左（含 mid）') + '</text>');
+  }
+
+  function label(k, text, cls, offset) {
+    if (k < 0) return;
+    parts.push('<text x="' + x(k).toFixed(1) + '" y="' + (base + 36 + offset) +
+      '" text-anchor="middle" style="fill:' + cls + ';font-size:11px;font-weight:700;font-family:var(--demo-mono)">' + text + '</text>');
+  }
+  label(step.done ? -1 : step.left, 'left', 'var(--demo-accent)', 0);
+  label(step.done ? -1 : step.right, 'right', 'var(--demo-info)', 0);
+  label(step.mid, 'mid', 'var(--demo-warn)', 0);
+  if (step.done) label(step.peak, 'left = right', 'var(--demo-ok)', 0);
+
+  parts.push('</svg>');
+
+  const box = Demo.el('div', 'col');
+  box.style.width = '100%';
+  box.innerHTML = parts.join('');
+  return box;
+}
+
+function stateTable(step) {
+  const t = Demo.el('table', 'map-table');
+  const thead = Demo.el('thead');
+  const hr = Demo.el('tr');
+  ['状态量', '当前值'].forEach(function (h) { hr.appendChild(Demo.el('th', null, h)); });
+  thead.appendChild(hr);
+  t.appendChild(thead);
+
+  const tbody = Demo.el('tbody');
+  function addRow(label, value, active) {
+    const tr = Demo.el('tr');
+    if (active) tr.classList.add('is-active');
+    tr.appendChild(Demo.el('td', null, Demo.esc(label)));
+    tr.appendChild(Demo.el('td', null, Demo.esc(value)));
+    tbody.appendChild(tr);
+  }
+  addRow('left（区间左端）', step.left, step.mid >= 0 && step.cmp === 'up');
+  addRow('right（区间右端）', step.right, step.mid >= 0 && step.cmp === 'down');
+  addRow('mid', step.mid < 0 ? '—' : step.mid, step.mid >= 0);
+  addRow('nums[mid] 与 nums[mid+1]',
+    step.mid < 0 ? '—' : step.a + ' vs ' + step.b,
+    step.mid >= 0);
+  addRow('比较结论',
+    step.cmp == null ? '—' : (step.cmp === 'up' ? '上坡 → 峰值在右半' : '下坡 → 峰值在左半'),
+    step.mid >= 0);
+  addRow('候选峰值', step.done ? step.peak : '—', step.done);
+  t.appendChild(tbody);
+  return t;
+}
+
+Demo.create({
+  title: '116. 寻找峰值 — 顺着上坡走的二分',
+  info: `输入：nums = [${NUMS.join(', ')}]（示例 2，两端视为 −∞）。每轮比较 nums[mid] 与 nums[mid+1]：上坡就丢左半，下坡就丢右半。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 440,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前候选区间 [left, right]' },
+    { color: 'var(--demo-warn)', label: '本轮比较的位置 mid（以及上坡箭头）' },
+    { color: 'var(--demo-pink)', label: '下坡箭头：峰值在左侧' },
+    { color: 'var(--demo-ok)', label: '最终找到的峰值' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const top = Demo.el('div', 'row');
+    top.style.width = '100%';
+
+    const chartPanel = Demo.el('div', 'panel');
+    chartPanel.style.flex = '1 1 460px';
+    chartPanel.appendChild(Demo.el('div', 'panel__title',
+      step.done
+        ? `山地剖面（阴影是最后剩下的候选，峰值下标 ${step.peak}）`
+        : `山地剖面（阴影是候选区间 [${step.left}, ${step.right}]）`));
+    chartPanel.appendChild(mountainView(step));
+    top.appendChild(chartPanel);
+
+    const tablePanel = Demo.el('div', 'panel');
+    tablePanel.appendChild(Demo.el('div', 'panel__title', '算法状态'));
+    tablePanel.appendChild(stateTable(step));
+    top.appendChild(tablePanel);
+
+    ctx.stage.appendChild(top);
+
+    const result = Demo.el('div', 'panel',
+      `已比较 <strong>${step.checks}</strong> 次 ｜ 区间 <code>[${step.left}, ${step.right}]</code>` +
+      (step.done
+        ? ` &nbsp;<span class="tag tag--ok">峰值下标 ${step.peak}，值 ${NUMS[step.peak]}</span>`
+        : ''));
+    result.style.width = '100%';
+    result.style.textAlign = 'center';
+    ctx.stage.appendChild(result);
+  }
 });
-render();
 </script>
 </body>
 </html>

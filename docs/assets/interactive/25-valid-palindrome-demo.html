@@ -1,464 +1,171 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0; --btn-active: #1565C0;
-    --sub-bg: #f5f5f5;
-    --skip-bg: #f0f0f0; --skip-text: #bbb;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd;
-      --btn-bg: #333; --btn-hover: #444;
-      --sub-bg: #252540;
-      --skip-bg: #2a2a38; --skip-text: #555;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 16px 20px;
-  }
-  .container { max-width: 960px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 10px; }
-  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
-
-  /* Info bar */
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px;
-    font-size: 14px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 500px; text-align: center; }
-
-  /* Pointer info row */
-  .pointer-info {
-    display: flex; justify-content: center; gap: 40px; margin-bottom: 8px;
-    font-size: 13px; color: var(--muted);
-  }
-  .pointer-info .lbl { font-weight: bold; }
-  .pointer-info .val { font-family: monospace; font-size: 16px; }
-  .pin-left .lbl { color: #E91E63; }
-  .pin-right .lbl { color: #FF9800; }
-
-  .section-label { font-size: 12px; font-weight: bold; color: var(--muted); text-align: center; margin-bottom: 4px; }
-
-  /* Char grid */
-  .char-grid {
-    display: flex; align-items: center; justify-content: center; gap: 2px;
-    flex-wrap: wrap; margin-bottom: 6px;
-  }
-  .char-cell {
-    background: var(--cell-bg);
-    border: 2px solid var(--cell-border);
-    border-radius: 8px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-size: 16px; font-weight: bold; color: var(--text);
-    width: 48px; height: 48px;
-    position: relative;
-    transition: border-color 0.25s, background 0.25s, transform 0.15s, opacity 0.25s;
-  }
-  .char-cell .idx {
-    font-size: 9px; color: var(--muted); line-height: 1; margin-top: 1px;
-  }
-  .char-cell .ch {
-    line-height: 1.2;
-  }
-
-  /* Cell states */
-  .char-cell.left { border-color: #E91E63; background: #FCE4EC; }
-  .char-cell.right { border-color: #FF9800; background: #FFF3E0; }
-  .char-cell.active-left { border-color: #C2185B; background: #F8BBD0; transform: scale(1.08); z-index: 2; }
-  .char-cell.active-right { border-color: #E65100; background: #FFE0B2; transform: scale(1.08); z-index: 2; }
-  .char-cell.skipped { border-color: #ccc; background: var(--skip-bg); color: var(--skip-text); opacity: 0.55; }
-  .char-cell.skip-active { border-color: #999; background: #e0e0e0; color: var(--skip-text); transform: scale(1.05); }
-  .char-cell.matched { border-color: #4CAF50; background: #E8F5E9; }
-  .char-cell.mismatched { border-color: #F44336; background: #FFEBEE; }
-  .char-cell.final { border-color: #1976D2; background: #E3F2FD; }
-  .char-cell.current-match { border-color: #2E7D32; background: #C8E6C9; transform: scale(1.08); z-index: 2; }
-
-  .step-tag {
-    position: absolute; top: -8px; right: -8px;
-    background: #1976D2; color: #fff;
-    font-size: 9px; font-weight: bold; width: 20px; height: 20px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; transform: scale(0.5);
-    transition: opacity 0.25s, transform 0.25s;
-  }
-  .step-tag.show { opacity: 1; transform: scale(1); }
-
-  /* Arrow row */
-  .arrow-row {
-    display: flex; align-items: center; justify-content: center; gap: 2px;
-    margin-bottom: 6px; min-height: 20px; flex-wrap: wrap;
-  }
-  .arrow-slot {
-    width: 48px; text-align: center; font-size: 11px; font-weight: bold;
-    color: var(--muted);
-  }
-  .arrow-left { color: #E91E63; }
-  .arrow-right { color: #FF9800; }
-
-  /* Result bar */
-  .result-row {
-    background: var(--sub-bg); border-radius: 8px; padding: 10px 14px;
-    margin-bottom: 10px; font-size: 13px; text-align: center; color: var(--text);
-  }
-  .result-row .highlight { color: #1976D2; font-weight: bold; font-size: 15px; }
-
-  /* Controls */
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-
-  .legend {
-    display: flex; gap: 18px; justify-content: center; margin-top: 10px;
-    font-size: 12px; color: var(--muted); flex-wrap: wrap;
-  }
-  .legend-item { display: flex; align-items: center; gap: 5px; }
-  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
-
-  @media (max-width: 700px) {
-    .char-cell { width: 38px; height: 38px; font-size: 13px; }
-    .char-cell .idx { font-size: 7px; }
-    .arrow-slot { width: 38px; font-size: 9px; }
-    .char-grid, .arrow-row { gap: 1px; }
-    .pointer-info { gap: 16px; }
-  }
-</style>
+<title>25. 验证回文串 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>验证回文串 — 逐步交互演示</h2>
-  <div class="sub-title">s = "A man, a plan, a canal: Panama" → true</div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
-  </div>
-
-  <div class="pointer-info">
-    <div class="pin-left">
-      <span class="lbl">左指针 (left): </span>
-      <span class="val" id="leftInfo">--</span>
-    </div>
-    <div class="pin-right">
-      <span class="lbl">右指针 (right): </span>
-      <span class="val" id="rightInfo">--</span>
-    </div>
-  </div>
-
-  <div class="section-label" id="gridLabel">字符网格</div>
-  <div class="char-grid" id="charGrid"></div>
-  <div class="arrow-row" id="arrowRow"></div>
-
-  <div class="result-row" id="resultBar">
-    <span style="color:var(--muted)">判定: </span><span id="resultText" class="highlight">进行中...</span>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">⏮ 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">◀ 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 ▶</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">▶ 自动播放</button>
-    <button onclick="goStep(steps.length-1)">⏭ 跳到最后</button>
-  </div>
-
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#E91E63"></div>left 指针</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div>right 指针</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div>匹配成功</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#F44336"></div>不匹配</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#bbb"></div>跳过(非字母数字)</div>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const raw = "A man, a plan, a canal: Panama";
-const chars = [];
-for (let i = 0; i < raw.length; i++) {
-  const ch = raw[i];
-  const isAN = /[a-zA-Z0-9]/.test(ch);
-  chars.push({ ch, idx: i, isAN, lower: isAN ? ch.toLowerCase() : ch });
+const S = 'A man, a plan, a canal: Panama';
+
+function isAlnum(ch) {
+  return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9');
 }
 
-// Simulate all steps
-const steps = [];
-(function simulate() {
-  let left = 0;
-  let right = raw.length - 1;
-  let stepNum = 0;
+function vis(ch) {
+  return ch === ' ' ? '␣' : ch;
+}
 
-  // Initial state
-  steps.push({
-    left: -1, right: -1,
-    activeLeft: false, activeRight: false,
-    charStates: chars.map(() => 'default'),
-    desc: '初始状态 · 点击「下一步」开始',
-    verdict: null,
-    leftLabel: '--', rightLabel: '--'
-  });
+function buildSteps() {
+  const chars = S.split('');
+  const n = chars.length;
+  const matched = [];
+  const skipped = [];
+  for (let k = 0; k < n; k++) { matched.push(false); skipped.push(false); }
+
+  const steps = [];
+  let left = 0;
+  let right = n - 1;
+  let result = null;
+  let lastCmp = null;
+
+  function snap(phase, focus, note) {
+    const showCmp = phase === 'compare' || phase === 'advance' || phase === 'done';
+    return {
+      left: left,
+      right: right,
+      phase: phase,
+      focus: focus,
+      matched: matched.slice(),
+      skipped: skipped.slice(),
+      cmp: showCmp ? lastCmp : null,
+      result: result,
+      note: note
+    };
+  }
+
+  steps.push(snap('init', -1,
+    '初始状态：left=0 指向首字符，right=' + (n - 1) + ' 指向末字符。每轮循环先让两个指针各自跳过非字母数字字符，再把两端字符统一转成小写后比较。'));
 
   while (left < right) {
-    // Advance left, skipping non-alphanumeric
-    let leftStart = left;
-    while (left < right && !chars[left].isAN) {
-      const st = chars.map(() => 'default');
-      for (let j = leftStart; j < left; j++) st[j] = 'skipped';
-      st[left] = 'skip-active';
-      steps.push({
-        left, right: right,
-        activeLeft: false, activeRight: false,
-        charStates: st,
-        desc: `跳过非字母数字: s[${left}]='${chars[left].ch}' → left=${left+1}`,
-        verdict: null,
-        leftLabel: `[${left}]='${chars[left].ch}' (跳过)`, rightLabel: chars[right].isAN ? `[${right}]='${chars[right].lower}'` : `[${right}]='${chars[right].ch}' (跳过)`
-      });
+    while (left < right && !isAlnum(chars[left])) {
+      steps.push(snap('skip-left', left,
+        "s[" + left + "]='" + vis(chars[left]) + "' 不是字母或数字，跳过它：left 从 " + left + " 右移到 " + (left + 1) + "。"));
+      skipped[left] = true;
       left++;
     }
     if (left >= right) break;
+    steps.push(snap('left-ready', left,
+      "左指针就位：left=" + left + "，s[" + left + "]='" + chars[left] + "'，小写为 '" + chars[left].toLowerCase() + "'。"));
 
-    // Mark left as active
-    const stLeft = chars.map(() => 'default');
-    for (let j = leftStart; j < left; j++) stLeft[j] = 'skipped';
-    stLeft[left] = 'active-left';
-    steps.push({
-      left, right,
-      activeLeft: true, activeRight: false,
-      charStates: stLeft,
-      desc: `左指针定位: s[${left}]='${chars[left].ch}' → 小写='${chars[left].lower}'`,
-      verdict: null,
-      leftLabel: `[${left}]='${chars[left].lower}'`, rightLabel: chars[right].isAN ? `[${right}]='${chars[right].lower}'` : ''
-    });
-
-    // Advance right, skipping non-alphanumeric
-    let rightStart = right;
-    while (left < right && !chars[right].isAN) {
-      const st = chars.map(() => 'default');
-      for (let j = leftStart; j < left; j++) st[j] = 'skipped';
-      st[left] = 'left';
-      for (let j = rightStart; j > right; j--) st[j] = 'skipped';
-      st[right] = 'skip-active';
-      steps.push({
-        left, right,
-        activeLeft: false, activeRight: false,
-        charStates: st,
-        desc: `跳过非字母数字: s[${right}]='${chars[right].ch}' → right=${right-1}`,
-        verdict: null,
-        leftLabel: `[${left}]='${chars[left].lower}'`, rightLabel: `[${right}]='${chars[right].ch}' (跳过)`
-      });
+    while (left < right && !isAlnum(chars[right])) {
+      steps.push(snap('skip-right', right,
+        "s[" + right + "]='" + vis(chars[right]) + "' 不是字母或数字，跳过它：right 从 " + right + " 左移到 " + (right - 1) + "。"));
+      skipped[right] = true;
       right--;
     }
     if (left >= right) break;
+    steps.push(snap('right-ready', right,
+      "右指针就位：right=" + right + "，s[" + right + "]='" + chars[right] + "'，小写为 '" + chars[right].toLowerCase() + "'。"));
 
-    // Mark right as active
-    const stRight = chars.map(() => 'default');
-    for (let j = leftStart; j < left; j++) stRight[j] = 'skipped';
-    stRight[left] = 'left';
-    for (let j = rightStart; j > right; j--) stRight[j] = 'skipped';
-    stRight[right] = 'active-right';
-    steps.push({
-      left, right,
-      activeLeft: false, activeRight: true,
-      charStates: stRight,
-      desc: `右指针定位: s[${right}]='${chars[right].ch}' → 小写='${chars[right].lower}'`,
-      verdict: null,
-      leftLabel: `[${left}]='${chars[left].lower}'`, rightLabel: `[${right}]='${chars[right].lower}'`
-    });
+    const a = chars[left].toLowerCase();
+    const b = chars[right].toLowerCase();
+    const ok = a === b;
+    lastCmp = { li: left, ri: right, l: a, r: b, ok: ok };
+    steps.push(snap('compare', -1,
+      "比较 s[" + left + "] 与 s[" + right + "] 的小写形式：'" + a + "' " + (ok ? '==' : '!=') + " '" + b + "' → "
+      + (ok ? '相等，这一对满足回文要求，可以继续向中间看。'
+            : '不相等，回文要求两端镜像相同，后面不必再看了，直接判定不是回文串。')));
 
-    // Compare
-    const cmpResult = chars[left].lower === chars[right].lower;
-    const stCmp = chars.map(() => 'default');
-    for (let j = leftStart; j < left; j++) stCmp[j] = 'skipped';
-    stCmp[left] = cmpResult ? 'current-match' : 'mismatched';
-    stCmp[right] = cmpResult ? 'current-match' : 'mismatched';
-    steps.push({
-      left, right,
-      activeLeft: false, activeRight: false,
-      charStates: stCmp,
-      desc: cmpResult
-        ? `比较: '${chars[left].lower}' == '${chars[right].lower}' → 匹配! left=${left+1}, right=${right-1}`
-        : `比较: '${chars[left].lower}' != '${chars[right].lower}' → 不匹配! 返回 false`,
-      verdict: cmpResult ? null : false,
-      leftLabel: `[${left}]='${chars[left].lower}'`, rightLabel: `[${right}]='${chars[right].lower}'`
-    });
-
-    if (!cmpResult) break;
-
-    // Advance both (mark as matched)
-    const stAdv = chars.map(() => 'default');
-    for (let j = leftStart; j <= left; j++) stAdv[j] = 'matched';
-    for (let j = rightStart; j >= right; j--) stAdv[j] = 'matched';
-    steps.push({
-      left, right,
-      activeLeft: false, activeRight: false,
-      charStates: stAdv,
-      desc: `匹配! left=${left+1}, right=${right-1}`,
-      verdict: null,
-      leftLabel: `已匹配`, rightLabel: `已匹配`
-    });
-
+    if (!ok) {
+      result = false;
+      break;
+    }
+    matched[left] = true;
+    matched[right] = true;
     left++;
     right--;
+    steps.push(snap('advance', -1,
+      "这一对字符确认相等，两指针向中间收拢：left → " + left + "，right → " + right + "，继续检查下一对。"));
   }
 
-  // Final success state
-  const stFinal = chars.map(() => 'default');
-  // Mark all matched pairs
-  let l = 0, r = raw.length - 1;
-  while (l < r) {
-    while (l < r && !chars[l].isAN) { stFinal[l] = 'skipped'; l++; }
-    while (l < r && !chars[r].isAN) { stFinal[r] = 'skipped'; r--; }
-    if (l < r && chars[l].lower === chars[r].lower) {
-      stFinal[l] = 'final'; stFinal[r] = 'final';
-    }
-    l++; r--;
-  }
-  steps.push({
-    left: -1, right: -1,
-    activeLeft: false, activeRight: false,
-    charStates: stFinal,
-    desc: '验证完成! 是回文串 → 返回 true',
-    verdict: true,
-    leftLabel: '完成', rightLabel: '完成'
-  });
-})();
+  if (result === null) result = true;
+  steps.push(snap('done', -1, result
+    ? 'left 与 right 相遇（或交错），所有镜像位置上的字符都相等 → 是回文串，返回 true。'
+    : '存在不相等的镜像字符对 → 不是回文串，返回 false。'));
 
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-// Build DOM
-const charGrid = document.getElementById('charGrid');
-const arrowRow = document.getElementById('arrowRow');
-
-for (let i = 0; i < chars.length; i++) {
-  const cell = document.createElement('div');
-  cell.className = 'char-cell';
-  cell.id = 'cc' + i;
-  cell.innerHTML = `<span class="ch">${chars[i].ch}</span><span class="idx">${i}</span><span class="step-tag"></span>`;
-  charGrid.appendChild(cell);
-
-  const arrow = document.createElement('div');
-  arrow.className = 'arrow-slot';
-  arrow.id = 'ar' + i;
-  arrowRow.appendChild(arrow);
+  return steps;
 }
 
-function render() {
-  const s = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = s.desc;
-  document.getElementById('leftInfo').textContent = s.leftLabel;
-  document.getElementById('rightInfo').textContent = s.rightLabel;
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+function render(step, idx, ctx) {
+  ctx.stage.innerHTML = '';
 
-  // Result text
-  const rText = document.getElementById('resultText');
-  const rBar = document.getElementById('resultBar');
-  if (s.verdict === true) {
-    rText.textContent = 'true — 是回文串!';
-    rText.style.color = '#4CAF50';
-  } else if (s.verdict === false) {
-    rText.textContent = 'false — 不是回文串!';
-    rText.style.color = '#F44336';
+  const row = Demo.el('div', 'row');
+  row.style.gap = '4px';
+  for (let k = 0; k < S.length; k++) {
+    const col = Demo.el('div', 'col');
+    col.style.gap = '4px';
+    col.appendChild(Demo.el('div', 'ptr ptr--dim', String(k)));
+
+    const cell = Demo.el('div', 'cell cell--sm', Demo.esc(vis(S[k])));
+    const inCmp = step.cmp && (k === step.cmp.li || k === step.cmp.ri);
+    const badEnd = step.phase === 'done' && step.result === false && inCmp;
+    if (badEnd) cell.classList.add('is-bad');
+    else if (step.phase === 'compare' && inCmp) cell.classList.add(step.cmp.ok ? 'is-active' : 'is-bad');
+    else if (step.matched[k]) cell.classList.add('is-ok');
+    else if (step.focus === k) cell.classList.add('is-warn');
+    else if (step.skipped[k]) cell.classList.add('cell--dim');
+    col.appendChild(cell);
+
+    const hasL = k === step.left;
+    const hasR = k === step.right;
+    const labels = [];
+    if (hasL && hasR) labels.push('相遇');
+    else if (hasL) labels.push('left');
+    else if (hasR) labels.push('right');
+    const ptr = Demo.el('div', 'ptr', labels.join(' '));
+    if (!labels.length) ptr.classList.add('ptr--dim');
+    else if (!hasL && hasR) ptr.classList.add('ptr--info');
+    col.appendChild(ptr);
+
+    row.appendChild(col);
+  }
+  ctx.stage.appendChild(row);
+
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.style.textAlign = 'center';
+  let html = '';
+  if (step.cmp) {
+    html += '本轮比较：<code>s[' + step.cmp.li + "]='" + Demo.esc(step.cmp.l) + "'</code> ↔ <code>s["
+      + step.cmp.ri + "]='" + Demo.esc(step.cmp.r) + "'</code> "
+      + (step.cmp.ok ? '<span class="tag tag--ok">相等</span>' : '<span class="tag tag--bad">不相等</span>');
   } else {
-    rText.textContent = '进行中...';
-    rText.style.color = '#1976D2';
+    html += '尚未开始比较：先让 left 与 right 跳过非字母数字字符';
   }
-
-  // Reset all cells
-  for (let i = 0; i < chars.length; i++) {
-    const cell = document.getElementById('cc' + i);
-    cell.className = 'char-cell ' + (s.charStates[i] || 'default');
-    const tag = cell.querySelector('.step-tag');
-    tag.classList.remove('show');
-    tag.textContent = '';
-  }
-
-  // Reset arrows
-  for (let i = 0; i < chars.length; i++) {
-    document.getElementById('ar' + i).textContent = '';
-  }
-
-  // Show arrows for current pointers
-  if (s.left >= 0) {
-    const arrowEl = document.getElementById('ar' + s.left);
-    arrowEl.textContent = 'left';
-    arrowEl.className = 'arrow-slot arrow-left';
-  }
-  if (s.right >= 0) {
-    const arrowEl = document.getElementById('ar' + s.right);
-    arrowEl.textContent = 'right';
-    arrowEl.className = 'arrow-slot arrow-right';
-  }
-
-  // Show step tag on active cells
-  if (s.left >= 0 && (s.charStates[s.left] === 'active-left' || s.charStates[s.left] === 'current-match')) {
-    const tag = document.getElementById('cc' + s.left).querySelector('.step-tag');
-    tag.textContent = current;
-    tag.classList.add('show');
-  }
-  if (s.right >= 0 && (s.charStates[s.right] === 'active-right' || s.charStates[s.right] === 'current-match')) {
-    const tag = document.getElementById('cc' + s.right).querySelector('.step-tag');
-    tag.textContent = current;
-    tag.classList.add('show');
-  }
+  if (step.result === true) html += ' &nbsp;<span class="tag tag--ok">结果 true</span>';
+  if (step.result === false) html += ' &nbsp;<span class="tag tag--bad">结果 false</span>';
+  panel.innerHTML = html;
+  ctx.stage.appendChild(panel);
 }
 
-function goStep(n) {
-  current = Math.max(0, Math.min(n, steps.length - 1));
-  render();
-}
-
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer);
-    autoRunning = false;
-    document.getElementById('playBtn').textContent = '▶ 自动播放';
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-  } else {
-    autoRunning = true;
-    document.getElementById('playBtn').textContent = '⏸ 暂停';
-    document.getElementById('playBtn').style.background = '#1565C0';
-    document.getElementById('playBtn').style.color = '#fff';
-    if (current >= steps.length - 1) goStep(0);
-    autoTimer = setInterval(() => {
-      if (current < steps.length - 1) goStep(current + 1);
-      else toggleAuto();
-    }, 800);
-  }
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+Demo.create({
+  title: '25. 验证回文串 — 对撞双指针跳过非字母数字',
+  info: '输入：s = "A man, a plan, a canal: Panama"，去掉非字母数字并转小写后是 "amanaplanacanalpanama"，共 21 个有效字符。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  legend: [
+    { color: 'var(--demo-accent)', label: 'left 指针（从头向右）' },
+    { color: 'var(--demo-info)', label: 'right 指针（从尾向左）' },
+    { color: 'var(--demo-ok)', label: '已确认相等的字符' },
+    { color: 'var(--demo-warn)', label: '正在跳过的非字母数字字符' },
+    { color: 'var(--demo-danger)', label: '不相等' }
+  ],
+  render: render
 });
-
-render();
 </script>
 </body>
 </html>

@@ -3,254 +3,185 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>21. 反转字符串中的单词</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:#f8f9fa;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
-.container{width:100%;max-width:720px;background:#fff;border-radius:16px;box-shadow:0 2px 16px rgba(0,0,0,.08);padding:28px 24px 20px}
-h1{font-size:20px;font-weight:600;text-align:center;margin-bottom:4px;color:#1a1a2e}
-.subtitle{text-align:center;font-size:13px;color:#888;margin-bottom:16px}
-.stage-label{text-align:center;font-size:12px;font-weight:600;color:#3b82f6;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
-.grid-wrapper{display:flex;justify-content:center;margin-bottom:8px}
-.grid{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
-.grid.step3-grid{gap:2px}
-.cell{width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:500;border-radius:8px;border:1.5px solid #ddd;background:#fff;color:#333;transition:all .25s;position:relative}
-.cell::after{content:attr(data-idx);position:absolute;bottom:1px;right:4px;font-size:8px;color:#aaa;font-weight:400}
-.cell.hl-blue{background:#dbeafe;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.25);z-index:1}
-.cell.hl-orange{background:#fed7aa;border-color:#f97316;box-shadow:0 0 0 3px rgba(249,115,22,.25);z-index:1}
-.cell.hl-green{background:#bbf7d0;border-color:#22c55e;color:#14532d}
-.cell.hl-done{background:#dcfce7;border-color:#86efac}
-.cell.space-cell{color:#ccc}
-.info-panel{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin-bottom:14px;text-align:center;font-size:14px;color:#475569;min-height:44px;display:flex;align-items:center;justify-content:center}
-.info-panel .step-num{font-weight:600;color:#3b82f6;margin-right:6px}
-.btn-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-.btn{padding:8px 16px;border-radius:8px;border:1px solid #d1d5db;background:#fff;cursor:pointer;font-size:13px;font-family:inherit;color:#374151;transition:all .2s;white-space:nowrap}
-.btn:hover{background:#f3f4f6}
-.btn:active{background:#e5e7eb}
-.btn.primary{background:#3b82f6;color:#fff;border-color:#3b82f6}
-.btn.primary:hover{background:#2563eb}
-.btn:disabled{opacity:.4;cursor:not-allowed}
-.result-badge{display:inline-block;padding:4px 14px;border-radius:20px;background:#dcfce7;color:#166534;font-weight:600;font-size:15px;margin-left:8px}
-@media(prefers-color-scheme:dark){
-body{background:#0f172a}
-.container{background:#1e293b;box-shadow:0 2px 16px rgba(0,0,0,.4)}
-h1{color:#e2e8f0}
-.subtitle{color:#94a3b8}
-.stage-label{color:#60a5fa}
-.cell{background:#1e293b;border-color:#334155;color:#cbd5e1}
-.cell::after{color:#64748b}
-.cell.hl-blue{background:rgba(59,130,246,.2);border-color:#3b82f6}
-.cell.hl-orange{background:rgba(249,115,22,.2);border-color:#f97316}
-.cell.hl-green{background:rgba(34,197,94,.2);border-color:#22c55e;color:#86efac}
-.cell.hl-done{background:rgba(34,197,94,.12);border-color:#86efac}
-.cell.space-cell{color:#475569}
-.info-panel{background:#0f172a;border-color:#334155;color:#cbd5e1}
-.info-panel .step-num{color:#60a5fa}
-.btn{background:#1e293b;border-color:#475569;color:#cbd5e1}
-.btn:hover{background:#334155}
-.btn.primary{background:#3b82f6;color:#fff}
-.result-badge{background:rgba(34,197,94,.2);color:#86efac}
-}
-</style>
+<title>21. 反转字符串中的单词 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h1>21. 反转字符串中的单词</h1>
-<div class="subtitle">s = "the sky is blue" &nbsp; 预期输出: "blue is sky the"</div>
-<div class="stage-label" id="stageLabel">阶段 1: 整体反转字符串</div>
-<div class="grid-wrapper"><div class="grid" id="grid"></div></div>
-<div class="info-panel" id="info"><span class="step-num">准备</span>分三步：整体反转 → 逐个反转单词 → 去除多余空格</div>
-<div class="btn-row">
-<button class="btn" id="btnReset">↺ 重置</button>
-<button class="btn" id="btnPrev">◀ 上一步</button>
-<button class="btn primary" id="btnNext">下一步 ▶</button>
-<button class="btn" id="btnAuto">▶ 自动播放</button>
-<button class="btn" id="btnLast">⏭ 最后</button>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const original = "the sky is blue";
-// Step 1: reverse entire → "eulb si yks eht"
-const reversed = "eulb si yks eht";
-// Step 2: reverse each word → "blue is sky the"
-const revWords = "blue is sky the";
+const S = 'a good   example';
 
-// 15 chars
-const chars = [...original];
-const totalSteps = 20;
+function buildSteps() {
+  const chars = S.split('');
+  const n = chars.length;
+  const steps = [];
+  const words = [];
+  const ranges = [];
+  let start = -1;
 
-let step = 0;
-let autoTimer = null;
-
-const grid = document.getElementById('grid');
-const info = document.getElementById('info');
-const stageLabel = document.getElementById('stageLabel');
-
-function buildGrid() {
-  grid.innerHTML = '';
-  chars.forEach((ch, i) => {
-    const cell = document.createElement('div');
-    cell.className = 'cell';
-    cell.textContent = ch;
-    cell.setAttribute('data-idx', i);
-    if (ch === ' ') cell.classList.add('space-cell');
-    grid.appendChild(cell);
+  steps.push({
+    i: -1, start: -1, words: [], ranges: [], phase: 'init', done: false,
+    note: `初始化：s = "${S}"（示例 3，含 3 个连续空格）。第一步先用双指针切分出所有单词——遇到非空格标记单词起点，遇到空格就把 [start, i) 之间的子串作为一个单词收下；连续空格会被自动忽略。`
   });
-}
 
-function render() {
-  const cells = grid.querySelectorAll('.cell');
-  cells.forEach(c => { c.className = 'cell'; if (c.textContent === ' ') c.classList.add('space-cell'); });
-
-  if (step === 0) {
-    stageLabel.textContent = '';
-    info.innerHTML = '<span class="step-num">准备</span>原始字符串: "the sky is blue"，共15个字符';
-    updateButtons();
-    return;
-  }
-
-  // Step 1-5: reverse entire string (show swapping pairs)
-  if (step <= 5) {
-    stageLabel.textContent = '阶段 1: 整体反转字符串';
-    const pairs = [[0,14],[1,13],[2,12],[3,11],[4,10]];
-    const pair = pairs[step - 1];
-    if (pair) {
-      cells[pair[0]].classList.add('hl-blue');
-      cells[pair[1]].classList.add('hl-blue');
-    }
-    if (step === 1) info.innerHTML = '<span class="step-num">步骤 1</span>整体反转：交换 t (0) 和 e (14)';
-    if (step === 2) info.innerHTML = '<span class="step-num">步骤 2</span>整体反转：交换 h (1) 和 u (13)';
-    if (step === 3) info.innerHTML = '<span class="step-num">步骤 3</span>整体反转：交换 e (2) 和 l (12)';
-    if (step === 4) info.innerHTML = '<span class="step-num">步骤 4</span>整体反转：交换 (空格) (3) 和 b (11)';
-    if (step === 5) info.innerHTML = '<span class="step-num">步骤 5</span>整体反转：交换 s (4) 和 (空格) (10)，中间字符 i (7) 保持不变';
-    // update cells to show reversed
-    const revChars = [...reversed];
-    if (step === 5) {
-      // Show fully reversed
-      for (let i = 0; i < 15; i++) {
-        cells[i].textContent = revChars[i];
-        cells[i].classList.add('hl-done');
-      }
+  for (let i = 0; i < n; i++) {
+    const ch = chars[i];
+    if (ch !== ' ') {
+      if (start === -1) start = i;
+      steps.push({
+        i: i, start: start, words: words.slice(), ranges: ranges.map(function (r) { return r.slice(); }),
+        phase: 'scan', done: false,
+        note: `s[${i}] = '${ch}' 是字母：当前单词还没结束（起点 ${start}），先把指针右移继续读。`
+      });
     } else {
-      const swapped = new Set();
-      for (let p = 0; p < step; p++) {
-        swapped.add(pairs[p][0]); swapped.add(pairs[p][1]);
+      if (start !== -1) {
+        const word = S.slice(start, i);
+        words.push(word);
+        ranges.push([start, i]);
+        steps.push({
+          i: i, start: -1, words: words.slice(), ranges: ranges.map(function (r) { return r.slice(); }),
+          phase: 'split', justWord: word, done: false,
+          note: `s[${i}] 是空格，且前面有一个正在读取的单词：把 s[${start}..${i - 1}] 切出来得到 "${word}"，收进单词数组，words 变为 [${words.map(function (w) { return '"' + w + '"'; }).join(', ')}]。`
+        });
+        start = -1;
+      } else {
+        steps.push({
+          i: i, start: -1, words: words.slice(), ranges: ranges.map(function (r) { return r.slice(); }),
+          phase: 'skip', done: false,
+          note: `s[${i}] 又是空格，而当前并没有正在读取的单词——这是单词之间的多余空格，直接忽略，不产生空单词。`
+        });
       }
-      for (let i = 0; i < 15; i++) {
-        if (swapped.has(i)) { cells[i].textContent = revChars[i]; cells[i].classList.add('hl-done'); }
-      }
     }
   }
 
-  // Step 6-12: reverse each word
-  if (step >= 6 && step <= 12) {
-    stageLabel.textContent = '阶段 2: 逐个反转每个单词';
-    for (let i = 0; i < 15; i++) {
-      cells[i].textContent = [...reversed][i];
-      cells[i].classList.add('hl-done');
-    }
-    const wordRanges = [[0,3],[5,6],[8,10],[12,14]]; // "eulb"[0-3], "si"[5-6], "yks"[8-10], "eht"[12-14]
-    const revWordResults = ["blue","is","sky","the"];
-
-    if (step === 6) {
-      for (let i = 0; i <= 3; i++) cells[i].classList.add('hl-orange');
-      info.innerHTML = '<span class="step-num">步骤 6</span>反转单词 "eulb" → "blue"';
-    }
-    if (step === 7) {
-      for (let i = 0; i <= 3; i++) { cells[i].textContent = revWordResults[0][i]; cells[i].classList.add('hl-green'); }
-      info.innerHTML = '<span class="step-num">步骤 7</span>"eulb" 反转为 "blue"，完成！';
-    }
-    if (step === 8) {
-      cells[5].classList.add('hl-orange'); cells[6].classList.add('hl-orange');
-      info.innerHTML = '<span class="step-num">步骤 8</span>反转单词 "si" → "is"';
-    }
-    if (step === 9) {
-      cells[5].textContent = 'i'; cells[6].textContent = 's';
-      cells[5].classList.add('hl-green'); cells[6].classList.add('hl-green');
-      info.innerHTML = '<span class="step-num">步骤 9</span>"si" 反转为 "is"，完成！';
-    }
-    if (step === 10) {
-      for (let i = 8; i <= 10; i++) cells[i].classList.add('hl-orange');
-      info.innerHTML = '<span class="step-num">步骤 10</span>反转单词 "yks" → "sky"';
-    }
-    if (step === 11) {
-      for (let i = 8; i <= 10; i++) { cells[i].textContent = revWordResults[2][i-8]; cells[i].classList.add('hl-green'); }
-      info.innerHTML = '<span class="step-num">步骤 11</span>"yks" 反转为 "sky"，完成！';
-    }
-    if (step === 12) {
-      for (let i = 12; i <= 14; i++) cells[i].classList.add('hl-orange');
-      info.innerHTML = '<span class="step-num">步骤 12</span>反转单词 "eht" → "the"';
-    }
+  if (start !== -1) {
+    const word = S.slice(start, n);
+    words.push(word);
+    ranges.push([start, n]);
+    steps.push({
+      i: n, start: -1, words: words.slice(), ranges: ranges.map(function (r) { return r.slice(); }),
+      phase: 'split', justWord: word, done: false,
+      note: `字符串读完了，末尾还留着从下标 ${start} 开始的单词：把它切成 "${word}" 收进数组。至此单词切分全部完成，words = [${words.map(function (w) { return '"' + w + '"'; }).join(', ')}]。`
+    });
   }
 
-  // Steps 13-16: finish stage 2 result + stage 3
-  if (step === 13) {
-    stageLabel.textContent = '阶段 2: 逐个反转每个单词';
-    for (let i = 0; i < 15; i++) { cells[i].textContent = [...revWords][i]; cells[i].classList.add('hl-green'); }
-    info.innerHTML = '<span class="step-num">步骤 13</span>"eht" 反转为 "the"，所有单词反转完成！当前字符串: "blue is sky the"';
+  const m = words.length;
+  for (let i = 0; i < Math.floor(m / 2); i++) {
+    const j = m - 1 - i;
+    const tmp = words[i];
+    words[i] = words[j];
+    words[j] = tmp;
+    steps.push({
+      i: n, start: -1, words: words.slice(), ranges: ranges.map(function (r) { return r.slice(); }),
+      phase: 'reverse', swapL: i, swapR: j, done: false,
+      note: `双指针反转单词数组：交换 words[${i}] 与 words[${j}]，也就是把 "${tmp}" 和 "${words[i]}" 互换位置，words 变为 [${words.map(function (w) { return '"' + w + '"'; }).join(', ')}]。`
+    });
   }
 
-  // Remove extra spaces (none in this example), show final result
-  if (step >= 14 && step <= 15) {
-    stageLabel.textContent = '阶段 3: 去除多余空格';
-    for (let i = 0; i < 15; i++) { cells[i].textContent = [...revWords][i]; cells[i].classList.add('hl-green'); }
-    info.innerHTML = '<span class="step-num">步骤 ' + step + '</span>检查多余空格... 此例中无多余空格';
-  }
+  const result = words.join(' ');
+  steps.push({
+    i: n, start: -1, words: words.slice(), ranges: ranges.map(function (r) { return r.slice(); }),
+    phase: 'done', done: true, result: result,
+    note: `单词顺序已反转，最后用单个空格把 words 连接起来，多余空格不会再出现：结果 = "${result}"。`
+  });
 
-  if (step >= 16) {
-    stageLabel.textContent = '完成';
-    for (let i = 0; i < 15; i++) { cells[i].textContent = [...revWords][i]; cells[i].classList.add('hl-green'); }
-    info.innerHTML = '<span class="step-num">完成</span>最终结果 = <span class="result-badge">"blue is sky the"</span>';
-  }
-
-  // Steps 17-20: show result
-  if (step >= 17) {
-    stageLabel.textContent = '完成';
-    for (let i = 0; i < 15; i++) { cells[i].textContent = [...revWords][i]; cells[i].classList.add('hl-green'); }
-    info.innerHTML = '<span class="step-num">完成</span>反转字符串中的单词 最终结果 = <span class="result-badge">"blue is sky the"</span>';
-  }
-
-  updateButtons();
+  return steps;
 }
 
-function updateButtons() {
-  btnPrev.disabled = step <= 0;
-  btnNext.disabled = step >= totalSteps;
+function sourceRow(step) {
+  const row = Demo.el('div', 'row');
+  S.split('').forEach(function (ch, idx) {
+    const col = Demo.el('div', 'col');
+    const isSpace = ch === ' ';
+    const cell = Demo.el('div', 'cell' + (isSpace ? ' cell--empty' : ''),
+      isSpace ? '&nbsp;' : Demo.esc(ch));
+
+    const inRange = step.ranges.some(function (r) { return idx >= r[0] && idx < r[1]; });
+    const inProgress = step.start >= 0 && idx >= step.start && idx <= step.i;
+
+    if (inProgress) cell.classList.add('is-active');
+    else if (inRange) cell.classList.add('is-ok');
+    else if (step.done) cell.classList.add('cell--dim');
+    else if (idx === step.i) cell.classList.add('is-warn');
+    else if (idx > step.i) cell.classList.add('cell--dim');
+    else cell.classList.add('is-warn');
+    col.appendChild(cell);
+
+    const labels = [];
+    if (!step.done && idx === step.i) labels.push('i');
+    if (!step.done && idx === step.start) labels.push('start');
+    const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : String(idx));
+    if (!labels.length) ptr.classList.add('ptr--dim');
+    else if (labels.indexOf('start') >= 0) ptr.classList.add('ptr--ok');
+    col.appendChild(ptr);
+
+    row.appendChild(col);
+  });
+  return row;
 }
 
-function nextStep() { if (step < totalSteps) { step++; render(); } }
-function prevStep() { if (step > 0) { step--; render(); } }
-function resetAll() { stopAuto(); step = 0; buildGrid(); render(); }
-function goLast() { stopAuto(); step = totalSteps; render(); }
+Demo.create({
+  title: '21. 反转字符串中的单词 — 切分，再双指针反转单词数组',
+  info: `输入：s = "${S}"（示例 3），预期输出 "example good a"。连续空格必须被忽略，单词间只保留一个空格。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 360,
+  legend: [
+    { color: 'var(--demo-accent)', label: '正在读取的单词' },
+    { color: 'var(--demo-ok)', label: '已切分出的单词' },
+    { color: 'var(--demo-warn)', label: '被忽略的空格' },
+    { color: 'var(--demo-violet)', label: '正在交换的单词对' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
 
-function stopAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; btnAuto.textContent = '▶ 自动播放'; } }
-function toggleAuto() {
-  if (autoTimer) { stopAuto(); return; }
-  if (step >= totalSteps) step = 0;
-  btnAuto.textContent = '⏸ 暂停';
-  autoTimer = setInterval(() => { nextStep(); if (step >= totalSteps) stopAuto(); }, 700);
-}
+    const srcPanel = Demo.el('div', 'panel');
+    srcPanel.style.width = '100%';
+    srcPanel.appendChild(Demo.el('div', 'panel__title',
+      step.phase === 'init' ? '原字符串（尚未开始扫描）' :
+        step.phase === 'done' ? '原字符串（切分与反转均已完成）' : '原字符串，从前往后扫描切分单词'));
+    srcPanel.appendChild(sourceRow(step));
+    ctx.stage.appendChild(srcPanel);
 
-const btnReset = document.getElementById('btnReset');
-const btnPrev = document.getElementById('btnPrev');
-const btnNext = document.getElementById('btnNext');
-const btnAuto = document.getElementById('btnAuto');
-const btnLast = document.getElementById('btnLast');
+    const wordsPanel = Demo.el('div', 'panel');
+    wordsPanel.style.width = '100%';
+    wordsPanel.appendChild(Demo.el('div', 'panel__title',
+      step.phase === 'reverse' ? '单词数组 words（双指针交换中）' :
+        step.phase === 'done' ? '单词数组 words（顺序已反转）' : '已切分出的单词数组 words'));
+    const wordsRow = Demo.el('div', 'row');
+    if (!step.words.length) {
+      wordsRow.appendChild(Demo.el('span', 'tag', '（空）'));
+    } else {
+      step.words.forEach(function (w, idx) {
+        const cell = Demo.el('div', 'cell', Demo.esc(w));
+        if (step.phase === 'reverse' && (idx === step.swapL || idx === step.swapR)) cell.classList.add('is-violet');
+        else if (step.phase === 'done') cell.classList.add('is-ok');
+        else cell.classList.add('is-ok');
+        wordsRow.appendChild(cell);
+      });
+    }
+    wordsPanel.appendChild(wordsRow);
+    ctx.stage.appendChild(wordsPanel);
 
-btnReset.onclick = resetAll;
-btnPrev.onclick = prevStep;
-btnNext.onclick = nextStep;
-btnAuto.onclick = toggleAuto;
-btnLast.onclick = goLast;
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') { e.preventDefault(); nextStep(); }
-  else if (e.key === 'ArrowLeft') { e.preventDefault(); prevStep(); }
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+    const result = Demo.el('div', 'panel');
+    result.style.width = '100%';
+    result.style.textAlign = 'center';
+    if (step.done) {
+      const row = Demo.el('div', 'row');
+      step.result.split('').forEach(function (ch) {
+        const isSpace = ch === ' ';
+        row.appendChild(Demo.el('div', 'cell cell--sm' + (isSpace ? ' cell--empty' : ' is-ok'),
+          isSpace ? '&nbsp;' : Demo.esc(ch)));
+      });
+      result.appendChild(Demo.el('div', 'panel__title', '用单个空格连接后的结果'));
+      result.appendChild(row);
+    } else {
+      result.innerHTML = `当前单词数：<strong>${step.words.length}</strong>` +
+        (step.phase === 'init' ? ' &nbsp;|&nbsp; 等待开始扫描' : '');
+    }
+    ctx.stage.appendChild(result);
+  }
 });
-
-buildGrid();
-render();
 </script>
 </body>
 </html>

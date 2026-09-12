@@ -3,221 +3,169 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>组合 - 回溯可视化</title>
-<style>
-:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#555;--border:#dee2e6;--accent:#7c3aed;--accent2:#a78bfa;--hover:#ede9fe;--green:#22c55e;--orange:#f59e0b;--blue:#3b82f6;--red:#ef4444;--btn-bg:#e5e7eb;--btn-txt:#374151;--node-bg:#f3e8ff;--node-border:#c4b5fd;--edge:#c4b5fd;--res-bg:#f0fdf4;--res-border:#86efac}
-.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--node-bg:#1e1b4b;--node-border:#5b21b6;--edge:#5b21b6;--res-bg:#052e16;--res-border:#166534}
-@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--node-bg:#1e1b4b;--node-border:#5b21b6;--edge:#5b21b6;--res-bg:#052e16;--res-border:#166534}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
-.container{width:100%;max-width:780px;background:var(--card);border-radius:8px;border:1px solid var(--border);padding:20px 24px}
-h2{font-size:1.1rem;font-weight:600;margin-bottom:6px;color:var(--accent)}
-.info-panel{display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:.85rem;color:var(--text2);flex-wrap:wrap}
-.info-panel .step{background:var(--accent);color:#fff;padding:3px 10px;border-radius:8px;font-weight:600;font-size:.8rem}
-.info-panel .desc{flex:1;min-width:200px}
-.params{display:flex;gap:20px;margin-bottom:10px;font-size:.8rem;color:var(--text2);align-items:center}
-.params strong{color:var(--accent);font-size:.95rem}
-.vis-area{height:440px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg);position:relative}
-.vis-area canvas{display:block;width:100%;height:100%}
-.results-bar{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;min-height:28px}
-.results-bar .tag{background:var(--res-bg);border:1px solid var(--res-border);color:var(--green);padding:2px 8px;border-radius:6px;font-size:.75rem;font-family:monospace}
-.controls{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-.controls button{background:var(--btn-bg);color:var(--btn-txt);border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:inherit;transition:all .15s}
-.controls button:hover{background:var(--hover);border-color:var(--accent)}
-.controls button:active{transform:scale(.96)}
-.controls button.playing{background:var(--accent);color:#fff;border-color:var(--accent)}
-.legend{display:flex;gap:14px;margin-top:8px;font-size:.72rem;color:var(--text2);flex-wrap:wrap}
-.legend span{display:flex;align-items:center;gap:4px}
-.legend .dot{width:10px;height:10px;border-radius:50%}
-</style>
+<title>102. 组合 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>102. 组合 (Combinations)</h2>
-<div class="info-panel">
-  <span class="step" id="stepLabel">步骤 1/20</span>
-  <span class="desc" id="stepDesc">开始回溯: n=4, k=2</span>
-</div>
-<div class="params">
-  <span>n = <strong>4</strong></span>
-  <span>k = <strong>2</strong></span>
-  <span id="curPath" style="color:var(--accent);font-weight:600">当前组合: []</span>
-</div>
-<div class="vis-area"><canvas id="canvas"></canvas></div>
-<div class="results-bar" id="resultsBar"></div>
-<div class="controls">
-  <button onclick="reset()">重置</button>
-  <button onclick="prevStep()">上步</button>
-  <button onclick="nextStep()">下步</button>
-  <button id="playBtn" onclick="togglePlay()">自动播放</button>
-  <button onclick="jumpEnd()">最后</button>
-</div>
-<div class="legend">
-  <span><span class="dot" style="background:var(--accent)"></span>当前节点</span>
-  <span><span class="dot" style="background:var(--node-bg);border:2px solid var(--node-border)"></span>候选节点</span>
-  <span><span class="dot" style="background:var(--green)"></span>完成组合(叶子)</span>
-  <span><span class="dot" style="background:var(--red)"></span>跳过/剪枝</span>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const N=4,K=2;
-const steps=[];
-const results=[];
-function genSteps(start,path){
-  // entry
-  steps.push({type:'enter',path:[...path],start,picked:path.length>0?path[path.length-1]:null});
-  if(path.length===K){
-    results.push([...path]);
-    steps.push({type:'leaf',path:[...path],start});
-    steps.push({type:'backtrack',path:[...path.slice(0,-1)],start,removed:path[path.length-1]});
-    return;
+const N = 4;
+const K = 2;
+
+function buildSteps() {
+  const steps = [];
+  const path = [];
+  const results = [];
+
+  function snap(extra) {
+    return {
+      path: path.slice(),
+      results: results.slice(),
+      start: extra.start == null ? null : extra.start,
+      max: extra.max == null ? null : extra.max,
+      chosen: extra.chosen == null ? null : extra.chosen,
+      phase: extra.phase,
+      note: extra.note
+    };
   }
-  for(let i=start;i<=N;i++){
-    steps.push({type:'try',path:[...path],start,candidate:i});
-    path.push(i);
-    genSteps(i+1,path);
-    path.pop();
-  }
-  if(path.length>0)steps.push({type:'backtrack',path:[...path.slice(0,-1)],start,removed:path[path.length-1]||path[0]});
-}
-genSteps(1,[]);
 
-let curStep=0,playId=null;
-const canvas=document.getElementById('canvas');
-const ctx=canvas.getContext('2d');
+  steps.push(snap({
+    phase: 'init',
+    note: `初始化：n = ${N}，k = ${K}，path 为空。组合不关心顺序，所以每层只从 start 及之后的数字里选，保证组合内数字严格递增，从根源上避免出现 [1,2] 和 [2,1] 这种重复。`
+  }));
 
-function resize(){const r=canvas.getBoundingClientRect();canvas.width=r.width*devicePixelRatio;canvas.height=r.height*devicePixelRatio;ctx.setTransform(1,0,0,1,0,0);ctx.scale(devicePixelRatio,devicePixelRatio);draw();}
-window.addEventListener('resize',resize);
-
-function collectNodes(){
-  const nodes={};
-  const leaves=[];
-  for(let i=0;i<=curStep;i++){
-    const s=steps[i];
-    if(s.type==='enter'){
-      const l=s.path.length;
-      const key=s.path.join(',')||'root';
-      if(!nodes[l])nodes[l]=[];
-      if(!nodes[l].find(n=>n.key===key))nodes[l].push({key,path:[...s.path],x:0,y:0});
+  function backtrack(start) {
+    if (path.length === K) {
+      results.push(path.slice());
+      steps.push(snap({
+        phase: 'collect',
+        note: `path 长度达到 k = ${K}，说明已经选够 ${K} 个数，得到组合 [${path.join(', ')}]，加入结果集后返回上一层。`
+      }));
+      return;
     }
-    if(s.type==='leaf'){
-      const key='leaf_'+s.path.join(',');
-      leaves.push({key,path:[...s.path],x:0,y:0});
+
+    const max = N - (K - path.length) + 1;
+    steps.push(snap({
+      start, max, phase: 'enter',
+      note: `进入新的一层：还需要选 ${K - path.length} 个数，候选区间是 [${start}, ${N}]。为了给后面的位置留够数字，本层 i 最多只能取到 ${max} —— 一旦 i > ${max}，后面剩下的数字凑不满 k 个，因此这些分支被剪枝直接跳过。`
+    }));
+
+    for (let i = start; i <= max; i++) {
+      path.push(i);
+      steps.push(snap({
+        start, max, chosen: i, phase: 'choose',
+        note: `本层选择 i = ${i} 放入 path，得到 [${path.join(', ')}]；下一层从 start = ${i + 1} 开始，因为组合内数字必须递增，只能选比 ${i} 大的数。`
+      }));
+
+      backtrack(i + 1);
+
+      path.pop();
+      steps.push(snap({
+        start, max, chosen: i, phase: 'undo',
+        note: `撤销选择 i = ${i}，path 退回 [${path.join(', ')}]，for 循环继续尝试下一个更大的数字；如果本层候选已经试完，就继续向上层回溯。`
+      }));
     }
   }
-  return {nodes,leaves};
+
+  backtrack(1);
+
+  steps.push(snap({
+    phase: 'done',
+    note: `所有分支都走完了，共得到 ${results.length} 个组合：[${results.map(r => '[' + r.join(',') + ']').join(', ')}]。组合内数字递增保证了不重复，每层起点的推进保证了不遗漏。`
+  }));
+
+  return steps;
 }
 
-function draw(){
-  const w=canvas.width/devicePixelRatio,h=canvas.height/devicePixelRatio;
-  ctx.clearRect(0,0,w,h);
-  const step=steps[curStep];
-  const {nodes,leaves}=collectNodes();
-  const maxL=Math.max(...Object.keys(nodes).map(Number),0);
-  const rootX=w/2,rootY=45,levelGap=80,nodeGap=34;
-  // position
-  for(let l=0;l<=maxL;l++){
-    const nds=nodes[l]||[];
-    const tw=nds.length*nodeGap*2;
-    const sx=rootX-tw/2+nodeGap;
-    nds.forEach((n,i)=>{n.x=sx+i*nodeGap*2;n.y=rootY+l*levelGap});
-  }
-  // leaves
-  const leafY=rootY+(maxL+1)*levelGap;
-  leaves.forEach((lf,i)=>{lf.x=30+i*50;lf.y=leafY});
-  // edges
-  for(let l=1;l<=maxL;l++){
-    const parents=nodes[l-1]||[];
-    const children=nodes[l]||[];
-    children.forEach(child=>{
-      for(const p of parents){
-        if(child.path.slice(0,l-1).join(',')===p.path.join(',')){
-          ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--edge').trim();
-          ctx.lineWidth=1.5;
-          ctx.beginPath();ctx.moveTo(p.x,p.y+20);ctx.lineTo(child.x,child.y-20);ctx.stroke();
-        }
-      }
-    });
-  }
-  // leaves edges
-  const leafParents=nodes[maxL]||[];
-  leaves.forEach(lf=>{
-    for(const p of leafParents){
-      if(lf.path.slice(0,maxL).join(',')===p.path.join(',')){
-        ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--edge').trim();
-        ctx.lineWidth=1.5;
-        ctx.beginPath();ctx.moveTo(p.x,p.y+20);ctx.lineTo(lf.x,lf.y-14);ctx.stroke();
-      }
+function numbersRow(step) {
+  const row = Demo.el('div', 'row');
+  for (let j = 1; j <= N; j++) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(j));
+    const inPath = step.path.indexOf(j) >= 0;
+    if (step.phase === 'undo' && step.chosen === j) {
+      cell.classList.add('is-warn');
+    } else if (inPath) {
+      cell.classList.add('is-ok');
+    } else if (step.max != null && j > step.max) {
+      cell.classList.add('cell--dim');
+    } else if (step.start != null && j < step.start) {
+      cell.classList.add('cell--dim');
+    } else if (step.start != null && j === step.start) {
+      cell.classList.add('is-active');
     }
-  });
-  // draw nodes
-  for(let l=0;l<=maxL;l++){
-    (nodes[l]||[]).forEach(n=>{
-      const r=18;
-      const curPathStr=(step.path||[]).join(',');
-      const nodePathStr=n.path.join(',');
-      const isCur=(step.type==='enter')&&nodePathStr===curPathStr&&l===step.path.length;
-      if(isCur){
-        ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-        ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fill();
-        ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent2').trim();ctx.lineWidth=3;
-        ctx.beginPath();ctx.arc(n.x,n.y,r+3,0,Math.PI*2);ctx.stroke();
-        ctx.fillStyle='#fff';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText('['+n.path.join(',')+']',n.x,n.y);
-      }else{
-        const bg=getComputedStyle(document.documentElement).getPropertyValue('--node-bg').trim();
-        const bd=getComputedStyle(document.documentElement).getPropertyValue('--node-border').trim();
-        ctx.fillStyle=bg;ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fill();
-        ctx.strokeStyle=bd;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.stroke();
-        ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text').trim();
-        ctx.font='11px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText(n.path.length===0?'root':'['+n.path.join(',')+']',n.x,n.y);
-      }
-    });
+    col.appendChild(cell);
+
+    const labels = [];
+    if (step.start === j) labels.push('start');
+    if (step.max === j) labels.push('上界');
+    const ptr = Demo.el('div', 'ptr', labels.join(' '));
+    if (!labels.length) ptr.classList.add('ptr--dim');
+    else if (step.max === j && step.start !== j) ptr.classList.add('ptr--warn');
+    col.appendChild(ptr);
+
+    row.appendChild(col);
   }
-  // draw leaves
-  leaves.forEach(lf=>{
-    const curPathStr=(step.path||[]).join(',');
-    const lfPathStr=lf.path.join(',');
-    const isCur=step.type==='leaf'&&lfPathStr===curPathStr;
-    ctx.fillStyle=isCur?getComputedStyle(document.documentElement).getPropertyValue('--accent').trim():getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
-    ctx.fillRect(lf.x-30,lf.y-14,60,28);
-    ctx.fillStyle='#fff';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText('['+lf.path.join(',')+']',lf.x,lf.y);
-  });
-  // candidate label
-  if(step.type==='try'){
-    ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--orange').trim();
-    ctx.font='bold 13px system-ui';ctx.textAlign='center';
-    ctx.fillText('尝试选择: '+step.candidate,w/2,h-15);
-  }
+  return row;
 }
 
-function updateUI(){
-  const step=steps[curStep];
-  document.getElementById('stepLabel').textContent='步骤 '+(curStep+1)+'/'+steps.length;
-  let desc='';
-  if(step.type==='enter')desc='进入节点: 当前组合 ['+step.path.join(',')+']';
-  else if(step.type==='try')desc='尝试添加数字 '+step.candidate+' 到组合中';
-  else if(step.type==='leaf')desc='找到完整组合: ['+step.path.join(',')+']';
-  else if(step.type==='backtrack')desc='回溯: 撤销数字 '+(step.removed||'')+', 返回上级';
-  else desc='开始回溯搜索';
-  document.getElementById('stepDesc').textContent=desc;
-  document.getElementById('curPath').textContent='当前组合: ['+(step.path||[]).join(',')+']';
-  const bar=document.getElementById('resultsBar');
-  const found=[];
-  for(let i=0;i<=curStep;i++){if(steps[i].type==='leaf')found.push('['+steps[i].path.join(',')+']');}
-  bar.innerHTML=found.map(s=>'<span class="tag">'+s+'</span>').join('');
-  resize();
+function pathRow(step) {
+  const row = Demo.el('div', 'row');
+  for (let i = 0; i < K; i++) {
+    const value = step.path[i];
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell cell--lg', value == null ? '?' : Demo.esc(value));
+    if (value == null) cell.classList.add('cell--empty');
+    else if (step.phase === 'choose' && i === step.path.length - 1) cell.classList.add('is-active');
+    else cell.classList.add('is-ok');
+    col.appendChild(cell);
+    col.appendChild(Demo.el('div', 'ptr ptr--dim', '第' + i + '个数'));
+    row.appendChild(col);
+  }
+  return row;
 }
-function reset(){curStep=0;stopPlay();updateUI();}
-function nextStep(){if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();}
-function prevStep(){if(curStep>0){curStep--;updateUI();}}
-function jumpEnd(){curStep=steps.length-1;stopPlay();updateUI();}
-function stopPlay(){if(playId){clearInterval(playId);playId=null;document.getElementById('playBtn').classList.remove('playing');document.getElementById('playBtn').textContent='自动播放';}}
-function togglePlay(){if(playId){stopPlay();return;}if(curStep>=steps.length-1)curStep=0;document.getElementById('playBtn').classList.add('playing');document.getElementById('playBtn').textContent='暂停';playId=setInterval(()=>{if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();},600);}
-document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}else if(e.key==='ArrowRight'){e.preventDefault();nextStep();}else if(e.key===' '){e.preventDefault();togglePlay();}});
-updateUI();
+
+Demo.create({
+  title: '102. 组合 — start 控制起点 + 上界剪枝',
+  info: `输入：n = ${N}，k = ${K}。从范围 [1, n] 中选 k 个数，数字递增即天然去重。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  legend: [
+    { color: 'var(--demo-accent)', label: 'start：本层可选的最小数字' },
+    { color: 'var(--demo-warn)', label: '刚被撤销的选择' },
+    { color: 'var(--demo-ok)', label: '当前 path 中的数字' },
+    { color: 'var(--demo-muted)', label: '被剪枝 / 已扫描过的数字' }
+  ],
+  stageHeight: 300,
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    ctx.stage.appendChild(Demo.el('div', 'panel__title', '候选数字 1 ~ ' + N + '（本层区间 [start, 上界]）'));
+    ctx.stage.appendChild(numbersRow(step));
+
+    const pathPanel = Demo.el('div', 'col');
+    pathPanel.appendChild(Demo.el('div', 'panel__title', 'path 路径（长度不能超过 k = ' + K + '）'));
+    pathPanel.appendChild(pathRow(step));
+    ctx.stage.appendChild(pathPanel);
+
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.style.textAlign = 'center';
+    const bound = step.max == null
+      ? '本层不是循环层（叶子收集或已结束）'
+      : `本层 start = ${step.start}，上界 = n − (k − len(path)) + 1 = ${N} − (${K} − ${step.path.length}) + 1 = ${step.max}`;
+    panel.appendChild(Demo.el('div', 'tag', Demo.esc(bound)));
+    const resRow = Demo.el('div', 'row');
+    resRow.style.marginTop = '6px';
+    if (!step.results.length) {
+      resRow.appendChild(Demo.el('span', 'ptr ptr--dim', '（还没有收集到组合）'));
+    } else {
+      step.results.forEach(r => resRow.appendChild(Demo.el('span', 'tag tag--ok', '[' + r.join(', ') + ']')));
+    }
+    panel.appendChild(resRow);
+    ctx.stage.appendChild(panel);
+  }
+});
 </script>
 </body>
 </html>

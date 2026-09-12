@@ -3,120 +3,213 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>117. 搜索旋转排序数组</title>
-<style>
-:root {
-  --bg: #f5f6fa; --card: #fff; --text: #2d3436; --sub: #636e72;
-  --border: #dfe6e9; --blue: #0984e3; --green: #00b894; --red: #e17055; --purple: #6c5ce7;
-  --blue-bg: #dff6fd; --hl-mid: #ffeaa7;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1a1a2e; --card: #16213e; --text: #eee; --sub: #aaa;
-    --border: #2d3436; --blue: #74b9ff; --green: #55efc4; --red: #ff7675; --purple: #a29bfe;
-    --blue-bg: #1a3a5c; --hl-mid: #5c4a1f;
-  }
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:var(--bg); display:flex; justify-content:center; align-items:center; min-height:100vh; }
-.container { width:860px; height:480px; background:var(--card); border-radius:8px; padding:20px 24px; display:flex; flex-direction:column; gap:10px; box-shadow:0 2px 12px rgba(0,0,0,0.1); }
-.header { display:flex; justify-content:space-between; align-items:center; }
-.header h2 { font-size:17px; color:var(--text); }
-.step-badge { font-size:13px; color:var(--sub); background:var(--border); padding:4px 12px; border-radius:8px; font-weight:500; }
-.info-panel { background:var(--blue-bg); border-left:3px solid var(--blue); padding:10px 14px; border-radius:8px; font-size:14px; color:var(--text); min-height:44px; display:flex; align-items:center; }
-.array-grid { display:flex; gap:4px; justify-content:center; align-items:flex-end; flex:1; }
-.cell { width:70px; height:62px; border-radius:8px; background:var(--border); display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; font-size:22px; color:var(--text); position:relative; z-index:2; transition:all 0.3s; }
-.cell .idx { font-size:10px; color:var(--sub); margin-top:2px; }
-.cell.mid { background:var(--hl-mid); box-shadow:0 0 0 3px var(--blue); }
-.cell.target { border:2px solid var(--green); }
-.cell.sorted { background:var(--blue-bg); }
-.cell.found { background:var(--green); color:#fff; }
-.pointers { display:flex; gap:24px; justify-content:center; font-size:13px; font-weight:600; color:var(--sub); }
-.controls { display:flex; gap:8px; justify-content:center; }
-.btn { padding:7px 16px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; font-size:13px; font-family:inherit; transition:all 0.15s; }
-.btn:hover { background:var(--blue-bg); border-color:var(--blue); }
-.btn:active { transform:scale(0.96); }
-.key-hint { font-size:11px; color:var(--sub); text-align:center; }
-</style>
+<title>117. 搜索旋转排序数组 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <h2>117. 搜索旋转排序数组</h2>
-    <span class="step-badge" id="stepBadge">步骤 0/8</span>
-  </div>
-  <div class="info-panel" id="info"></div>
-  <div class="pointers" id="pointers"></div>
-  <div class="array-grid" id="grid"></div>
-  <div class="controls">
-    <button class="btn" onclick="reset()">重置</button>
-    <button class="btn" onclick="prev()">上步</button>
-    <button class="btn" onclick="next()">下步</button>
-    <button class="btn" id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button class="btn" onclick="goLast()">跳到最后</button>
-  </div>
-  <div class="key-hint">键盘: &#8592; &#8593; 上步 | &#8594; &#8595; 下步 | 空格 自动播放</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const nums = [4,5,6,7,0,1,2], target = 0;
-const n = nums.length;
-let steps = [], cur = 0, autoTimer = null, running = false;
+const NUMS = [4, 5, 6, 7, 0, 1, 2];
+const TARGET = 0;
 
 function buildSteps() {
-  steps = [];
-  let l = 0, r = n - 1;
-  steps.push({l,r,mid:-1,sorted:'',desc:'初始化: nums=[4,5,6,7,0,1,2], target=0, left=0, right=6',done:false});
-  while (l <= r) {
-    let mid = Math.floor((l + r) / 2);
-    if (nums[mid] === target) { steps.push({l,r,mid,sorted:'',desc:`mid=${mid}, nums[${mid}]=${target} = target! 找到!`,done:true,found:true}); return; }
-    let sortedSide = '';
-    if (nums[l] <= nums[mid]) {
-      sortedSide = 'left';
-      if (nums[l] <= target && target < nums[mid]) { desc=`mid=${mid}. 左侧[${l},${mid}]有序, target在左侧, right=mid-1=${mid-1}`; r = mid - 1; }
-      else { desc=`mid=${mid}. 左侧[${l},${mid}]有序, target不在左侧, left=mid+1=${mid+1}`; l = mid + 1; }
-    } else {
-      sortedSide = 'right';
-      if (nums[mid] < target && target <= nums[r]) { desc=`mid=${mid}. 右侧[${mid},${r}]有序, target在右侧, left=mid+1=${mid+1}`; l = mid + 1; }
-      else { desc=`mid=${mid}. 右侧[${mid},${r}]有序, target不在右侧, right=mid-1=${mid-1}`; r = mid - 1; }
-    }
-    steps.push({l,r,mid,sorted:sortedSide,desc,done:false});
-  }
-  steps.push({l,r,mid:-1,sorted:'',desc:'未找到',done:true,found:false});
-}
-buildSteps();
+  const nums = NUMS;
+  const n = nums.length;
+  const steps = [];
+  let left = 0;
+  let right = n - 1;
+  let checks = 0;
+  let found = -1;
 
-function render() {
-  const s = steps[cur];
-  document.getElementById('stepBadge').textContent = `步骤 ${cur}/${steps.length-1}`;
-  document.getElementById('info').textContent = s.desc;
-  document.getElementById('autoBtn').textContent = running ? '停止' : '自动播放';
-  document.getElementById('pointers').innerHTML = `left=${s.l} | mid=${s.mid>=0?s.mid:'?'} | right=${s.r} ${s.sorted?'| '+s.sorted+'侧有序':''}`;
-  const grid = document.getElementById('grid');
-  let html = '';
-  for (let i = 0; i < n; i++) {
-    let cls = 'cell';
-    if (i === s.mid) cls += s.found ? ' found' : ' mid';
-    if (nums[i] === target) cls += ' target';
-    html += `<div class="${cls}"><span>${nums[i]}</span><span class="idx">${i}</span></div>`;
+  // 旋转点：第一个满足 nums[k] > nums[k+1] 的 k
+  let pivotBefore = -1;
+  for (let k = 0; k + 1 < n; k++) {
+    if (nums[k] > nums[k + 1]) { pivotBefore = k; break; }
   }
-  grid.innerHTML = html;
+
+  steps.push({
+    left: left, right: right, mid: -1, mv: null, cmp: null,
+    side: null, sortedLo: -1, sortedHi: -1, inSorted: null,
+    checks: checks, done: false, found: -1,
+    note: `输入 nums = [${nums.join(', ')}]，target = ${TARGET}。它由升序数组在下标 ${pivotBefore} 与 ${pivotBefore + 1} 之间旋转而来（${nums[pivotBefore]} → ${nums[pivotBefore + 1]} 是唯一一处下降），所以整体不是有序的。初始区间 [left, right] = [0, ${n - 1}]。关键性质：从中间切开后，左右两半至少有一半是升序的。`
+  });
+
+  while (left <= right) {
+    const mid = left + Math.floor((right - left) / 2);
+    const mv = nums[mid];
+    checks += 1;
+
+    if (mv === TARGET) {
+      found = mid;
+      steps.push({
+        left: left, right: right, mid: mid, mv: mv, cmp: 'eq',
+        side: null, sortedLo: -1, sortedHi: -1, inSorted: null,
+        checks: checks, done: false, found: mid,
+        note: `第 ${checks} 次比较：mid = ${mid}，nums[${mid}] = ${mv} 正好等于 target = ${TARGET}，找到目标，返回下标 ${mid}。旋转数组依然能二分，靠的就是每一轮先用 mid 排除掉一半。`
+      });
+      break;
+    }
+
+    const leftVal = nums[left];
+    const rightVal = nums[right];
+    let side, lo, hi, inSorted;
+
+    if (leftVal <= mv) {
+      side = 'left';
+      lo = left;
+      hi = mid;
+      inSorted = leftVal <= TARGET && TARGET < mv;
+    } else {
+      side = 'right';
+      lo = mid;
+      hi = right;
+      inSorted = mv < TARGET && TARGET <= rightVal;
+    }
+
+    let note = `第 ${checks} 次比较：mid = ${mid}，nums[${mid}] = ${mv} ≠ target = ${TARGET}。`;
+    if (side === 'left') {
+      note += `因为 nums[left] = ${leftVal} ≤ nums[mid] = ${mv}，说明左半段 [${lo}, ${hi}] 是升序的（没有跨过旋转点）。`;
+      note += inSorted
+        ? `target = ${TARGET} 落在区间 [nums[${lo}], nums[${hi}]) = [${leftVal}, ${mv}) 内，只可能出现在这半段里，于是把右半丢掉，令 right = mid − 1 = ${mid - 1}。`
+        : `target = ${TARGET} 不在区间 [nums[${lo}], nums[${hi}]) = [${leftVal}, ${mv}) 内，所以它只可能在另一半，令 left = mid + 1 = ${mid + 1}。`;
+    } else {
+      note += `因为 nums[left] = ${leftVal} > nums[mid] = ${mv}，说明旋转点落在左半段里，于是右半段 [${lo}, ${hi}] 一定是升序的。`;
+      note += inSorted
+        ? `target = ${TARGET} 落在区间 (nums[${mid}], nums[${hi}]] = (${mv}, ${rightVal}] 内，只可能出现在这半段里，令 left = mid + 1 = ${mid + 1}。`
+        : `target = ${TARGET} 不在区间 (nums[${mid}], nums[${hi}]] = (${mv}, ${rightVal}] 内，说明它在左半段，令 right = mid − 1 = ${mid - 1}。`;
+    }
+
+    if (inSorted) {
+      if (side === 'left') right = mid - 1;
+      else left = mid + 1;
+    } else {
+      if (side === 'left') left = mid + 1;
+      else right = mid - 1;
+    }
+
+    steps.push({
+      left: left, right: right, mid: mid, mv: mv, cmp: inSorted ? 'in' : 'out',
+      side: side, sortedLo: lo, sortedHi: hi, inSorted: inSorted,
+      checks: checks, done: false, found: -1,
+      note: note
+    });
+  }
+
+  if (found >= 0) {
+    steps.push({
+      left: left, right: right, mid: found, mv: TARGET, cmp: 'eq',
+      side: null, sortedLo: -1, sortedHi: -1, inSorted: null,
+      checks: checks, done: true, found: found,
+      note: `答案：target = ${TARGET} 在旋转数组中的下标是 ${found}。整个过程只做了 ${checks} 次比较，每次至少排除一半元素，时间复杂度 O(log n)，只用常数个变量，空间复杂度 O(1)。`
+    });
+  } else {
+    steps.push({
+      left: left, right: right, mid: -1, mv: null, cmp: null,
+      side: null, sortedLo: -1, sortedHi: -1, inSorted: null,
+      checks: checks, done: true, found: -1,
+      note: `left = ${left} > right = ${right}，候选区间为空，说明数组里没有 ${TARGET}，返回 −1。一共比较 ${checks} 次，时间复杂度 O(log n)，空间复杂度 O(1)。`
+    });
+  }
+
+  return steps;
 }
-function reset() { cur = 0; stopAuto(); render(); }
-function prev() { if (cur > 0) { cur--; render(); } }
-function next() { if (cur < steps.length - 1) { cur++; render(); } else { stopAuto(); } }
-function goLast() { stopAuto(); cur = steps.length - 1; render(); }
-function toggleAuto() { running ? stopAuto() : startAuto(); }
-function startAuto() { running = true; render(); autoStep(); }
-function stopAuto() { running = false; if (autoTimer) clearTimeout(autoTimer); render(); }
-function autoStep() { if (!running) return; if (cur < steps.length - 1) { cur++; render(); autoTimer = setTimeout(autoStep, 600); } else { stopAuto(); } }
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
-  else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); next(); }
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
-  else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); reset(); }
-  else if (e.key === 'End') { e.preventDefault(); goLast(); }
+
+function arrayRow(step) {
+  const n = NUMS.length;
+  const row = Demo.el('div', 'row');
+
+  for (let idx = 0; idx < n; idx++) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(NUMS[idx]));
+
+    const inRange = idx >= step.left && idx <= step.right;
+    const inSorted = step.sortedLo >= 0 && idx >= step.sortedLo && idx <= step.sortedHi;
+
+    if (!inRange) cell.classList.add('is-dim');
+    else if (NUMS[idx] === TARGET) cell.classList.add('is-warn');
+    else cell.classList.add('is-info');
+
+    if (inSorted) { cell.classList.remove('is-dim'); cell.classList.add('is-pink'); }
+    if (idx === step.mid) { cell.classList.remove('is-dim', 'is-pink', 'is-warn', 'is-info'); cell.classList.add('is-active'); }
+    if (step.done && step.found >= 0 && idx === step.found) {
+      cell.classList.remove('is-dim', 'is-pink', 'is-warn', 'is-info', 'is-active');
+      cell.classList.add('is-ok');
+    }
+
+    col.appendChild(cell);
+
+    const labels = [];
+    if (idx === step.left) labels.push('left');
+    if (idx === step.right) labels.push('right');
+    if (idx === step.mid) labels.push('mid');
+    const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : '#' + idx);
+    if (!labels.length) ptr.classList.add('ptr--dim');
+    else if (idx === step.mid) ptr.classList.add('ptr--warn');
+    col.appendChild(ptr);
+
+    row.appendChild(col);
+  }
+
+  return row;
+}
+
+Demo.create({
+  title: '117. 搜索旋转排序数组 — 先找有序的一半，再决定往哪边收',
+  info: `输入：nums = [${NUMS.join(', ')}]（在下标 3 与 4 之间旋转），target = ${TARGET}（示例 1）。每轮先判断左半还是右半升序，再看 target 是否落在升序的那一半里。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 380,
+  legend: [
+    { color: 'var(--demo-accent)', label: '本轮中点 mid' },
+    { color: 'var(--demo-info)', label: '候选区间 [left, right] 内' },
+    { color: 'var(--demo-pink)', label: '本轮确认升序的那一半' },
+    { color: 'var(--demo-warn)', label: '值等于 target 的元素' },
+    { color: 'var(--demo-ok)', label: '最终找到的 target' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const arrayPanel = Demo.el('div', 'panel');
+    arrayPanel.style.width = '100%';
+    arrayPanel.appendChild(Demo.el('div', 'panel__title',
+      step.done
+        ? (step.found >= 0 ? `数组 nums（target = ${TARGET} 在下标 ${step.found}）` : '数组 nums（区间为空，未找到）')
+        : `数组 nums（候选区间 [${step.left}, ${step.right}]）`));
+    arrayPanel.appendChild(arrayRow(step));
+    ctx.stage.appendChild(arrayPanel);
+
+    const judgePanel = Demo.el('div', 'panel');
+    judgePanel.style.width = '100%';
+    judgePanel.appendChild(Demo.el('div', 'panel__title', '本步判断'));
+    let judgeHtml;
+    if (step.mid < 0) {
+      judgeHtml = `还没取中点。下一轮会取 mid = left + ⌊(right − left) / 2⌋，然后比较 nums[left] 与 nums[mid] 来判断哪一半升序。`;
+    } else if (step.cmp === 'eq') {
+      judgeHtml = `nums[${step.mid}] = <code>${step.mv}</code> 等于 target = <code>${TARGET}</code> &nbsp;<span class="tag tag--ok">直接命中</span>`;
+    } else {
+      const sideName = step.side === 'left' ? '左半段' : '右半段';
+      judgeHtml = `<code>nums[${step.mid}] = ${step.mv}</code> 不等于 target = ${TARGET}；` +
+        `${sideName} <code>[${step.sortedLo}, ${step.sortedHi}]</code> 升序 ` +
+        `&nbsp;<span class="tag tag--info">有序区间已定位</span>&nbsp; ` +
+        (step.inSorted
+          ? `target <span class="tag tag--ok">落在其中</span>，收缩到这一段里面`
+          : `target <span class="tag tag--bad">不在这段里</span>，只能去另一半找`);
+    }
+    judgePanel.appendChild(Demo.el('div', null, judgeHtml));
+    ctx.stage.appendChild(judgePanel);
+
+    const result = Demo.el('div', 'panel',
+      `已比较 <strong>${step.checks}</strong> 次 ｜ 区间 <code>[${step.left}, ${step.right}]</code>` +
+      (step.done
+        ? (step.found >= 0
+          ? ` &nbsp;<span class="tag tag--ok">返回 ${step.found}</span>`
+          : ` &nbsp;<span class="tag tag--bad">返回 −1</span>`)
+        : ''));
+    result.style.width = '100%';
+    result.style.textAlign = 'center';
+    ctx.stage.appendChild(result);
+  }
 });
-render();
 </script>
 </body>
 </html>

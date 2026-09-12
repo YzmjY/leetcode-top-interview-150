@@ -1,297 +1,232 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0; --btn-active: #1565C0;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd;
-      --btn-bg: #333; --btn-hover: #444;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 20px;
-  }
-  .container {
-    max-width: 580px; width: 100%;
-  }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 16px; }
-
-  .grid-wrap {
-    display: flex; justify-content: center; margin-bottom: 16px;
-  }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(4, 64px);
-    grid-template-rows: repeat(3, 56px);
-    gap: 5px;
-  }
-  .cell {
-    background: var(--cell-bg);
-    border: 2px solid var(--cell-border);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px; font-weight: bold; color: var(--text);
-    position: relative;
-    transition: border-color 0.25s, background 0.25s, transform 0.15s;
-  }
-  .cell.visited { border-color: #1565C0; }
-  .cell.active  { background: #E3F2FD; border-color: #1976D2; transform: scale(1.06); }
-
-  .step-tag {
-    position: absolute; top: -7px; right: -7px;
-    background: #1976D2; color: #fff;
-    font-size: 9px; font-weight: bold; width: 20px; height: 20px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; transform: scale(0.5);
-    transition: opacity 0.25s, transform 0.25s;
-  }
-  .step-tag.show { opacity: 1; transform: scale(1); }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 16px;
-    margin-bottom: 12px; font-size: 14px;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 40px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; }
-  .result-row {
-    background: #F5F5F5; border-radius: 8px; padding: 10px 14px;
-    margin-bottom: 12px; font-family: monospace; font-size: 13px;
-    word-break: break-all; color: var(--text);
-  }
-  .result-row .highlight {
-    color: #1976D2; font-weight: bold; font-size: 14px;
-  }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-
-  .legend {
-    display: flex; gap: 20px; justify-content: center; margin-top: 16px;
-    font-size: 12px; color: var(--muted);
-  }
-  .legend-item { display: flex; align-items: center; gap: 5px; }
-  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>35. 螺旋矩阵 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>螺旋矩阵遍历 — 逐步交互演示</h2>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">/ 12 步 · 点击「下一步」开始</span>
-  </div>
-
-  <div class="result-row" id="resultBar">
-    <span style="color:var(--muted)">result = [</span><span id="resultText" class="highlight"></span><span style="color:var(--muted)">]</span>
-  </div>
-
-  <div class="grid-wrap">
-    <div class="grid" id="grid"></div>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)" title="重置到第 0 步">⏮ 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">◀ 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 ▶</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">▶ 自动播放</button>
-    <button onclick="goStep(11)" title="跳到最终状态">⏭ 跳到最后</button>
-  </div>
-
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#1976D2"></div> 左→右 (top)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#388E3C"></div> 上→下 (right)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#F57C00"></div> 右→左 (bottom)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#C2185B"></div> 下→上 (left)</div>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const matrix = [
-  [ 1,  2,  3,  4],
-  [ 5,  6,  7,  8],
-  [ 9, 10, 11, 12],
+const MATRIX = [
+  [1, 2, 3, 4],
+  [5, 6, 7, 8],
+  [9, 10, 11, 12]
 ];
-const steps = [];
+const M = MATRIX.length;
+const N = MATRIX[0].length;
 
-// ─── 模拟螺旋遍历收集步骤 ───
-(function simulate() {
-  let top = 0, bottom = 2, left = 0, right = 3;
-  const dirNames = ['right→', 'down↓', 'left←', 'up↑'];
-  const dirColors = ['#1976D2','#388E3C','#F57C00','#C2185B'];
-  let dirIdx = 0;
+const DIR_NAME = ['左 → 右（上边界）', '上 → 下（右边界）', '右 → 左（下边界）', '下 → 上（左边界）'];
 
+function buildSteps() {
+  let top = 0, bottom = M - 1, left = 0, right = N - 1;
+  const result = [];
+  const visited = [];
+  const steps = [];
+
+  function snapshot(extra) {
+    return Object.assign({
+      top: top, bottom: bottom, left: left, right: right,
+      result: result.slice(),
+      visited: visited.map(function (p) { return p.slice(); })
+    }, extra);
+  }
+
+  function visit(r, c, dir) {
+    const value = MATRIX[r][c];
+    result.push(value);
+    visited.push([r, c]);
+    steps.push(snapshot({
+      kind: 'visit', dir: dir, cell: [r, c],
+      note: '取值 matrix[' + r + '][' + c + '] = ' + value + '，追加到结果末尾（当前第 ' + result.length + ' 个元素）。'
+    }));
+  }
+
+  steps.push(snapshot({
+    kind: 'init', dir: null, cell: null,
+    note: '初始化四条边界：top=' + top + '、bottom=' + bottom + '、left=' + left + '、right=' + right +
+      '，只要 top ≤ bottom 且 left ≤ right 就继续按顺时针走一圈。'
+  }));
+
+  let round = 0;
   while (top <= bottom && left <= right) {
-    if (dirIdx === 0) {
-      for (let j = left; j <= right; j++) steps.push({r:top,c:j,dir:0});
-      top++;
-    } else if (dirIdx === 1) {
-      for (let i = top; i <= bottom; i++) steps.push({r:i,c:right,dir:1});
-      right--;
-    } else if (dirIdx === 2) {
-      if (top <= bottom) {
-        for (let j = right; j >= left; j--) steps.push({r:bottom,c:j,dir:2});
-        bottom--;
-      }
+    round++;
+    const before = { top: top, bottom: bottom, left: left, right: right };
+
+    steps.push(snapshot({
+      kind: 'seg', dir: 0, cell: null,
+      note: '第 ' + round + ' 轮 · ① ' + DIR_NAME[0] + '：j 从 left=' + left + ' 到 right=' + right + '，收集 top=' + top + ' 这一行的元素。'
+    }));
+    for (let j = left; j <= right; j++) visit(top, j, 0);
+    top++;
+    steps.push(snapshot({
+      kind: 'shrink', dir: 0, cell: null,
+      note: '上边界整行已收集完，收缩：top ' + before.top + ' → ' + top + '，下一次循环不会再碰这一行。'
+    }));
+
+    steps.push(snapshot({
+      kind: 'seg', dir: 1, cell: null,
+      note: '② ' + DIR_NAME[1] + '：i 从 top=' + top + ' 到 bottom=' + bottom + '，收集 right=' + right + ' 这一列的元素。'
+    }));
+    for (let i = top; i <= bottom; i++) visit(i, right, 1);
+    right--;
+    steps.push(snapshot({
+      kind: 'shrink', dir: 1, cell: null,
+      note: '右边界整列已收集完，收缩：right ' + before.right + ' → ' + right + '。'
+    }));
+
+    if (top <= bottom) {
+      steps.push(snapshot({
+        kind: 'guard', dir: 2, cell: null,
+        note: '③ 先检查 top ≤ bottom（' + top + ' ≤ ' + bottom + ' 成立），才可以从右到左收集 bottom=' + bottom + ' 这一行，否则单行矩阵会被重复收集。'
+      }));
+      for (let j = right; j >= left; j--) visit(bottom, j, 2);
+      const oldBottom = bottom;
+      bottom--;
+      steps.push(snapshot({
+        kind: 'shrink', dir: 2, cell: null,
+        note: '下边界整行已收集完，收缩：bottom ' + oldBottom + ' → ' + bottom + '。'
+      }));
     } else {
-      if (left <= right) {
-        for (let i = bottom; i >= top; i--) steps.push({r:i,c:left,dir:3});
-        left++;
-      }
+      steps.push(snapshot({
+        kind: 'guard', dir: 2, cell: null,
+        note: '③ 检查 top ≤ bottom（' + top + ' ≤ ' + bottom + ' 不成立），说明剩下的行已经被上面两步取完，跳过下边界，避免重复。'
+      }));
     }
-    dirIdx = (dirIdx + 1) % 4;
-  }
-  // Attach colors and labels
-  steps.forEach((s, i) => {
-    s.color = dirColors[s.dir];
-    s.label = dirNames[s.dir];
-    s.val = matrix[s.r][s.c];
-    s.step = i;
-  });
-})();
 
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-// ─── 渲染网格 ───
-const grid = document.getElementById('grid');
-const cells = [];
-for (let r = 0; r < 3; r++) {
-  for (let c = 0; c < 4; c++) {
-    const div = document.createElement('div');
-    div.className = 'cell';
-    div.innerHTML = `<span class="cell-val">${matrix[r][c]}</span><span class="step-tag"></span>`;
-    div.dataset.r = r;
-    div.dataset.c = c;
-    grid.appendChild(div);
-    cells.push(div);
-  }
-}
-
-function getCell(r, c) {
-  return document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-}
-
-// ─── 渲染状态 ───
-function render() {
-  const stepNumEl = document.getElementById('stepNum');
-  const stepDescEl = document.getElementById('stepDesc');
-  const resultText = document.getElementById('resultText');
-  const prevBtn = document.getElementById('prevBtn');
-  const nextBtn = document.getElementById('nextBtn');
-
-  // Clear all cell states
-  document.querySelectorAll('.cell').forEach(el => {
-    el.classList.remove('visited','active');
-    el.style.borderTopColor = '';
-    const tag = el.querySelector('.step-tag');
-    if (tag) tag.classList.remove('show');
-    tag.style.background = '';
-    tag.textContent = '';
-  });
-
-  // Collect visited values
-  const visitedVals = [];
-  for (let i = 0; i < current; i++) {
-    const s = steps[i];
-    visitedVals.push(s.val);
-    const cell = getCell(s.r, s.c);
-    if (cell) {
-      cell.classList.add('visited');
-      const tag = cell.querySelector('.step-tag');
-      if (tag) {
-        tag.textContent = i + 1;
-        tag.style.background = s.color;
-        tag.classList.add('show');
-      }
+    if (left <= right) {
+      steps.push(snapshot({
+        kind: 'guard', dir: 3, cell: null,
+        note: '④ 先检查 left ≤ right（' + left + ' ≤ ' + right + ' 成立），才可以从下到上收集 left=' + left + ' 这一列。'
+      }));
+      for (let i = bottom; i >= top; i--) visit(i, left, 3);
+      const oldLeft = left;
+      left++;
+      steps.push(snapshot({
+        kind: 'shrink', dir: 3, cell: null,
+        note: '左边界整列已收集完，收缩：left ' + oldLeft + ' → ' + left + '。'
+      }));
+    } else {
+      steps.push(snapshot({
+        kind: 'guard', dir: 3, cell: null,
+        note: '④ 检查 left ≤ right（' + left + ' ≤ ' + right + ' 不成立），剩下的列已被取完，跳过左边界，避免重复。'
+      }));
     }
   }
 
-  // Highlight current step
-  if (current > 0 && current <= steps.length) {
-    const cur = steps[current - 1];
-    const cell = getCell(cur.r, cur.c);
-    if (cell) {
-      cell.classList.add('active');
-      // Add a colored top border indicating direction
-      cell.style.borderTopColor = cur.color;
+  steps.push(snapshot({
+    kind: 'done', dir: null, cell: null,
+    note: '边界交叉（top=' + top + ' > bottom=' + bottom + '），循环结束。共访问 ' + result.length +
+      ' 个元素，即矩阵全部 ' + (M * N) + ' 格，结果为 [' + result.join(', ') + ']。'
+  }));
+
+  return steps;
+}
+
+function isVisited(step, r, c) {
+  for (let i = 0; i < step.visited.length; i++) {
+    if (step.visited[i][0] === r && step.visited[i][1] === c) return i;
+  }
+  return -1;
+}
+
+function ptrNode(text, cls) {
+  const node = Demo.el('div', 'ptr' + (cls ? ' ' + cls : ''), text);
+  node.style.height = '36px';
+  node.style.display = 'flex';
+  node.style.alignItems = 'center';
+  node.style.justifyContent = 'center';
+  return node;
+}
+
+Demo.create({
+  title: '35. 螺旋矩阵 — 边界收缩，顺时针剥圈',
+  info: '输入：3 行 4 列矩阵 [[1,2,3,4],[5,6,7,8],[9,10,11,12]]，按顺时针螺旋顺序返回全部 12 个元素。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前取值格子' },
+    { color: 'var(--demo-ok)', label: '已收集的元素（角标是收集顺序）' },
+    { color: 'var(--demo-warn)', label: 'top / bottom / left / right 指针' },
+    { color: 'var(--demo-muted)', label: '已收缩、不在当前边界圈内' }
+  ],
+  render: function (step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const wrap = Demo.el('div', 'row');
+    wrap.style.alignItems = 'flex-start';
+    wrap.style.gap = '8px';
+
+    const rowPtrs = Demo.el('div', 'col');
+    for (let r = 0; r < M; r++) {
+      let text = '', cls = 'ptr--dim';
+      if (step.top === r && step.bottom === r) { text = 'tb'; cls = 'ptr--warn'; }
+      else if (step.top === r) { text = 'top'; cls = 'ptr--warn'; }
+      else if (step.bottom === r) { text = 'bottom'; cls = 'ptr--warn'; }
+      rowPtrs.appendChild(ptrNode(text, cls));
     }
-    stepNumEl.textContent = current;
-    stepDescEl.textContent = `第 ${current} 步 · ${cur.label} 扫描 · 值 = ${cur.val} · top=${Math.floor(cur.r)}, right=..., bottom=..., left=...`;
-  } else {
-    stepNumEl.textContent = '0';
-    stepDescEl.textContent = '点击「下一步」开始遍历';
-  }
+    wrap.appendChild(rowPtrs);
 
-  resultText.textContent = visitedVals.join(', ');
+    const body = Demo.el('div', 'col');
+    body.style.gap = '6px';
 
-  prevBtn.disabled = current <= 0;
-  nextBtn.disabled = current >= steps.length;
-}
-
-function goStep(n) {
-  current = Math.max(0, Math.min(n, steps.length));
-  render();
-}
-
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer);
-    autoRunning = false;
-    document.getElementById('playBtn').textContent = '▶ 自动播放';
-    document.getElementById('playBtn').classList.remove('play-btn');
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-  } else {
-    document.getElementById('playBtn').textContent = '⏸ 暂停';
-    document.getElementById('playBtn').classList.add('play-btn');
-    document.getElementById('playBtn').style.background = '#1976D2';
-    document.getElementById('playBtn').style.color = '#fff';
-    autoRunning = true;
-    if (current >= steps.length) goStep(0);
-    autoTimer = setInterval(() => {
-      if (current < steps.length) {
-        goStep(current + 1);
-      } else {
-        toggleAuto();
+    const grid = Demo.el('div', 'grid');
+    grid.style.gridTemplateColumns = 'repeat(' + N + ', 48px)';
+    for (let r = 0; r < M; r++) {
+      for (let c = 0; c < N; c++) {
+        const cell = Demo.el('div', 'grid-cell', Demo.esc(MATRIX[r][c]));
+        cell.style.height = '36px';
+        const order = isVisited(step, r, c);
+        const current = step.cell && step.cell[0] === r && step.cell[1] === c;
+        if (current) cell.classList.add('is-active');
+        else if (order >= 0) cell.classList.add('is-ok');
+        else if (r < step.top || r > step.bottom || c < step.left || c > step.right) cell.classList.add('is-dim');
+        if (order >= 0) {
+          cell.innerHTML = Demo.esc(MATRIX[r][c]) +
+            '<span style="font-size:10px;color:var(--demo-muted);margin-left:3px;">' + (order + 1) + '</span>';
+        }
+        grid.appendChild(cell);
       }
-    }, 600);
-  }
-}
+    }
+    body.appendChild(grid);
 
-// Keyboard navigation
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
+    const colPtrs = Demo.el('div', 'row');
+    for (let c = 0; c < N; c++) {
+      const node = ptrNode('', 'ptr--dim');
+      node.style.width = '48px';
+      node.style.minWidth = '48px';
+      if (step.left === c && step.right === c) { node.textContent = 'lr'; node.className = 'ptr ptr--warn'; }
+      else if (step.left === c) { node.textContent = 'left'; node.className = 'ptr ptr--warn'; }
+      else if (step.right === c) { node.textContent = 'right'; node.className = 'ptr ptr--warn'; }
+      colPtrs.appendChild(node);
+    }
+    body.appendChild(colPtrs);
+    wrap.appendChild(body);
+    ctx.stage.appendChild(wrap);
+
+    const tags = Demo.el('div', 'row');
+    tags.appendChild(Demo.el('div', 'tag', 'top = ' + step.top));
+    tags.appendChild(Demo.el('div', 'tag', 'bottom = ' + step.bottom));
+    tags.appendChild(Demo.el('div', 'tag', 'left = ' + step.left));
+    tags.appendChild(Demo.el('div', 'tag', 'right = ' + step.right));
+    if (step.dir != null) {
+      tags.appendChild(Demo.el('div', 'tag tag--warn', '第 ' + (step.dir + 1) + ' 步：' + DIR_NAME[step.dir]));
+    }
+    ctx.stage.appendChild(tags);
+
+    const resultRow = Demo.el('div', 'row');
+    resultRow.appendChild(Demo.el('div', 'panel__title', 'result'));
+    for (let k = 0; k < step.result.length; k++) {
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(step.result[k]));
+      if (k === step.result.length - 1) cell.classList.add('is-active');
+      else cell.classList.add('is-ok');
+      resultRow.appendChild(cell);
+    }
+    if (!step.result.length) resultRow.appendChild(Demo.el('div', 'ptr ptr--dim', '空'));
+    ctx.stage.appendChild(resultRow);
+  }
 });
-
-render();
 </script>
 </body>
 </html>

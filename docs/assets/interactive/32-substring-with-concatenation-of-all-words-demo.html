@@ -1,478 +1,268 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --sub-bg: #f5f5f5;
-    --win-bg: rgba(25,118,210,0.18);
-    --win-border: rgba(25,118,210,0.45);
-    --match-green: rgba(76,175,80,0.30);
-    --match-green-border: rgba(76,175,80,0.6);
-    --fail-red: rgba(211,47,47,0.22);
-    --fail-red-border: rgba(211,47,47,0.55);
-    --chunk-a: rgba(25,118,210,0.12);
-    --chunk-b: rgba(156,39,176,0.12);
-    --highlight-blue: #1976D2;
-    --highlight-green: #388E3C;
-    --highlight-red: #D32F2F;
-    --step-circle-bg: #1976D2;
-    --step-circle-color: #fff;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd;
-      --btn-bg: #333; --btn-hover: #444;
-      --sub-bg: #252540;
-      --win-bg: rgba(66,165,245,0.22);
-      --win-border: rgba(66,165,245,0.50);
-      --match-green: rgba(76,175,80,0.30);
-      --match-green-border: rgba(76,175,80,0.6);
-      --fail-red: rgba(239,83,80,0.25);
-      --fail-red-border: rgba(239,83,80,0.6);
-      --chunk-a: rgba(66,165,245,0.14);
-      --chunk-b: rgba(186,104,200,0.14);
-      --highlight-blue: #42A5F5;
-      --highlight-green: #66BB6A;
-      --highlight-red: #EF5350;
-      --step-circle-bg: #42A5F5;
-      --step-circle-color: #1a1a2e;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 16px 20px;
-  }
-  .container { max-width: 950px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
-  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 6px;
-    font-size: 14px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: var(--highlight-blue); min-width: 36px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 680px; text-align: center; }
-
-  .state-row {
-    display: flex; justify-content: center; gap: 16px;
-    background: var(--sub-bg); border-radius: 8px;
-    padding: 10px 16px; margin-bottom: 8px; font-size: 13px;
-    flex-wrap: wrap;
-  }
-  .state-item { text-align: center; min-width: 70px; }
-  .state-val { font-size: 20px; font-weight: bold; font-family: monospace; }
-  .state-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .sv-start .state-val { color: var(--highlight-blue); }
-  .sv-found .state-val { color: var(--highlight-green); }
-
-  /* String grid */
-  .string-row {
-    display: flex; gap: 0; margin-bottom: 2px; flex-wrap: wrap; justify-content: center;
-  }
-  .chunk {
-    display: flex; flex-direction: column; align-items: center;
-    border-radius: 8px; padding: 2px 0; margin: 0 1px;
-    transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
-    position: relative;
-  }
-  .chunk-letters {
-    display: flex; gap: 1px;
-  }
-  .s-cell {
-    width: 34px; height: 38px; border-radius: 6px;
-    background: var(--cell-bg); border: 1.5px solid var(--cell-border);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px; font-weight: bold; color: var(--text);
-    transition: background 0.3s, border-color 0.3s;
-    font-family: monospace;
-  }
-  .s-cell.chunk-a-bg { background: var(--chunk-a); }
-  .s-cell.chunk-b-bg { background: var(--chunk-b); }
-  .s-cell.win-active { background: var(--win-bg); border-color: var(--win-border); }
-  .s-cell.match-ok { background: var(--match-green); border-color: var(--match-green-border); }
-  .s-cell.match-fail { background: var(--fail-red); border-color: var(--fail-red-border); }
-  .chunk-label {
-    font-size: 9px; color: var(--muted); margin-top: 2px; text-align: center;
-    font-family: monospace;
-  }
-
-  .step-circle {
-    position: absolute; top: -10px; right: -10px;
-    width: 22px; height: 22px; border-radius: 50%;
-    background: var(--step-circle-bg); color: var(--step-circle-color);
-    font-size: 11px; font-weight: bold; display: flex;
-    align-items: center; justify-content: center;
-    z-index: 5; opacity: 0; pointer-events: none;
-  }
-  .step-circle.visible { opacity: 1; }
-
-  /* Word requirement panel */
-  .middle-row {
-    display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 6px;
-  }
-  .word-panel {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 12px;
-    font-size: 12px;
-  }
-  .word-panel h4 { font-size: 11px; color: var(--muted); margin-bottom: 4px; text-align: center; }
-  .word-tag {
-    display: inline-block; padding: 3px 8px; margin: 2px;
-    border-radius: 4px; font-family: monospace; font-size: 13px; font-weight: bold;
-    background: var(--cell-bg); border: 1px solid var(--cell-border); color: var(--text);
-  }
-  .word-tag.needed { background: var(--fail-red); color: #fff; }
-  .word-tag.found { background: var(--match-green); color: #fff; }
-
-  .result-row {
-    background: var(--sub-bg); border-radius: 8px; padding: 10px 14px;
-    margin-bottom: 10px; font-size: 13px; text-align: center; color: var(--text);
-  }
-  .result-row .highlight { color: var(--highlight-green); font-weight: bold; font-size: 15px; }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: var(--highlight-blue); color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-
-  .legend {
-    display: flex; gap: 18px; justify-content: center; margin-top: 10px;
-    font-size: 12px; color: var(--muted); flex-wrap: wrap;
-  }
-  .legend-item { display: flex; align-items: center; gap: 5px; }
-  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
-
-  @media (max-width: 700px) {
-    .s-cell { width: 24px; height: 28px; font-size: 12px; }
-    .chunk { padding: 1px 0; }
-    .chunk-letters { gap: 0; }
-  }
-</style>
+<title>32. 串联所有单词的子串 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>串联所有单词的子串 — 滑动窗口交互演示</h2>
-  <div class="sub-title">s = "barfoothefoobarman", words = ["foo", "bar"] → 输出 [0, 9]</div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
-  </div>
-
-  <div class="state-row">
-    <div class="state-item sv-start">
-      <div class="state-val" id="startVal">--</div>
-      <div class="state-label">窗口起始位置</div>
-    </div>
-    <div class="state-item">
-      <div class="state-val" id="matchedVal" style="font-size:14px;">--</div>
-      <div class="state-label">匹配的单词</div>
-    </div>
-    <div class="state-item sv-found">
-      <div class="state-val" id="foundVal">[]</div>
-      <div class="state-label">找到的起始索引</div>
-    </div>
-  </div>
-
-  <div class="string-row" id="stringRow" style="position:relative;"></div>
-
-  <div class="middle-row">
-    <div class="word-panel">
-      <h4>需要匹配的单词</h4>
-      <span class="word-tag" style="background:var(--chunk-a);border-color:var(--highlight-blue);">foo</span>
-      <span class="word-tag" style="background:var(--chunk-b);border-color:var(--highlight-blue);">bar</span>
-    </div>
-    <div class="word-panel" id="matchPanel">
-      <h4>当前窗口匹配状态</h4>
-      <span style="color:var(--muted);font-size:12px;">等待开始...</span>
-    </div>
-  </div>
-
-  <div class="result-row" id="resultBar">
-    <span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight">进行中...</span>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">&#x23EE; 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
-    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
-  </div>
-
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:var(--match-green)"></div>单词匹配成功</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--fail-red)"></div>单词匹配失败</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--win-bg)"></div>当前窗口</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--chunk-a)"></div>单词分块</div>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const s = 'barfoothefoobarman';
-const words = ['foo', 'bar'];
-const wordLen = 3;
-const totalWords = words.length;
-const totalLen = wordLen * totalWords;
+const S = 'barfoothefoobarman';
+const WORDS = ['foo', 'bar'];
+const WORD_LEN = WORDS[0].length;
+const TOTAL_LEN = WORD_LEN * WORDS.length;
+const TARGET_COUNT = (function () {
+  const t = {};
+  WORDS.forEach(function (w) { t[w] = (t[w] || 0) + 1; });
+  return t;
+})();
+const KINDS = Object.keys(TARGET_COUNT).length;
+const TARGET_TEXT = Object.keys(TARGET_COUNT).map(function (k) {
+  return k + ' × ' + TARGET_COUNT[k];
+}).join('，');
 
-const steps = [];
-const foundIndices = [];
+function buildSteps() {
+  const s = S;
+  const steps = [];
+  const results = [];
 
-(function simulate() {
   steps.push({
-    start: -1, curWord: null, matched: [], found: [...foundIndices],
-    desc: '初始状态 · wordLen=3, 需要匹配: ["foo","bar"] · 从索引0开始逐个尝试',
-    action: 'init', matchResult: null, matchCellStart: -1
+    offset: -1, left: 0, right: -WORD_LEN, windowCount: {}, matched: 0, results: [],
+    phase: 'init', word: '', inTarget: false, removedAt: -1, removedWord: '', recorded: false,
+    note: `初始化：s = "${s}"，words = [${WORDS.map(function (w) { return '"' + w + '"'; }).join(', ')}]。每个单词长度 wordLen = ${WORD_LEN}，共 ${WORDS.length} 个单词，所以任何串联子串的长度都固定为 ${WORD_LEN} × ${WORDS.length} = ${TOTAL_LEN}。目标词频 targetCount = { ${TARGET_TEXT} }。答案的起点不一定落在 ${WORD_LEN} 的整数倍上，因此外层要枚举 offset = 0 … ${WORD_LEN - 1} 共 ${WORD_LEN} 种偏移。`
   });
 
-  const wordFreq = {};
-  words.forEach(w => { wordFreq[w] = (wordFreq[w] || 0) + 1; });
+  for (let offset = 0; offset < WORD_LEN; offset++) {
+    let left = offset;
+    let windowCount = {};
+    let matched = 0;
 
-  for (let i = 0; i <= s.length - totalLen; i++) {
     steps.push({
-      start: i, curWord: null, matched: [], found: [...foundIndices],
-      desc: `尝试起始位置 i=${i}, 窗口范围 [${i}, ${i+totalLen-1}], 将检查${totalWords}个单词`,
-      action: 'start', matchResult: null, matchCellStart: -1
+      offset: offset, left: left, right: offset - WORD_LEN, windowCount: {}, matched: 0,
+      results: results.slice(), phase: 'offset', word: '', inTarget: false,
+      removedAt: -1, removedWord: '', recorded: false,
+      note: `第 ${offset + 1} 轮扫描：offset = ${offset}。这一轮只在索引 ${offset}, ${offset + WORD_LEN}, ${offset + 2 * WORD_LEN}, … 处切单词，left 先放到 ${offset}，窗口词频清空，matched = 0。`
     });
 
-    const seen = {};
-    let j;
-    for (j = 0; j < totalWords; j++) {
-      const wordStart = i + j * wordLen;
-      const curWord = s.slice(wordStart, wordStart + wordLen);
-      const isInWords = wordFreq.hasOwnProperty(curWord) && (seen[curWord] || 0) < wordFreq[curWord];
+    for (let right = offset; right + WORD_LEN <= s.length; right += WORD_LEN) {
+      const word = s.slice(right, right + WORD_LEN);
+      const inTarget = (TARGET_COUNT[word] || 0) > 0;
+      const windowEnd = right + WORD_LEN;
+      let removedAt = -1;
+      let removedWord = '';
+      let recorded = false;
 
-      if (isInWords) {
-        seen[curWord] = (seen[curWord] || 0) + 1;
+      steps.push({
+        offset: offset, left: left, right: right, windowCount: Object.assign({}, windowCount),
+        matched: matched, results: results.slice(), phase: 'probe', word: word, inTarget: inTarget,
+        removedAt: -1, removedWord: '', recorded: false,
+        note: `取出 s[${right}..${windowEnd - 1}] = "${word}"，右边界推进到 ${windowEnd}。当前窗口是 [${left}, ${windowEnd})，宽度 ${windowEnd - left}。` +
+          (inTarget
+            ? `"${word}" 在 words 中，目标需要 ${TARGET_COUNT[word]} 个，窗口里目前有 ${windowCount[word] || 0} 个。`
+            : `"${word}" 不在 words 中——只要窗口包含它，就不可能是 words 中所有单词的排列连接。`)
+      });
+
+      if (inTarget) {
+        windowCount[word] = (windowCount[word] || 0) + 1;
+        const justMatched = windowCount[word] === TARGET_COUNT[word];
+        if (justMatched) matched++;
+
+        let note = `把 "${word}" 计入窗口：windowCount["${word}"] = ${windowCount[word]}，目标需要 ${TARGET_COUNT[word]} 个 → ` +
+          (justMatched
+            ? `这一种刚好凑齐，matched 增加到 ${matched} / ${KINDS}。`
+            : `还没凑齐（还差 ${TARGET_COUNT[word] - windowCount[word]} 个），matched 保持 ${matched} / ${KINDS}。`);
+
+        if (windowEnd - left > TOTAL_LEN) {
+          removedAt = left;
+          removedWord = s.slice(left, left + WORD_LEN);
+          if ((TARGET_COUNT[removedWord] || 0) > 0) {
+            if (windowCount[removedWord] === TARGET_COUNT[removedWord]) matched--;
+            windowCount[removedWord]--;
+          }
+          left = left + WORD_LEN;
+          note += ` 此时窗口 [${removedAt}, ${windowEnd}) 的宽度 ${windowEnd - removedAt} 大于固定长度 ${TOTAL_LEN}，左边界必须右移一个单词：把 ${removedAt} 处的 "${removedWord}" 移出窗口，left 变成 ${left}。`;
+          if ((TARGET_COUNT[removedWord] || 0) > 0) {
+            note += `移出后窗口里 "${removedWord}" 还剩 ${windowCount[removedWord]} 个，matched = ${matched} / ${KINDS}。`;
+          }
+          note += ` 这一步保证了检查时窗口里恰好只有 ${WORDS.length} 个单词。`;
+        } else {
+          note += ` 窗口 [${left}, ${windowEnd}) 宽度 ${windowEnd - left} 没有超过 ${TOTAL_LEN}，暂时不收缩。`;
+        }
+
+        if (matched === KINDS) {
+          results.push(left);
+          recorded = true;
+          note += ` 窗口内 ${KINDS} 种单词的计数都与目标一致，宽度又正好是 ${TOTAL_LEN} → s[${left}..${windowEnd - 1}] = "${s.slice(left, windowEnd)}" 正是 words 的一种排列，把起点 ${left} 记入答案（当前答案 [${results.join(', ')}]）。`;
+        }
+
         steps.push({
-          start: i, curWord, matched: [...Object.keys(seen).map(k => k + ' x' + seen[k])], found: [...foundIndices],
-          desc: `  位置 ${wordStart}: "${curWord}" ✓ 匹配成功 (${j+1}/${totalWords} 个单词已匹配)`,
-          action: 'match', matchResult: 'ok', matchCellStart: wordStart
+          offset: offset, left: left, right: right, windowCount: Object.assign({}, windowCount),
+          matched: matched, results: results.slice(), phase: 'update', word: word, inTarget: true,
+          removedAt: removedAt, removedWord: removedWord, recorded: recorded, note: note
         });
       } else {
+        windowCount = {};
+        matched = 0;
+        left = right + WORD_LEN;
         steps.push({
-          start: i, curWord, matched: [...Object.keys(seen).map(k => k + ' x' + seen[k])], found: [...foundIndices],
-          desc: `  位置 ${wordStart}: "${curWord}" ✗ 匹配失败 (不在words中或已用过) → 跳过起始位置 ${i}`,
-          action: 'match', matchResult: 'fail', matchCellStart: wordStart
+          offset: offset, left: left, right: right, windowCount: {}, matched: 0,
+          results: results.slice(), phase: 'update', word: word, inTarget: false,
+          removedAt: -1, removedWord: '', recorded: false,
+          note: `因为 "${word}" 不在 words 中，窗口在这里断开：清空窗口词频、matched 归零，left 直接跳到 ${left}（跳过这个非法单词），从下一个单词位置重新开始。任何跨越这个单词的窗口都不可能匹配，所以这样跳不会漏解。`
         });
-        break;
       }
     }
+  }
 
-    if (j === totalWords) {
-      foundIndices.push(i);
-      steps.push({
-        start: i, curWord: null, matched: [], found: [...foundIndices],
-        desc: `起始位置 ${i} 全部${totalWords}个单词匹配成功! 将 ${i} 加入结果列表 → 结果: [${foundIndices.join(', ')}]`,
-        action: 'all_matched', matchResult: 'ok', matchCellStart: -1
-      });
+  const answerCount = {};
+  if (results.length) {
+    for (let k = results[0]; k < results[0] + TOTAL_LEN; k += WORD_LEN) {
+      const w = s.slice(k, k + WORD_LEN);
+      answerCount[w] = (answerCount[w] || 0) + 1;
     }
   }
 
   steps.push({
-    start: -1, curWord: null, matched: [], found: [...foundIndices],
-    desc: `算法完成! 所有可能的起始位置已检查完毕 → 结果: [${foundIndices.join(', ')}]`,
-    action: 'done', matchResult: null, matchCellStart: -1
+    offset: -1, left: -1, right: -1, windowCount: answerCount, matched: results.length ? KINDS : 0,
+    results: results.slice(), phase: 'done', word: '', inTarget: false,
+    removedAt: -1, removedWord: '', recorded: false,
+    note: `${WORD_LEN} 种偏移全部扫描完毕。最终答案：[${results.join(', ')}]，对应子串 ${results.map(function (i) { return '"' + s.slice(i, i + TOTAL_LEN) + '"'; }).join('、')}。正确性：窗口被限制为恰好 ${TOTAL_LEN} 个字符，词频完全相等当且仅当这些单词恰好是 words 的一个排列；每个单词位置最多被左右指针各访问一次，所以总时间 O(wordLen × n)。`
   });
-})();
 
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-const stringRow = document.getElementById('stringRow');
-const sCells = [];
-
-// Build character cells grouped into chunks by wordLen
-const chunks = [];
-for (let i = 0; i < s.length; i += wordLen) {
-  const chunkStr = s.slice(i, Math.min(i + wordLen, s.length));
-  chunks.push({ start: i, text: chunkStr });
+  return steps;
 }
 
-chunks.forEach((chunk, ci) => {
-  const chunkDiv = document.createElement('div');
-  chunkDiv.className = 'chunk';
-  chunkDiv.id = 'chunk' + ci;
-  chunkDiv.style.position = 'relative';
+function charRow(step) {
+  const wrap = Demo.el('div', 'col');
+  const chars = S.split('');
+  const done = step.phase === 'done';
+  const showWindow = step.phase !== 'init' && step.phase !== 'done' && step.phase !== 'offset';
+  const winEnd = step.right + WORD_LEN;
+  const wordStart = step.right;
+  const wordEnd = step.right + WORD_LEN;
+  const perRow = 9;
+  let row = null;
 
-  const lettersDiv = document.createElement('div');
-  lettersDiv.className = 'chunk-letters';
+  chars.forEach(function (ch, idx) {
+    if (idx % perRow === 0) {
+      row = Demo.el('div', 'row');
+      wrap.appendChild(row);
+    }
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell cell--sm', Demo.esc(ch));
 
-  for (let k = 0; k < chunk.text.length; k++) {
-    const cell = document.createElement('div');
-    cell.className = 's-cell';
-    cell.id = 'sc' + (chunk.start + k);
-    // Alternate chunk colors
-    if (ci % 2 === 0) cell.classList.add('chunk-a-bg');
-    else cell.classList.add('chunk-b-bg');
-    cell.textContent = chunk.text[k];
-    lettersDiv.appendChild(cell);
-    sCells.push({ el: cell, idx: chunk.start + k });
+    if (done) {
+      const inAnswer = step.results.some(function (start) { return idx >= start && idx < start + TOTAL_LEN; });
+      cell.classList.add(inAnswer ? 'is-ok' : 'cell--dim');
+    } else if (showWindow && idx >= wordStart && idx < wordEnd) {
+      cell.classList.add('is-active');
+    } else if (showWindow && step.removedAt >= 0 && idx >= step.removedAt && idx < step.removedAt + WORD_LEN) {
+      cell.classList.add('is-warn');
+    } else if (showWindow && idx >= step.left && idx < winEnd) {
+      cell.classList.add(step.matched === KINDS ? 'is-ok' : 'is-info');
+    }
+    col.appendChild(cell);
+
+    const labels = [];
+    if (showWindow) {
+      if (idx === step.left) labels.push('left');
+      if (idx === step.right) labels.push('right');
+    }
+    const ptr = Demo.el('div', 'ptr', labels.length ? Demo.esc(labels.join(' ')) : String(idx));
+    if (!labels.length) ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    row.appendChild(col);
+  });
+
+  return wrap;
+}
+
+function countTable(step) {
+  const rows = Object.keys(TARGET_COUNT).map(function (w) {
+    const got = step.windowCount[w] || 0;
+    const need = TARGET_COUNT[w];
+    const state = got === need ? '已凑齐' : (got > need ? '超出' : '还差 ' + (need - got));
+    const active = step.phase !== 'done' && step.word === w;
+    return `<tr class="${active ? 'is-active' : ''}"><td>${Demo.esc(w)}</td><td>${got}</td>` +
+      `<td>${need}</td><td>${state}</td></tr>`;
+  }).join('');
+  return Demo.el('table', 'map-table',
+    `<tr><th>单词</th><th>窗口计数</th><th>目标</th><th>状态</th></tr>${rows}`);
+}
+
+Demo.create({
+  title: '32. 串联所有单词的子串 — 按单词跳跃的定长滑动窗口',
+  info: `输入：s = "${S}"，words = [${WORDS.map(function (w) { return '"' + w + '"'; }).join(', ')}]（示例 1，输出 [0, 9]）。串联子串长度固定为 ${TOTAL_LEN}，需要枚举 ${WORD_LEN} 种起点偏移。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 400,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前读入的单词' },
+    { color: 'var(--demo-info)', label: '当前窗口（≤ 固定长度）' },
+    { color: 'var(--demo-ok)', label: '词频完全匹配的窗口 / 最终答案' },
+    { color: 'var(--demo-warn)', label: '刚被移出窗口的单词' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const arrayPanel = Demo.el('div', 'panel');
+    arrayPanel.style.width = '100%';
+    arrayPanel.appendChild(Demo.el('div', 'panel__title',
+      step.phase === 'done'
+        ? '字符串 s（全部偏移扫描完毕）'
+        : (step.phase === 'init'
+          ? '字符串 s（尚未开始扫描）'
+          : `字符串 s（offset = ${step.offset} 这一轮，按步长 ${WORD_LEN} 切单词）`)));
+    arrayPanel.appendChild(charRow(step));
+    ctx.stage.appendChild(arrayPanel);
+
+    const mid = Demo.el('div', 'row');
+    const tablePanel = Demo.el('div', 'panel');
+    tablePanel.appendChild(Demo.el('div', 'panel__title',
+      step.phase === 'done' ? '答案窗口的词频 windowCount 与目标词频对照' : '窗口词频 windowCount 与目标词频对照'));
+    tablePanel.appendChild(countTable(step));
+    mid.appendChild(tablePanel);
+
+    const infoPanel = Demo.el('div', 'panel');
+    infoPanel.appendChild(Demo.el('div', 'panel__title', '窗口与匹配状态'));
+    const tagRow = Demo.el('div', 'row');
+    tagRow.appendChild(Demo.el('span', 'tag tag--info',
+      step.phase === 'init' || step.phase === 'done' || !step.word
+        ? '当前单词 = —'
+        : '当前单词 = "' + step.word + '"'));
+    const statusText = step.phase === 'init' || step.phase === 'done'
+      ? '等待扫描'
+      : (step.phase === 'offset' ? '新一轮开始' : (step.inTarget ? '在 words 中' : '不在 words 中'));
+    const statusClass = step.phase === 'init' || step.phase === 'done' || step.phase === 'offset'
+      ? ''
+      : (step.inTarget ? 'tag--ok' : 'tag--bad');
+    tagRow.appendChild(Demo.el('span', 'tag ' + statusClass, statusText));
+    infoPanel.appendChild(tagRow);
+
+    const tagRow2 = Demo.el('div', 'row');
+    tagRow2.style.marginTop = '6px';
+    tagRow2.appendChild(Demo.el('span', 'tag tag--violet',
+      Demo.esc('matched = ' + step.matched + ' / ' + KINDS)));
+    tagRow2.appendChild(Demo.el('span', 'tag',
+      Demo.esc('窗口 = [' + (step.phase === 'init' || step.phase === 'done' ? '—' : step.left) +
+        ', ' + (step.phase === 'init' || step.phase === 'done' ? '—' : step.right + WORD_LEN) + ')')));
+    if (step.recorded) tagRow2.appendChild(Demo.el('span', 'tag tag--ok', '匹配成功，记录起点'));
+    infoPanel.appendChild(tagRow2);
+    mid.appendChild(infoPanel);
+    ctx.stage.appendChild(mid);
+
+    const result = Demo.el('div', 'panel',
+      `targetCount 共 <strong>${KINDS}</strong> 种单词 ｜ offset = <strong>${step.phase === 'init' || step.phase === 'done' ? '—' : step.offset}</strong> ｜ left = <strong>${step.phase === 'done' ? '—' : step.left}</strong> ｜ 已找到起点 = <strong>[${step.results.join(', ')}]</strong>` +
+      (step.phase === 'done'
+        ? ` &nbsp;<span class="tag tag--ok">答案 = [${step.results.join(', ')}]</span>`
+        : ''));
+    result.style.width = '100%';
+    result.style.textAlign = 'center';
+    ctx.stage.appendChild(result);
   }
-
-  const circle = document.createElement('div');
-  circle.className = 'step-circle';
-  circle.id = 'circ' + ci;
-  chunkDiv.appendChild(circle);
-
-  const label = document.createElement('div');
-  label.className = 'chunk-label';
-  label.textContent = '[' + chunk.start + '] ' + chunk.text;
-  chunkDiv.appendChild(label);
-
-  chunkDiv.appendChild(lettersDiv.cloneNode ? null : lettersDiv);
-  // Reorder: circle, letters, label
-  chunkDiv.innerHTML = '';
-  chunkDiv.appendChild(circle);
-  chunkDiv.appendChild(lettersDiv);
-  chunkDiv.appendChild(label);
-
-  stringRow.appendChild(chunkDiv);
 });
-
-// Rebuild chunk circles reference
-const chunkCircles = [];
-chunks.forEach((_, ci) => {
-  chunkCircles.push(document.getElementById('circ' + ci));
-});
-
-function getCell(idx) {
-  for (const c of sCells) {
-    if (c.idx === idx) return c.el;
-  }
-  return null;
-}
-
-function render() {
-  const step = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = step.desc;
-  document.getElementById('startVal').textContent = step.start >= 0 ? step.start : '--';
-  document.getElementById('matchedVal').textContent = step.matched.length > 0 ? step.matched.join(', ') : '--';
-  document.getElementById('foundVal').textContent = '[' + step.found.join(', ') + ']';
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
-
-  const rText = document.getElementById('resultText');
-  if (current >= steps.length - 1) {
-    rText.textContent = '结果: [' + step.found.join(', ') + ']';
-    rText.style.color = 'var(--highlight-green)';
-  } else {
-    rText.textContent = '进行中...';
-    rText.style.color = 'var(--highlight-blue)';
-  }
-
-  // Reset all cells
-  sCells.forEach(c => { c.el.classList.remove('win-active', 'match-ok', 'match-fail'); });
-  chunkCircles.forEach(c => { if (c) { c.classList.remove('visible'); c.textContent = ''; } });
-
-  // Highlight window range
-  if (step.start >= 0 && step.action !== 'init') {
-    const end = step.start + totalLen - 1;
-    for (let i = step.start; i <= end && i < s.length; i++) {
-      const cell = getCell(i);
-      if (cell) cell.classList.add('win-active');
-    }
-  }
-
-  // Highlight match/fail cell
-  if (step.matchCellStart >= 0) {
-    const chunkIdx = Math.floor(step.matchCellStart / wordLen);
-    if (chunkCircles[chunkIdx]) {
-      chunkCircles[chunkIdx].textContent = current;
-      chunkCircles[chunkIdx].classList.add('visible');
-    }
-    for (let i = step.matchCellStart; i < step.matchCellStart + wordLen && i < s.length; i++) {
-      const cell = getCell(i);
-      if (cell) {
-        if (step.matchResult === 'ok') cell.classList.add('match-ok');
-        else cell.classList.add('match-fail');
-      }
-    }
-  }
-
-  // All matched - highlight all
-  if (step.action === 'all_matched' && step.start >= 0) {
-    const end = step.start + totalLen - 1;
-    for (let i = step.start; i <= end && i < s.length; i++) {
-      const cell = getCell(i);
-      if (cell) { cell.classList.add('match-ok'); cell.classList.remove('win-active'); }
-    }
-  }
-
-  // Update match panel
-  const mp = document.getElementById('matchPanel');
-  if (step.start >= 0 && step.action !== 'init' && step.action !== 'done') {
-    let tagsHtml = '';
-    if (step.matched.length > 0) {
-      step.matched.forEach(m => {
-        tagsHtml += '<span class="word-tag found">' + m + '</span> ';
-      });
-    } else {
-      tagsHtml = '<span style="color:var(--muted);font-size:12px;">空</span>';
-    }
-    mp.innerHTML = '<h4>当前窗口匹配状态</h4>' + tagsHtml;
-  } else if (step.action === 'done') {
-    mp.innerHTML = '<h4>当前窗口匹配状态</h4><span style="color:var(--highlight-green);font-size:12px;">算法完成!</span>';
-  } else {
-    mp.innerHTML = '<h4>当前窗口匹配状态</h4><span style="color:var(--muted);font-size:12px;">等待开始...</span>';
-  }
-}
-
-function goStep(n) {
-  current = Math.max(0, Math.min(n, steps.length - 1));
-  render();
-}
-
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer);
-    autoRunning = false;
-    document.getElementById('playBtn').innerHTML = '&#x25B6; 自动播放';
-    document.getElementById('playBtn').classList.remove('play-btn');
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-  } else {
-    autoRunning = true;
-    document.getElementById('playBtn').innerHTML = '&#x23F8; 暂停';
-    document.getElementById('playBtn').classList.add('play-btn');
-    document.getElementById('playBtn').style.background = 'var(--highlight-blue)';
-    document.getElementById('playBtn').style.color = '#fff';
-    if (current >= steps.length - 1) goStep(0);
-    autoTimer = setInterval(() => {
-      if (current < steps.length - 1) goStep(current + 1);
-      else toggleAuto();
-    }, 1200);
-  }
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
-});
-
-render();
 </script>
 </body>
 </html>

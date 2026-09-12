@@ -1,305 +1,193 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root {
-    --bg: #fff; --text: #333; --muted: #888;
-    --cell-bg: #fafafa; --cell-border: #d0d0d0;
-    --header: #222; --sub-bg: #f5f5f5;
-    --btn-bg: #f0f0f0; --btn-hover: #e0e0e0;
-    --seq-color: #388E3C; --cur-color: #1976D2;
-    --colors: #E53935 #FF9800 #1976D2 #388E3C;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a2e; --text: #ddd; --muted: #aaa;
-      --cell-bg: #222; --cell-border: #444;
-      --header: #ddd; --btn-bg: #333; --btn-hover: #444;
-      --sub-bg: #252540;
-    }
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    display: flex; justify-content: center; padding: 16px 20px;
-  }
-  .container { max-width: 840px; width: 100%; }
-  h2 { text-align: center; color: var(--header); font-size: 18px; margin-bottom: 4px; }
-  .sub-title { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
-
-  .info-bar {
-    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
-    font-size: 14px; flex-wrap: wrap;
-  }
-  .step-num { font-weight: bold; font-size: 24px; color: #1976D2; min-width: 36px; text-align: center; }
-  .step-desc { color: var(--muted); font-size: 13px; max-width: 560px; text-align: center; }
-
-  .arr-row { display: flex; align-items: center; gap: 4px; justify-content: center; margin-bottom: 6px; flex-wrap: wrap; }
-  .acell {
-    width: 56px; height: 48px; border: 2px solid var(--cell-border); border-radius: 8px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-size: 20px; font-weight: bold; background: var(--cell-bg); color: var(--text);
-    transition: border-color 0.25s, background 0.25s, transform 0.15s;
-  }
-  .acell .ai { font-size: 9px; color: var(--muted); }
-  .acell.cur { border-color: var(--cur-color); background: rgba(25,118,210,0.12); transform: scale(1.06); z-index: 2; }
-  .acell.seq0 { border-color: #E53935; background: rgba(229,57,53,0.1); }
-  .acell.seq1 { border-color: #FF9800; background: rgba(255,152,0,0.1); }
-  .acell.seq2 { border-color: #1976D2; background: rgba(25,118,210,0.1); }
-
-  .seq-panel {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 6px; text-align: center; font-size: 13px;
-  }
-  .seq-row { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 4px; flex-wrap: wrap; }
-  .seq-member {
-    padding: 4px 10px; border: 2px solid; border-radius: 8px;
-    font-weight: bold; font-size: 16px; font-family: monospace;
-  }
-
-  .result-row {
-    background: var(--sub-bg); border-radius: 8px; padding: 8px 14px;
-    margin-bottom: 6px; font-size: 13px; text-align: center;
-  }
-  .result-row .highlight { font-weight: bold; font-size: 15px; }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
-  }
-  button {
-    padding: 8px 18px; border: 1px solid var(--cell-border); border-radius: 6px;
-    background: var(--btn-bg); color: var(--text); font-size: 13px;
-    cursor: pointer; transition: 0.15s;
-  }
-  button:hover { background: var(--btn-hover); }
-  button:active { transform: scale(0.96); }
-  button:disabled { opacity: 0.35; cursor: default; }
-  button.play-btn { background: #1976D2; color: #fff; border-color: #1565C0; }
-  button.play-btn:hover { background: #1565C0; }
-</style>
+<title>47. 最长连续序列 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>最长连续序列 — 哈希集合查找演示</h2>
-  <div class="sub-title">nums=[100,4,200,1,3,2] &rarr; 最长连续序列: [1,2,3,4] 长度=4</div>
-
-  <div class="info-bar">
-    <span class="step-num" id="stepNum">0</span>
-    <span class="step-desc" id="stepDesc">初始状态 · 点击「下一步」开始</span>
-  </div>
-
-  <div class="arr-row" id="arrRow"></div>
-
-  <div class="seq-panel">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:3px;">连续序列</div>
-    <div id="seqContainer"><span style="color:var(--muted);font-size:12px;">暂无</span></div>
-  </div>
-
-  <div class="result-row">
-    <span style="color:var(--muted)">最长: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span>
-  </div>
-
-  <div class="controls">
-    <button onclick="goStep(0)">&#x23EE; 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
-    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
-  </div>
-</div>
-
+<script src="demo.js"></script>
 <script>
-const nums = [100, 4, 200, 1, 3, 2];
-const n = nums.length;
-const numSet = new Set(nums);
+const NUMS = [100, 4, 200, 1, 3, 2];
 
-const steps = [];
-const foundSequences = [];
-let maxLen = 0, maxSeq = [];
+function buildSteps() {
+  const steps = [];
+  const set = new Set(NUMS);
+  const sorted = Array.from(set).sort(function (a, b) { return a - b; });
+  let longest = 0;
 
-function simulate() {
-  steps.push({
-    desc: '初始状态 · nums=[100,4,200,1,3,2], 建立哈希集合: {' + [...numSet].join(',') + '}',
-    phase: 'init', idx: -1, hl: [], seqDisplay: [], maxLen: 0, maxSeq: [],
-    result: 'init'
+  function snap(extra) {
+    const step = { longest: longest, note: extra.note };
+    Object.keys(extra).forEach(function (key) {
+      if (key !== 'note') step[key] = extra[key];
+    });
+    steps.push(step);
+  }
+
+  snap({
+    phase: 'init', i: -1, num: null, query: null, queryFound: false, run: [], len: 0, skip: false,
+    note: `先把所有数字放进哈希集合：{${sorted.join(', ')}}，这样判断「某个数在不在」只需 O(1)。然后遍历原数组，对每个数 num 检查 num − 1 是否也在集合里：如果在，说明 num 只是某个更长序列的中间点，跳过它；如果不在，num 就是一个序列的起点，从它出发向右延伸数长度。这样每个数最多被访问两次，整体 O(n)。`
   });
 
-  for (let i = 0; i < n; i++) {
-    const val = nums[i];
+  NUMS.forEach(function (num, i) {
+    const hasPrev = set.has(num - 1);
 
-    if (!numSet.has(val - 1)) {
-      // Start of a sequence
-      steps.push({
-        desc: '发现序列起点: nums[' + i + ']=' + val + ' (集合中无' + (val-1) + ')',
-        phase: 'start', idx: i, hl: [[i, 'cur']],
-        seqDisplay: foundSequences.map(s => [...s]),
-        maxLen, maxSeq: [...maxSeq],
-        result: 'checking'
+    if (hasPrev) {
+      snap({
+        phase: 'skip', i: i, num: num, query: num - 1, queryFound: true, run: [], len: 0, skip: true,
+        note: `处理 num = ${num}：查询 num − 1 = ${num - 1}，它存在于集合中，说明 ${num} 不是序列起点（从 ${num - 1} 开始数会得到更长的序列），直接跳过，不做任何延伸。正是这一步保证每个数字只被当作起点统计一次，复杂度才是 O(n) 而不是 O(n²)。`
       });
+      return;
+    }
 
-      let cur = val;
-      let curSeq = [cur];
-      let stepIdx = 0;
-      while (numSet.has(cur + 1)) {
-        stepIdx++;
-        cur++;
-        curSeq.push(cur);
-        const posIdx = nums.indexOf(cur);
-        steps.push({
-          desc: '延伸序列: 集合中有' + cur + ', 加入序列. 当前序列: [' + curSeq.join(',') + ']',
-          phase: 'extend', idx: i, hl: [[i, 'cur']],
-          seqDisplay: foundSequences.map(s => [...s]),
-          curSeq: [...curSeq],
-          maxLen: Math.max(maxLen, curSeq.length),
-          maxSeq: curSeq.length > maxLen ? [...curSeq] : [...maxSeq],
-          result: 'checking'
-        });
-      }
+    snap({
+      phase: 'start', i: i, num: num, query: num - 1, queryFound: false, run: [num], len: 1, skip: false,
+      note: `处理 num = ${num}：查询 num − 1 = ${num - 1}，它不在集合中，说明 ${num} 是一个连续序列的起点。从它开始向右延伸，当前序列 [${num}]，长度 1。`
+    });
 
-      foundSequences.push([...curSeq]);
-      if (curSeq.length > maxLen) {
-        maxLen = curSeq.length;
-        maxSeq = [...curSeq];
-      }
+    let cur = num;
+    let len = 1;
+    const run = [num];
 
-      const clsIdx = foundSequences.length - 1;
-      steps.push({
-        desc: '序列[' + curSeq.join(',') + '] 长度=' + curSeq.length + ', 当前最长=' + maxLen,
-        phase: 'seq-done', idx: i,
-        hl: nums.map((v, j) => [j, curSeq.includes(v) ? 'seq' + (clsIdx % 3) : '']),
-        seqDisplay: foundSequences.map(s => [...s]),
-        maxLen, maxSeq: [...maxSeq],
-        result: 'checking'
-      });
-    } else {
-      steps.push({
-        desc: '跳过 nums[' + i + ']=' + val + ' (集合中有' + (val-1) + ', 不是序列起点)',
-        phase: 'skip', idx: i, hl: [[i, 'cur']],
-        seqDisplay: foundSequences.map(s => [...s]),
-        maxLen, maxSeq: [...maxSeq],
-        result: 'checking'
+    while (set.has(cur + 1)) {
+      cur += 1;
+      len += 1;
+      run.push(cur);
+      snap({
+        phase: 'extend', i: i, num: num, query: cur, queryFound: true, run: run.slice(), len: len, skip: false,
+        note: `查询 ${cur - 1} + 1 = ${cur}，它在集合中，于是把 ${cur} 接到序列末尾，序列变成 [${run.join(', ')}]，当前长度 ${len}。继续看下一个数还在不在。`
       });
     }
-  }
 
-  steps.push({
-    desc: '查找完成! 最长连续序列: [' + maxSeq.join(',') + '], 长度=' + maxLen,
-    phase: 'done', idx: -1,
-    hl: maxSeq.map(v => [nums.indexOf(v), 'seq0']),
-    seqDisplay: foundSequences.map(s => [...s]),
-    maxLen, maxSeq: [...maxSeq],
-    result: 'done'
-  });
-}
+    const next = cur + 1;
+    const prevLongest = longest;
+    const improved = len > longest;
+    if (improved) longest = len;
 
-simulate();
-
-let current = 0;
-let autoTimer = null;
-let autoRunning = false;
-
-const arrRow = document.getElementById('arrRow');
-nums.forEach((v, i) => {
-  const cell = document.createElement('div');
-  cell.className = 'acell'; cell.id = 'ac' + i;
-  cell.innerHTML = v + '<span class="ai">[' + i + ']</span>';
-  arrRow.appendChild(cell);
-});
-
-function render() {
-  const s = steps[current];
-  document.getElementById('stepNum').textContent = current;
-  document.getElementById('stepDesc').textContent = s.desc;
-
-  for (let i = 0; i < n; i++) document.getElementById('ac' + i).className = 'acell';
-  if (s.hl) s.hl.forEach(([i, cls]) => {
-    if (cls) document.getElementById('ac' + i).className = 'acell ' + cls;
+    snap({
+      phase: 'update', i: i, num: num, query: next, queryFound: false, run: run.slice(), len: len,
+      prevLongest: prevLongest, improved: improved, skip: false,
+      note: `查询 ${cur} + 1 = ${next}，它不在集合中，序列到此结束，长度为 ${len}。与历史最长 ${prevLongest} 比较：` +
+        (improved ? `${len} > ${prevLongest}，更新 longest = ${len}。` : `${len} ≤ ${prevLongest}，longest 保持不变。`) +
+        ` 注意延伸过程只用了哈希查找，总查找次数与数字个数成正比。`
+    });
   });
 
-  // Seq display
-  const seqContainer = document.getElementById('seqContainer');
-  seqContainer.innerHTML = '';
-  if (s.seqDisplay && s.seqDisplay.length > 0) {
-    s.seqDisplay.forEach((seq, si) => {
-      const row = document.createElement('div');
-      row.className = 'seq-row';
-      seq.forEach(v => {
-        const span = document.createElement('span');
-        span.className = 'seq-member';
-        span.style.borderColor = ['#E53935','#FF9800','#1976D2'][si % 3];
-        span.style.color = ['#E53935','#FF9800','#1976D2'][si % 3];
-        span.style.background = ['rgba(229,57,53,0.08)','rgba(255,152,0,0.08)','rgba(25,118,210,0.08)'][si % 3];
-        span.textContent = v;
-        row.appendChild(span);
-      });
-      seqContainer.appendChild(row);
+  snap({
+    phase: 'done', i: NUMS.length, num: null, query: null, queryFound: false,
+    run: [1, 2, 3, 4], len: 4, skip: false,
+    note: `数组遍历完毕，全程记录的最长长度是 ${longest}，对应序列 [1, 2, 3, 4]。虽然这些数字在数组里并不相邻，但哈希集合只关心「值是否连续」。复杂度：时间 O(n)，空间 O(n)。`
+  });
+
+  return steps;
+}
+
+function arrayPanel(step) {
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.appendChild(Demo.el('div', 'panel__title', '输入数组 nums（按原顺序遍历）'));
+  const row = Demo.el('div', 'row');
+  NUMS.forEach(function (num, i) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(num));
+    if (i === step.i && step.phase !== 'done') cell.classList.add('is-active');
+    else if (i < step.i || step.phase === 'done') cell.classList.add('cell--dim');
+    col.appendChild(cell);
+    const ptr = Demo.el('div', 'ptr', String(i));
+    if (i !== step.i) ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    row.appendChild(col);
+  });
+  panel.appendChild(row);
+  return panel;
+}
+
+function setPanel(step) {
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.appendChild(Demo.el('div', 'panel__title', '哈希集合（已排序显示，方便观察连续性）'));
+  const sorted = Array.from(new Set(NUMS)).sort(function (a, b) { return a - b; });
+  const row = Demo.el('div', 'row');
+  sorted.forEach(function (value) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell cell--sm', Demo.esc(value));
+    if (step.query === value && step.phase !== 'init') cell.classList.add(step.queryFound ? 'is-ok' : 'is-bad');
+    else if (step.run.indexOf(value) >= 0) cell.classList.add('is-active');
+    col.appendChild(cell);
+    const label = Demo.el('div', 'ptr', step.query === value ? (step.queryFound ? '在' : '不在') : '·');
+    if (step.query !== value) label.classList.add('ptr--dim');
+    col.appendChild(label);
+    row.appendChild(col);
+  });
+  panel.appendChild(row);
+  return panel;
+}
+
+function runPanel(step) {
+  const panel = Demo.el('div', 'panel');
+  panel.style.width = '100%';
+  panel.appendChild(Demo.el('div', 'panel__title', '当前正在延伸的连续序列'));
+  const row = Demo.el('div', 'row');
+  if (step.run.length === 0) {
+    row.appendChild(Demo.el('span', 'tag tag--info', step.phase === 'skip' ? '不是起点，跳过' : '（尚未开始）'));
+  } else {
+    step.run.forEach(function (value, idx) {
+      if (idx > 0) row.appendChild(Demo.el('div', 'arrow', '→'));
+      const cell = Demo.el('div', 'cell', Demo.esc(value));
+      if (idx === step.run.length - 1 && step.phase !== 'update') cell.classList.add('is-active');
+      else cell.classList.add('is-ok');
+      row.appendChild(cell);
     });
-  } else if (s.curSeq) {
-    const row = document.createElement('div');
-    row.className = 'seq-row';
-    s.curSeq.forEach(v => {
-      const span = document.createElement('span');
-      span.className = 'seq-member';
-      span.style.borderColor = '#1976D2'; span.style.color = '#1976D2';
-      span.style.background = 'rgba(25,118,210,0.08)';
-      span.textContent = v;
-      row.appendChild(span);
-    });
-    seqContainer.appendChild(row);
-  } else {
-    seqContainer.innerHTML = '<span style="color:var(--muted);font-size:12px;">暂无</span>';
   }
+  panel.appendChild(row);
 
-  const rt = document.getElementById('resultText');
-  if (s.result === 'done') {
-    rt.textContent = s.maxLen + ' (序列: [' + s.maxSeq.join(',') + '])';
-    rt.style.color = '#388E3C';
-  } else if (s.result === 'init') {
-    rt.textContent = '进行中...'; rt.style.color = '#1976D2';
-  } else {
-    rt.textContent = (s.maxLen || '--'); rt.style.color = '#1976D2';
-  }
-
-  document.getElementById('prevBtn').disabled = current <= 0;
-  document.getElementById('nextBtn').disabled = current >= steps.length - 1;
+  const tags = Demo.el('div', 'row');
+  tags.style.marginTop = '6px';
+  tags.appendChild(Demo.el('span', 'tag tag--violet', '当前长度 = ' + step.len));
+  tags.appendChild(Demo.el('span', 'tag tag--ok', '历史最长 = ' + step.longest));
+  panel.appendChild(tags);
+  return panel;
 }
 
-function goStep(n) {
-  current = Math.max(0, Math.min(n, steps.length - 1));
-  render();
-}
+Demo.create({
+  title: '47. 最长连续序列 — 只从序列起点向右延伸',
+  info: `输入：nums = [${NUMS.join(', ')}]（示例 1，输出 4，最长序列为 [1,2,3,4]）。先用哈希集合换 O(1) 查找，再让每个连续序列只被它的起点统计一次。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 420,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前遍历的元素 / 已延伸的序列' },
+    { color: 'var(--demo-ok)', label: '查询命中：该数存在于集合中' },
+    { color: 'var(--demo-danger)', label: '查询落空：序列在这里断开' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
 
-function toggleAuto() {
-  if (autoRunning) {
-    clearInterval(autoTimer); autoRunning = false;
-    document.getElementById('playBtn').textContent = '\u25B6 自动播放';
-    document.getElementById('playBtn').style.background = '';
-    document.getElementById('playBtn').style.color = '';
-    document.getElementById('playBtn').classList.remove('play-btn');
-  } else {
-    autoRunning = true;
-    document.getElementById('playBtn').textContent = '\u23F8 暂停';
-    document.getElementById('playBtn').style.background = '#1976D2';
-    document.getElementById('playBtn').style.color = '#fff';
-    document.getElementById('playBtn').classList.add('play-btn');
-    if (current >= steps.length - 1) goStep(0);
-    autoTimer = setInterval(function() {
-      if (current < steps.length - 1) goStep(current + 1);
-      else toggleAuto();
-    }, 1000);
+    ctx.stage.appendChild(arrayPanel(step));
+    ctx.stage.appendChild(setPanel(step));
+    ctx.stage.appendChild(runPanel(step));
+
+    const state = Demo.el('div', 'panel');
+    state.style.width = '100%';
+    state.style.textAlign = 'center';
+    if (step.phase === 'init') {
+      state.innerHTML = `集合中共 ${new Set(NUMS).size} 个不同的数 &nbsp;<span class="tag tag--warn">准备开始遍历</span>`;
+    } else if (step.phase === 'skip') {
+      state.innerHTML = `${step.num - 1} 在集合中，${step.num} 不是起点 &nbsp;<span class="tag tag--info">跳过</span>`;
+    } else if (step.phase === 'start') {
+      state.innerHTML = `${Demo.esc(step.num)} − 1 不在集合中，${Demo.esc(step.num)} 作为起点 &nbsp;<span class="tag tag--warn">开始延伸</span>`;
+    } else if (step.phase === 'extend') {
+      state.innerHTML = `找到 ${step.query}，序列长度增加到 ${step.len} &nbsp;<span class="tag tag--ok">继续向右找</span>`;
+    } else if (step.phase === 'update') {
+      state.innerHTML = `序列 [${step.run.join(', ')}] 长度为 ${step.len} &nbsp;` +
+        (step.improved ? '<span class="tag tag--ok">刷新 longest</span>' : '<span class="tag tag--info">未能刷新</span>');
+    } else {
+      state.innerHTML = `最长连续序列长度 = ${step.longest} &nbsp;<span class="tag tag--ok">返回 ${step.longest}</span>`;
+    }
+    ctx.stage.appendChild(state);
   }
-}
-
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'ArrowRight') goStep(current + 1);
-  if (e.key === 'ArrowLeft') goStep(current - 1);
-  if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
 });
-
-render();
 </script>
 </body>
 </html>

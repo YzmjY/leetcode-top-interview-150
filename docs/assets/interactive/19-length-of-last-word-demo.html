@@ -3,172 +3,150 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>19. 最后一个单词的长度</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:#f8f9fa;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
-.container{width:100%;max-width:680px;background:#fff;border-radius:16px;box-shadow:0 2px 16px rgba(0,0,0,.08);padding:28px 24px 20px}
-h1{font-size:20px;font-weight:600;text-align:center;margin-bottom:6px;color:#1a1a2e}
-.subtitle{text-align:center;font-size:13px;color:#888;margin-bottom:16px}
-.grid-wrapper{display:flex;justify-content:center;margin-bottom:12px}
-.grid{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
-.cell{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:500;border-radius:8px;border:1.5px solid #ddd;background:#fff;color:#333;transition:all .25s;position:relative}
-.cell::after{content:attr(data-idx);position:absolute;bottom:2px;right:5px;font-size:9px;color:#aaa;font-weight:400}
-.cell.scanning{background:#dbeafe;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.25);z-index:1}
-.cell.skip{background:#f1f5f9;border-color:#cbd5e1;color:#94a3b8}
-.cell.highlight{background:#bbf7d0;border-color:#22c55e;color:#14532d}
-.cell.space{color:#ccc}
-.info-panel{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin-bottom:14px;text-align:center;font-size:14px;color:#475569;min-height:44px;display:flex;align-items:center;justify-content:center}
-.info-panel .step-num{font-weight:600;color:#3b82f6;margin-right:6px}
-.btn-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-.btn{padding:8px 16px;border-radius:8px;border:1px solid #d1d5db;background:#fff;cursor:pointer;font-size:13px;font-family:inherit;color:#374151;transition:all .2s;white-space:nowrap}
-.btn:hover{background:#f3f4f6}
-.btn:active{background:#e5e7eb}
-.btn.primary{background:#3b82f6;color:#fff;border-color:#3b82f6}
-.btn.primary:hover{background:#2563eb}
-.btn:disabled{opacity:.4;cursor:not-allowed}
-.result-badge{display:inline-block;padding:4px 14px;border-radius:20px;background:#dcfce7;color:#166534;font-weight:600;font-size:15px;margin-left:8px}
-@media(prefers-color-scheme:dark){
-body{background:#0f172a}
-.container{background:#1e293b;box-shadow:0 2px 16px rgba(0,0,0,.4)}
-h1{color:#e2e8f0}
-.subtitle{color:#94a3b8}
-.cell{background:#1e293b;border-color:#334155;color:#cbd5e1}
-.cell::after{color:#64748b}
-.cell.scanning{background:rgba(59,130,246,.2);border-color:#3b82f6}
-.cell.skip{background:rgba(100,116,139,.15);border-color:#475569;color:#64748b}
-.cell.highlight{background:rgba(34,197,94,.2);border-color:#22c55e;color:#86efac}
-.cell.space{color:#475569}
-.info-panel{background:#0f172a;border-color:#334155;color:#cbd5e1}
-.info-panel .step-num{color:#60a5fa}
-.btn{background:#1e293b;border-color:#475569;color:#cbd5e1}
-.btn:hover{background:#334155}
-.btn.primary{background:#3b82f6;color:#fff;border-color:#3b82f6}
-.result-badge{background:rgba(34,197,94,.2);color:#86efac}
-}
-</style>
+<title>19. 最后一个单词的长度 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h1>19. 最后一个单词的长度</h1>
-<div class="subtitle">s = "Hello World" &nbsp; 预期输出: 5</div>
-<div class="grid-wrapper"><div class="grid" id="grid"></div></div>
-<div class="info-panel" id="info"><span class="step-num">准备</span>点击"下一步"或按 → 开始</div>
-<div class="btn-row">
-<button class="btn" id="btnReset" title="重置">↺ 重置</button>
-<button class="btn" id="btnPrev" title="上一步 (←)">◀ 上一步</button>
-<button class="btn primary" id="btnNext" title="下一步 (→)">下一步 ▶</button>
-<button class="btn" id="btnAuto" title="自动播放 (空格)">▶ 自动播放</button>
-<button class="btn" id="btnLast" title="跳到最后">⏭ 最后</button>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const S = "Hello World";
-const chars = [...S];
-const totalSteps = chars.length + 6; // scan right to left, skip spaces, count + show result
+const S = '   fly me   to   the moon  ';
 
-let step = 0;
-let autoTimer = null;
+function buildSteps() {
+  const chars = S.split('');
+  const n = chars.length;
+  const steps = [];
+  let index = n - 1;
+  let length = 0;
+  let wordEnd = -1;
+  let wordStart = -1;
 
-const grid = document.getElementById('grid');
-const info = document.getElementById('info');
-const btnReset = document.getElementById('btnReset');
-const btnPrev = document.getElementById('btnPrev');
-const btnNext = document.getElementById('btnNext');
-const btnAuto = document.getElementById('btnAuto');
-const btnLast = document.getElementById('btnLast');
-
-function buildGrid() {
-  grid.innerHTML = '';
-  chars.forEach((ch, i) => {
-    const cell = document.createElement('div');
-    cell.className = 'cell';
-    cell.textContent = ch;
-    cell.setAttribute('data-idx', i);
-    if (ch === ' ') cell.classList.add('space');
-    grid.appendChild(cell);
+  steps.push({
+    index: index, length: 0, phase: 'init', wordEnd: -1, wordStart: -1, done: false,
+    note: `初始化：s = "${S}"，指针 index 指向字符串最后一个字符（下标 ${index}），计数器 length = 0。先从右往左跳过末尾空格。`
   });
+
+  while (index >= 0 && chars[index] === ' ') {
+    steps.push({
+      index: index, length: 0, phase: 'skip', wordEnd: -1, wordStart: -1, done: false,
+      note: `s[${index}] 是空格：它是尾随空格，不属于任何一个单词，直接跳过，index 左移。length 仍为 0。`
+    });
+    index--;
+  }
+
+  wordEnd = index;
+
+  while (index >= 0 && chars[index] !== ' ') {
+    length++;
+    wordStart = index;
+    steps.push({
+      index: index, length: length, phase: 'count', wordEnd: wordEnd, wordStart: wordStart, done: false,
+      note: `s[${index}] = '${chars[index]}' 是字母：说明还处在最后一个单词内部，length 累加为 ${length}，index 继续左移，去数单词的下一个字符。`
+    });
+    index--;
+  }
+
+  const stopText = index < 0
+    ? '已经走到字符串开头'
+    : `停在 s[${index}] 的空格上（或字符串开头）`;
+
+  steps.push({
+    index: index, length: length, phase: 'done', wordEnd: wordEnd, wordStart: wordStart, done: true,
+    note: `指针${stopText}，说明单词的起点已经找到，计数结束。最后一个单词是 "${S.slice(wordStart, wordEnd + 1)}"，长度为 ${length}。整个过程只用了 index 和 length 两个变量。`
+  });
+
+  return steps;
 }
 
-function render() {
-  const cells = grid.querySelectorAll('.cell');
-  cells.forEach(c => { c.className = 'cell'; if (c.textContent === ' ') c.classList.add('space'); });
-  if (step === 0) {
-    info.innerHTML = '<span class="step-num">准备</span>从右向左扫描，跳过末尾空格后计数最后一个单词的长度';
-    updateButtons();
-    return;
+function charColumn(ch, idx, step) {
+  const col = Demo.el('div', 'col');
+  const isSpace = ch === ' ';
+  const inWord = step.wordStart >= 0 && idx >= step.wordStart && idx <= step.wordEnd;
+  const passed = step.index >= 0 && idx > step.index;
+
+  const cell = Demo.el('div', 'cell' + (isSpace ? ' cell--empty' : ''),
+    isSpace ? '&nbsp;' : Demo.esc(ch));
+
+  if (idx === step.index && !step.done) cell.classList.add('is-active');
+  else if (inWord) cell.classList.add('is-ok');
+  else if (step.done) cell.classList.add('cell--dim');
+  else if (passed) cell.classList.add('is-warn');
+
+  col.appendChild(cell);
+
+  const labels = [];
+  if (idx === step.index && !step.done) labels.push('index');
+  const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : String(idx));
+  if (labels.length) {
+    ptr.classList.add('ptr--info');
+  } else if (inWord) {
+    ptr.classList.add('ptr--ok');
+  } else {
+    ptr.classList.add('ptr--dim');
   }
-  // Steps 1..chars.length: scanning from right, showing scan pointer (current idx from right)
-  // Actually step 1..chars.length correspond to scanning positions from rightmost index
-  const rightIdx = chars.length - step;
-  if (step >= 1 && step <= chars.length) {
-    if (rightIdx >= 0) {
-      cells[rightIdx].classList.add('scanning');
+  col.appendChild(ptr);
+
+  return col;
+}
+
+Demo.create({
+  title: '19. 最后一个单词的长度 — 从右向左，先跳空格再计数',
+  info: `输入：s = "${S}"（示例 2），预期输出 4。空格用虚线方块表示。`,
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 260,
+  legend: [
+    { color: 'var(--demo-accent)', label: '指针 index 当前指向' },
+    { color: 'var(--demo-ok)', label: '最后一个单词（被计数）' },
+    { color: 'var(--demo-warn)', label: '已跳过的尾随空格' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title',
+      step.done ? '扫描结束，最后一个单词已定位' : '字符串 s（下标从左到右递增，指针从右端开始）'));
+    const row = Demo.el('div', 'row');
+    S.split('').forEach(function (ch, idx) {
+      row.appendChild(charColumn(ch, idx, step));
+    });
+    panel.appendChild(row);
+    ctx.stage.appendChild(panel);
+
+    const stateRow = Demo.el('div', 'row');
+    stateRow.style.width = '100%';
+
+    const phaseText = step.phase === 'init' ? '准备'
+      : step.phase === 'skip' ? '阶段 1：跳过尾随空格'
+        : step.phase === 'count' ? '阶段 2：统计单词长度' : '完成';
+
+    const statusPanel = Demo.el('div', 'panel');
+    statusPanel.style.flex = '1';
+    statusPanel.style.textAlign = 'center';
+    statusPanel.appendChild(Demo.el('div', 'panel__title', phaseText));
+    statusPanel.appendChild(Demo.el('div', null,
+      `index = <strong>${step.index < 0 ? '−1（已到开头）' : step.index}</strong>` +
+      ` &nbsp;|&nbsp; length = <strong>${step.length}</strong>`));
+    stateRow.appendChild(statusPanel);
+
+    ctx.stage.appendChild(stateRow);
+
+    const result = Demo.el('div', 'panel');
+    result.style.width = '100%';
+    result.style.textAlign = 'center';
+    if (step.done) {
+      result.innerHTML = `最后一个单词 "${Demo.esc(S.slice(step.wordStart, step.wordEnd + 1))}" 的长度 = ` +
+        `<span class="tag tag--ok">${step.length}</span>`;
+    } else if (step.phase === 'skip') {
+      result.innerHTML = '还在跳过末尾的空格，length 保持 0（尾随空格不算单词）';
+    } else if (step.phase === 'count') {
+      result.innerHTML = `正在从右往左数最后一个单词：目前 length = <strong>${step.length}</strong>`;
+    } else {
+      result.innerHTML = '点「下一步」开始从字符串末尾扫描';
     }
-    info.innerHTML = `<span class="step-num">步骤 ${step}</span>扫描位置: 索引 ${rightIdx >= 0 ? rightIdx : 'N/A'}，字符 "${rightIdx >= 0 ? chars[rightIdx] : 'N/A'}"${rightIdx >= 0 && chars[rightIdx] === ' ' ? ' (空格，跳过)' : ''}`;
+    ctx.stage.appendChild(result);
   }
-  // Step chars.length+1: All spaces skipped
-  if (step === chars.length + 1) {
-    info.innerHTML = '<span class="step-num">步骤 ' + step + '</span>已跳过末尾空格，现在从 "d" 开始计数';
-    // Highlight the counting zone: indices 6-10 for "World"
-    for (let i = 6; i <= 10; i++) cells[i].classList.add('highlight');
-    document.querySelector('.result-badge')?.remove();
-  }
-  if (step === chars.length + 2) {
-    info.innerHTML = '<span class="step-num">步骤 ' + step + '</span>计数 "d" → 1';
-    for (let i = 6; i <= 10; i++) cells[i].classList.add('highlight');
-  }
-  if (step === chars.length + 3) {
-    info.innerHTML = '<span class="step-num">步骤 ' + step + '</span>计数 "l" → 2';
-    for (let i = 6; i <= 10; i++) cells[i].classList.add('highlight');
-  }
-  if (step === chars.length + 4) {
-    info.innerHTML = '<span class="step-num">步骤 ' + step + '</span>计数 "r" → 3';
-    for (let i = 6; i <= 10; i++) cells[i].classList.add('highlight');
-  }
-  if (step === chars.length + 5) {
-    info.innerHTML = '<span class="step-num">步骤 ' + step + '</span>计数 "o" → 4';
-    for (let i = 6; i <= 10; i++) cells[i].classList.add('highlight');
-  }
-  if (step >= chars.length + 6) {
-    for (let i = 6; i <= 10; i++) cells[i].classList.add('highlight');
-    info.innerHTML = '<span class="step-num">步骤 ' + step + '</span>计数 "W" → 5，遇到空格停止！最后一个单词 "World" 长度 = <span class="result-badge">5</span>';
-  }
-  updateButtons();
-}
-
-function updateButtons() {
-  btnPrev.disabled = step <= 0;
-  btnNext.disabled = step >= totalSteps;
-}
-
-function nextStep() { if (step < totalSteps) { step++; render(); } }
-function prevStep() { if (step > 0) { step--; render(); } }
-function resetAll() { stopAuto(); step = 0; render(); }
-function goLast() { stopAuto(); step = totalSteps; render(); }
-
-function stopAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; btnAuto.textContent = '▶ 自动播放'; } }
-function toggleAuto() {
-  if (autoTimer) { stopAuto(); return; }
-  if (step >= totalSteps) step = 0;
-  btnAuto.textContent = '⏸ 暂停';
-  autoTimer = setInterval(() => { nextStep(); if (step >= totalSteps) stopAuto(); }, 600);
-}
-
-btnReset.onclick = resetAll;
-btnPrev.onclick = prevStep;
-btnNext.onclick = nextStep;
-btnAuto.onclick = toggleAuto;
-btnLast.onclick = goLast;
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') { e.preventDefault(); nextStep(); }
-  else if (e.key === 'ArrowLeft') { e.preventDefault(); prevStep(); }
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
 });
-
-buildGrid();
-render();
 </script>
 </body>
 </html>

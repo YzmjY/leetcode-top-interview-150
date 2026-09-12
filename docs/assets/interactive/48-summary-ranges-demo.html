@@ -1,168 +1,167 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  :root { --bg:#fff; --text:#333; --muted:#888; --cell-bg:#fafafa; --cell-border:#d0d0d0; --header:#222; --sub-bg:#f5f5f5; --btn-bg:#f0f0f0; --btn-hover:#e0e0e0; }
-  @media (prefers-color-scheme:dark) { :root { --bg:#1a1a2e; --text:#ddd; --muted:#aaa; --cell-bg:#222; --cell-border:#444; --header:#ddd; --btn-bg:#333; --btn-hover:#444; --sub-bg:#252540; } }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; padding:14px 20px; }
-  .container { max-width:900px; width:100%; }
-  h2 { text-align:center; color:var(--header); font-size:17px; margin-bottom:2px; }
-  .sub-title { text-align:center; color:var(--muted); font-size:12px; margin-bottom:6px; }
-  .info-bar { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:4px; font-size:14px; flex-wrap:wrap; }
-  .step-num { font-weight:bold; font-size:22px; color:#1976D2; min-width:32px; text-align:center; }
-  .step-desc { color:var(--muted); font-size:13px; max-width:600px; text-align:center; }
-  svg { display:block; margin:0 auto; width:100%; }
-  .result-row { background:var(--sub-bg); border-radius:8px; padding:8px 14px; margin-bottom:4px; font-size:13px; text-align:center; }
-  .result-row .highlight { font-weight:bold; font-size:15px; }
-  .legend { display:flex; gap:14px; justify-content:center; margin-top:4px; font-size:11px; color:var(--muted); flex-wrap:wrap; }
-  .legend-item { display:flex; align-items:center; gap:5px; }
-  .legend-dot { width:14px; height:14px; border-radius:3px; }
-  .controls { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:6px; }
-  button { padding:7px 15px; border:1px solid var(--cell-border); border-radius:6px; background:var(--btn-bg); color:var(--text); font-size:13px; cursor:pointer; transition:0.15s; }
-  button:hover { background:var(--btn-hover); }
-  button:active { transform:scale(0.96); }
-  button:disabled { opacity:0.35; cursor:default; }
-  button.play-btn { background:#1976D2; color:#fff; border-color:#1565C0; }
-</style>
+<title>48. 汇总区间 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <h2>汇总区间 — 连续序列检测</h2>
-  <div class="sub-title">nums=[0,1,2,4,5,7] &rarr; 连续检测 &rarr; ["0→2","4→5","7"]</div>
-  <div class="info-bar"><span class="step-num" id="stepNum">0</span><span class="step-desc" id="stepDesc">初始状态 · 点击下一步开始</span></div>
-  <svg id="svg" viewBox="0 0 880 320"></svg>
-  <div class="result-row"><span style="color:var(--muted)">结果: </span><span id="resultText" class="highlight" style="color:#1976D2;">进行中...</span></div>
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#42A5F5;"></div>当前扫描</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#66BB6A;"></div>已有范围</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#FF7043;"></div>新区间起始</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#AB47BC;"></div>已输出区间</div>
-    <div class="legend-item" style="color:#FF5722;">━ 范围带</div>
-  </div>
-  <div class="controls">
-    <button onclick="goStep(0)">&#x23EE; 重置</button>
-    <button onclick="goStep(current-1)" id="prevBtn">&#x25C0; 上一步</button>
-    <button onclick="goStep(current+1)" id="nextBtn">下一步 &#x25B6;</button>
-    <button class="play-btn" onclick="toggleAuto()" id="playBtn">&#x25B6; 自动播放</button>
-    <button onclick="goStep(steps.length-1)">&#x23ED; 跳到最后</button>
-  </div>
-</div>
+<script src="demo.js"></script>
 <script>
-const nums=[0,1,2,4,5,7];
-const xMin=-1, xMax=8;
-const axisY=160, dotR=22;
-const xScale=v=>60+(v-xMin)*760/(xMax-xMin);
+const NUMS = [0, 1, 2, 4, 5, 7];
 
-const steps=[];
-(function sim(){
-  const res=[];
-  steps.push({desc:'初始状态 · nums=[0,1,2,4,5,7]', phase:'init', curIdx:-1, results:[], curRange:null, nStates:Array(nums.length).fill(''), ranges:[]});
+function buildSteps() {
+  const nums = NUMS;
+  const n = nums.length;
+  const steps = [];
+  const result = [];
+  let i = 0;
 
-  let start=0;
-  for(let i=0;i<nums.length;i++){
-    if(i===0){
-      steps.push({desc:'从nums[0]='+nums[0]+' 开始新区间', phase:'start', curIdx:i, results:[...res], curRange:String(nums[0]), nStates:nums.map((_,j)=>j===i?'start':''), ranges:[]});
-      continue;
-    }
-    if(nums[i]!==nums[i-1]+1){
-      const range=nums[start]===nums[i-1]?String(nums[start]):nums[start]+'→'+nums[i-1];
-      res.push(range);
-      steps.push({desc:'断点! nums['+(i-1)+']='+nums[i-1]+' → nums['+i+']='+nums[i]+' 不连续, 输出区间: "'+range+'"', phase:'end-range', curIdx:i, results:[...res], curRange:range, nStates:nums.map((_,j)=>j>=start&&j<i?'shrink':'')});
-      start=i;
-      steps.push({desc:'从nums['+i+']='+nums[i]+' 开始新区间', phase:'start', curIdx:i, results:[...res], curRange:String(nums[i]), nStates:nums.map((_,j)=>j===i?'start':(j<start?'shrink':'')), ranges:res.map((r,idx)=>({label:r,row:idx}))});
-    }else{
-      steps.push({desc:'连续! nums['+(i-1)+']='+nums[i-1]+' → nums['+i+']='+nums[i]+', 范围扩展: '+nums[start]+'→'+nums[i], phase:'extend', curIdx:i, results:[...res], curRange:nums[start]+'→'+nums[i], nStates:nums.map((_,j)=>j>=start&&j<=i?'range':''), ranges:res.map((r,idx)=>({label:r,row:idx}))});
-    }
-  }
-  const finalR=nums[start]===nums[nums.length-1]?String(nums[start]):nums[start]+'→'+nums[nums.length-1];
-  res.push(finalR);
-  steps.push({desc:'完成! 最终区间: "'+finalR+'", 全部结果: ['+res.map(r=>'"'+r+'"').join(', ')+']', phase:'done', curIdx:-1, results:[...res], curRange:finalR, nStates:nums.map(()=>'shrink'), ranges:res.map((r,idx)=>({label:r,row:idx}))});
-})();
-
-function clr(st){
-  if(st==='start')return'#FF7043';
-  if(st==='range')return'#66BB6A';
-  if(st==='shrink')return'#AB47BC';
-  return'#42A5F5';
-}
-
-let current=0,autoTimer=null,autoRun=false;
-const svg=document.getElementById('svg');
-
-function render(){
-  const s=steps[current];
-  document.getElementById('stepNum').textContent=current;
-  document.getElementById('stepDesc').textContent=s.desc;
-  document.getElementById('prevBtn').disabled=current<=0;
-  document.getElementById('nextBtn').disabled=current>=steps.length-1;
-  const rt=document.getElementById('resultText');
-  if(s.phase==='done'){rt.textContent='['+s.results.map(r=>'"'+r+'"').join(', ')+']';rt.style.color='#388E3C';}
-  else if(s.results&&s.results.length>0){rt.textContent='['+s.results.map(r=>'"'+r+'"').join(', ')+']';rt.style.color='#1976D2';}
-  else{rt.textContent='进行中...';rt.style.color='#1976D2';}
-
-  let html='';
-  // axis line
-  html+='<line x1="60" y1="'+axisY+'" x2="820" y2="'+axisY+'" stroke="#888" stroke-width="1.5"/>';
-  html+='<polygon points="820,'+(axisY-5)+' 820,'+(axisY+5)+' 828,'+axisY+'" fill="#888"/>';
-  for(let v=-1;v<=8;v++){
-    const x=xScale(v);
-    html+='<line x1="'+x+'" y1="'+axisY+'" x2="'+x+'" y2="'+(axisY+6)+'" stroke="#888" stroke-width="1"/>';
-    if(v>=-0&&v<=7) html+='<text x="'+x+'" y="'+(axisY+20)+'" text-anchor="middle" fill="var(--muted)" font-size="11">'+v+'</text>';
-  }
-
-  // Range bands above dots
-  if(s.curRange&&s.curRange.includes('→')){
-    const parts=s.curRange.split('→');
-    const rStart=parseInt(parts[0]), rEnd=parseInt(parts[1]);
-    const rx1=xScale(rStart), rx2=xScale(rEnd);
-    html+='<rect x="'+(rx1-dotR/2)+'" y="'+(axisY-90)+'" width="'+(rx2-rx1+dotR)+'" height="14" rx="7" fill="#FF5722" opacity="0.25"/>';
-    html+='<text x="'+((rx1+rx2)/2)+'" y="'+(axisY-80)+'" text-anchor="middle" fill="#FF5722" font-size="12" font-weight="bold">当前: '+s.curRange+'</text>';
-  }else if(s.curRange){
-    const rx=xScale(parseInt(s.curRange));
-    html+='<rect x="'+(rx-dotR/2)+'" y="'+(axisY-90)+'" width="'+dotR+'" height="14" rx="7" fill="#FF5722" opacity="0.25"/>';
-    html+='<text x="'+rx+'" y="'+(axisY-80)+'" text-anchor="middle" fill="#FF5722" font-size="12" font-weight="bold">当前: '+s.curRange+'</text>';
-  }
-
-  // Dots for each number
-  for(let j=0;j<nums.length;j++){
-    const x=xScale(nums[j]);
-    const st=s.nStates[j]||'';
-    const c=clr(st);
-    html+='<circle cx="'+x+'" cy="'+axisY+'" r="'+dotR+'" fill="'+c+'" opacity="0.9" stroke="'+c+'" stroke-width="2"/>';
-    html+='<text x="'+x+'" y="'+(axisY+6)+'" text-anchor="middle" fill="#fff" font-size="15" font-weight="bold">'+nums[j]+'</text>';
-    html+='<text x="'+x+'" y="'+(axisY+45)+'" text-anchor="middle" fill="var(--muted)" font-size="10">['+j+']</text>';
-    if(s.curIdx===j){
-      html+='<text x="'+x+'" y="'+(axisY-dotR-8)+'" text-anchor="middle" fill="'+c+'" font-size="12" font-weight="bold">▼</text>';
-    }
-  }
-
-  // Result ranges below
-  if(s.ranges){
-    s.ranges.forEach((r,idx)=>{
-      const parts=r.label.split('→');
-      const rs=parseInt(parts[0]), re=parts.length>1?parseInt(parts[1]):rs;
-      const rx1=xScale(rs), rx2=xScale(re);
-      const y=axisY+60+idx*32;
-      html+='<rect x="'+rx1+'" y="'+y+'" width="'+Math.max(30,rx2-rx1)+'" height="20" rx="10" fill="#AB47BC" opacity="0.85" stroke="#AB47BC" stroke-width="1.5"/>';
-      html+='<text x="'+((rx1+rx2)/2)+'" y="'+(y+14)+'" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">'+r.label+'</text>';
+  function snap(o) {
+    steps.push({
+      i: o.i,
+      startIdx: o.startIdx == null ? null : o.startIdx,
+      endIdx: o.endIdx == null ? null : o.endIdx,
+      result: result.slice(),
+      phase: o.phase,
+      note: o.note
     });
   }
 
-  html+='<text x="820" y="'+(axisY-10)+'" text-anchor="end" fill="var(--muted)" font-size="10">nums</text>';
+  snap({
+    i: 0, startIdx: null, endIdx: null, phase: 'init',
+    note: '初始状态：i = 0，结果列表为空，还没有开启任何区间。算法只需要一次遍历：外层循环决定区间起点，内层循环不断吞掉与前一元素相差 1 的数字。'
+  });
 
-  svg.innerHTML=html;
+  while (i < n) {
+    const startIdx = i;
+    const start = nums[i];
+    snap({
+      i: i, startIdx: startIdx, endIdx: startIdx, phase: 'start',
+      note: '外层循环：i = ' + i + '，把 nums[' + i + '] = ' + start + ' 记为当前区间的起点 start，区间暂时是 [' + start + ', ' + start + ']。'
+    });
+
+    i += 1;
+    while (i < n && nums[i] === nums[i - 1] + 1) {
+      snap({
+        i: i, startIdx: startIdx, endIdx: i, phase: 'extend',
+        note: '比较 nums[' + i + '] = ' + nums[i] + ' 与 nums[' + (i - 1) + '] + 1 = ' + (nums[i - 1] + 1) + '：两者相等，说明这两个数在数轴上紧挨着，属于同一个区间 → 右端点扩展为 ' + nums[i] + '，i 后移。'
+      });
+      i += 1;
+    }
+
+    const endIdx = i - 1;
+    const end = nums[endIdx];
+    const text = start === end ? String(start) : start + '->' + end;
+    result.push(text);
+
+    let why;
+    if (i >= n) {
+      why = 'i 已经越过数组末尾（i = ' + i + '），没有下一个元素可比。';
+    } else {
+      why = '比较 nums[' + i + '] = ' + nums[i] + ' 与 nums[' + (i - 1) + '] + 1 = ' + (nums[i - 1] + 1) + '：不相等，连续性被打破。';
+    }
+    snap({
+      i: i, startIdx: startIdx, endIdx: endIdx, phase: 'close',
+      note: why + ' 于是区间右端点定为 nums[' + endIdx + '] = ' + end + '。start = ' + start + '、end = ' + end + '，'
+        + (start === end ? '两者相等，按格式输出 "' + text + '"（不写箭头）' : '两者不等，按格式输出 "' + text + '"')
+        + '，加入结果列表。'
+    });
+  }
+
+  snap({
+    i: n, startIdx: null, endIdx: null, phase: 'done',
+    note: 'i 越界，遍历结束。共得到 ' + result.length + ' 个区间：[' + result.map(function (r) { return '"' + r + '"'; }).join(', ')
+      + ']。每个元素恰好被内层循环访问一次，时间 O(n)、除结果外额外空间 O(1)。'
+  });
+
+  return steps;
 }
 
-function goStep(n){current=Math.max(0,Math.min(n,steps.length-1));render()}
-function toggleAuto(){
-  if(autoRun){clearInterval(autoTimer);autoRun=false;document.getElementById('playBtn').textContent='\u25B6 自动播放';document.getElementById('playBtn').style.background='';document.getElementById('playBtn').style.color='';document.getElementById('playBtn').classList.remove('play-btn');}
-  else{autoRun=true;document.getElementById('playBtn').textContent='\u23F8 暂停';document.getElementById('playBtn').style.background='#1976D2';document.getElementById('playBtn').style.color='#fff';document.getElementById('playBtn').classList.add('play-btn');if(current>=steps.length-1)goStep(0);autoTimer=setInterval(function(){if(current<steps.length-1)goStep(current+1);else toggleAuto()},1000);}
-}
-document.addEventListener('keydown',function(e){if(e.key==='ArrowRight')goStep(current+1);if(e.key==='ArrowLeft')goStep(current-1);if(e.key===' '){e.preventDefault();toggleAuto();}});
-render();
+Demo.create({
+  title: '48. 汇总区间 — 一次遍历划分连续段',
+  info: '输入：nums = [0, 1, 2, 4, 5, 7]（示例 1）。nums 无重复且升序，恰好覆盖它的最小有序区间列表为 ["0->2", "4->5", "7"]。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 260,
+  legend: [
+    { color: 'var(--demo-accent)', label: 'i：当前比较的位置' },
+    { color: 'var(--demo-ok)', label: '当前正在扩展的区间' },
+    { color: 'var(--demo-muted)', label: '已输出区间，不再回看' }
+  ],
+  render: function (step, idx, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const arrayPanel = Demo.el('div', 'panel');
+    arrayPanel.style.width = '100%';
+    arrayPanel.appendChild(Demo.el('div', 'panel__title',
+      step.phase === 'done' ? '数组 nums（遍历结束）'
+        : (step.i < NUMS.length ? '数组 nums，i = ' + step.i : '数组 nums，i 已越过末尾')));
+
+    const row = Demo.el('div', 'row');
+    NUMS.forEach(function (v, k) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(v));
+      const inRange = step.startIdx != null && k >= step.startIdx && k <= step.endIdx;
+
+      if (step.phase === 'done') {
+        cell.classList.add('is-ok');
+      } else if (k === step.i) {
+        cell.classList.add('is-active');
+      } else if (inRange) {
+        cell.classList.add('is-ok');
+      } else if (step.startIdx != null && k < step.startIdx) {
+        cell.classList.add('cell--dim');
+      }
+      col.appendChild(cell);
+
+      const isCurrent = k === step.i && step.i < NUMS.length;
+      const ptr = Demo.el('div', 'ptr', isCurrent ? 'i' : String(k));
+      if (!isCurrent) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    arrayPanel.appendChild(row);
+    ctx.stage.appendChild(arrayPanel);
+
+    const statusRow = Demo.el('div', 'row');
+    statusRow.style.width = '100%';
+    statusRow.style.alignItems = 'stretch';
+
+    const curPanel = Demo.el('div', 'panel');
+    curPanel.style.flex = '1';
+    curPanel.appendChild(Demo.el('div', 'panel__title', '当前区间'));
+    if (step.startIdx == null) {
+      curPanel.appendChild(Demo.el('div', null, '<span class="tag tag--warn">未开启</span>'));
+    } else {
+      const s = NUMS[step.startIdx];
+      const e = NUMS[step.endIdx];
+      curPanel.appendChild(Demo.el('div', null,
+        '<span class="tag tag--ok">start = ' + s + '</span> &nbsp; <span class="tag tag--ok">end = ' + e + '</span>'));
+      curPanel.appendChild(Demo.el('div', null,
+        '<div style="margin-top:6px">当前区间为 <code>[' + s + ', ' + e + ']</code>，即 nums[' + step.startIdx + '..' + step.endIdx + ']</div>'));
+    }
+    statusRow.appendChild(curPanel);
+
+    const resPanel = Demo.el('div', 'panel');
+    resPanel.style.flex = '1';
+    resPanel.appendChild(Demo.el('div', 'panel__title', '结果列表（共 ' + step.result.length + ' 个区间）'));
+    const resRow = Demo.el('div', 'row');
+    resRow.style.justifyContent = 'flex-start';
+    if (step.result.length === 0) {
+      resRow.appendChild(Demo.el('span', 'tag', '（空）'));
+    } else {
+      step.result.forEach(function (r) {
+        resRow.appendChild(Demo.el('span', 'tag ' + (step.phase === 'done' ? 'tag--ok' : 'tag--violet'), '"' + Demo.esc(r) + '"'));
+      });
+    }
+    resPanel.appendChild(resRow);
+    statusRow.appendChild(resPanel);
+
+    ctx.stage.appendChild(statusRow);
+  }
+});
 </script>
 </body>
 </html>

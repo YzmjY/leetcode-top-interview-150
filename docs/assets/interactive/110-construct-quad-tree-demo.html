@@ -3,168 +3,276 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>建立四叉树 - 分治可视化</title>
-<style>
-:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#555;--border:#dee2e6;--accent:#7c3aed;--accent2:#a78bfa;--hover:#ede9fe;--green:#22c55e;--orange:#f59e0b;--blue:#3b82f6;--red:#ef4444;--btn-bg:#e5e7eb;--btn-txt:#374151;--cell1:#1e293b;--cell0:#f1f5f9}
-.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--cell1:#e2e8f0;--cell0:#334155}
-@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--cell1:#e2e8f0;--cell0:#334155}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
-.container{width:100%;max-width:780px;background:var(--card);border-radius:8px;border:1px solid var(--border);padding:20px 24px}
-h2{font-size:1.1rem;font-weight:600;margin-bottom:6px;color:var(--accent)}
-.info-panel{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:.85rem;color:var(--text2);flex-wrap:wrap}
-.info-panel .step{background:var(--accent);color:#fff;padding:3px 10px;border-radius:8px;font-weight:600;font-size:.8rem}
-.info-panel .desc{flex:1;min-width:200px}
-.vis-area{height:450px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg);display:flex;align-items:center;justify-content:center}
-.vis-area canvas{display:block}
-.quad-info{display:flex;gap:8px;margin-bottom:8px;font-size:.78rem;color:var(--text2);flex-wrap:wrap;align-items:center}
-.quad-info .tag{background:var(--node-bg);border:1px solid var(--node-border);border-radius:6px;padding:2px 8px;font-family:monospace;font-size:.75rem}
-.controls{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-.controls button{background:var(--btn-bg);color:var(--btn-txt);border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:inherit;transition:all .15s}
-.controls button:hover{background:var(--hover);border-color:var(--accent)}
-.controls button:active{transform:scale(.96)}
-.controls button.playing{background:var(--accent);color:#fff;border-color:var(--accent)}
-.legend{display:flex;gap:14px;margin-top:6px;font-size:.72rem;color:var(--text2);flex-wrap:wrap}
-.legend span{display:flex;align-items:center;gap:4px}
-.legend .dot{width:12px;height:12px;border-radius:3px}
-</style>
+<title>110. 建立四叉树 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>110. 建立四叉树 (Construct Quad Tree)</h2>
-<div class="info-panel">
-  <span class="step" id="stepLabel">步骤 1/12</span>
-  <span class="desc" id="stepDesc">原始8x8网格</span>
-</div>
-<div class="quad-info" id="quadInfo"></div>
-<div class="vis-area"><canvas id="canvas"></canvas></div>
-<div class="controls">
-  <button onclick="reset()">重置</button>
-  <button onclick="prevStep()">上步</button>
-  <button onclick="nextStep()">下步</button>
-  <button id="playBtn" onclick="togglePlay()">自动播放</button>
-  <button onclick="jumpEnd()">最后</button>
-</div>
-<div class="legend">
-  <span><span class="dot" style="background:var(--cell1)"></span>1</span>
-  <span><span class="dot" style="background:var(--cell0)"></span>0</span>
-  <span><span class="dot" style="background:var(--accent);border:2px solid var(--accent2)"></span>当前分割区域</span>
-  <span><span class="dot" style="background:var(--green)"></span>叶子节点</span>
-  <span><span class="dot" style="background:var(--orange)"></span>非叶子(需继续分割)</span>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-// 8x8 grid: top half 1s, bottom half 0s
-const N=8;
-const grid=[];
-for(let r=0;r<N;r++){
-  grid[r]=[];
-  for(let c=0;c<N;c++){
-    grid[r][c]=r<4?1:0;
-  }
-}
+const GRID = [
+  [1, 1, 1, 1, 0, 0, 0, 0],
+  [1, 1, 1, 1, 0, 0, 0, 0],
+  [1, 1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 0, 0, 0, 0],
+  [1, 1, 1, 1, 0, 0, 0, 0],
+  [1, 1, 1, 1, 0, 0, 0, 0],
+  [1, 1, 1, 1, 0, 0, 0, 0]
+];
 
-const steps=[];
-function isUniform(r,c,sz){
-  const v=grid[r][c];
-  for(let i=r;i<r+sz;i++)for(let j=c;j<c+sz;j++)if(grid[i][j]!==v)return -1;
-  return v;
-}
+const NODE_BY = {};
+const LAYOUT = {};
 
-function buildTree(r,c,sz,depth){
-  const uniform=isUniform(r,c,sz);
-  if(uniform!==-1){
-    steps.push({type:'leaf',r,c,sz,depth,val:uniform,desc:'叶子节点: 区域('+r+','+c+') 大小'+sz+'x'+sz+' 全部='+uniform});
-    return;
-  }
-  steps.push({type:'split',r,c,sz,depth,desc:'分割区域('+r+','+c+') 大小'+sz+'x'+sz+' (非均匀)'});
-  const half=sz/2;
-  buildTree(r,c,half,depth+1);           // 左上
-  buildTree(r,c+half,half,depth+1);      // 右上
-  buildTree(r+half,c,half,depth+1);      // 左下
-  buildTree(r+half,c+half,half,depth+1); // 右下
-  steps.push({type:'done',r,c,sz,depth,desc:'区域合并完成: ('+r+','+c+') 大小'+sz+'x'+sz});
-}
-buildTree(0,0,N,0);
-
-let curStep=0,playId=null;
-const canvas=document.getElementById('canvas');
-const ctx=canvas.getContext('2d');
-
-function resize(){const r=canvas.getBoundingClientRect();canvas.width=r.width*devicePixelRatio;canvas.height=r.height*devicePixelRatio;ctx.setTransform(1,0,0,1,0,0);ctx.scale(devicePixelRatio,devicePixelRatio);draw();}
-window.addEventListener('resize',resize);
-
-function draw(){
-  const w=canvas.width/devicePixelRatio,h=canvas.height/devicePixelRatio;
-  ctx.clearRect(0,0,w,h);
-  const step=steps[curStep];
-  const cellSize=44,gridSize=N*cellSize;
-  const offsetX=(w-gridSize)/2,offsetY=(h-gridSize)/2;
-  // draw base grid
-  for(let r=0;r<N;r++){
-    for(let c=0;c<N;c++){
-      const v=grid[r][c];
-      ctx.fillStyle=v===1?getComputedStyle(document.documentElement).getPropertyValue('--cell1').trim():getComputedStyle(document.documentElement).getPropertyValue('--cell0').trim();
-      ctx.fillRect(offsetX+c*cellSize,offsetY+r*cellSize,cellSize,cellSize);
-      ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
-      ctx.lineWidth=.5;
-      ctx.strokeRect(offsetX+c*cellSize,offsetY+r*cellSize,cellSize,cellSize);
+function checkRegion(r, c, size) {
+  const base = GRID[r][c];
+  for (let i = r; i < r + size; i++) {
+    for (let j = c; j < c + size; j++) {
+      if (GRID[i][j] !== base) return { uniform: -1, base: base, mismatch: { r: i, c: j } };
     }
   }
-  // draw current region highlight
-  function drawRegion(r,c,sz,color,lineWidth){
-    ctx.strokeStyle=color;
-    ctx.lineWidth=lineWidth;
-    ctx.strokeRect(offsetX+c*cellSize,offsetY+r*cellSize,sz*cellSize,sz*cellSize);
+  return { uniform: base, base: base, mismatch: null };
+}
+
+function buildSteps() {
+  const steps = [];
+  const nodes = [];
+  const edges = [];
+  const path = [];
+  let seq = 0;
+
+  function snap(extra) {
+    const s = {
+      phase: 'init', r: null, c: null, size: null, cur: null, mismatch: null,
+      uniform: null, nodeIds: nodes.map(n => n.id), edges: edges.map(e => ({ from: e.from, to: e.to })),
+      leaves: nodes.filter(n => n.leaf).map(n => ({ r: n.r, c: n.c, size: n.size, val: n.val })),
+      stack: path.map(p => ({ r: p.r, c: p.c, size: p.size })), note: ''
+    };
+    const e = extra || {};
+    Object.keys(e).forEach(k => { s[k] = e[k]; });
+    steps.push(s);
+    return s;
   }
-  // collect all leaf/split regions from steps up to curStep
-  const regions=[];
-  for(let i=0;i<=curStep;i++){
-    const s=steps[i];
-    if(s.type==='leaf')regions.push({r:s.r,c:s.c,sz:s.sz,type:'leaf',depth:s.depth});
-    if(s.type==='split')regions.push({r:s.r,c:s.c,sz:s.sz,type:'split',depth:s.depth});
+
+  snap({ note: 'grid 是 8×8 的 0/1 矩阵。四叉树的规则：当前区域全为同一种值就做成叶子节点；否则把它等分成四个子区域（左上、右上、左下、右下）递归处理。' });
+
+  function build(r, c, size, depth) {
+    path.push({ r: r, c: c, size: size });
+    const chk = checkRegion(r, c, size);
+
+    if (chk.uniform >= 0) {
+      const id = 'n' + (seq++);
+      nodes.push({ id: id, r: r, c: c, size: size, depth: depth, leaf: true, val: chk.uniform, children: [] });
+      path.pop();
+      snap({
+        phase: 'leaf', r: r, c: c, size: size, cur: id, uniform: chk.uniform,
+        note: '检查区域（' + r + ', ' + c + '）大小 ' + size + '×' + size + '：逐格扫描后全部等于 ' + chk.uniform +
+          '，是纯色区域，直接造一个叶子节点，val = ' + (chk.uniform === 1 ? 'true' : 'false') + '，不再往下分。'
+      });
+      return id;
+    }
+
+    snap({
+      phase: 'split', r: r, c: c, size: size, mismatch: chk.mismatch, uniform: -1,
+      note: '检查区域（' + r + ', ' + c + '）大小 ' + size + '×' + size + '：以 grid[' + r + '][' + c + '] = ' + chk.base +
+        ' 为基准扫描，在 grid[' + chk.mismatch.r + '][' + chk.mismatch.c + '] = ' + GRID[chk.mismatch.r][chk.mismatch.c] +
+        ' 处发现不同，说明不是纯色区域，必须继续切分。'
+    });
+
+    const half = size / 2;
+    const id = 'n' + (seq++);
+    nodes.push({ id: id, r: r, c: c, size: size, depth: depth, leaf: false, val: null, children: [] });
+
+    const children = [
+      build(r, c, half, depth + 1),
+      build(r, c + half, half, depth + 1),
+      build(r + half, c, half, depth + 1),
+      build(r + half, c + half, half, depth + 1)
+    ];
+
+    const node = nodes.filter(n => n.id === id)[0];
+    node.children = children;
+    children.forEach(cid => edges.push({ from: id, to: cid }));
+
+    path.pop();
+    snap({
+      phase: 'internal', r: r, c: c, size: size, cur: id, uniform: -1,
+      note: '四个子区域（左上 / 右上 / 左下 / 右下）都返回了，把它们挂到这个内部节点上：isLeaf = false，val 任意（这里取 true），' +
+        '这一块区域就表示完了。'
+    });
+    return id;
   }
-  // remove duplicates (leaf over split)
-  const seen=new Set();
-  const filtered=[];
-  for(let i=regions.length-1;i>=0;i--){
-    const key=regions[i].r+','+regions[i].c+','+regions[i].sz;
-    if(!seen.has(key)){seen.add(key);filtered.unshift(regions[i]);}
+
+  build(0, 0, GRID.length, 0);
+
+  nodes.forEach(n => { NODE_BY[n.id] = n; });
+  let slot = 0;
+  (function place(id) {
+    const n = NODE_BY[id];
+    if (n.children.length === 0) {
+      n.x = 40 + slot * 72;
+      slot += 1;
+    } else {
+      n.children.forEach(place);
+      let sum = 0;
+      n.children.forEach(cid => { sum += NODE_BY[cid].x; });
+      n.x = sum / n.children.length;
+    }
+    n.y = 34 + n.depth * 78;
+    LAYOUT[id] = { x: n.x, y: n.y };
+  })(nodes[0].id);
+
+  snap({
+    phase: 'done',
+    note: '四叉树构建完成：共 ' + nodes.length + ' 个节点，其中内部节点 ' +
+      nodes.filter(n => !n.leaf).length + ' 个、叶子节点 ' + nodes.filter(n => n.leaf).length +
+      ' 个。每个叶子对应一块纯色区域，内部节点的四个孩子恰好覆盖父区域。'
+  });
+
+  return steps;
+}
+
+function gridSvg(step) {
+  const CELL = 40;
+  const PAD = 8;
+  const n = GRID.length;
+  const W = n * CELL + PAD * 2;
+
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      const v = GRID[i][j];
+      const x = PAD + j * CELL;
+      const y = PAD + i * CELL;
+      out += '<rect x="' + x + '" y="' + y + '" width="' + CELL + '" height="' + CELL +
+        '" style="fill:' + (v === 1 ? 'var(--demo-accent)' : 'var(--demo-subtle)') +
+        ';stroke:var(--demo-border);stroke-width:1"/>';
+      out += '<text x="' + (x + CELL / 2) + '" y="' + (y + CELL / 2 + 5) +
+        '" text-anchor="middle" style="fill:' + (v === 1 ? 'var(--demo-card)' : 'var(--demo-muted)') +
+        ';font:600 14px sans-serif">' + v + '</text>';
+    }
   }
-  filtered.forEach(reg=>{
-    if(reg.type==='leaf'){
-      drawRegion(reg.r,reg.c,reg.sz,getComputedStyle(document.documentElement).getPropertyValue('--green').trim(),2);
+
+  step.leaves.forEach(lf => {
+    out += '<rect x="' + (PAD + lf.c * CELL + 2) + '" y="' + (PAD + lf.r * CELL + 2) +
+      '" width="' + (lf.size * CELL - 4) + '" height="' + (lf.size * CELL - 4) +
+      '" style="fill:none;stroke:var(--demo-ok);stroke-width:2;stroke-dasharray:4 3"/>';
+  });
+
+  if (step.r != null) {
+    out += '<rect x="' + (PAD + step.c * CELL) + '" y="' + (PAD + step.r * CELL) +
+      '" width="' + (step.size * CELL) + '" height="' + (step.size * CELL) +
+      '" style="fill:' + (step.phase === 'leaf' ? 'var(--demo-ok-soft)' : 'var(--demo-accent-soft)') +
+      ';fill-opacity:0.35;stroke:var(--demo-accent);stroke-width:3"/>';
+  }
+
+  if (step.mismatch) {
+    out += '<rect x="' + (PAD + step.mismatch.c * CELL) + '" y="' + (PAD + step.mismatch.r * CELL) +
+      '" width="' + CELL + '" height="' + CELL +
+      '" style="fill:var(--demo-danger-soft);fill-opacity:0.5;stroke:var(--demo-danger);stroke-width:3"/>';
+  }
+
+  return '<svg viewBox="0 0 ' + W + ' ' + W + '" style="width:100%;height:auto;display:block">' + out + '</svg>';
+}
+
+function treeSvg(step) {
+  const W = 40 + 6 * 72 + 56;
+  const H = 34 + 2 * 78 + 46;
+  const present = {};
+  step.nodeIds.forEach(id => { present[id] = true; });
+
+  let out = '';
+  step.edges.forEach(eg => {
+    const a = LAYOUT[eg.from];
+    const b = LAYOUT[eg.to];
+    if (!a || !b) return;
+    out += '<line x1="' + a.x + '" y1="' + (a.y + 22) + '" x2="' + b.x + '" y2="' + (b.y - 22) +
+      '" style="stroke:var(--demo-ok);stroke-width:2"/>';
+  });
+
+  Object.keys(NODE_BY).forEach(id => {
+    const nd = NODE_BY[id];
+    if (!present[id]) return;
+    const p = LAYOUT[id];
+    const isCur = step.cur === id;
+    if (nd.leaf) {
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="21" style="fill:' +
+        (nd.val === 1 ? (isCur ? 'var(--demo-accent)' : 'var(--demo-accent-soft)') : (isCur ? 'var(--demo-warn)' : 'var(--demo-subtle)')) +
+        ';stroke:' + (nd.val === 1 ? 'var(--demo-accent)' : 'var(--demo-warn)') + ';stroke-width:' + (isCur ? 3.5 : 2) + '"/>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 6) + '" text-anchor="middle" style="fill:' +
+        (nd.val === 1 ? (isCur ? 'var(--demo-card)' : 'var(--demo-accent-strong)') : 'var(--demo-warn)') +
+        ';font:600 16px sans-serif">' + nd.val + '</text>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 38) + '" text-anchor="middle" style="fill:var(--demo-muted);font:11px sans-serif">叶</text>';
+    } else {
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="21" style="fill:var(--demo-warn-soft);stroke:var(--demo-warn);stroke-width:' +
+        (isCur ? 3.5 : 2) + (isCur ? '' : ';stroke-dasharray:5 3') + '"/>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 6) + '" text-anchor="middle" style="fill:var(--demo-warn);font:600 15px sans-serif">' +
+        nd.size + '</text>';
+      out += '<text x="' + (p.x + 28) + '" y="' + (p.y + 5) + '" text-anchor="start" style="fill:var(--demo-muted);font:11px sans-serif">非叶</text>';
     }
   });
-  // current step region
-  if(step.type==='split'){
-    drawRegion(step.r,step.c,step.sz,getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),3);
-  }
-  if(step.type==='leaf'){
-    drawRegion(step.r,step.c,step.sz,getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),3);
-  }
-  // labels
-  const leafCount=filtered.filter(r=>r.type==='leaf').length;
-  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text').trim();
-  ctx.font='12px system-ui';ctx.textAlign='center';
-  ctx.fillText('叶子节点数: '+leafCount,w/2,h-10);
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">' + out + '</svg>';
 }
 
-function updateUI(){
-  const step=steps[curStep];
-  document.getElementById('stepLabel').textContent='步骤 '+(curStep+1)+'/'+steps.length;
-  document.getElementById('stepDesc').textContent=step.desc||'';
-  document.getElementById('quadInfo').innerHTML='<span class="tag">区域('+step.r+','+step.c+')</span><span class="tag">大小:'+step.sz+'x'+step.sz+'</span>';
-  resize();
-}
-function reset(){curStep=0;stopPlay();updateUI();}
-function nextStep(){if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();}
-function prevStep(){if(curStep>0){curStep--;updateUI();}}
-function jumpEnd(){curStep=steps.length-1;stopPlay();updateUI();}
-function stopPlay(){if(playId){clearInterval(playId);playId=null;document.getElementById('playBtn').classList.remove('playing');document.getElementById('playBtn').textContent='自动播放';}}
-function togglePlay(){if(playId){stopPlay();return;}if(curStep>=steps.length-1)curStep=0;document.getElementById('playBtn').classList.add('playing');document.getElementById('playBtn').textContent='暂停';playId=setInterval(()=>{if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();},700);}
-document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}else if(e.key==='ArrowRight'){e.preventDefault();nextStep();}else if(e.key===' '){e.preventDefault();togglePlay();}});
-updateUI();
+Demo.create({
+  title: '110. 建立四叉树 — 区域校验 + 四分递归',
+  info: 'grid 为 8×8 的 0/1 矩阵（LeetCode 示例 2）。区域同值就作叶子，否则切成四个等大子区域递归。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 520,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前区域 / 值为 1 的格子' },
+    { color: 'var(--demo-ok)', label: '已确定的叶子区域' },
+    { color: 'var(--demo-warn)', label: '内部节点（需要四分）' },
+    { color: 'var(--demo-danger)', label: '首个与基准不同的格子' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const row = Demo.el('div', 'row');
+    row.style.alignItems = 'flex-start';
+    row.style.width = '100%';
+
+    const gPanel = Demo.el('div', 'panel');
+    gPanel.style.flex = 'none';
+    gPanel.appendChild(Demo.el('div', 'panel__title', 'grid 与当前检查区域'));
+    const gWrap = Demo.el('div');
+    gWrap.style.maxWidth = '340px';
+    gWrap.innerHTML = gridSvg(step);
+    gPanel.appendChild(gWrap);
+    row.appendChild(gPanel);
+
+    const tPanel = Demo.el('div', 'panel');
+    tPanel.style.flex = '1';
+    tPanel.style.minWidth = '280px';
+    tPanel.appendChild(Demo.el('div', 'panel__title', '正在构建的四叉树'));
+    const tWrap = Demo.el('div');
+    tWrap.innerHTML = treeSvg(step);
+    tPanel.appendChild(tWrap);
+    row.appendChild(tPanel);
+
+    ctx.stage.appendChild(row);
+
+    const info = Demo.el('div', 'panel');
+    info.style.width = '100%';
+    info.appendChild(Demo.el('div', 'panel__title', '递归调用栈（当前区域）'));
+    const stackRow = Demo.el('div', 'row');
+    const stack = Demo.el('div', 'stack');
+    if (step.stack.length === 0) {
+      stack.appendChild(Demo.el('div', 'stack__item', '（空）'));
+    } else {
+      step.stack.forEach((f, k) => {
+        const item = Demo.el('div', 'stack__item',
+          '区域(' + f.r + ', ' + f.c + ') ' + f.size + '×' + f.size);
+        if (k === step.stack.length - 1) item.classList.add('is-active');
+        stack.appendChild(item);
+      });
+    }
+    stackRow.appendChild(stack);
+    info.appendChild(stackRow);
+    ctx.stage.appendChild(info);
+  }
+});
 </script>
 </body>
 </html>

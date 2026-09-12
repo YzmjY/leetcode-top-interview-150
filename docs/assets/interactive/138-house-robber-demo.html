@@ -3,124 +3,282 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>138. 打家劫舍 - 可视化演示</title>
-<style>
-:root{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--sub:#666;--border:#e0e0e0;--accent:#2563eb;--step-bg:#f0f4ff;--grid-bg:#fafafa;--radius:8px;--font:system-ui,-apple-system,sans-serif}
-@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--sub:#a0a0b0;--border:#334;--accent:#60a5fa;--step-bg:#1e293b;--grid-bg:#0f172a}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:var(--font);background:var(--bg);display:flex;justify-content:center;align-items:center;min-height:100vh}
-.demo-container{width:100%;max-width:960px;height:480px;background:var(--card);border-radius:var(--radius);box-shadow:0 4px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
-.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--step-bg)}
-.header .title{font-size:15px;font-weight:600;color:var(--text)}
-.header .step-info{font-size:13px;color:var(--accent);font-weight:500}
-.controls{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.controls button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
-.controls button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
-.controls button:disabled{opacity:.4;cursor:not-allowed}
-.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.main-area{flex:1;display:flex;flex-direction:column;padding:12px 16px;gap:10px;overflow-y:auto}
-.info-panel{padding:10px 14px;background:var(--step-bg);border-radius:var(--radius);border:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.6}
-.info-panel strong{color:var(--accent)}
-.vis-area{flex:1;display:flex;flex-direction:column;gap:8px}
-.dp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;padding:8px 0}
-.dp-cell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px;border-radius:var(--radius);border:1px solid var(--border);background:var(--grid-bg);transition:all .3s}
-.dp-cell .idx{font-size:11px;color:var(--sub)}
-.dp-cell .nums{font-size:16px;font-weight:700;color:var(--text)}
-.dp-cell .dpv{font-size:13px;font-weight:600;color:var(--accent)}
-.dp-cell.current{border-color:var(--accent);background:var(--step-bg)}
-.dp-cell.chosen{background:#bbf7d0;border-color:#22c55e}
-.dp-cell.skipped{background:#fecaca;border-color:#ef4444}
-.formula{text-align:center;font-size:13px;color:var(--sub);padding:4px}
-.step-detail{font-size:13px;color:var(--sub);text-align:center}
-.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
-@media(prefers-color-scheme:dark){.dp-cell.chosen{background:#14532d;border-color:#22c55e}.dp-cell.skipped{background:#7f1d1d;border-color:#ef4444}}
-</style>
+<title>138. 打家劫舍 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="demo-container">
-<div class="header">
-<span class="title">138. 打家劫舍 (House Robber)</span>
-<span class="step-info" id="stepLabel">步骤 0 / 0</span>
-</div>
-<div class="controls">
-<button onclick="reset()">重置</button>
-<button onclick="prevStep()">上步</button>
-<button onclick="nextStep()">下步</button>
-<button onclick="toggleAuto()" id="autoBtn">自动播放</button>
-<button onclick="jumpEnd()">跳到最后</button>
-</div>
-<div class="main-area">
-<div class="info-panel" id="info"><strong>输入:</strong> nums = [2, 7, 9, 3, 1] &nbsp;|&nbsp; <strong>思路:</strong> dp[i] = max(dp[i-1], dp[i-2] + nums[i])</div>
-<div class="vis-area">
-<div class="dp-grid" id="dpGrid"></div>
-<div class="formula">dp[i] = max(不偷=dp[i-1], 偷=nums[i]+dp[i-2])</div>
-<div class="step-detail" id="stepDetail"></div>
-<div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
-</div>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const NUMS=[2,7,9,3,1];
-let steps=[],stepIdx=0,autoTimer=null,playing=false;
+const NUMS = [2, 7, 9, 3, 1];
 
-function buildSteps(){
-  steps=[];
-  let n=NUMS.length;
-  let dp=Array(n).fill(0);
-  dp[0]=NUMS[0];
-  steps.push({dp:[...dp],cur:0,choice:null,note:`dp[0] = nums[0] = ${NUMS[0]} (只有一间房，偷)`,done:false});
-  dp[1]=Math.max(NUMS[0],NUMS[1]);
-  steps.push({dp:[...dp],cur:1,choice:dp[1]===NUMS[1]?'steal':'skip',note:`dp[1] = max(${NUMS[0]}, ${NUMS[1]}) = ${dp[1]}`,done:false});
-  for(let i=2;i<n;i++){
-    let steal=dp[i-2]+NUMS[i],skip=dp[i-1];
-    dp[i]=Math.max(steal,skip);
-    steps.push({dp:[...dp],cur:i,choice:dp[i]===steal?'steal':'skip',note:`dp[${i}] = max(dp[${i-2}]+nums[${i}]=${steal}, dp[${i-1}]=${skip}) = ${dp[i]}`,done:i===n-1});
+/* 真实跑一遍「选 / 不选」一维 DP：
+   dp[i] = 偷前 i+1 间房（下标 0..i）能拿到的最大金额。
+   每一步都记录 dp 快照、当前房屋、两种候选值，以及最终回溯出的偷窃方案。 */
+function buildSteps() {
+  const nums = NUMS;
+  const n = nums.length;
+  const steps = [];
+  const dp = new Array(n).fill(null);
+
+  function snap(i, extra) {
+    const base = {
+      dp: dp.slice(),
+      i: i,
+      steal: null,
+      skip: null,
+      choice: null,
+      robbed: null,
+      done: false,
+      note: ''
+    };
+    steps.push(Object.assign(base, extra));
   }
-  let last=steps[steps.length-1];
-  steps[steps.length-1]={...last,note:last.note+` | 最大金额: ${dp[n-1]}`,done:true};
-}
-function render(){
-  let s=steps[stepIdx]||steps[steps.length-1]||{};
-  let total=steps.length;
-  document.getElementById('stepLabel').textContent=`步骤 ${stepIdx+1} / ${total}`;
-  document.getElementById('progress').style.width=((stepIdx+1)/total*100)+'%';
-  document.getElementById('info').innerHTML=`<strong>nums = [2,7,9,3,1]</strong> &nbsp;|&nbsp; ${s.note||''}`;
 
-  let dp=s.dp||[];
-  let g='';
-  for(let i=0;i<NUMS.length;i++){
-    let cls='';
-    if(i===s.cur)cls='current';
-    else if(i<s.cur&&s.choice==='steal'){
-      // simplified: greedily show alternating pattern
+  snap(-1, {
+    note: '初始化：开一个长度 ' + n + ' 的数组 dp，dp[i] 表示只考虑下标 0..i 的房屋时能偷到的最大金额。数组全部待定。'
+  });
+
+  dp[0] = nums[0];
+  snap(0, {
+    note: '只有第 0 号房屋时没有别的选择：dp[0] = nums[0] = ' + nums[0] + '（偷它）。'
+  });
+
+  dp[1] = Math.max(nums[0], nums[1]);
+  snap(1, {
+    steal: nums[1],
+    skip: nums[0],
+    choice: dp[1] === nums[1] && nums[1] > nums[0] ? 'steal' : 'skip',
+    note: '两间房只能二选一（相邻会报警）：偷 1 号得 ' + nums[1] + '，偷 0 号得 ' + nums[0] +
+      '，谁大要谁。dp[1] = max(nums[0], nums[1]) = ' + dp[1] + '，本步选择「' + (dp[1] === nums[0] ? '不偷 1 号' : '偷 1 号') + '」。'
+  });
+
+  for (let i = 2; i < n; i++) {
+    const skip = dp[i - 1];
+    const steal = dp[i - 2] + nums[i];
+    const takeIt = steal > skip;
+
+    snap(i, {
+      steal: steal,
+      skip: skip,
+      choice: null,
+      note: '处理第 ' + i + ' 号房屋（金额 ' + nums[i] + '），先算出两个候选：' +
+        '偷它 → 必须跳过 ' + (i - 1) + ' 号，dp[' + (i - 2) + '] + nums[' + i + '] = ' + dp[i - 2] + ' + ' + nums[i] + ' = ' + steal + '；' +
+        '不偷它 → 答案沿用 dp[' + (i - 1) + '] = ' + skip + '。'
+    });
+
+    dp[i] = Math.max(steal, skip);
+    snap(i, {
+      steal: steal,
+      skip: skip,
+      choice: takeIt ? 'steal' : 'skip',
+      note: '两者取较大者：' + steal + (takeIt ? ' > ' : ' ≤ ') + skip + '，所以 dp[' + i + '] = ' + dp[i] +
+        '，本步决策为「' + (takeIt ? '偷 ' + i + ' 号' : '不偷 ' + i + ' 号') + '」。'
+    });
+  }
+
+  // 从 dp 数组回溯出具体偷了哪些房子
+  const robbed = [];
+  let k = n - 1;
+  while (k >= 0) {
+    if (k === 0) {
+      robbed.push(0);
+      break;
     }
-    let v=dp[i]||'?';
-    if(s.done)v=dp[i];
-    g+=`<div class="dp-cell ${cls}">
-      <span class="idx">房屋 ${i}</span>
-      <span class="nums">$${NUMS[i]}</span>
-      <span class="dpv">dp=${typeof v==='number'?v:'?'}</span>
-    </div>`;
+    if (dp[k] === dp[k - 1]) {
+      k -= 1;            // 金额没涨说明第 k 间没有偷
+    } else {
+      robbed.push(k);
+      k -= 2;            // 偷了第 k 间，跳过 k-1
+    }
   }
-  document.getElementById('dpGrid').innerHTML=g;
-  document.getElementById('stepDetail').textContent=`当前 dp 数组: [${dp.map((v,i)=>i<=s.cur||s.done?v:'?').join(', ')}]`;
+  robbed.reverse();
+
+  const sum = robbed.reduce((acc, idx) => acc + nums[idx], 0);
+  const parts = robbed.map(idx => nums[idx]).join(' + ');
+  steps.push({
+    dp: dp.slice(),
+    i: n - 1,
+    steal: null,
+    skip: null,
+    choice: null,
+    robbed: robbed,
+    done: true,
+    note: '扫描结束，答案 = dp[' + (n - 1) + '] = ' + dp[n - 1] + '。沿 dp 回溯（dp[k] 与 dp[k-1] 相等就说明第 k 间没偷）' +
+      '可以还原出一种最优方案：偷 ' + robbed.map(idx => idx + ' 号').join('、') + '，金额 ' + parts + ' = ' + sum + '。'
+  });
+
+  return steps;
 }
-function reset(){stepIdx=0; stopAuto();buildSteps();render();}
-function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
-function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
-function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}
-function toggleAuto(){
-  if(playing){stopAuto();}else{playing=true;document.getElementById('autoBtn').classList.add('active');document.getElementById('autoBtn').textContent='停止';
-    autoTimer=setInterval(()=>{if(stepIdx<steps.length-1){stepIdx++;render();}else{stopAuto();}},900);}
+
+function houseColumn(step, idx) {
+  const col = Demo.el('div', 'col');
+  const cell = Demo.el('div', 'cell', '$' + Demo.esc(NUMS[idx]));
+
+  let label = '房屋 ' + idx;
+  let ptrClass = 'ptr ptr--dim';
+
+  if (step.done) {
+    if (step.robbed.indexOf(idx) >= 0) {
+      cell.classList.add('is-ok');
+      label = '偷了';
+      ptrClass = 'ptr ptr--ok';
+    } else {
+      cell.classList.add('cell--dim');
+      label = '没偷';
+    }
+  } else if (idx === step.i) {
+    cell.classList.add('is-active');
+    label = '正在决策';
+    ptrClass = 'ptr';
+  } else if (step.i >= 0 && idx === step.i - 1 && step.choice === null && step.steal != null) {
+    cell.classList.add('is-bad');
+    label = '相邻，不能同偷';
+    ptrClass = 'ptr ptr--bad';
+  } else if (idx === step.i - 2 && step.steal != null) {
+    cell.classList.add('is-violet');
+    label = 'dp[i-2] 来源';
+    ptrClass = 'ptr ptr--violet';
+  }
+
+  col.appendChild(cell);
+  col.appendChild(Demo.el('div', ptrClass, Demo.esc(label)));
+  return col;
 }
-function stopAuto(){playing=false;clearInterval(autoTimer);document.getElementById('autoBtn').classList.remove('active');document.getElementById('autoBtn').textContent='自动播放';}
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight')nextStep();
-  else if(e.key==='ArrowLeft')prevStep();
-  else if(e.key===' '){e.preventDefault();toggleAuto();}
+
+function dpColumn(step, idx) {
+  const col = Demo.el('div', 'col');
+  const value = step.dp[idx];
+  const cell = Demo.el('div', 'cell');
+
+  if (value == null) {
+    cell.classList.add('cell--empty');
+    cell.innerHTML = '?';
+  } else {
+    cell.innerHTML = Demo.esc(value);
+  }
+
+  let label = 'dp[' + idx + ']';
+  let ptrClass = 'ptr ptr--dim';
+  if (step.done) {
+    if (idx === NUMS.length - 1) {
+      cell.classList.add('is-ok');
+      label = '答案';
+      ptrClass = 'ptr ptr--ok';
+    }
+  } else if (idx === step.i) {
+    cell.classList.add(step.choice === 'steal' ? 'is-warn' : 'is-active');
+    label = step.choice === 'steal' ? '偷它更优' : '第 ' + idx + ' 项';
+    ptrClass = step.choice === 'steal' ? 'ptr ptr--warn' : 'ptr';
+  } else if (step.steal != null && idx === step.i - 2) {
+    cell.classList.add('is-violet');
+    label = '被复用';
+    ptrClass = 'ptr ptr--violet';
+  } else if (step.skip != null && idx === step.i - 1) {
+    cell.classList.add('is-info');
+    label = '被复用';
+    ptrClass = 'ptr ptr--info';
+  }
+
+  col.appendChild(cell);
+  col.appendChild(Demo.el('div', ptrClass, Demo.esc(label)));
+  return col;
+}
+
+function candidateRow(step) {
+  const box = Demo.el('div', 'col');
+  box.style.width = '100%';
+
+  const maxV = Math.max(step.steal, step.skip, 1);
+  const items = [
+    { key: 'steal', name: '偷 ' + step.i + ' 号：dp[i-2] + nums[i]', value: step.steal, cls: 'is-warn' },
+    { key: 'skip', name: '不偷 ' + step.i + ' 号：dp[i-1]', value: step.skip, cls: 'is-info' }
+  ];
+
+  items.forEach(function (item) {
+    const row = Demo.el('div', 'row');
+    row.style.width = '100%';
+    row.style.flexWrap = 'nowrap';
+
+    const tag = Demo.el('span', 'tag ' + (step.choice === item.key ? 'tag--ok' : 'tag--' + (item.key === 'steal' ? 'warn' : 'info')),
+      Demo.esc(item.name));
+    tag.style.flex = 'none';
+    row.appendChild(tag);
+
+    const bar = Demo.el('div', 'bar');
+    bar.style.flex = '1';
+    const fill = Demo.el('div', 'bar__fill');
+    fill.style.width = Math.max(6, (item.value / maxV) * 100) + '%';
+    fill.style.background = item.key === 'steal' ? 'var(--demo-warn)' : 'var(--demo-info)';
+    bar.appendChild(fill);
+    bar.appendChild(Demo.el('div', 'bar__label', Demo.esc(item.value) + (step.choice === item.key ? '（胜出）' : '')));
+    row.appendChild(bar);
+
+    box.appendChild(row);
+  });
+
+  return box;
+}
+
+Demo.create({
+  title: '138. 打家劫舍 — 选 / 不选 DP：dp[i] = max(dp[i-1], dp[i-2] + nums[i])',
+  info: '输入：nums = [' + NUMS.join(', ') + ']（示例 2）。dp[i] = 只考虑前 i+1 间房能偷到的最大金额，相邻房屋不能同时偷。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 380,
+  legend: [
+    { color: 'var(--demo-accent)', label: '正在决策的房屋' },
+    { color: 'var(--demo-warn)', label: '候选「偷」：dp[i-2] + nums[i]' },
+    { color: 'var(--demo-info)', label: '候选「不偷」：dp[i-1]' },
+    { color: 'var(--demo-violet)', label: '被复用的 dp[i-2]' },
+    { color: 'var(--demo-ok)', label: '最终偷窃方案 / 答案' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const houses = Demo.el('div', 'panel');
+    houses.style.width = '100%';
+    houses.appendChild(Demo.el('div', 'panel__title', '沿街房屋（金额）'));
+    const hrow = Demo.el('div', 'row');
+    for (let k = 0; k < NUMS.length; k++) hrow.appendChild(houseColumn(step, k));
+    houses.appendChild(hrow);
+    ctx.stage.appendChild(houses);
+
+    const table = Demo.el('div', 'panel');
+    table.style.width = '100%';
+    table.appendChild(Demo.el('div', 'panel__title', '状态表 dp'));
+    const drow = Demo.el('div', 'row');
+    for (let k = 0; k < NUMS.length; k++) drow.appendChild(dpColumn(step, k));
+    table.appendChild(drow);
+    ctx.stage.appendChild(table);
+
+    if (step.steal != null && !step.done) {
+      const cmp = Demo.el('div', 'panel');
+      cmp.style.width = '100%';
+      cmp.appendChild(Demo.el('div', 'panel__title',
+        step.choice === null
+          ? '计算两种选择（蓝条是不偷的收益，黄条是偷的收益）'
+          : '两种选择比较结果'));
+      cmp.appendChild(candidateRow(step));
+      ctx.stage.appendChild(cmp);
+    }
+
+    const result = Demo.el('div', 'panel');
+    result.style.width = '100%';
+    result.style.textAlign = 'center';
+    if (step.done) {
+      result.innerHTML = '最终答案：dp[' + (NUMS.length - 1) + '] = <strong>' + step.dp[NUMS.length - 1] + '</strong>' +
+        ' &nbsp;<span class="tag tag--ok">偷 ' + step.robbed.map(k => k + ' 号').join('、') + '，合计 ' +
+        step.robbed.map(k => '$' + NUMS[k]).join(' + ') + ' = ' + step.dp[NUMS.length - 1] + '</span>';
+    } else if (step.i >= 1) {
+      result.innerHTML = '当前进度：dp = [<code>' +
+        step.dp.map(v => (v == null ? '?' : v)).join(', ') + '</code>]';
+    } else {
+      result.innerHTML = '当前进度：dp = [<code>' +
+        step.dp.map(v => (v == null ? '?' : v)).join(', ') + '</code>]，先确定最前面的边界。';
+    }
+    ctx.stage.appendChild(result);
+  }
 });
-buildSteps();render();
 </script>
 </body>
 </html>

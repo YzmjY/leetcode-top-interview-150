@@ -3,145 +3,398 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>124. 数据流的中位数</title>
-<style>
-:root {
-  --bg: #f5f6fa; --card: #fff; --text: #2d3436; --sub: #636e72;
-  --border: #dfe6e9; --blue: #0984e3; --green: #00b894; --red: #e17055;
-  --blue-bg: #dff6fd; --green-bg: #dff9e6; --hl: #ffeaa7;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1a1a2e; --card: #16213e; --text: #eee; --sub: #aaa;
-    --border: #2d3436; --blue: #74b9ff; --green: #55efc4; --red: #ff7675;
-    --blue-bg: #1a3a5c; --green-bg: #1a3a2c; --hl: #5c4a1f;
-  }
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:var(--bg); display:flex; justify-content:center; align-items:center; min-height:100vh; }
-.container { width:860px; height:500px; background:var(--card); border-radius:8px; padding:20px 24px; display:flex; flex-direction:column; gap:10px; box-shadow:0 2px 12px rgba(0,0,0,0.1); }
-.header { display:flex; justify-content:space-between; align-items:center; }
-.header h2 { font-size:17px; color:var(--text); }
-.step-badge { font-size:13px; color:var(--sub); background:var(--border); padding:4px 12px; border-radius:8px; font-weight:500; }
-.info-panel { background:var(--blue-bg); border-left:3px solid var(--blue); padding:10px 14px; border-radius:8px; font-size:13px; color:var(--text); min-height:44px; display:flex; align-items:center; }
-.heaps { display:flex; gap:24px; flex:1; justify-content:center; align-items:flex-start; padding-top:16px; }
-.heap-box { display:flex; flex-direction:column; gap:6px; align-items:center; min-width:180px; }
-.heap-box .h-title { font-size:13px; font-weight:600; color:var(--sub); }
-.heap-items { display:flex; flex-direction:column; gap:4px; align-items:center; }
-.h-cell { width:64px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:18px; color:var(--text); transition:all 0.3s; }
-.h-cell.maxh { background:var(--blue-bg); border:2px solid var(--blue); }
-.h-cell.minh { background:var(--green-bg); border:2px solid var(--green); }
-.h-cell.top { box-shadow:0 0 0 2px var(--red); }
-.median-result { text-align:center; font-weight:700; font-size:22px; color:var(--green); padding:4px; border-radius:8px; border:2px solid var(--green); background:var(--green-bg); }
-.ops-bar { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
-.controls { display:flex; gap:8px; justify-content:center; }
-.btn { padding:7px 16px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; font-size:13px; font-family:inherit; transition:all 0.15s; }
-.btn:hover { background:var(--blue-bg); border-color:var(--blue); }
-.btn:active { transform:scale(0.96); }
-.key-hint { font-size:11px; color:var(--sub); text-align:center; }
-</style>
+<title>124. 数据流的中位数 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <h2>124. 数据流的中位数 (大顶堆 + 小顶堆)</h2>
-    <span class="step-badge" id="stepBadge">步骤 0/5</span>
-  </div>
-  <div class="info-panel" id="info"></div>
-  <div class="heaps">
-    <div class="heap-box">
-      <div class="h-title">大顶堆 (左半, 较小值)</div>
-      <div class="heap-items" id="maxHeapViz"></div>
-    </div>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
-      <div class="median-result" id="medianResult">中位数 = ?</div>
-    </div>
-    <div class="heap-box">
-      <div class="h-title">小顶堆 (右半, 较大值)</div>
-      <div class="heap-items" id="minHeapViz"></div>
-    </div>
-  </div>
-  <div class="controls">
-    <button class="btn" onclick="reset()">重置</button>
-    <button class="btn" onclick="prev()">上步</button>
-    <button class="btn" onclick="next()">下步</button>
-    <button class="btn" id="autoBtn" onclick="toggleAuto()">自动播放</button>
-    <button class="btn" onclick="goLast()">跳到最后</button>
-  </div>
-  <div class="key-hint">键盘: &#8592; &#8593; 上步 | &#8594; &#8595; 下步 | 空格 自动播放 | R 重置 | End 跳到最后</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const operations = [
-  {type:'add', val:1},
-  {type:'add', val:2},
-  {type:'median'},
-  {type:'add', val:3},
-  {type:'median'},
+const OPS = [
+  { type: 'add', val: 1 },
+  { type: 'add', val: 2 },
+  { type: 'median' },
+  { type: 'add', val: 3 },
+  { type: 'median' }
 ];
-let maxHeap = [], minHeap = [];
-let steps = [], cur = 0, autoTimer = null, running = false;
 
-function buildSteps() {
-  steps = [];
-  maxHeap = []; minHeap = [];
-  steps.push({maxH:[],minH:[],median:null,desc:'初始化: 左大顶堆=[], 右小顶堆=[]'});
-  for (let op of operations) {
-    if (op.type === 'add') {
-      // add to maxHeap first
-      maxHeap.push(op.val); maxHeap.sort((a,b)=>b-a);
-      // move maxHeap top to minHeap
-      let moved = maxHeap.shift();
-      minHeap.push(moved); minHeap.sort((a,b)=>a-b);
-      // balance: minHeap >= maxHeap
-      if (minHeap.length > maxHeap.length + 1) {
-        let back = minHeap.shift();
-        maxHeap.push(back); maxHeap.sort((a,b)=>b-a);
+const MAX_CMP = function (a, b) { return a > b; };
+const MIN_CMP = function (a, b) { return a < b; };
+
+/* 堆数组 → 完全二叉树（中序遍历定横向位置）。 */
+function heapSvg(values, marks) {
+  const n = values.length;
+  if (n === 0) {
+    return '<div class="ptr ptr--dim" style="padding:12px 0">（空堆）</div>';
+  }
+  const GAP = 74, LEVEL = 74, PAD = 44;
+  const pos = new Array(n);
+  let order = 0, maxDepth = 0;
+  (function walk(i, depth) {
+    if (i >= n) return;
+    walk(2 * i + 1, depth + 1);
+    pos[i] = { order: order, depth: depth, x: 0, y: 0 };
+    order += 1;
+    if (depth > maxDepth) maxDepth = depth;
+    walk(2 * i + 2, depth + 1);
+  })(0, 0);
+  pos.forEach(function (p) { p.x = PAD + p.order * GAP; p.y = PAD + p.depth * LEVEL; });
+  const width = PAD * 2 + (order - 1) * GAP;
+  const height = PAD * 2 + maxDepth * LEVEL;
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    for (let c = 2 * i + 1; c <= 2 * i + 2; c++) {
+      if (c < n) {
+        out += '<line x1="' + pos[i].x + '" y1="' + (pos[i].y + 22) + '" x2="' + pos[c].x +
+          '" y2="' + (pos[c].y - 22) + '" style="stroke:var(--demo-border);stroke-width:2"></line>';
       }
-      let median;
-      if (maxHeap.length === minHeap.length) median = (maxHeap[0]+minHeap[0])/2;
-      else median = minHeap[0];
-      steps.push({maxH:[...maxHeap],minH:[...minHeap],median,desc:`addNum(${op.val}): 大顶堆=[${[...maxHeap]}], 小顶堆=[${[...minHeap]}], 中位数=${median}`});
-    } else {
-      let median = maxHeap.length===minHeap.length ? (maxHeap[0]+minHeap[0])/2 : minHeap[0];
-      steps.push({maxH:[...maxHeap],minH:[...minHeap],median,desc:`findMedian() = ${median}`});
     }
   }
+  for (let i = 0; i < n; i++) {
+    const st = marks[i] || 'n';
+    let fill = 'var(--demo-subtle)', stroke = 'var(--demo-border)', text = 'var(--demo-text)';
+    if (st === 'cmp') { fill = 'var(--demo-warn-soft)'; stroke = 'var(--demo-warn)'; text = 'var(--demo-warn)'; }
+    if (st === 'swap') { fill = 'var(--demo-pink-soft)'; stroke = 'var(--demo-pink)'; text = 'var(--demo-pink)'; }
+    if (st === 'active') { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; text = 'var(--demo-accent-strong)'; }
+    if (st === 'top') { fill = 'var(--demo-ok-soft)'; stroke = 'var(--demo-ok)'; text = 'var(--demo-ok)'; }
+    out += '<circle cx="' + pos[i].x + '" cy="' + pos[i].y + '" r="22" style="fill:' + fill +
+      ';stroke:' + stroke + ';stroke-width:2.5"></circle>';
+    out += '<text x="' + pos[i].x + '" y="' + (pos[i].y + 5) + '" text-anchor="middle" font-size="15" ' +
+      'font-weight="600" font-family="monospace" style="fill:' + text + '">' + values[i] + '</text>';
+    out += '<text x="' + pos[i].x + '" y="' + (pos[i].y + 40) + '" text-anchor="middle" font-size="11" ' +
+      'style="fill:var(--demo-muted)">[' + i + ']</text>';
+  }
+  return '<svg viewBox="0 0 ' + width + ' ' + height + '" style="width:100%;max-width:' + width +
+    'px;height:auto;display:block;margin:0 auto">' + out + '</svg>';
 }
-buildSteps();
 
-function render() {
-  const s = steps[cur];
-  document.getElementById('stepBadge').textContent = `步骤 ${cur}/${steps.length-1}`;
-  document.getElementById('info').textContent = s.desc;
-  document.getElementById('autoBtn').textContent = running ? '停止' : '自动播放';
-  document.getElementById('medianResult').textContent = s.median !== null ? `中位数 = ${s.median}` : '中位数 = ?';
-  // Max heap
-  let mh = '';
-  for (let v of s.maxH) mh += `<div class="h-cell maxh${v===s.maxH[0]?' top':''}">${v}</div>`;
-  if (!s.maxH.length) mh = '<div style="color:var(--sub);font-size:12px;">(空)</div>';
-  document.getElementById('maxHeapViz').innerHTML = mh;
-  // Min heap
-  let mh2 = '';
-  for (let v of s.minH) mh2 += `<div class="h-cell minh${v===s.minH[0]?' top':''}">${v}</div>`;
-  if (!s.minH.length) mh2 = '<div style="color:var(--sub);font-size:12px;">(空)</div>';
-  document.getElementById('minHeapViz').innerHTML = mh2;
+function buildSteps() {
+  const steps = [];
+  const left = [];   // 大顶堆：较小的一半
+  const right = [];  // 小顶堆：较大的一半
+  const stream = [];
+  const opMedians = OPS.map(function () { return null; });
+  let opIndex = -1;
+  let median = null;
+  let medianFormula = null;
+
+  function snap(mkL, mkR, text, extra) {
+    const step = {
+      left: left.slice(),
+      right: right.slice(),
+      marksL: mkL || {},
+      marksR: mkR || {},
+      opIndex: opIndex,
+      median: median,
+      medianFormula: medianFormula,
+      stream: stream.slice(),
+      opMedians: opMedians.slice(),
+      note: text,
+      done: false
+    };
+    if (extra) Object.keys(extra).forEach(function (key) { step[key] = extra[key]; });
+    steps.push(step);
+  }
+
+  function markPairs(pairs) {
+    const m = {};
+    pairs.forEach(function (p) { m[p[0]] = p[1]; });
+    return m;
+  }
+  function snapL(pairs, text) { snap(markPairs(pairs), {}, text); }
+  function snapR(pairs, text) { snap({}, markPairs(pairs), text); }
+  function snapBoth(pl, pr, text) { snap(markPairs(pl), markPairs(pr), text); }
+  function say(side) { return side === 'left' ? snapL : snapR; }
+
+  function siftUp(heap, side, cmp, label, prefix) {
+    const s = say(side);
+    let cur = heap.length - 1;
+    while (cur > 0) {
+      const parent = (cur - 1) >> 1;
+      const a = heap[cur];
+      const b = heap[parent];
+      s([[cur, 'cmp'], [parent, 'cmp']],
+        prefix + '向上调整：比较子节点 ' + label + '[' + cur + '] = ' + a + ' 与父节点 ' + label + '[' + parent + '] = ' + b + '。');
+      if (cmp(a, b)) {
+        heap[cur] = b;
+        heap[parent] = a;
+        s([[parent, 'swap'], [cur, 'swap']],
+          prefix + a + ' 与 ' + b + ' 违反堆序（' + (side === 'left' ? '大顶堆要求父 ≥ 子' : '小顶堆要求父 ≤ 子') +
+          '），交换：' + a + ' 上浮到 ' + label + '[' + parent + ']，' + b + ' 下沉。');
+        cur = parent;
+      } else {
+        s([[cur, 'active'], [parent, 'active']], prefix + a + ' 与 ' + b + ' 已经满足堆序，停止上浮。');
+        break;
+      }
+    }
+  }
+
+  function siftDown(heap, side, cmp, label, prefix) {
+    const s = say(side);
+    let node = 0;
+    while (true) {
+      const l = 2 * node + 1;
+      const r = 2 * node + 2;
+      if (l >= heap.length) {
+        s([[node, 'active']], prefix + label + '[' + node + '] 已经没有子节点，向下调整结束，堆序恢复。');
+        break;
+      }
+      let best = node;
+      if (cmp(heap[l], heap[best])) best = l;
+      if (r < heap.length && cmp(heap[r], heap[best])) best = r;
+      const pairs = [[node, 'cmp'], [l, 'cmp']];
+      if (r < heap.length) pairs.push([r, 'cmp']);
+      let desc = prefix + '向下调整：比较 ' + label + '[' + node + '] = ' + heap[node] + ' 与子节点 ' + label + '[' + l +
+        '] = ' + heap[l] + (r < heap.length ? '、' + label + '[' + r + '] = ' + heap[r] : '') + '。';
+      if (best === node) {
+        s(pairs, desc + '父节点已经满足堆序，调整结束。');
+        break;
+      }
+      const bv = heap[best];
+      const nv = heap[node];
+      desc += label + '[' + best + '] = ' + bv + ' 更' + (side === 'left' ? '大' : '小') + '，交换：' + bv +
+        ' 上浮、' + nv + ' 下沉。';
+      heap[node] = bv;
+      heap[best] = nv;
+      s([[node, 'swap'], [best, 'swap']], desc);
+      node = best;
+    }
+  }
+
+  /* 弹出堆顶：把堆尾搬到根，再 sift down。 */
+  function popRoot(heap, side, cmp, label, prefix) {
+    const s = say(side);
+    if (heap.length === 1) {
+      heap.pop();
+      s([], prefix + '弹出堆顶后 ' + label + ' 变空。');
+      return;
+    }
+    const last = heap[heap.length - 1];
+    heap[0] = last;
+    heap.pop();
+    s([[0, 'active']], prefix + '删除堆顶：把堆尾的 ' + last + ' 搬到根 ' + label + '[0]，再向下调整（sift down）。');
+    siftDown(heap, side, cmp, label, prefix);
+  }
+
+  function pushInto(heap, side, cmp, value, label, prefix, lead) {
+    heap.push(value);
+    const cur = heap.length - 1;
+    say(side)([[cur, 'active']], prefix + lead + '压入 ' + label + ' 堆尾 ' + label + '[' + cur + ']。');
+    siftUp(heap, side, cmp, label, prefix);
+  }
+
+  snap({}, {},
+    '初始化：left 是大顶堆，存较小的一半；right 是小顶堆，存较大的一半。需要维持两条不变量：' +
+    '① left 里的每个元素都 ≤ right 里的每个元素；② left 的大小等于 right 的大小，或恰好比它大 1。' +
+    '这样中位数要么是 left 的堆顶，要么是 left、right 两个堆顶的平均值。');
+
+  for (opIndex = 0; opIndex < OPS.length; opIndex++) {
+    const op = OPS[opIndex];
+
+    if (op.type === 'add') {
+      const num = op.val;
+      const prefix = 'addNum(' + num + ')：';
+      stream.push(num);
+
+      pushInto(left, 'left', MAX_CMP, num, 'left', prefix, '先把它无条件');
+
+      if (left.length > 0 && right.length > 0 && left[0] > right[0]) {
+        const moved = left[0];
+        snapBoth([[0, 'top']], [[0, 'top']],
+          prefix + '检查不变量①：left 堆顶 ' + moved + ' > right 堆顶 ' + right[0] +
+          '，说明较小的一半里混进了偏大的元素，把它挪到 right 去。');
+        popRoot(left, 'left', MAX_CMP, 'left', prefix);
+        pushInto(right, 'right', MIN_CMP, moved, 'right', prefix, '把 ' + moved);
+      }
+
+      if (left.length > right.length + 1) {
+        const moved = left[0];
+        snapBoth([[0, 'top']], [[0, 'top']],
+          prefix + '检查不变量②：left 有 ' + left.length + ' 个、right 有 ' + right.length +
+          ' 个，left 比 right 多了不止 1 个，把 left 堆顶 ' + moved + ' 挪到 right。');
+        popRoot(left, 'left', MAX_CMP, 'left', prefix);
+        pushInto(right, 'right', MIN_CMP, moved, 'right', prefix, '把 ' + moved);
+      }
+
+      if (right.length > left.length) {
+        const moved = right[0];
+        snapBoth([[0, 'top']], [[0, 'top']],
+          prefix + '检查不变量②：right 有 ' + right.length + ' 个、left 只有 ' + left.length +
+          ' 个，right 不能比 left 多，把 right 堆顶 ' + moved + ' 挪回 left。');
+        popRoot(right, 'right', MIN_CMP, 'right', prefix);
+        pushInto(left, 'left', MAX_CMP, moved, 'left', prefix, '把 ' + moved);
+      }
+
+      snap({}, {},
+        prefix + '本轮结束：left = [' + left.join(', ') + ']（大顶堆，堆顶 ' + left[0] + '），right = [' +
+        right.join(', ') + ']' + (right.length ? '（小顶堆，堆顶 ' + right[0] + '）' : '（空）') +
+        '。left 的 ' + left.length + ' 个元素都 ≤ right 的 ' + right.length + ' 个元素，大小关系也满足要求。');
+    } else {
+      const odd = left.length > right.length;
+      const value = odd ? left[0] : (left[0] + right[0]) / 2;
+      median = value;
+      medianFormula = odd
+        ? '奇数个 → 取 left 堆顶 ' + left[0]
+        : '偶数个 → (' + left[0] + ' + ' + right[0] + ') / 2 = ' + value;
+      opMedians[opIndex] = value;
+      snap({}, {},
+        'findMedian()：当前 left 有 ' + left.length + ' 个、right 有 ' + right.length + ' 个。' +
+        (odd
+          ? '总数 ' + (left.length + right.length) + ' 是奇数，中位数就是较小一半里的最大值，即 left 堆顶 ' + left[0] + '。'
+          : '两堆一样大，中位数是两个堆顶的平均值 (' + left[0] + ' + ' + right[0] + ') / 2 = ' + value + '。') +
+        ' 两个堆顶都是可以直接读到的，所以查询是 O(1)。');
+    }
+  }
+
+  const total = left.length + right.length;
+  const finalMedian = left.length > right.length ? left[0] : (left[0] + right[0]) / 2;
+  snap({}, {},
+    '操作序列执行完毕：共加入 ' + total + ' 个数，left = [' + left.join(', ') + ']，right = [' + right.join(', ') +
+    ']。每次 addNum 只做常数次堆操作，每次 O(log n)，所以整体插入 O(log n)、查询中位数 O(1)、空间 O(n)。' +
+    '最终中位数 = ' + finalMedian + '。', { done: true });
+
+  return steps;
 }
-function reset() { cur = 0; stopAuto(); render(); }
-function prev() { if (cur > 0) { cur--; render(); } }
-function next() { if (cur < steps.length - 1) { cur++; render(); } else { stopAuto(); } }
-function goLast() { stopAuto(); cur = steps.length - 1; render(); }
-function toggleAuto() { running ? stopAuto() : startAuto(); }
-function startAuto() { running = true; render(); autoStep(); }
-function stopAuto() { running = false; if (autoTimer) clearTimeout(autoTimer); render(); }
-function autoStep() { if (!running) return; if (cur < steps.length - 1) { cur++; render(); autoTimer = setTimeout(autoStep, 700); } else { stopAuto(); } }
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
-  else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); next(); }
-  else if (e.key === ' ') { e.preventDefault(); toggleAuto(); }
-  else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); reset(); }
-  else if (e.key === 'End') { e.preventDefault(); goLast(); }
+
+Demo.create({
+  title: '124. 数据流的中位数 — 大顶堆 + 小顶堆对顶',
+  info: '输入：addNum(1), addNum(2), findMedian() → 1.5, addNum(3), findMedian() → 2.0。left 存较小一半，right 存较大一半。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 470,
+  legend: [
+    { color: 'var(--demo-accent)', label: '刚入堆 / 正在调整' },
+    { color: 'var(--demo-warn)', label: '正在比较' },
+    { color: 'var(--demo-pink)', label: '发生交换' },
+    { color: 'var(--demo-ok)', label: '堆顶（中位数来源）' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const opsPanel = Demo.el('div', 'panel');
+    opsPanel.style.width = '100%';
+    opsPanel.appendChild(Demo.el('div', 'panel__title', '操作序列（按调用顺序，当前操作高亮）'));
+    const orow = Demo.el('div', 'row');
+    OPS.forEach(function (op, k) {
+      const col = Demo.el('div', 'col');
+      const label = op.type === 'add' ? 'addNum(' + op.val + ')' : 'findMedian()';
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(label));
+      if (k === step.opIndex && !step.done) cell.classList.add('is-active');
+      else if (k < step.opIndex || step.done) cell.classList.add('is-ok');
+      else cell.classList.add('cell--dim');
+      col.appendChild(cell);
+
+      let ptrText;
+      if (op.type === 'add') {
+        ptrText = '加入 ' + op.val;
+      } else {
+        ptrText = step.opMedians[k] == null ? '返回 ?' : '返回 ' + step.opMedians[k];
+      }
+      const ptr = Demo.el('div', 'ptr', ptrText);
+      if (k === step.opIndex && !step.done) { /* 保持强调色 */ }
+      else if (k < step.opIndex || step.done) ptr.classList.add('ptr--ok');
+      else ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      orow.appendChild(col);
+    });
+    opsPanel.appendChild(orow);
+    ctx.stage.appendChild(opsPanel);
+
+    const heapRow = Demo.el('div', 'row');
+    heapRow.style.width = '100%';
+    heapRow.style.alignItems = 'flex-start';
+
+    function heapPanel(values, marks, title, hint) {
+      const panel = Demo.el('div', 'panel');
+      panel.style.flex = '1 1 240px';
+      panel.appendChild(Demo.el('div', 'panel__title', title));
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = heapSvg(values, marks);
+      panel.appendChild(wrap);
+      if (values.length) {
+        const arow = Demo.el('div', 'row');
+        values.forEach(function (v, k) {
+          const col = Demo.el('div', 'col');
+          const c = Demo.el('div', 'cell cell--sm', Demo.esc(v));
+          const mark = marks[k];
+          if (k === 0) c.classList.add('is-ok');
+          if (mark === 'active') c.classList.add('is-active');
+          else if (mark === 'cmp') c.classList.add('is-warn');
+          else if (mark === 'swap') c.classList.add('is-pink');
+          col.appendChild(c);
+          col.appendChild(Demo.el('div', 'ptr ptr--dim', '[' + k + ']'));
+          arow.appendChild(col);
+        });
+        panel.appendChild(arow);
+      }
+      panel.appendChild(Demo.el('div', 'panel__title', hint));
+      return panel;
+    }
+
+    const leftCol = Demo.el('div', 'col');
+    leftCol.style.flex = '1 1 240px';
+    leftCol.style.alignSelf = 'stretch';
+    leftCol.appendChild(heapPanel(step.left, step.marksL,
+      '大顶堆 left（较小的一半）　' + step.left.length + ' 个',
+      step.left.length ? '堆顶 ' + step.left[0] + ' = 这一半的最大值' : '（空）'));
+
+    const rightHeapCol = Demo.el('div', 'col');
+    rightHeapCol.style.flex = '1 1 240px';
+    rightHeapCol.style.alignSelf = 'stretch';
+    rightHeapCol.appendChild(heapPanel(step.right, step.marksR,
+      '小顶堆 right（较大的一半）　' + step.right.length + ' 个',
+      step.right.length ? '堆顶 ' + step.right[0] + ' = 这一半的最小值' : '（空）'));
+
+    const midPanel = Demo.el('div', 'panel');
+    midPanel.style.flex = '1 1 200px';
+    midPanel.style.textAlign = 'center';
+    midPanel.appendChild(Demo.el('div', 'panel__title', '当前中位数'));
+    const big = Demo.el('div', null, step.median == null ? '—' : String(step.median));
+    big.style.fontSize = '26px';
+    big.style.fontWeight = '700';
+    big.style.color = 'var(--demo-ok)';
+    midPanel.appendChild(big);
+    let formula;
+    if (step.medianFormula == null) formula = '还没有调用过 findMedian()';
+    else formula = '最近一次查询：' + step.medianFormula;
+    midPanel.appendChild(Demo.el('div', null, formula));
+    midPanel.appendChild(Demo.el('div', null,
+      'left ' + step.left.length + ' 个　right ' + step.right.length + ' 个'));
+    midPanel.appendChild(Demo.el('div', null,
+      step.done
+        ? '<span class="tag tag--ok">最终 ' + step.median + '</span>'
+        : '<span class="tag tag--info">查询只需读堆顶，O(1)</span>'));
+
+    const midCol = Demo.el('div', 'col');
+    midCol.style.flex = '1 1 200px';
+    midCol.appendChild(midPanel);
+
+    const streamPanel = Demo.el('div', 'panel');
+    streamPanel.style.width = '100%';
+    streamPanel.style.marginTop = '10px';
+    streamPanel.appendChild(Demo.el('div', 'panel__title', '数据流（按加入顺序）'));
+    const srow = Demo.el('div', 'row');
+    if (step.stream.length === 0) {
+      srow.appendChild(Demo.el('div', 'ptr ptr--dim', '（还没有数据）'));
+    } else {
+      step.stream.forEach(function (v, k) {
+        const col = Demo.el('div', 'col');
+        const c = Demo.el('div', 'cell cell--sm', Demo.esc(v));
+        if (k === step.stream.length - 1 && !step.done) c.classList.add('is-active');
+        col.appendChild(c);
+        col.appendChild(Demo.el('div', 'ptr ptr--dim', '#' + (k + 1)));
+        srow.appendChild(col);
+      });
+    }
+    streamPanel.appendChild(srow);
+
+    heapRow.appendChild(leftCol);
+    heapRow.appendChild(midCol);
+    heapRow.appendChild(rightHeapCol);
+    ctx.stage.appendChild(heapRow);
+    ctx.stage.appendChild(streamPanel);
+  }
 });
-render();
 </script>
 </body>
 </html>

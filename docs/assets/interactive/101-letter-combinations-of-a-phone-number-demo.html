@@ -3,245 +3,193 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>电话号码的字母组合 - 回溯可视化</title>
-<style>
-:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#555;--border:#dee2e6;--accent:#7c3aed;--accent2:#a78bfa;--hover:#ede9fe;--green:#22c55e;--orange:#f59e0b;--blue:#3b82f6;--red:#ef4444;--btn-bg:#e5e7eb;--btn-txt:#374151;--node-bg:#f3e8ff;--node-border:#c4b5fd;--edge:#c4b5fd;--path:#7c3aed;--res-bg:#f0fdf4;--res-border:#86efac;--phone-key:#e5e7eb;--digit-accent:#7c3aed}
-.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--node-bg:#1e1b4b;--node-border:#5b21b6;--edge:#5b21b6;--path:#a78bfa;--res-bg:#052e16;--res-border:#166534;--phone-key:#334155;--digit-accent:#a78bfa}
-@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--node-bg:#1e1b4b;--node-border:#5b21b6;--edge:#5b21b6;--path:#a78bfa;--res-bg:#052e16;--res-border:#166534;--phone-key:#334155;--digit-accent:#a78bfa}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
-.container{width:100%;max-width:780px;background:var(--card);border-radius:8px;border:1px solid var(--border);padding:20px 24px}
-h2{font-size:1.1rem;font-weight:600;margin-bottom:6px;color:var(--accent)}
-.info-panel{display:flex;align-items:center;gap:12px;margin-bottom:16px;font-size:.85rem;color:var(--text2);flex-wrap:wrap}
-.info-panel .step{background:var(--accent);color:#fff;padding:3px 10px;border-radius:8px;font-weight:600;font-size:.8rem}
-.info-panel .desc{flex:1;min-width:200px}
-.phone-pad{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
-.phone-pad .key{background:var(--phone-key);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:.78rem;text-align:center;min-width:42px}
-.phone-pad .key.active{background:var(--digit-accent);color:#fff;border-color:var(--digit-accent)}
-.phone-pad .key span{display:block;font-weight:700;font-size:.85rem}
-.phone-pad .key small{display:block;font-size:.65rem;color:var(--text2)}
-.phone-pad .key.active small{color:rgba(255,255,255,.8)}
-.vis-area{height:460px;position:relative;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg)}
-.vis-area canvas{display:block;width:100%;height:100%}
-.results-bar{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;min-height:28px}
-.results-bar .tag{background:var(--res-bg);border:1px solid var(--res-border);color:var(--green);padding:2px 8px;border-radius:6px;font-size:.75rem;font-family:monospace}
-.controls{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-.controls button{background:var(--btn-bg);color:var(--btn-txt);border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:inherit;transition:all .15s}
-.controls button:hover{background:var(--hover);border-color:var(--accent)}
-.controls button:active{transform:scale(.96)}
-.controls button.playing{background:var(--accent);color:#fff;border-color:var(--accent)}
-.legend{display:flex;gap:14px;margin-top:8px;font-size:.72rem;color:var(--text2);flex-wrap:wrap}
-.legend span{display:flex;align-items:center;gap:4px}
-.legend .dot{width:10px;height:10px;border-radius:50%}
-</style>
+<title>101. 电话号码的字母组合 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>101. 电话号码的字母组合</h2>
-<div class="info-panel">
-  <span class="step" id="stepLabel">步骤 1/15</span>
-  <span class="desc" id="stepDesc">开始回溯搜索: digits="23"</span>
-</div>
-<div class="phone-pad" id="phonePad"></div>
-<div class="vis-area"><canvas id="canvas"></canvas></div>
-<div class="results-bar" id="resultsBar"></div>
-<div class="controls">
-  <button onclick="reset()" title="重置">重置</button>
-  <button onclick="prevStep()" title="上一步">上步</button>
-  <button onclick="nextStep()" title="下一步">下步</button>
-  <button id="playBtn" onclick="togglePlay()" title="自动播放">自动播放</button>
-  <button onclick="jumpEnd()" title="跳到最后">最后</button>
-</div>
-<div class="legend">
-  <span><span class="dot" style="background:var(--accent)"></span>当前节点</span>
-  <span><span class="dot" style="background:var(--node-bg);border:2px solid var(--node-border)"></span>中间节点</span>
-  <span><span class="dot" style="background:var(--green)"></span>完整组合(叶子)</span>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const KEYMAP={'2':'abc','3':'def','4':'ghi','5':'jkl','6':'mno','7':'pqrs','8':'tuv','9':'wxyz'};
-const digits='23';
-const results=[];
-const steps=[];
-const segs=digits.split('');
-// generate all steps via DFS
-function genSteps(idx,path){
-  steps.push({idx,path:[...path],pos:path.length,type:'enter'});
-  if(idx===segs.length){
-    results.push(path.join(''));
-    steps.push({idx,path:[...path],pos:path.length,type:'leaf'});
-    return;
-  }
-  const letters=KEYMAP[segs[idx]];
-  for(let i=0;i<letters.length;i++){
-    path.push(letters[i]);
-    genSteps(idx+1,path);
-    path.pop();
-  }
-  steps.push({idx:idx-1,path:[...path],pos:path.length,type:'backtrack'});
-}
-genSteps(0,[]);
+const DIGITS = '23';
+const PHONE = {
+  '2': 'abc', '3': 'def', '4': 'ghi', '5': 'jkl',
+  '6': 'mno', '7': 'pqrs', '8': 'tuv', '9': 'wxyz'
+};
+const KEY_ORDER = '23456789';
 
-let curStep=0;
-let playId=null;
-const canvas=document.getElementById('canvas');
-const ctx=canvas.getContext('2d');
+function buildSteps() {
+  const steps = [];
+  const path = new Array(DIGITS.length).fill('');
+  const results = [];
 
-function resize(){const r=canvas.getBoundingClientRect();canvas.width=r.width*devicePixelRatio;canvas.height=r.height*devicePixelRatio;ctx.setTransform(1,0,0,1,0,0);ctx.scale(devicePixelRatio,devicePixelRatio);draw();}
-window.addEventListener('resize',resize);
+  function snap(extra) {
+    return {
+      path: path.slice(),
+      results: results.slice(),
+      index: extra.index,
+      letter: extra.letter == null ? null : extra.letter,
+      letterIdx: extra.letterIdx == null ? -1 : extra.letterIdx,
+      phase: extra.phase,
+      note: extra.note
+    };
+  }
 
-function draw(){
-  const w=canvas.width/devicePixelRatio,h=canvas.height/devicePixelRatio;
-  ctx.clearRect(0,0,w,h);
-  const step=steps[curStep];
-  // draw backtracking tree
-  const rootX=w/2,rootY=50;
-  const levelGap=70,nodeGap=28;
-  // collect all paths at each level
-  const levels={};
-  for(let i=0;i<=curStep;i++){
-    const s=steps[i];
-    if(s.type==='leaf')continue;
-    const l=s.pos;
-    if(!levels[l])levels[l]=[];
-    const key=s.path.slice(0,l).join('')+'_'+l;
-    if(!levels[l].find(x=>x.key===key))levels[l].push({key,path:s.path.slice(0,l),x:0,y:0,isLeaf:steps[i].type==='leaf'});
+  steps.push(snap({
+    index: 0, phase: 'init',
+    note: '初始化：digits = "23"，path 是长度为 2 的空槽位。回溯从第 0 层开始，每一层负责为 digits 中的一个数字挑一个字母。'
+  }));
+
+  function backtrack(index) {
+    if (index === DIGITS.length) {
+      const word = path.join('');
+      results.push(word);
+      steps.push(snap({
+        index, phase: 'collect',
+        note: `路径长度已经等于 digits 的长度 ${DIGITS.length}，说明每个数字都选好了字母，得到一个完整组合 "${word}"，加入结果集；随后返回上一层继续尝试其它字母。`
+      }));
+      return;
+    }
+
+    const letters = PHONE[DIGITS[index]];
+    for (let i = 0; i < letters.length; i++) {
+      const ch = letters[i];
+      path[index] = ch;
+      steps.push(snap({
+        index, letter: ch, letterIdx: i, phase: 'choose',
+        note: `第 ${index} 层：数字 '${DIGITS[index]}' 对应字母集合 "${letters}"，本次选第 ${i + 1} 个字母 '${ch}' 写入 path[${index}]，当前路径 "${path.slice(0, index + 1).join('')}"，继续递归到第 ${index + 1} 层。`
+      }));
+
+      backtrack(index + 1);
+
+      steps.push(snap({
+        index, letter: ch, letterIdx: i, phase: 'undo',
+        note: `第 ${index} 层以 '${ch}' 开头的分支已经全部尝试完毕，撤销 path[${index}]，把选择权交还给 "${letters}" 中的下一个字母。这正是回溯「撤销选择」的一步。`
+      }));
+      path[index] = '';
+    }
   }
-  // add current step's node if enter
-  if(step.type==='enter'){
-    const l=step.pos;
-    if(!levels[l])levels[l]=[];
-    const key=step.path.join('')+'_'+l;
-    if(!levels[l].find(x=>x.key===key))levels[l].push({key,path:step.path,x:0,y:0,isLeaf:false});
-  }
-  if(step.type==='leaf'){
-    const l=step.path.length;
-    if(!levels[l])levels[l]=[];
-    const key=step.path.join('')+'_'+l;
-    if(!levels[l].find(x=>x.key===key))levels[l].push({key,path:step.path,x:0,y:0,isLeaf:true});
-  }
-  // position nodes
-  const maxL=Math.max(...Object.keys(levels).map(Number),0);
-  for(let l=0;l<=maxL;l++){
-    const nodes=levels[l]||[];
-    const totalW=nodes.length*nodeGap*2;
-    const startX=rootX-totalW/2+nodeGap;
-    nodes.forEach((n,i)=>{n.x=startX+i*nodeGap*2;n.y=rootY+l*levelGap});
-  }
-  // draw edges
-  for(let l=1;l<=maxL;l++){
-    const parents=levels[l-1]||[];
-    const children=levels[l]||[];
-    children.forEach(child=>{
-      // find parent
-      const pkey=child.path.slice(0,l-1).join('')+'_'+(l-1);
-      const parent=parents.find(p=>p.key===pkey);
-      if(parent){
-        ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--edge').trim();
-        ctx.lineWidth=1.5;
-        ctx.beginPath();
-        ctx.moveTo(parent.x,parent.y+18);
-        ctx.lineTo(child.x,child.y-18);
-        ctx.stroke();
-      }
-    });
-  }
-  // draw nodes
-  for(let l=0;l<=maxL;l++){
-    (levels[l]||[]).forEach(n=>{
-      const isCur=(step.type==='enter'||step.type==='leaf')&&step.path.join('')===n.path.join('')&&step.pos===l;
-      const isLeaf=n.isLeaf;
-      const r=18;
-      if(isLeaf){
-        ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
-        ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle='#fff';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText(n.path[n.path.length-1]||'R',n.x,n.y);
-      }else if(isCur){
-        ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-        ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fill();
-        ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent2').trim();ctx.lineWidth=3;
-        ctx.beginPath();ctx.arc(n.x,n.y,r+3,0,Math.PI*2);ctx.stroke();
-        ctx.fillStyle='#fff';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText(n.path[n.path.length-1]||'R',n.x,n.y);
-      }else{
-        const bg=getComputedStyle(document.documentElement).getPropertyValue('--node-bg').trim();
-        const bd=getComputedStyle(document.documentElement).getPropertyValue('--node-border').trim();
-        ctx.fillStyle=bg;
-        ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fill();
-        ctx.strokeStyle=bd;ctx.lineWidth=1.5;
-        ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.stroke();
-        ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text').trim();
-        ctx.font='11px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText(n.path[n.path.length-1]||'R',n.x,n.y);
-      }
-    });
-  }
-  // current path label
-  if(step.path.length>0||step.type==='leaf'){
-    ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-    ctx.font='bold 13px system-ui';ctx.textAlign='center';
-    ctx.fillText('当前路径: "'+step.path.join('')+'"',w/2,h-15);
-  }
+
+  backtrack(0);
+
+  steps.push(snap({
+    index: DIGITS.length, phase: 'done',
+    note: `所有分支都走完了，共得到 ${results.length} 个组合：[${results.join(', ')}]。每个组合都从每个数字的字母集合中恰好挑一个字母，因此既不重复也不遗漏。`
+  }));
+
+  return steps;
 }
 
-function updateUI(){
-  const step=steps[curStep];
-  document.getElementById('stepLabel').textContent='步骤 '+(curStep+1)+'/'+steps.length;
-  let desc='';
-  if(curStep===0)desc='开始回溯搜索: digits="23"';
-  else if(step.type==='enter')desc='进入: 选择字母 "'+(step.path[step.path.length-1]||'')+'" (位置'+step.pos+', 数字'+segs[step.pos-1]+')';
-  else if(step.type==='leaf')desc='找到完整组合: "'+step.path.join('')+'"';
-  else if(step.type==='backtrack')desc='回溯: 撤销选择, 返回上一级';
-  document.getElementById('stepDesc').textContent=desc;
-  // phone pad highlight
-  const pad=document.getElementById('phonePad');
-  const activeDigit=step.idx>=0&&step.idx<segs.length?segs[step.idx]:null;
-  pad.querySelectorAll('.key').forEach(k=>{
-    k.classList.toggle('active',k.dataset.digit===activeDigit&&step.type==='enter');
+function keypadRow(step) {
+  const row = Demo.el('div', 'row');
+  KEY_ORDER.split('').forEach(d => {
+    const pos = DIGITS.indexOf(d);
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell cell--sm', Demo.esc(d));
+    if (pos < 0) {
+      cell.classList.add('cell--dim');
+    } else if (step.index === pos && step.phase !== 'done') {
+      cell.classList.add('is-active');
+    } else if (step.path[pos]) {
+      cell.classList.add('is-ok');
+    }
+    col.appendChild(cell);
+    const letters = Demo.el('div', 'ptr', PHONE[d]);
+    if (pos < 0) letters.classList.add('ptr--dim');
+    else if (step.index === pos && step.phase !== 'done') letters.classList.add('ptr--violet');
+    col.appendChild(letters);
+    row.appendChild(col);
   });
-  // results
-  const bar=document.getElementById('resultsBar');
-  const found=new Set();
-  for(let i=0;i<=curStep;i++){if(steps[i].type==='leaf')found.add(steps[i].path.join(''));}
-  bar.innerHTML=[...found].map(s=>'<span class="tag">'+s+'</span>').join('');
-  resize();
+  return row;
 }
 
-function buildPhonePad(){
-  const pad=document.getElementById('phonePad');
-  pad.innerHTML='';
-  for(const d of digits.split('')){
-    const div=document.createElement('div');
-    div.className='key';div.dataset.digit=d;
-    div.innerHTML='<span>'+d+'</span><small>'+KEYMAP[d]+'</small>';
-    pad.appendChild(div);
+function pathRow(step) {
+  const row = Demo.el('div', 'row');
+  for (let i = 0; i < DIGITS.length; i++) {
+    const value = step.path[i];
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell cell--lg', value ? Demo.esc(value) : '?');
+    if (!value) cell.classList.add('cell--empty');
+    if (step.phase === 'choose' && i === step.index) cell.classList.add('is-active');
+    else if (step.phase === 'undo' && i === step.index) cell.classList.add('is-warn');
+    else if (value) cell.classList.add('is-ok');
+    col.appendChild(cell);
+    const label = Demo.el('div', 'ptr ptr--dim', "第" + i + "层·'" + DIGITS[i] + "'");
+    col.appendChild(label);
+    row.appendChild(col);
   }
+  return row;
 }
 
-function reset(){curStep=0;stopPlay();updateUI();}
-function nextStep(){if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();}
-function prevStep(){if(curStep>0){curStep--;updateUI();}}
-function jumpEnd(){curStep=steps.length-1;stopPlay();updateUI();}
-function stopPlay(){if(playId){clearInterval(playId);playId=null;document.getElementById('playBtn').classList.remove('playing');document.getElementById('playBtn').textContent='自动播放';}}
-function togglePlay(){
-  if(playId){stopPlay();return;}
-  if(curStep>=steps.length-1)curStep=0;
-  document.getElementById('playBtn').classList.add('playing');
-  document.getElementById('playBtn').textContent='暂停';
-  playId=setInterval(()=>{
-    if(curStep<steps.length-1){curStep++;updateUI();}
-    else stopPlay();
-  },700);
+function candidateRow(step) {
+  const row = Demo.el('div', 'row');
+  if (step.index >= DIGITS.length) {
+    row.appendChild(Demo.el('span', 'ptr ptr--dim', '已到达叶子层，没有待选字母'));
+    return row;
+  }
+  const letters = PHONE[DIGITS[step.index]];
+  letters.split('').forEach((ch, i) => {
+    const cell = Demo.el('div', 'cell', Demo.esc(ch));
+    if (i < step.letterIdx) cell.classList.add('cell--dim');
+    else if (i === step.letterIdx) cell.classList.add(step.phase === 'undo' ? 'is-warn' : 'is-active');
+    row.appendChild(cell);
+  });
+  return row;
 }
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}
-  else if(e.key==='ArrowRight'){e.preventDefault();nextStep();}
-  else if(e.key===' '){e.preventDefault();togglePlay();}
+
+function resultsRow(results) {
+  const row = Demo.el('div', 'row');
+  if (!results.length) {
+    row.appendChild(Demo.el('span', 'ptr ptr--dim', '（还没有收集到组合）'));
+    return row;
+  }
+  results.forEach(r => row.appendChild(Demo.el('span', 'tag tag--ok', Demo.esc(r))));
+  return row;
+}
+
+Demo.create({
+  title: '101. 电话号码的字母组合 — 逐层选择 + 回溯撤销',
+  info: '输入：digits = "23"。2 → "abc"，3 → "def"，需要从两个集合中各取一个字母拼成组合。',
+  steps: buildSteps(),
+  desc: (s, i) => s.note,
+  legend: [
+    { color: 'var(--demo-accent)', label: '本层正在尝试的字母' },
+    { color: 'var(--demo-violet)', label: '当前处理的数字键' },
+    { color: 'var(--demo-warn)', label: '正在撤销的选择' },
+    { color: 'var(--demo-ok)', label: '已确定的路径 / 结果' }
+  ],
+  stageHeight: 300,
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    ctx.stage.appendChild(Demo.el('div', 'panel__title', '电话按键映射（高亮为当前数字）'));
+    ctx.stage.appendChild(keypadRow(step));
+
+    const pathPanel = Demo.el('div', 'col');
+    pathPanel.appendChild(Demo.el('div', 'panel__title', 'path 路径槽位（每层一个字母）'));
+    pathPanel.appendChild(pathRow(step));
+    ctx.stage.appendChild(pathPanel);
+
+    const candPanel = Demo.el('div', 'col');
+    candPanel.appendChild(Demo.el('div', 'panel__title',
+      step.index < DIGITS.length
+        ? "数字 '" + DIGITS[step.index] + "' 的候选字母（灰 = 已试过）"
+        : '候选字母'));
+    candPanel.appendChild(candidateRow(step));
+    ctx.stage.appendChild(candPanel);
+
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.style.textAlign = 'center';
+    const line1 = Demo.el('div', null,
+      '<span class="tag">当前路径：' +
+      (step.path.filter(Boolean).join('') || '（空）') +
+      '</span> &nbsp; <span class="tag tag--ok">已收集 ' + step.results.length + ' 个</span>');
+    panel.appendChild(line1);
+    const line2 = resultsRow(step.results);
+    line2.style.marginTop = '6px';
+    panel.appendChild(line2);
+    ctx.stage.appendChild(panel);
+  }
 });
-
-buildPhonePad();
-updateUI();
 </script>
 </body>
 </html>

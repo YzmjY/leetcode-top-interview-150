@@ -3,200 +3,231 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>有序数组转BST - 分治可视化</title>
-<style>
-:root{--bg:#f8f9fa;--card:#fff;--text:#1a1a2e;--text2:#555;--border:#dee2e6;--accent:#7c3aed;--accent2:#a78bfa;--hover:#ede9fe;--green:#22c55e;--orange:#f59e0b;--blue:#3b82f6;--red:#ef4444;--btn-bg:#e5e7eb;--btn-txt:#374151;--node-bg:#f3e8ff;--node-border:#c4b5fd;--edge:#c4b5fd;--mid-highlight:#fef3c7;--left-bg:#dbeafe;--right-bg:#fce7f3;--root-node:#7c3aed}
-.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--node-bg:#1e1b4b;--node-border:#5b21b6;--edge:#5b21b6;--mid-highlight:#422006;--left-bg:#1e3a5f;--right-bg:#4a1942;--root-node:#a78bfa}
-@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--border:#334155;--accent:#a78bfa;--accent2:#7c3aed;--hover:#1e1b4b;--green:#4ade80;--orange:#fbbf24;--blue:#60a5fa;--red:#f87171;--btn-bg:#334155;--btn-txt:#e2e8f0;--node-bg:#1e1b4b;--node-border:#5b21b6;--edge:#5b21b6;--mid-highlight:#422006;--left-bg:#1e3a5f;--right-bg:#4a1942;--root-node:#a78bfa}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
-.container{width:100%;max-width:780px;background:var(--card);border-radius:8px;border:1px solid var(--border);padding:20px 24px}
-h2{font-size:1.1rem;font-weight:600;margin-bottom:6px;color:var(--accent)}
-.info-panel{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:.85rem;color:var(--text2);flex-wrap:wrap}
-.info-panel .step{background:var(--accent);color:#fff;padding:3px 10px;border-radius:8px;font-weight:600;font-size:.8rem}
-.info-panel .desc{flex:1;min-width:200px}
-.array-display{display:flex;gap:0;margin-bottom:8px;align-items:stretch;border-radius:8px;overflow:hidden;border:2px solid var(--border);height:40px}
-.array-display .el{flex:1;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;font-family:monospace;background:var(--bg);color:var(--text);border-right:1px solid var(--border);transition:all .2s}
-.array-display .el:last-child{border-right:none}
-.array-display .el.in-range{background:var(--node-bg);color:var(--text)}
-.array-display .el.mid{background:var(--accent);color:#fff}
-.array-display .el.left-range{background:var(--left-bg);color:var(--text)}
-.array-display .el.right-range{background:var(--right-bg);color:var(--text)}
-.vis-area{height:430px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg);position:relative}
-.vis-area canvas{display:block;width:100%;height:100%}
-.controls{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-.controls button{background:var(--btn-bg);color:var(--btn-txt);border:1px solid var(--border);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:inherit;transition:all .15s}
-.controls button:hover{background:var(--hover);border-color:var(--accent)}
-.controls button:active{transform:scale(.96)}
-.controls button.playing{background:var(--accent);color:#fff;border-color:var(--accent)}
-</style>
+<title>108. 将有序数组转换为二叉搜索树 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>108. 将有序数组转换为二叉搜索树</h2>
-<div class="info-panel">
-  <span class="step" id="stepLabel">步骤 1/9</span>
-  <span class="desc" id="stepDesc">初始数组 [-10,-3,0,5,9]</span>
-</div>
-<div class="array-display" id="arrayDisplay"></div>
-<div class="vis-area"><canvas id="canvas"></canvas></div>
-<div class="controls">
-  <button onclick="reset()">重置</button>
-  <button onclick="prevStep()">上步</button>
-  <button onclick="nextStep()">下步</button>
-  <button id="playBtn" onclick="togglePlay()">自动播放</button>
-  <button onclick="jumpEnd()">最后</button>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const nums=[-10,-3,0,5,9];
-const steps=[];
-function genSteps(l,r){
-  if(l>r){steps.push({type:'empty',l,r});return;}
-  const mid=Math.floor((l+r)/2);
-  steps.push({type:'pick_mid',l,r,mid,val:nums[mid]});
-  genSteps(l,mid-1);
-  genSteps(mid+1,r);
-  steps.push({type:'done',l,r,mid,val:nums[mid]});
-}
-genSteps(0,nums.length-1);
+const NUMS = [-10, -3, 0, 5, 9];
+let FULL_DEPTH = {};
 
-let curStep=0,playId=null;
-const canvas=document.getElementById('canvas');
-const ctx=canvas.getContext('2d');
+function buildSteps() {
+  const steps = [];
+  const created = [];
+  const edges = [];
+  const frames = [];
 
-function resize(){const r=canvas.getBoundingClientRect();canvas.width=r.width*devicePixelRatio;canvas.height=r.height*devicePixelRatio;ctx.setTransform(1,0,0,1,0,0);ctx.scale(devicePixelRatio,devicePixelRatio);draw();}
-window.addEventListener('resize',resize);
+  function snap(extra) {
+    const s = {
+      created: created.map(c => ({ idx: c.idx, val: c.val, depth: c.depth })),
+      edges: edges.map(e => ({ from: e.from, to: e.to })),
+      frames: frames.map(f => ({ l: f.l, r: f.r, mid: f.mid })),
+      phase: 'init', l: null, r: null, mid: null, cur: null, link: null, note: ''
+    };
+    const e = extra || {};
+    Object.keys(e).forEach(k => { s[k] = e[k]; });
+    steps.push(s);
+    return s;
+  }
 
-// Build tree nodes from steps up to curStep
-function getTreeNodes(){
-  const nodes=[];
-  const processed=new Set();
-  for(let i=0;i<=curStep;i++){
-    const s=steps[i];
-    if(s.type==='pick_mid'&&!processed.has(s.mid)){
-      nodes.push({val:s.val,idx:s.mid,l:s.l,r:s.r,mid:s.mid,depth:0,x:0,y:0});
-      processed.add(s.mid);
+  snap({ note: 'nums 已经升序排列。要建出高度平衡的 BST，只要每次取区间的中点当根：左半段递归成左子树、右半段递归成右子树，两边的元素个数最多差 1，树高自然平衡。' });
+
+  function build(l, r, depth, parentIdx, side) {
+    frames.push({ l: l, r: r, mid: null });
+
+    if (l > r) {
+      snap({
+        phase: 'empty', l: l, r: r,
+        note: '调用 build(' + l + ', ' + r + ')：l > r，区间里没有元素，返回 null' +
+          (parentIdx == null ? '。' : '，于是 ' + NUMS[parentIdx] + ' 的' + (side === 'L' ? '左' : '右') + '孩子为空。')
+      });
+      frames.pop();
+      return null;
     }
-  }
-  // compute depth based on parent
-  nodes.sort((a,b)=>a.idx-b.idx);
-  // recompute depth
-  function findDepth(idx){
-    const n=nodes.find(x=>x.idx===idx);
-    if(!n)return 0;
-    const parent=nodes.find(p=>p.l<=idx&&p.r>=idx&&p.mid!==idx);
-    if(!parent||parent.mid===idx)return 0;
-    return 1+findDepth(parent.mid);
-  }
-  nodes.forEach(n=>{n.depth=findDepth(n.mid);});
-  // compute x positions
-  nodes.sort((a,b)=>a.idx-b.idx);
-  const byDepth={};
-  nodes.forEach(n=>{
-    if(!byDepth[n.depth])byDepth[n.depth]=[];
-    byDepth[n.depth].push(n);
-  });
-  Object.values(byDepth).forEach(arr=>{
-    arr.sort((a,b)=>a.idx-b.idx);
-  });
-  return {nodes,byDepth};
-}
 
-function draw(){
-  const w=canvas.width/devicePixelRatio,h=canvas.height/devicePixelRatio;
-  ctx.clearRect(0,0,w,h);
-  const step=steps[curStep];
-  const {nodes,byDepth}=getTreeNodes();
-  if(nodes.length===0)return;
-  const maxDepth=Math.max(...nodes.map(n=>n.depth),0);
-  const levelGap=80;
-  // position nodes
-  const depthKeys=Object.keys(byDepth).map(Number).sort((a,b)=>a-b);
-  depthKeys.forEach(d=>{
-    const arr=byDepth[d];
-    const spacing=w/(arr.length+1);
-    arr.forEach((n,i)=>{
-      n.x=spacing*(i+1);
-      n.y=50+d*levelGap;
+    const mid = l + Math.floor((r - l) / 2);
+    frames[frames.length - 1].mid = mid;
+    created.push({ idx: mid, val: NUMS[mid], depth: depth });
+    snap({
+      phase: 'pick', l: l, r: r, mid: mid, cur: mid,
+      note: '调用 build(' + l + ', ' + r + ')：中点 mid = ' + mid + '，取 nums[' + mid + '] = ' + NUMS[mid] +
+        ' 作为这一段区间的根。左半区间 [' + l + ', ' + (mid - 1) + ']，右半区间 [' + (mid + 1) + ', ' + r + ']。'
     });
-  });
-  // draw edges
-  depthKeys.forEach(d=>{
-    const parents=byDepth[d]||[];
-    const children=byDepth[d+1]||[];
-    children.forEach(child=>{
-      const parent=parents.find(p=>p.l<=child.idx&&p.r>=child.idx&&p.mid!==child.idx);
-      if(parent){
-        ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--edge').trim();
-        ctx.lineWidth=2;
-        ctx.beginPath();ctx.moveTo(parent.x,parent.y+24);ctx.lineTo(child.x,child.y-24);ctx.stroke();
-      }
-    });
-  });
-  // draw nodes
-  nodes.forEach(n=>{
-    const r=22;
-    const isCur=(step.type==='pick_mid'||step.type==='done')&&step.mid===n.mid;
-    if(isCur){
-      ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-      ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent2').trim();ctx.lineWidth=3;
-      ctx.beginPath();ctx.arc(n.x,n.y,r+3,0,Math.PI*2);ctx.stroke();
-    }else{
-      ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--node-bg').trim();
-      ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--node-border').trim();
-      ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fill();ctx.lineWidth=2;ctx.stroke();
+
+    const left = build(l, mid - 1, depth + 1, mid, 'L');
+    if (left) {
+      edges.push({ from: mid, to: left.idx });
+      snap({
+        phase: 'link', l: l, r: r, mid: mid, cur: mid, link: left.idx,
+        note: '左子树构建完成，返回的根是 ' + NUMS[left.idx] + '，把整棵左子树挂到 ' + NUMS[mid] + ' 的左边。'
+      });
     }
-    ctx.fillStyle='#fff';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(n.val,n.x,n.y);
+
+    const right = build(mid + 1, r, depth + 1, mid, 'R');
+    if (right) {
+      edges.push({ from: mid, to: right.idx });
+      snap({
+        phase: 'link', l: l, r: r, mid: mid, cur: mid, link: right.idx,
+        note: '右子树构建完成，返回的根是 ' + NUMS[right.idx] + '，把整棵右子树挂到 ' + NUMS[mid] + ' 的右边。'
+      });
+    }
+
+    snap({
+      phase: 'finish', l: l, r: r, mid: mid, cur: mid,
+      note: '区间 [' + l + ', ' + r + '] 的子树已完成，根是 ' + NUMS[mid] + '，向上层返回。'
+    });
+    frames.pop();
+    return { idx: mid };
+  }
+
+  build(0, NUMS.length - 1, 0, null, null);
+
+  snap({
+    phase: 'done',
+    note: '构建结束。中序遍历这棵树得到 ' + NUMS.join(', ') + '，与原数组一致；任意节点左右子树高度差不超过 1，满足高度平衡。'
   });
-  // range label
-  if(step.type==='pick_mid'){
-    ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-    ctx.font='bold 12px system-ui';ctx.textAlign='center';
-    ctx.fillText('区间 ['+step.l+','+step.r+'] 中点='+step.mid+' 值='+nums[step.mid],w/2,h-15);
-  }
+
+  FULL_DEPTH = {};
+  created.forEach(c => { FULL_DEPTH[c.idx] = c.depth; });
+  return steps;
 }
 
-function renderArray(step){
-  const el=document.getElementById('arrayDisplay');
-  el.innerHTML='';
-  const l=(step&&step.l!==undefined)?step.l:-1;
-  const r=(step&&step.r!==undefined)?step.r:-1;
-  const mid=(step&&step.mid!==undefined)?step.mid:-1;
-  for(let i=0;i<nums.length;i++){
-    const div=document.createElement('div');
-    div.className='el';
-    div.textContent=nums[i];
-    if(i===mid&&(step.type==='pick_mid'||step.type==='done'))div.classList.add('mid');
-    else if(i>=l&&i<=r&&i<mid)div.classList.add('left-range');
-    else if(i>=l&&i<=r&&i>mid)div.classList.add('right-range');
-    else if(i>=l&&i<=r)div.classList.add('in-range');
-    el.appendChild(div);
-  }
+const COL_STEP = 92;
+const PAD_X = 52;
+const ROW_STEP = 80;
+const PAD_Y = 44;
+
+function treeSvg(step) {
+  const W = PAD_X * 2 + (NUMS.length - 1) * COL_STEP;
+  const H = PAD_Y * 2 + 2 * ROW_STEP + 10;
+  const px = idx => PAD_X + idx * COL_STEP;
+  const py = d => PAD_Y + d * ROW_STEP;
+
+  const built = {};
+  step.created.forEach(c => { built[c.idx] = true; });
+
+  let out = '';
+  step.edges.forEach(eg => {
+    const isCur = step.link === eg.to;
+    out += '<line x1="' + px(eg.from) + '" y1="' + (py(FULL_DEPTH[eg.from]) + 24) +
+      '" x2="' + px(eg.to) + '" y2="' + (py(FULL_DEPTH[eg.to]) - 24) +
+      '" style="stroke:' + (isCur ? 'var(--demo-accent)' : 'var(--demo-ok)') +
+      ';stroke-width:' + (isCur ? 3.5 : 2) + '"/>';
+  });
+
+  NUMS.forEach((val, idx) => {
+    if (!built[idx]) {
+      out += '<circle cx="' + px(idx) + '" cy="' + py(FULL_DEPTH[idx]) + '" r="23" ' +
+        'style="fill:none;stroke:var(--demo-border);stroke-width:2;stroke-dasharray:5 4"/>';
+      out += '<text x="' + px(idx) + '" y="' + (py(FULL_DEPTH[idx]) + 6) +
+        '" text-anchor="middle" style="fill:var(--demo-muted);font:600 16px sans-serif">?</text>';
+      return;
+    }
+    const isCur = step.cur === idx;
+    out += '<circle cx="' + px(idx) + '" cy="' + py(FULL_DEPTH[idx]) + '" r="23" style="fill:' +
+      (isCur ? 'var(--demo-accent)' : 'var(--demo-ok-soft)') + ';stroke:' +
+      (isCur ? 'var(--demo-accent)' : 'var(--demo-ok)') + ';stroke-width:2.5"/>';
+    out += '<text x="' + px(idx) + '" y="' + (py(FULL_DEPTH[idx]) + 6) +
+      '" text-anchor="middle" style="fill:' + (isCur ? 'var(--demo-card)' : 'var(--demo-ok)') +
+      ';font:600 16px sans-serif">' + val + '</text>';
+  });
+
+  return '<div style="width:100%;max-width:520px;margin:0 auto">' +
+    '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">' +
+    out + '</svg></div>';
 }
 
-function updateUI(){
-  const step=steps[curStep];
-  document.getElementById('stepLabel').textContent='步骤 '+(curStep+1)+'/'+steps.length;
-  let desc='';
-  if(step.type==='pick_mid')desc='选取中点: 区间['+step.l+','+step.r+'], mid='+step.mid+'(值='+nums[step.mid]+')';
-  else if(step.type==='done')desc='子树完成: 根值='+nums[step.mid]+' 区间['+step.l+','+step.r+']';
-  else if(step.type==='empty')desc='空区间 ['+step.l+','+step.r+'], 返回null';
-  else desc='开始构建BST';
-  document.getElementById('stepDesc').textContent=desc;
-  renderArray(step);
-  resize();
+function arrayRow(step) {
+  const built = {};
+  step.created.forEach(c => { built[c.idx] = true; });
+
+  const row = Demo.el('div', 'row');
+  NUMS.forEach((val, k) => {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(val));
+
+    if (step.mid === k && step.phase !== 'init' && step.phase !== 'done') {
+      cell.classList.add('is-active');
+    } else if (step.l != null && k >= step.l && k <= step.r) {
+      cell.classList.add('is-warn');
+    } else if (built[k]) {
+      cell.classList.add('is-ok');
+    }
+
+    col.appendChild(cell);
+
+    const labels = [];
+    if (step.l === k) labels.push('l');
+    if (step.r === k) labels.push('r');
+    if (step.mid === k) labels.push('mid');
+    const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : String(k));
+    if (!labels.length) ptr.classList.add('ptr--dim');
+    col.appendChild(ptr);
+    row.appendChild(col);
+  });
+  return row;
 }
-function reset(){curStep=0;stopPlay();updateUI();}
-function nextStep(){if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();}
-function prevStep(){if(curStep>0){curStep--;updateUI();}}
-function jumpEnd(){curStep=steps.length-1;stopPlay();updateUI();}
-function stopPlay(){if(playId){clearInterval(playId);playId=null;document.getElementById('playBtn').classList.remove('playing');document.getElementById('playBtn').textContent='自动播放';}}
-function togglePlay(){if(playId){stopPlay();return;}if(curStep>=steps.length-1)curStep=0;document.getElementById('playBtn').classList.add('playing');document.getElementById('playBtn').textContent='暂停';playId=setInterval(()=>{if(curStep<steps.length-1){curStep++;updateUI();}else stopPlay();},700);}
-document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}else if(e.key==='ArrowRight'){e.preventDefault();nextStep();}else if(e.key===' '){e.preventDefault();togglePlay();}});
-updateUI();
+
+Demo.create({
+  title: '108. 将有序数组转换为二叉搜索树 — 取中点分治',
+  info: 'nums = [-10, -3, 0, 5, 9]（升序）。每次取区间中点作为根，左半区间递归成左子树，右半区间递归成右子树。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 520,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前中点 / 刚挂上的边' },
+    { color: 'var(--demo-warn)', label: '当前递归区间 [l, r]' },
+    { color: 'var(--demo-ok)', label: '已确定并入树的节点' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const arrPanel = Demo.el('div', 'panel');
+    arrPanel.style.width = '100%';
+    arrPanel.appendChild(Demo.el('div', 'panel__title', 'nums（下标 0 ~ ' + (NUMS.length - 1) + '）'));
+    arrPanel.appendChild(arrayRow(step));
+    ctx.stage.appendChild(arrPanel);
+
+    const treeWrap = Demo.el('div');
+    treeWrap.style.width = '100%';
+    treeWrap.innerHTML = treeSvg(step);
+    ctx.stage.appendChild(treeWrap);
+
+    const row = Demo.el('div', 'row');
+    row.style.alignItems = 'flex-start';
+    row.style.width = '100%';
+
+    const callPanel = Demo.el('div', 'panel');
+    callPanel.appendChild(Demo.el('div', 'panel__title', '当前调用'));
+    const callText = step.phase === 'init'
+      ? '尚未开始，准备调用 build(0, ' + (NUMS.length - 1) + ')'
+      : (step.phase === 'done'
+        ? '递归全部返回'
+        : 'build(' + step.l + ', ' + step.r + ')' +
+          (step.mid == null ? ' → 空区间，返回 null' : ' → mid = ' + step.mid + '，值 ' + NUMS[step.mid]));
+    callPanel.appendChild(Demo.el('div', null, Demo.esc(callText)));
+    row.appendChild(callPanel);
+
+    const stackPanel = Demo.el('div', 'panel');
+    stackPanel.appendChild(Demo.el('div', 'panel__title', '递归调用栈'));
+    const stack = Demo.el('div', 'stack');
+    if (step.frames.length === 0) {
+      stack.appendChild(Demo.el('div', 'stack__item', '（空）'));
+    } else {
+      step.frames.forEach((f, k) => {
+        const item = Demo.el('div', 'stack__item',
+          'build(' + f.l + ', ' + f.r + ')' + (f.mid == null ? '' : ' mid=' + f.mid));
+        if (k === step.frames.length - 1) item.classList.add('is-active');
+        stack.appendChild(item);
+      });
+    }
+    stackPanel.appendChild(stack);
+    row.appendChild(stackPanel);
+
+    ctx.stage.appendChild(row);
+  }
+});
 </script>
 </body>
 </html>

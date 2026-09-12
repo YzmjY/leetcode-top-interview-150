@@ -3,125 +3,192 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>142. 三角形最小路径和 - 可视化演示</title>
-<style>
-:root{--bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--sub:#666;--border:#e0e0e0;--accent:#2563eb;--step-bg:#f0f4ff;--grid-bg:#fafafa;--radius:8px;--font:system-ui,-apple-system,sans-serif}
-@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--sub:#a0a0b0;--border:#334;--accent:#60a5fa;--step-bg:#1e293b;--grid-bg:#0f172a}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:var(--font);background:var(--bg);display:flex;justify-content:center;align-items:center;min-height:100vh}
-.demo-container{width:100%;max-width:960px;height:500px;background:var(--card);border-radius:var(--radius);box-shadow:0 4px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
-.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--step-bg)}
-.header .title{font-size:15px;font-weight:600;color:var(--text)}
-.header .step-info{font-size:13px;color:var(--accent);font-weight:500}
-.controls{display:flex;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.controls button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
-.controls button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
-.controls button:disabled{opacity:.4;cursor:not-allowed}
-.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.main-area{flex:1;display:flex;flex-direction:column;padding:12px 16px;gap:10px;overflow-y:auto}
-.info-panel{padding:10px 14px;background:var(--step-bg);border-radius:var(--radius);border:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.6}
-.info-panel strong{color:var(--accent)}
-.vis-area{flex:1;display:flex;flex-direction:column;gap:8px}
-.triangle{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0}
-.tri-row{display:flex;gap:6px;justify-content:center}
-.tri-cell{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-weight:700;font-size:15px;border:2px solid var(--border);background:var(--grid-bg);color:var(--text);transition:all .3s}
-.tri-cell.hl{background:#bbf7d0;border-color:#22c55e;color:#166534}
-.tri-cell.cur{border-color:var(--accent);background:var(--step-bg)}
-.tri-cell .orig{font-weight:700;color:var(--text)}
-.tri-cell .dpv{font-size:10px;color:var(--accent)}
-.step-detail{font-size:13px;color:var(--sub);text-align:center}
-.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
-@media(prefers-color-scheme:dark){.tri-cell.hl{background:#14532d;border-color:#22c55e;color:#86efac}}
-</style>
+<title>142. 三角形最小路径和 - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="demo-container">
-<div class="header">
-<span class="title">142. 三角形最小路径和 (Triangle)</span>
-<span class="step-info" id="stepLabel">步骤 0 / 0</span>
-</div>
-<div class="controls">
-<button onclick="reset()">重置</button>
-<button onclick="prevStep()">上步</button>
-<button onclick="nextStep()">下步</button>
-<button onclick="toggleAuto()" id="autoBtn">自动播放</button>
-<button onclick="jumpEnd()">跳到最后</button>
-</div>
-<div class="main-area">
-<div class="info-panel" id="info"><strong>输入:</strong> triangle = [[2],[3,4],[6,5,7],[4,1,8,3]] &nbsp;|&nbsp; <strong>思路:</strong> 自底向上DP，dp[j]=min(dp[j],dp[j+1])+triangle[i][j]</div>
-<div class="vis-area">
-<div class="triangle" id="triangle"></div>
-<div class="step-detail" id="stepDetail"></div>
-<div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
-</div>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const TRI=[[2],[3,4],[6,5,7],[4,1,8,3]];
-let steps=[],stepIdx=0,autoTimer=null,playing=false;
+const TRIANGLE = [[2], [3, 4], [6, 5, 7], [4, 1, 8, 3]];
+const N = TRIANGLE.length;
 
-function buildSteps(){
-  steps=[];
-  let n=TRI.length;
-  let dp=[...TRI[n-1]];
-  steps.push({dp:[...dp],row:n-1,note:`初始化dp为底行: [${dp}]`,done:false});
-  for(let i=n-2;i>=0;i--){
-    let m=TRI[i].length;
-    let newDp=[...dp];
-    for(let j=0;j<m;j++){
-      newDp[j]=Math.min(dp[j],dp[j+1])+TRI[i][j];
-    }
-    let oldDp=[...dp];
-    dp=[...newDp];
-    steps.push({dp:[...dp],row:i,oldDp,note:`第${i}行: dp[${dp.slice(0,m).join(',')}] (min(下,右下)+当前值)`,done:i===0});
-  }
-  let last=steps[steps.length-1];
-  steps[steps.length-1]={...last,note:last.note+` | 最小路径和 = ${dp[0]}`,done:true};
-}
-function render(){
-  let s=steps[stepIdx]||steps[steps.length-1]||{};
-  let total=steps.length;
-  document.getElementById('stepLabel').textContent=`步骤 ${stepIdx+1} / ${total}`;
-  document.getElementById('progress').style.width=((stepIdx+1)/total*100)+'%';
-  document.getElementById('info').innerHTML=`<strong>triangle</strong> &nbsp;|&nbsp; ${s.note||''}`;
+function buildSteps() {
+  const n = N;
+  const dp = TRIANGLE[n - 1].slice();
+  const rows = [];
+  rows[n - 1] = TRIANGLE[n - 1].slice();
+  const steps = [];
 
-  let th='';
-  for(let i=0;i<TRI.length;i++){
-    let tr='';
-    for(let j=0;j<TRI[i].length;j++){
-      let cls='';
-      if(i===s.row)cls='hl';
-      if(s.done)cls='hl';
-      let dplabel='';
-      if(i===s.row&&s.dp){
-        dplabel=`<span class="dpv">dp=${j<s.row+1?s.dp[j]:''}</span>`;
-      }
-      if(s.done&&i===0&&j===0){
-        dplabel=`<span class="dpv">ans=${s.dp?.[0]||'?'}</span>`;
-      }
-      tr+=`<div class="tri-cell ${cls}"><span class="orig">${TRI[i][j]}</span>${dplabel}</div>`;
+  steps.push({
+    phase: 'init', i: n - 1, j: -1,
+    dp: dp.slice(), dpBefore: dp.slice(),
+    path: null,
+    note: '初始化：一维数组 dp 直接拷贝三角形的最后一行 [' + dp.join(', ') + ']。' +
+      'dp[j] 表示「从当前行的第 j 个位置出发、一直走到底层」的最小路径和。对最后一行来说没有下一步可走，答案就是元素本身。'
+  });
+
+  for (let i = n - 2; i >= 0; i--) {
+    for (let j = 0; j < TRIANGLE[i].length; j++) {
+      const dpBefore = dp.slice();
+      const down = dp[j];
+      const right = dp[j + 1];
+      const pick = down <= right ? 'down' : 'right';
+      dp[j] = TRIANGLE[i][j] + Math.min(down, right);
+
+      let note = 'triangle[' + i + '][' + j + '] = ' + TRIANGLE[i][j] + '，它只能走到下一行的 ' +
+        j + ' 号位（正下方）或 ' + (j + 1) + ' 号位（右下方），这两处的答案已经算好：' +
+        'dp[' + j + '] = ' + down + '（正下方），dp[' + (j + 1) + '] = ' + right + '（右下方）。';
+      note += pick === 'down'
+        ? '取较小的 ' + down + '，所以 dp[' + j + '] = ' + TRIANGLE[i][j] + ' + ' + down + ' = ' + dp[j] + '。'
+        : '取较小的 ' + right + '，所以 dp[' + j + '] = ' + TRIANGLE[i][j] + ' + ' + right + ' = ' + dp[j] + '。';
+      note += '注意此时 dp[' + j + '] 里存的还是下一行的旧值、dp[' + (j + 1) + '] 也还没被本行改写，' +
+        '所以一维数组可以原地覆盖，j 从小到大扫即可，不会读到脏数据。';
+
+      steps.push({
+        phase: 'calc', i: i, j: j,
+        dp: dp.slice(), dpBefore: dpBefore,
+        down: down, right: right, pick: pick,
+        path: null,
+        note: note
+      });
     }
-    th+=`<div class="tri-row">${tr}</div>`;
+    rows[i] = dp.slice(0, i + 1);
   }
-  document.getElementById('triangle').innerHTML=th;
-  document.getElementById('stepDetail').textContent=s.row!==undefined?`处理第${s.row}行底向上dp: [${TRI[s.row]}]`:'';
+
+  const path = [0];
+  let col = 0;
+  for (let i = 0; i < n - 1; i++) {
+    if (rows[i + 1][col + 1] < rows[i + 1][col]) col = col + 1;
+    path.push(col);
+  }
+  const pathVals = path.map(function (c, i) { return TRIANGLE[i][c]; });
+  const pathSum = pathVals.reduce(function (a, b) { return a + b; }, 0);
+
+  steps.push({
+    phase: 'done', i: 0, j: 0,
+    dp: dp.slice(), dpBefore: dp.slice(),
+    path: path, pathVals: pathVals, pathSum: pathSum,
+    note: '所有行都处理完，dp[0] = ' + dp[0] + ' 就是自顶向下的最小路径和。' +
+      '顺着每行记录的结果回溯（在第 i 行选 dp 较小的那个孩子），得到路径 ' +
+      pathVals.join(' → ') + '，和为 ' + pathSum + '，与题目示例一致。' +
+      '复杂度：每个元素只算一次，时间 O(n²)；只用了一个长度 n 的一维数组，额外空间 O(n)。'
+  });
+
+  return steps;
 }
-function reset(){stepIdx=0; stopAuto();buildSteps();render();}
-function nextStep(){stopAuto();if(stepIdx<steps.length-1){stepIdx++;}render();}
-function prevStep(){stopAuto();if(stepIdx>0){stepIdx--;}render();}
-function jumpEnd(){stopAuto();stepIdx=steps.length-1;render();}
-function toggleAuto(){
-  if(playing){stopAuto();}else{playing=true;document.getElementById('autoBtn').classList.add('active');document.getElementById('autoBtn').textContent='停止';
-    autoTimer=setInterval(()=>{if(stepIdx<steps.length-1){stepIdx++;render();}else{stopAuto();}},900);}
+
+function triClass(step, r, c) {
+  if (step.phase === 'done') return step.path[r] === c ? 'is-ok' : 'cell--dim';
+  if (r === step.i && c === step.j) return 'is-active';
+  if (step.phase === 'calc' && r === step.i + 1) {
+    const chosen = step.pick === 'down' ? step.j : step.j + 1;
+    if (c === chosen) return 'is-violet';
+    if (c === step.j || c === step.j + 1) return 'is-info';
+  }
+  if (r < step.i) return 'cell--dim';
+  return '';
 }
-function stopAuto(){playing=false;clearInterval(autoTimer);document.getElementById('autoBtn').classList.remove('active');document.getElementById('autoBtn').textContent='自动播放';}
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight')nextStep();
-  else if(e.key==='ArrowLeft')prevStep();
-  else if(e.key===' '){e.preventDefault();toggleAuto();}
+
+function dpRow(title, values, marks) {
+  const wrap = Demo.el('div', 'col');
+  wrap.appendChild(Demo.el('div', 'panel__title', Demo.esc(title)));
+  const row = Demo.el('div', 'row');
+  values.forEach(function (value, j) {
+    const item = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell cell--sm', Demo.esc(value));
+    if (marks.active === j) cell.classList.add('is-active');
+    if (marks.chosen === j) cell.classList.add('is-violet');
+    if (marks.other === j) cell.classList.add('is-info');
+    if (marks.dimAfter != null && j > marks.dimAfter) cell.classList.add('cell--dim');
+    item.appendChild(cell);
+
+    const labels = [];
+    if (marks.chosen === j) labels.push('下方');
+    if (marks.other === j) labels.push('右下');
+    const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : 'dp[' + j + ']');
+    if (!labels.length) ptr.classList.add('ptr--dim');
+    else if (marks.chosen === j) ptr.classList.add('ptr--violet');
+    else ptr.classList.add('ptr--info');
+    item.appendChild(ptr);
+    row.appendChild(item);
+  });
+  wrap.appendChild(row);
+  return wrap;
+}
+
+Demo.create({
+  title: '142. 三角形最小路径和 — 自底向上一维 DP 滚动',
+  info: '输入：triangle = [[2],[3,4],[6,5,7],[4,1,8,3]]（示例 1）。转移：dp[j] = triangle[i][j] + min(dp[j], dp[j+1])，dp 初值为最后一行，答案取 dp[0]。',
+  steps: buildSteps(),
+  desc: function (s) { return s.note; },
+  stageHeight: 400,
+  legend: [
+    { color: 'var(--demo-accent)', label: '当前计算的格子' },
+    { color: 'var(--demo-violet)', label: '被选中的转移来源' },
+    { color: 'var(--demo-info)', label: '被放弃的候选来源' },
+    { color: 'var(--demo-ok)', label: '最终最优路径' }
+  ],
+  render: function (step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const title = step.phase === 'done'
+      ? '三角形（绿色为最小路径 ' + step.pathVals.join(' → ') + ' = ' + step.pathSum + '）'
+      : '三角形 triangle（蓝框＝正在填的格子，两个来源在下一行）';
+    const triPanel = Demo.el('div', 'panel');
+    triPanel.style.width = '100%';
+    triPanel.style.textAlign = 'center';
+    triPanel.appendChild(Demo.el('div', 'panel__title', Demo.esc(title)));
+    TRIANGLE.forEach(function (rowVals, r) {
+      const row = Demo.el('div', 'row');
+      row.style.marginBottom = '4px';
+      rowVals.forEach(function (value, c) {
+        const cls = triClass(step, r, c);
+        const item = Demo.el('div', 'col');
+        item.appendChild(Demo.el('div', 'cell' + (cls ? ' ' + cls : ''), Demo.esc(value)));
+        const ptr = Demo.el('div', 'ptr', '[' + r + ',' + c + ']');
+        ptr.classList.add('ptr--dim');
+        item.appendChild(ptr);
+        row.appendChild(item);
+      });
+      triPanel.appendChild(row);
+    });
+    ctx.stage.appendChild(triPanel);
+
+    if (step.phase === 'calc') {
+      ctx.stage.appendChild(dpRow('更新前 dp[]（来源快照，紫/青两格还没被本行覆盖）', step.dpBefore, {
+        chosen: step.pick === 'down' ? step.j : step.j + 1,
+        other: step.pick === 'down' ? step.j + 1 : step.j
+      }));
+      ctx.stage.appendChild(dpRow('更新后 dp[]（dp[' + step.j + '] 已被本行改写）', step.dp, {
+        active: step.j, dimAfter: step.i
+      }));
+    } else if (step.phase === 'init') {
+      ctx.stage.appendChild(dpRow('dp[]：初值就是最后一行', step.dp, {}));
+    } else {
+      ctx.stage.appendChild(dpRow('最终 dp[]：dp[0] 即答案', step.dp, { active: 0, dimAfter: 0 }));
+    }
+
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.style.textAlign = 'center';
+    if (step.phase === 'calc') {
+      const chosenTxt = step.pick === 'down' ? '正下方 dp[' + step.j + ']' : '右下方 dp[' + (step.j + 1) + ']';
+      panel.innerHTML =
+        'dp[' + step.j + '] = triangle[' + step.i + '][' + step.j + '] + min(正下方 ' + step.down +
+        ', 右下方 ' + step.right + ') = ' + TRIANGLE[step.i][step.j] + ' + ' +
+        Math.min(step.down, step.right) + ' = <strong>' + step.dp[step.j] + '</strong>' +
+        ' &nbsp;<span class="tag tag--violet">来源：' + chosenTxt + '（两者取小）</span>';
+    } else if (step.phase === 'init') {
+      panel.innerHTML = 'dp = 最后一行 [' + step.dp.join(', ') + '] &nbsp;<span class="tag">自底向上递推的起点</span>';
+    } else {
+      panel.innerHTML =
+        '最小路径和 = <strong>' + step.pathSum + '</strong>' +
+        ' &nbsp;<span class="tag tag--ok">dp[0] = ' + step.dp[0] + '</span>' +
+        ' &nbsp;<span class="tag tag--info">时间 O(n²) · 空间 O(n)</span>';
+    }
+    ctx.stage.appendChild(panel);
+  }
 });
-buildSteps();render();
 </script>
 </body>
 </html>

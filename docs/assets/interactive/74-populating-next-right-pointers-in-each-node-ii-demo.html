@@ -1,96 +1,282 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>填充每个节点的下一个右侧节点指针II</title>
-<style>
-:root{--bg:#fff;--text:#333;--muted:#888;--btn-bg:#f0f0f0;--btn-hover:#e0e0e0;--sub-bg:#f5f5f5;--cell-border:#d0d0d0;--header:#222}
-@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--text:#ddd;--muted:#aaa;--btn-bg:#333;--btn-hover:#444;--sub-bg:#252540;--cell-border:#444;--header:#ddd}}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:20px}
-.container{max-width:900px;width:100%}
-h2{text-align:center;color:var(--header);font-size:17px;margin-bottom:8px}
-.info-bar{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:6px;font-size:14px}
-.step-num{font-weight:bold;font-size:22px;color:#1976D2;min-width:36px;text-align:center}
-.step-desc{color:var(--muted);font-size:12px;max-width:600px;text-align:center}
-svg{display:block;margin:0 auto;width:100%;height:420px}
-.controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px}
-button{padding:7px 15px;border:1px solid var(--cell-border);border-radius:6px;background:var(--btn-bg);color:var(--text);font-size:12px;cursor:pointer;transition:0.15s}
-button:hover{background:var(--btn-hover)}
-button:active{transform:scale(0.96)}
-button:disabled{opacity:0.35;cursor:default}
-button.play-btn{background:#1976D2;color:#fff;border-color:#1565C0}
-</style>
+<title>74. 填充每个节点的下一个右侧节点指针 II - 交互演示</title>
+<link rel="stylesheet" href="demo.css">
 </head>
 <body>
-<div class="container">
-<h2>填充每个节点的下一个右侧节点指针II</h2>
-<div class="info-bar">
-<span class="step-num" id="stepNum">0</span>
-<span class="step-desc" id="stepDesc">树：[1,2,3,4,5,null,7] · 使用层序遍历逐层连接next指针</span>
-</div>
-<svg id="treeSvg" viewBox="0 0 880 400"></svg>
-<div class="controls">
-<button onclick="goStep(0)">重置</button>
-<button onclick="goStep(cur-1)" id="prevBtn">上步</button>
-<button onclick="goStep(cur+1)" id="nextBtn">下步</button>
-<button class="play-btn" onclick="toggleAuto()" id="playBtn">自动播放</button>
-<button onclick="goStep(steps.length-1)">跳到最后</button>
-</div>
-</div>
+<script src="demo.js"></script>
 <script>
-const nodes=[{x:440,y:45,val:1},{x:220,y:140,val:2},{x:660,y:140,val:3},{x:100,y:250,val:4},{x:340,y:250,val:5},{x:780,y:250,val:7}];
-const edges=[[0,1],[0,2],[1,3],[1,4],[2,5]];
-const levels=[[0],[1,2],[3,4,5]];
+const LEVELS = [1, 2, 3, 4, 5, null, 7];
 
-const steps=[
-{desc:'初始状态：树 [1,2,3,4,5,null,7]',hl:[],next:[],curLevel:-1},
-{desc:'第1层：只有节点1，next指针为空',hl:[0],next:[],curLevel:0},
-{desc:'第2层：连接 2->3，next指针建立',hl:[1,2],next:[[1,2]],curLevel:1},
-{desc:'第3层：连接 4->5，连接 5->7，next指针建立',hl:[3,4,5],next:[[3,4],[4,5]],curLevel:2},
-{desc:'完成！所有next指针已填充',hl:[0,1,2,3,4,5],next:[[1,2],[3,4],[4,5]],curLevel:-1}
-];
+const SLOTS = [];
+const NODES = {};
+const VAL_NODE = {};
+const ROOT = (function build() {
+  function rec(i, id, depth) {
+    if (i >= LEVELS.length) return null;
+    SLOTS.push({ id: id, i: i, depth: depth, val: LEVELS[i] });
+    if (LEVELS[i] === null) return null;
+    const node = { val: LEVELS[i], id: id, depth: depth, left: null, right: null, next: null };
+    NODES[id] = node;
+    VAL_NODE[LEVELS[i]] = node;
+    node.left = rec(2 * i + 1, id + 'L', depth + 1);
+    node.right = rec(2 * i + 2, id + 'R', depth + 1);
+    return node;
+  }
+  return rec(0, 'R', 0);
+})();
 
-let cur=0,autoTimer=null,autoRun=false;
-const svg=document.getElementById('treeSvg');
+function buildSteps() {
+  const steps = [];
+  const nextOf = {};
 
-function render(){
-const s=steps[cur];
-document.getElementById('stepNum').textContent=cur;
-document.getElementById('stepDesc').textContent=(cur===0?'初始状态 · ':'第'+cur+'步 · ')+s.desc;
-document.getElementById('prevBtn').disabled=cur<=0;
-document.getElementById('nextBtn').disabled=cur>=steps.length-1;
+  function snap(extra) {
+    const step = { nextOf: Object.assign({}, nextOf) };
+    Object.keys(extra).forEach(function (k) { step[k] = extra[k]; });
+    steps.push(step);
+  }
 
-let html='<defs><radialGradient id="gBlue"><stop offset="0%" stop-color="#42A5F5"/><stop offset="100%" stop-color="#1976D2"/></radialGradient></defs><rect width="880" height="400" fill="transparent"/>';
-for(const e of edges) {
-const a=nodes[e[0]],b=nodes[e[1]];
-html+=`<line x1="${a.x}" y1="${a.y+24}" x2="${b.x}" y2="${b.y-24}" stroke="#ccc" stroke-width="2"/>`;
-}
-// Draw next pointers
-for(const np of s.next) {
-const a=nodes[np[0]],b=nodes[np[1]];
-html+=`<path d="M${a.x+24},${a.y} Q${(a.x+b.x)/2},${a.y-30} ${b.x-24},${b.y}" fill="none" stroke="#FF5722" stroke-width="2" stroke-dasharray="6,3"/>`;
-}
-for(let i=0;i<nodes.length;i++){
-const n=nodes[i];const isHL=s.hl.includes(i);
-html+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="${isHL?'url(#gBlue)':'var(--sub-bg)'}" stroke="${isHL?'#0D47A1':'var(--cell-border)'}" stroke-width="${isHL?3:2}"/>`;
-html+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" fill="${isHL?'#fff':'var(--text)'}" font-size="14" font-weight="bold">${n.val}</text>`;
-}
-svg.innerHTML=html;
+  function chainOf(start) {
+    const out = [];
+    let n = start;
+    while (n) { out.push(n.val); n = n.next; }
+    return out;
+  }
+
+  let cur = ROOT;
+  let level = 1;
+
+  snap({
+    phase: 'init', curVal: ROOT.val, nodeVal: null, chain: chainOf(ROOT), nextChain: [], tailVal: null,
+    note: '初始状态：root = [1,2,3,4,5,null,7]，所有 next 指针都是 NULL（画面上还没有绿色箭头）。做法是逐层处理：cur 指向当前层最左边的节点，处理当前层时用 dummy 当下一层链表的虚拟头、tail 当尾巴，把这一层所有节点的孩子按顺序串成下一层的链表。现在 cur = 根节点 1，开始处理第 1 层：新建 dummy，tail 指向 dummy。'
+  });
+
+  while (cur) {
+    const chain = chainOf(cur);
+    const dummy = { val: null, next: null };
+    let tail = dummy;
+    const nextVals = [];
+
+    let node = cur;
+    while (node) {
+      if (!node.left && !node.right) {
+        snap({
+          phase: 'leaf', curVal: cur.val, nodeVal: node.val, chain: chain,
+          nextChain: nextVals.slice(), tailVal: tail === dummy ? null : tail.val,
+          note: '节点 ' + node.val + ' 是叶子，没有孩子可以挂，tail 不动。' +
+            (node.next ? '沿 next 走到本层下一个节点 ' + node.next.val + '。' : '它已经是本层最后一个节点（next = NULL），本层遍历结束。')
+        });
+        node = node.next;
+        continue;
+      }
+
+      if (node.left) {
+        tail.next = node.left;
+        if (tail !== dummy) nextOf[tail.val] = node.left.val;
+        tail = node.left;
+        nextVals.push(node.left.val);
+        snap({
+          phase: 'appendLeft', curVal: cur.val, nodeVal: node.val, chain: chain,
+          nextChain: nextVals.slice(), tailVal: tail.val, appended: node.left.val,
+          note: '节点 ' + node.val + ' 有左孩子 ' + node.left.val + '，把 tail.next 指向它，tail 前移到 ' + node.left.val +
+            '，它排在下一层链表 [' + nextVals.join(' → ') + '] 的末尾。'
+        });
+      } else {
+        snap({
+          phase: 'skip', curVal: cur.val, nodeVal: node.val, chain: chain,
+          nextChain: nextVals.slice(), tailVal: tail === dummy ? null : tail.val, skipped: 'L',
+          note: '节点 ' + node.val + ' 没有左孩子（树是不满的），这一侧什么都不挂，继续看它的右孩子。'
+        });
+      }
+
+      if (node.right) {
+        tail.next = node.right;
+        if (tail !== dummy) nextOf[tail.val] = node.right.val;
+        tail = node.right;
+        nextVals.push(node.right.val);
+        snap({
+          phase: 'appendRight', curVal: cur.val, nodeVal: node.val, chain: chain,
+          nextChain: nextVals.slice(), tailVal: tail.val, appended: node.right.val,
+          note: '节点 ' + node.val + ' 有右孩子 ' + node.right.val + '，把 tail.next 指向它，tail 前移到 ' + node.right.val +
+            '。它和链表里前一个节点未必是同一个父节点，但在下一层里确实左右相邻——这就是用 next 指针跨子树连接的用处。'
+        });
+      } else {
+        snap({
+          phase: 'skip', curVal: cur.val, nodeVal: node.val, chain: chain,
+          nextChain: nextVals.slice(), tailVal: tail === dummy ? null : tail.val, skipped: 'R',
+          note: '节点 ' + node.val + ' 没有右孩子。' + (node.next ? '本节点处理完，沿 next 走到本层下一个节点 ' + node.next.val + '。' : '它已经是本层最后一个节点（next = NULL），本层遍历结束。')
+        });
+      }
+
+      node = node.next;
+    }
+
+    cur = dummy.next;
+    level += 1;
+
+    if (cur) {
+      snap({
+        phase: 'nextLevel', curVal: cur.val, nodeVal: null, chain: chainOf(cur),
+        nextChain: [], tailVal: null,
+        note: '第 ' + (level - 1) + ' 层处理完毕，构造出的链表 [' + nextVals.join(' → ') +
+          '] 内部 next 已全部连好，它现在成为新的当前层。cur = dummy.next = ' + cur.val + '，开始处理第 ' + level +
+          ' 层：重新建立 dummy，tail 指回 dummy。'
+      });
+    } else {
+      snap({
+        phase: 'finish', curVal: null, nodeVal: null, chain: chain, nextChain: nextVals.slice(), tailVal: null,
+        note: '第 ' + (level - 1) + ' 层所有节点都没有孩子，dummy.next 仍然是 NULL，说明不存在下一层，while 循环结束。'
+      });
+    }
+  }
+
+  snap({
+    phase: 'done', curVal: null, nodeVal: null, chain: [], nextChain: [], tailVal: null,
+    output: '1,#,2,3,#,4,5,7,#',
+    note: '整棵树自顶向下处理完，所有 next 指针都填好了。按层序（顺着 next）输出就是 [1,#,2,3,#,4,5,7,#]，# 表示每层结尾的 NULL。全程只用了 cur、dummy、tail、node 四个指针，没有队列，额外空间 O(1)，时间 O(n)。'
+  });
+
+  return steps;
 }
 
-function goStep(n){cur=Math.max(0,Math.min(n,steps.length-1));render()}
-function toggleAuto(){
-if(autoRun){clearInterval(autoTimer);autoRun=false;document.getElementById('playBtn').textContent='自动播放';}
-else{document.getElementById('playBtn').textContent='暂停';autoRun=true;if(cur>=steps.length-1)goStep(0);
-autoTimer=setInterval(()=>{if(cur<steps.length-1)goStep(cur+1);else toggleAuto()},900);}
+function treeSvg(step) {
+  const W = 680;
+  const pos = {};
+  let maxDepth = 0;
+  SLOTS.forEach(function (s) {
+    if (s.depth > maxDepth) maxDepth = s.depth;
+    const span = Math.pow(2, s.depth);
+    const idxInLevel = s.i - (span - 1);
+    pos[s.id] = { x: 50 + (W - 100) * (idxInLevel + 0.5) / span, y: 60 + s.depth * 105 };
+  });
+  const H = 120 + maxDepth * 105;
+
+  let out = '';
+  out += '<defs><marker id="nxtArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,1 L10,5 L0,9 z" style="fill:var(--demo-ok)"/></marker></defs>';
+
+  SLOTS.forEach(function (s) {
+    if (s.val === null) return;
+    ['L', 'R'].forEach(function (side) {
+      const child = NODES[s.id + side];
+      if (!child) return;
+      const a = pos[s.id];
+      const b = pos[child.id];
+      out += '<line x1="' + a.x + '" y1="' + (a.y + 26) + '" x2="' + b.x + '" y2="' + (b.y - 26) +
+        '" style="stroke:var(--demo-border);stroke-width:2"/>';
+    });
+  });
+
+  Object.keys(step.nextOf).forEach(function (fromVal) {
+    const a = VAL_NODE[Number(fromVal)];
+    const b = VAL_NODE[step.nextOf[fromVal]];
+    if (!a || !b) return;
+    const pa = pos[a.id];
+    const pb = pos[b.id];
+    out += '<line x1="' + (pa.x + 26) + '" y1="' + pa.y + '" x2="' + (pb.x - 26) + '" y2="' + pb.y +
+      '" style="stroke:var(--demo-ok);stroke-width:2.5" marker-end="url(#nxtArrow)"/>';
+  });
+
+  SLOTS.forEach(function (s) {
+    if (s.val === null) return;
+    const p = pos[s.id];
+    const isNode = step.nodeVal === s.val;
+    const isCur = step.curVal === s.val && !isNode;
+    const isNew = step.appended === s.val;
+    const fill = isNode ? 'var(--demo-accent)' : isNew ? 'var(--demo-warn)' : isCur ? 'var(--demo-violet)' : 'var(--demo-subtle)';
+    const stroke = fill === 'var(--demo-subtle)' ? 'var(--demo-border)' : fill;
+    const text = (isNode || isNew || isCur) ? 'var(--demo-card)' : 'var(--demo-text)';
+    out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="24" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2.5"/>';
+    out += '<text x="' + p.x + '" y="' + (p.y + 7) + '" text-anchor="middle" style="fill:' + text + ';font:700 18px sans-serif">' + s.val + '</text>';
+    if (isNode) {
+      out += '<text x="' + p.x + '" y="' + (p.y - 33) + '" text-anchor="middle" style="fill:var(--demo-accent);font:700 12px sans-serif">node</text>';
+    } else if (isCur) {
+      out += '<text x="' + p.x + '" y="' + (p.y - 33) + '" text-anchor="middle" style="fill:var(--demo-violet);font:700 12px sans-serif">cur</text>';
+    }
+  });
+
+  return '<div style="width:100%"><svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
 }
-document.addEventListener('keydown',e=>{
-if(e.key==='ArrowRight')goStep(cur+1);if(e.key==='ArrowLeft')goStep(cur-1);
-if(e.key===' '){e.preventDefault();toggleAuto();}
+
+function llChain(title, values, opts) {
+  const panel = Demo.el('div', 'panel');
+  panel.appendChild(Demo.el('div', 'panel__title', title));
+  const row = Demo.el('div', 'row');
+  if (!values.length) {
+    row.appendChild(Demo.el('div', 'cell cell--empty', '（空）'));
+  } else {
+    values.forEach(function (v, k) {
+      if (k > 0) row.appendChild(Demo.el('div', 'arrow', '→'));
+      const wrap = Demo.el('div', 'col');
+      const node = Demo.el('div', 'll-node', String(v));
+      if (opts && opts.activeVal === v) node.classList.add('is-active');
+      wrap.appendChild(node);
+      if (opts && opts.tailVal === v) wrap.appendChild(Demo.el('div', 'ptr ptr--violet', 'tail'));
+      else if (opts && opts.headVal === v && k === 0) wrap.appendChild(Demo.el('div', 'ptr ptr--ok', 'head'));
+      else wrap.appendChild(Demo.el('div', 'ptr', '\u00a0'));
+      row.appendChild(wrap);
+    });
+    row.appendChild(Demo.el('div', 'arrow', '→'));
+    const endCol = Demo.el('div', 'col');
+    endCol.appendChild(Demo.el('div', 'll-node', 'NULL'));
+    endCol.appendChild(Demo.el('div', 'ptr', '\u00a0'));
+    row.appendChild(endCol);
+  }
+  panel.appendChild(row);
+  return panel;
+}
+
+Demo.create({
+  title: '74. 填充右侧 next 指针 II — 借用 next 逐层遍历，O(1) 空间',
+  info: '示例 1：root = [1,2,3,4,5,null,7]，输出 [1,#,2,3,#,4,5,7,#]。每层用 dummy + tail 把当前层节点的孩子串成下一层链表，再把链表头当作下一层的 cur，全程不用队列。',
+  steps: buildSteps(),
+  desc: s => s.note,
+  stageHeight: 660,
+  legend: [
+    { color: 'var(--demo-accent)', label: 'node：当前正在看的节点' },
+    { color: 'var(--demo-violet)', label: 'cur：当前层的头' },
+    { color: 'var(--demo-warn)', label: '刚挂到下一层链表的节点' },
+    { color: 'var(--demo-ok)', label: '已连好的 next 指针' }
+  ],
+  render(step, i, ctx) {
+    ctx.stage.innerHTML = '';
+
+    const treePanel = Demo.el('div', 'panel');
+    treePanel.style.width = '100%';
+    treePanel.appendChild(Demo.el('div', 'panel__title', '二叉树与 next 指针（绿色横向箭头 = 已填好的 next）'));
+    const wrap = Demo.el('div');
+    wrap.style.width = '100%';
+    wrap.innerHTML = treeSvg(step);
+    treePanel.appendChild(wrap);
+    ctx.stage.appendChild(treePanel);
+
+    const row = Demo.el('div', 'row');
+    row.style.width = '100%';
+    row.style.alignItems = 'flex-start';
+
+    row.appendChild(llChain('当前层（顺着已有的 next 遍历）', step.chain || [], {
+      activeVal: step.nodeVal
+    }));
+    row.appendChild(llChain('下一层链表（dummy + tail 正在构造）', step.nextChain || [], {
+      activeVal: step.appended, tailVal: step.tailVal, headVal: step.levelHead
+    }));
+    ctx.stage.appendChild(row);
+
+    const result = Demo.el('div', 'panel',
+      step.phase === 'done'
+        ? '全部完成，输出 <code>[' + step.output + ']</code> &nbsp;<span class="tag tag--ok">next 已全部填好</span>'
+        : 'cur = <strong>' + (step.curVal != null ? step.curVal : '—') + '</strong> ｜ 正在看的节点 node = <strong>' +
+          (step.nodeVal != null ? step.nodeVal : '—') + '</strong> ｜ 已填好的 next：' +
+          (Object.keys(step.nextOf).length
+            ? Object.keys(step.nextOf).map(function (k) { return k + '→' + step.nextOf[k]; }).join('，')
+            : '（暂时为空，所有 next 仍是 NULL）'));
+    result.style.width = '100%';
+    result.style.textAlign = 'center';
+    ctx.stage.appendChild(result);
+  }
 });
-render();
 </script>
 </body>
 </html>
