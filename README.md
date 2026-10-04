@@ -1,14 +1,16 @@
 # LeetCode 面试经典 150 题题解
 
-基于 [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) 构建的 LeetCode「面试经典 150 题」完整题解文档，全部题目使用 **Go** 语言实现，并为每道题配有一个可逐步操作的 **交互式可视化演示**。
+LeetCode「面试经典 150 题」完整题解站点，全部题目使用 **Go** 语言实现，并为每道题配有可逐步操作的 **交互式可视化演示**。
+
+站点前端为 **React + Vite + Tailwind CSS** 单页应用（`web/`），题解与演示内容以 Markdown + 演示脚本的形式维护在 `docs/` 内容库中，通过同步管线自动生成站点数据。
 
 **在线浏览：<https://yzmjy.github.io/leetcode-top-interview-150/>**
 
 ## 项目特点
 
-- **覆盖全部 150 题**：按 23 个章节组织，题号 1–150 连续编号，每题包含题目描述、题目分析和 Go 代码实现。
-- **交互式演示**：每道题都配有一个独立的 HTML/JS 演示（`docs/assets/interactive/`），可单步执行、观察算法状态变化，并自适应嵌入题解页面。
-- **章节概述**：每个章节开头有一篇 `index.md`，梳理该知识点的数据结构背景、常见题型和解题关键。
+- **覆盖全部 150 题**：按 23 个章节组织，题号 1–150 连续编号，每题包含题目描述、思路解析（含正确性论证与复杂度分析）和 Go 代码实现。
+- **交互式演示**：全部 150 题的可视化演示以原生组件方式嵌入页面（非 iframe），统一由 React 演示运行时驱动，支持单步、自动播放、进度跳转与键盘快捷键（←/→ 切换步骤，空格播放/暂停）。
+- **现代阅读体验**：暖纸/深墨双主题、章节侧栏导航、全文搜索、难度标注、代码语法高亮与一键复制。
 - **完整知识体系**：涵盖数组/字符串、双指针、滑动窗口、矩阵、哈希表、区间、栈、链表、二叉树、图、字典树、回溯、分治、二分查找、堆、位运算、数学、动态规划等全部核心考点。
 
 ## 题目难度分布
@@ -16,8 +18,8 @@
 | 难度 | 数量 |
 |------|------|
 | 简单 | 40 |
-| 中等 | 94 |
-| 困难 | 16 |
+| 中等 | 91 |
+| 困难 | 19 |
 
 ## 章节总览
 
@@ -47,47 +49,49 @@
 | 一维动态规划 | 线性 DP、背包 | 137–141 | 5 |
 | 多维动态规划 | 网格 DP、字符串 DP、股票 DP | 142–150 | 9 |
 
-## 每道题解包含
-
-- **题目描述**：完整题干、示例与约束条件。
-- **题目分析**：算法思路推导、正确性说明与时间/空间复杂度分析。
-- **交互演示**：内嵌 `iframe`，可视化算法的执行过程。
-- **Go 代码实现**：完整可读的 Go 代码，含关键步骤注释。
-
 ## 目录结构
 
 ```
 .
-├── docs/                          # 文档源文件
-│   ├── index.md                   # 站点首页
-│   ├── 01-array-string/           # 第 1 章（编号随章节递增至 23-multi-dp）
-│   │   ├── index.md               # 章节概述
-│   │   └── 01-merge-sorted-array.md
-│   ├── assets/
-│   │   ├── interactive/           # 150 个题目的交互式演示（HTML + JS）
-│   │   ├── javascripts/           # iframe 高度自适应脚本
-│   │   └── spiral-matrix.svg
-│   └── stylesheets/extra.css
-├── mkdocs.yml                     # MkDocs 配置与全站导航
-├── .github/workflows/deploy.yml   # GitHub Pages 自动部署
-└── site/                          # 构建产物（已忽略，不纳入版本库）
+├── docs/                              # 内容库（题解与演示的唯一数据源）
+│   ├── 01-array-string/               # 第 1 章（编号随章节递增至 23-multi-dp）
+│   │   ├── index.md                   # 章节概述
+│   │   └── 01-merge-sorted-array.md   # 题解 markdown
+│   └── assets/interactive/            # 150 个演示的定义脚本（HTML 封装）
+├── mkdocs.yml                         # 站点导航与章节结构的权威定义
+├── web/                               # React 站点（Vite + Tailwind）
+│   ├── scripts/sync-content.mjs       # 内容同步：docs/ → 站点数据与 markdown 拷贝
+│   ├── scripts/migrate-demos.mjs      # 演示迁移：docs 演示 HTML → ES 模块
+│   └── src/
+│       ├── demo/DemoShell.tsx         # 统一演示运行时（播放控制/进度/图例/键盘）
+│       ├── demo/legacy/               # 迁移演示的适配层与共享舞台样式
+│       └── demo/demos/                # 手工精修的演示组件（如题 28）
+└── .github/workflows/deploy.yml       # GitHub Pages 自动部署（构建 web/dist）
 ```
 
-## 本地预览
+## 本地开发
 
-需要 Python 3.8+ 与 `mkdocs-material`：
+需要 Node.js 20+：
 
 ```bash
+cd web
+
 # 安装依赖
-pip install mkdocs-material
+npm install
 
-# 启动本地预览（默认 http://127.0.0.1:8000）
-mkdocs serve
+# 从 docs/ 同步题解与演示（内容变更后执行）
+npm run sync
 
-# 构建静态站点到 site/
-mkdocs build
+# 启动开发服务器（默认 http://localhost:3000）
+npm run dev
+
+# 构建生产版本到 web/dist/
+npm run build
 ```
+
+> 历史说明：站点早期使用 MkDocs Material 构建，`mkdocs serve` 仍可本地预览
+> 旧版文档站；但线上站点以 `web/` 为准，`docs/` 仅作为内容源继续维护。
 
 ## 部署
 
-推送到 `master` 分支后，GitHub Actions（`.github/workflows/deploy.yml`）会自动安装依赖、执行 `mkdocs build` 并将产物发布到 GitHub Pages。
+推送到 `master` 分支后，GitHub Actions（`.github/workflows/deploy.yml`）会自动执行内容同步、`vite build`，并将 `web/dist` 发布到 GitHub Pages。
