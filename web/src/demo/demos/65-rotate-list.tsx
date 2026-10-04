@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { DemoShell } from '../DemoShell'
-import { Answer, Badge, Badges, Hint, Link, Node, Stat, TONE } from './stage'
+import { Answer, Badge, Badges, Flag, Hint, Link, Node, Stat, TONE } from './stage'
 
 /* ------------------------------------------------------------------ */
 /* 65. 旋转链表 —— 模式 D：先首尾相连成环，再从 n - k%n 处剪断           */
@@ -71,21 +71,19 @@ function buildSteps(): Step[] {
     tail += 1
     n += 1
     visited = [...visited, tail]
+    const last = tail === N - 1
     push({
       phase: 'traverse',
-      note: `观察：tail 沿 next 前进一步到节点 ${VALS[tail]}，长度计数 n = ${n}，还差 ${N - n} 个节点没数。判断：tail.Next 仍不为 nil，说明尾节点还没到。动作：tail 继续后移一位。为什么：只有先知道 n，才能把 k 折成 k % n。`,
+      note: last
+        ? `观察：tail 沿 next 前进一步到节点 ${VALS[tail]}，长度计数 n = ${N}，节点已数完。判断：tail.Next = nil，遍历结束，节点 ${VALS[tail]} 就是原尾节点。动作：计算 k = k % n = ${K_IN} % ${N} = ${K}，并把它与 0 比较。为什么：只有先知道 n，才能把 k 折成 k % n。`
+        : `观察：tail 沿 next 前进一步到节点 ${VALS[tail]}，长度计数 n = ${n}，还差 ${N - n} 个节点没数。判断：tail.Next 仍不为 nil，说明尾节点还没到。动作：tail 继续后移一位。为什么：只有先知道 n，才能把 k 折成 k % n。`,
     })
   }
-
-  push({
-    phase: 'traverse',
-    note: `观察：tail 停在节点 ${VALS[tail]}，tail.Next = nil，遍历结束，长度 n = ${N}。判断：n 已确定，可以消掉整圈旋转。动作：计算 k = k % n = ${K_IN} % ${N} = ${K}，并把它与 0 比较。为什么：右移 n 位等于没动，所以只有余数这一步真正需要执行。`,
-  })
 
   k = K_IN % N
   push({
     phase: 'traverse',
-    note: `观察：k % n = ${K_IN} % ${N} = ${k} ≠ 0。判断：链表确实要旋转 ${k} 位，而不是旋转整数圈。动作：准备执行 tail.Next = head 把链表接成环。为什么：这一步必须在确认 k ≠ 0 之后做——若先成环再发现 k % n = 0 就返回，会返回一条带环的链表；余数为 0 时应原地返回 head。`,
+    note: `观察：取模结果 k = ${K_IN} % ${N} = ${k} ≠ 0。判断：链表确实要旋转 ${k} 位，而不是旋转整数圈。动作：准备执行 tail.Next = head 把链表接成环。为什么：成环必须在确认 k ≠ 0 之后做——若先成环再发现余数为 0 就直接返回，会返回一条带环的链表；余数为 0 时应原地返回 head。`,
   })
 
   push({
@@ -128,10 +126,8 @@ function buildSteps(): Step[] {
       s.next = `newTail 沿 next 再走一步，找正数第 n - k 个节点`
     } else if (b.phase === 'ring') {
       s.next = `记下 newHead = newTail.Next，再执行 newTail.Next = nil 断环`
-    } else if (b.k === null) {
-      s.next = `tail 沿 next 后移到节点 ${VALS[b.tail]}，长度计数 n 加 1`
     } else {
-      s.next = `取模 k = ${K_IN} % ${N} = ${b.k}，再判断它是否为 0`
+      s.next = `tail 沿 next 后移到节点 ${VALS[b.tail]}，长度计数 n 加 1`
     }
   })
 
@@ -176,6 +172,20 @@ function Stage(step: Step) {
   return (
     <div className="flex flex-col items-center gap-3">
       <div className="flex max-w-full flex-wrap items-start justify-center gap-y-2">
+        {/* 环的回边：尾节点到 head 不是相邻直边，用行首槽位标记 */}
+        {ring && (
+          <div className="flex items-start">
+            <div className="mt-6 flex h-11 items-center">
+              <span
+                className="whitespace-nowrap text-[11px] font-bold leading-none"
+                style={{ color: step.newHead === null ? TONE.easy : TONE.medium }}
+              >
+                ⟲ 尾节点 next ↩ 回到 head
+              </span>
+            </div>
+            <span className="w-1" aria-hidden />
+          </div>
+        )}
         {step.order.map((id, pos) => {
           const isNewHead = step.newHead !== null && id === step.newHead
           const isNewTail = step.newTail !== null && id === step.newTail
@@ -208,9 +218,6 @@ function Stage(step: Step) {
                 {connector ? (
                   <>
                     <Link active={connector.active} />
-                    {connector.ring && (
-                      <span className="ml-1 text-[11px] leading-none text-ink-soft">⟲</span>
-                    )}
                     {connector.cut && (
                       <span className="ml-1 text-[11px] font-bold leading-none text-ink-soft">
                         ✂
@@ -222,26 +229,10 @@ function Stage(step: Step) {
                 )}
               </div>
               <div className="flex flex-col items-center">
-                <div className="flex h-6 flex-col items-center justify-end leading-none">
-                  {labels.length > 0 ? (
-                    <>
-                      <span
-                        className="font-code text-[11px] font-bold"
-                        style={{ color: isNewTail ? TONE.easy : isNewHead ? TONE.teal : TONE.amber }}
-                      >
-                        {labels.join('·')}
-                      </span>
-                      <span
-                        className="mt-0.5 text-[8px]"
-                        style={{ color: isNewTail ? TONE.easy : isNewHead ? TONE.teal : TONE.amber }}
-                      >
-                        ▼
-                      </span>
-                    </>
-                  ) : (
-                    <span aria-hidden>&nbsp;</span>
-                  )}
-                </div>
+                <Flag
+                  label={labels.length > 0 ? labels.join('·') : undefined}
+                  tone={isNewTail ? 'easy' : isNewHead ? 'teal' : 'amber'}
+                />
                 <div
                   className="transition-opacity duration-300"
                   style={{ opacity: !traversing && !done && id < NEW_HEAD ? 0.4 : 1 }}
@@ -272,7 +263,7 @@ function Stage(step: Step) {
       )}
 
       {!traversing && (
-        <Badge>{`前段 A（${prefix}）已在链尾 · 后段 B（${suffix}）已在链头`}</Badge>
+        <Badge>{`断环后：前段 A（${prefix}）落到链尾 · 后段 B（${suffix}）移到链头`}</Badge>
       )}
 
       <Badges className="justify-center">
@@ -285,7 +276,11 @@ function Stage(step: Step) {
         />
         <Stat label="newHead 新头" value={step.newHead === null ? '待定位' : VALS[step.newHead]} tone="teal" />
         {!done && step.next && <Hint>{step.next}</Hint>}
-        {done && <Answer>旋转结果 [{step.order.map((i) => VALS[i]).join(', ')}]</Answer>}
+        {done && (
+          <Answer>
+            旋转结果 <b className="font-code">[{step.order.map((i) => VALS[i]).join(', ')}]</b>
+          </Answer>
+        )}
       </Badges>
     </div>
   )
@@ -302,11 +297,11 @@ export default function RotateListDemo() {
       renderStep={(s) => <Stage {...s} />}
       describe={(s) => s.note}
       legend={[
-        { color: TONE.amber, label: '后 k 个节点 B：旋转后移到链头' },
-        { color: TONE.muted, label: '前 n-k 个节点 A：旋转后落到链尾（变淡）' },
-        { color: TONE.teal, label: 'newHead 新头节点' },
-        { color: TONE.easy, label: 'newTail 新尾节点（断点）' },
-        { color: TONE.medium, label: 'tail 原尾节点（取模前用于求长度）' },
+        { color: TONE.amber, label: 'tail 主指针：正在数长度的尾指针' },
+        { color: TONE.muted, label: 'tail 已走过的路径（遍历阶段变淡）' },
+        { color: TONE.teal, label: 'newHead 旋转后的新头节点' },
+        { color: TONE.easy, label: 'newTail 新尾节点：此处 next 被剪断（✂）' },
+        { color: TONE.medium, label: '断点边与行首 ⟲ 回边标记（成环后出现）' },
       ]}
     />
   )

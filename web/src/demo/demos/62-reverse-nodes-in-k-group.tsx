@@ -263,7 +263,7 @@ const GROUP_BOX: Record<'processing' | 'done', string> = {
   done: 'bg-[hsl(var(--easy))]/15 border-[hsl(var(--easy))]/40',
 }
 
-/** 把当前链表切分为「每 K 个一组 + 最后的尾组」，色块按组切分 */
+/** 把当前链表切分为「每 K 个一组 + 最后的尾组」，色块按组切分；开头的 dummy 由 Stage 单独占一格，不进分组 */
 function chunk(order: Order): Order[] {
   const rest = order.slice(1)
   const out: Order[] = []
@@ -303,6 +303,23 @@ function Stage(step: Step) {
     <div className="flex flex-col items-center gap-3">
       {/* 当前链表：从左到右就是 next 顺序，按原下标标注节点身份 */}
       <div className="flex w-full flex-wrap items-start justify-center gap-y-3">
+        {/* dummy 哨兵不属于任何一组，单独占一格：init、第 1 组探测与第 1 组头插这 3 步里 pre 都停在它上面 */}
+        <div className="flex items-center">
+          <div className="flex flex-col items-center rounded-xl border-[1.5px] border-transparent px-2 pb-2 pt-1">
+            <span className="mb-0.5 text-center font-code text-[10px] leading-none text-ink-soft">
+              哨兵
+            </span>
+            <div className="flex flex-col items-center">
+              {flagsOf(DUMMY).map((f) => (
+                <Flag key={f.label} label={f.label} tone={f.tone} />
+              ))}
+              <div className="flex h-11 min-w-11 items-center justify-center rounded-lg border-[1.5px] border-dashed border-border px-2 font-code text-[11px] text-ink-soft">
+                dummy
+              </div>
+            </div>
+          </div>
+          <Link active={groupStateOf(groups[0], step) === 'processing'} />
+        </div>
         {groups.map((group, gi) => {
           const gs = groupStateOf(group, step)
           return (
@@ -325,15 +342,9 @@ function Stage(step: Step) {
                           <Flag key={f.label} label={f.label} tone={f.tone} />
                         ))}
                       </div>
-                      {id === DUMMY ? (
-                        <div className="flex h-11 min-w-11 items-center justify-center rounded-lg border-[1.5px] border-dashed border-border px-2 font-code text-[11px] text-ink-soft">
-                          dummy
-                        </div>
-                      ) : (
-                        <Node state={nodeState(id)}>{VALS[id]}</Node>
-                      )}
+                      <Node state={nodeState(id)}>{VALS[id]}</Node>
                       <span className="mt-1 font-code text-[10px] leading-none text-ink-soft">
-                        {id === DUMMY ? '哨兵' : `原 #${id}`}
+                        {`原 #${id}`}
                       </span>
                     </div>
                   ))}

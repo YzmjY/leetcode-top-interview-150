@@ -226,7 +226,8 @@ function Stage(step: Step) {
     }
   }
 
-  const keptVals = step.chain.slice(1, curPos).map(valOf)
+  /** 不变量 dummy.Next..cur（含 cur）是已确认前缀，与 buildSteps 的 keptVals() 同口径 */
+  const keptVals = step.chain.slice(1, curPos + 1).map(valOf)
   const resultVals = step.chain.filter((id) => id !== 0 && id !== NIL).map(valOf)
 
   const nodeState = (id: number, k: number): 'idle' | 'active' | 'teal' | 'ok' | 'dim' => {
@@ -270,7 +271,7 @@ function Stage(step: Step) {
     stateParts.push(`保留（绿）[${resultVals.join(', ')}]`)
     stateParts.push(`已删除（红划线）${step.removed.length === 0 ? '无' : step.removed.map(valOf).join(', ')}`)
   } else {
-    stateParts.push(`已确认保留（绿）[${keptVals.join(', ')}]`)
+    stateParts.push(`已确认前缀（含 cur，指针节点为琥珀）[${keptVals.join(', ')}]`)
     if (step.dupeVal !== null) stateParts.push(`本步待删（红）值 ${step.dupeVal}`)
     if (step.pair !== null) {
       stateParts.push(`本步比较 ${nameOf(step.pair[0])} 与 ${nameOf(step.pair[1])}`)

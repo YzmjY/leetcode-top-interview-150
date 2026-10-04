@@ -111,7 +111,7 @@ function buildSteps(): Step[] {
       'sync',
       `观察：fast 从 ${nameOf(fromFast)} 走到 ${nameOf(fast)}，slow 从 ${nameOf(fromSlow)} 同步走到 ${nameOf(slow)}，两者各走 1 步。判断：${
         fast === NIL
-          ? 'fast 已经越过尾结点到达 nil，整条链表走完，间距到此「用尽」'
+          ? `fast 已经越过尾结点到达 nil，fast 已走完全程，同步前进结束（位置差仍显示为 ${N + 1} 条边）`
           : `fast 还没越界，间距保持 ${N + 1} 条边不变`
       }。动作：${
         fast === NIL
@@ -124,7 +124,7 @@ function buildSteps(): Step[] {
   victim = advance(slow)
   push(
     'remove',
-    `观察：fast 已到 nil，slow 停在 ${nameOf(slow)}，slow.Next 指向 ${nameOf(victim)}，而 ${nameOf(victim)} 正是倒数第 n = ${N} 个结点。判断：待删结点 ${nameOf(victim)} 的两条边 ${nameOf(slow)} → ${nameOf(victim)} 与 ${nameOf(victim)} → ${nameOf(advance(victim))} 都要断开，slow.Next 应当改指 ${nameOf(advance(victim))}。动作：执行 slow.Next = slow.Next.Next，${nameOf(victim)} 被摘除。为什么：删除的入口是前驱 slow 的 next 而不是 slow 本身；被摘除结点残留的 Next 已经不在链上，不影响结果。`
+    `观察：fast 已到 nil，slow 停在 ${nameOf(slow)}，slow.Next 指向 ${nameOf(victim)}，而 ${nameOf(victim)} 正是倒数第 n = ${N} 个结点。判断：只改写 slow.Next 一条边，改成 ${nameOf(slow)} → ${nameOf(advance(victim))}；${nameOf(victim)} 的旧 next 已不在链上、不作处理。动作：执行 slow.Next = slow.Next.Next，${nameOf(victim)} 被摘除。为什么：删除的入口是前驱 slow 的 next 而不是 slow 本身，代码只改写了 slow.Next 这一条边；被摘除结点残留的 Next 虽然仍指向旧后继，但已经不在链上，不影响结果。`
   )
 
   push(
@@ -155,9 +155,9 @@ function buildSteps(): Step[] {
 
 /* ---------------- 舞台渲染 ---------------- */
 
-type EdgeKind = 'plain' | 'span' | 'broken'
+type EdgeKind = 'plain' | 'span' | 'broken' | 'detached'
 
-/** 结点之间的连接：普通细线 / 间距色块 / 被断开的虚线边 */
+/** 结点之间的连接：普通细线 / 间距色块 / 被 slow.Next 改写的虚线边 / 已脱离链表的灰点线边 */
 function Edge({ kind }: { kind: EdgeKind }) {
   return (
     <div className="mt-6 flex h-11 items-center">
@@ -165,8 +165,10 @@ function Edge({ kind }: { kind: EdgeKind }) {
         <Link />
       ) : kind === 'span' ? (
         <div className="h-2.5 w-6 shrink-0 rounded-full bg-[hsl(var(--water))]" />
-      ) : (
+      ) : kind === 'broken' ? (
         <div className="w-6 shrink-0 border-t-2 border-dashed border-[hsl(var(--hard))]" />
+      ) : (
+        <div className="w-6 shrink-0 border-t-2 border-dotted border-[hsl(var(--ink)/0.3)]" />
       )}
     </div>
   )
@@ -178,7 +180,8 @@ function Stage(step: Step) {
   const gap = step.fastPos - step.slowPos
 
   const edgeKind = (edge: number): EdgeKind => {
-    if (victim !== null && (edge === victim - 1 || edge === victim)) return 'broken'
+    if (victim !== null && edge === victim - 1) return 'broken'
+    if (victim !== null && edge === victim) return 'detached'
     if (edge >= step.slowPos && edge < step.fastPos) return 'span'
     return 'plain'
   }
@@ -208,7 +211,7 @@ function Stage(step: Step) {
             </Node>
             {victim !== null && (
               <span className="font-code text-[11px] text-[hsl(var(--hard))]">
-                断开 {nameOf(victim - 1)} → {nameOf(victim)}、{nameOf(victim)} → {nameOf(victim + 1)}
+                {`改写 slow.Next：${nameOf(victim - 1)} → ${nameOf(victim + 1)}；${nameOf(victim)} 的旧 next 已不在链上、不作处理`}
               </span>
             )}
           </div>
@@ -261,9 +264,7 @@ function Stage(step: Step) {
           )}
           {step.phase === 'remove' && victim !== null && (
             <span className="font-code text-[11px] text-[hsl(var(--hard))]">
-              断开 {nameOf(victim - 1)} → {nameOf(victim)}、{nameOf(victim)} → {nameOf(victim + 1)}
-              {'；改接 '}
-              {nameOf(step.slowPos)} → {nameOf(victim + 1)}
+              {`改写 slow.Next：${nameOf(step.slowPos)} → ${nameOf(victim + 1)}；${nameOf(victim)} 的旧 next 已不在链上、不作处理`}
             </span>
           )}
         </>
@@ -299,7 +300,7 @@ export default function RemoveNthNodeFromEndOfListDemo() {
   return (
     <DemoShell
       title="dummy 哨兵 + 快慢指针，一趟扫完"
-      info={`输入：head = [${HEAD.join(', ')}]、n = ${N}（题解示例 1，输出 [${RESULT.join(', ')}]）。取这个示例是因为它同时包含「fast 独自先走 n + 1 = ${N + 1} 步」和「两指针同步前进到 fast 越界」两个阶段，且规模最小、能逐步看清：蓝色色块是两指针之间的间距（恒为 n + 1 = ${N + 1} 条边），结点 ${VICTIM_VALUE} 标红并注明被断开的两条边，共 ${steps.length} 步。`}
+      info={`输入：head = [${HEAD.join(', ')}]、n = ${N}（题解示例 1，输出 [${RESULT.join(', ')}]）。取这个示例是因为它同时包含「fast 独自先走 n + 1 = ${N + 1} 步」和「两指针同步前进到 fast 越界」两个阶段，且规模最小、能逐步看清：蓝色色块是两指针之间的间距（恒为 n + 1 = ${N + 1} 条边），结点 ${VICTIM_VALUE} 标红并注明被改写的 slow.Next，共 ${steps.length} 步。`}
       steps={steps}
       autoMs={1400}
       renderStep={(s) => <Stage {...s} />}
@@ -308,7 +309,7 @@ export default function RemoveNthNodeFromEndOfListDemo() {
         { color: TONE.amber, label: 'slow 慢指针（停在待删结点的前驱）' },
         { color: TONE.teal, label: `fast 快指针（领先 slow 固定 n + 1 = ${N + 1} 步）` },
         { color: TONE.water, label: `两指针之间的间距色块（${N + 1} 条边 = n + 1）` },
-        { color: TONE.hard, label: '被摘除的结点与断开的两条边' },
+        { color: TONE.hard, label: '被摘除的结点与被改写的边（红虚线）' },
         { color: TONE.easy, label: '删除完成后的结果链表' },
       ]}
     />
