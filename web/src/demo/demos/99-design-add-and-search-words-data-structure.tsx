@@ -31,10 +31,18 @@ interface TrieSnap {
   rootId: number
 }
 
+interface LogEntry {
+  label: string
+  result: string
+  done: boolean
+}
+
 interface Step {
   phase: 'init' | 'add' | 'search' | 'done'
   /** 当前操作在 OP_LABEL 中的下标；init / done 为 -1 */
   opIndex: number
+  /** 操作日志快照 */
+  log: LogEntry[]
   trie: TrieSnap
   word: string
   /** 已匹配 / 已插入的字符个数 */
