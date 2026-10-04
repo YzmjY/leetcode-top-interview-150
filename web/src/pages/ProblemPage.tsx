@@ -149,7 +149,15 @@ export default function ProblemPage() {
             <li key={t.id}>
               <a
                 href={`#${t.id}`}
-                className="-ml-px block border-l-2 border-transparent py-1 pl-3 text-[13px] text-ink-soft transition-colors hover:border-[hsl(var(--amber))] hover:text-ink"
+                onClick={(e) => {
+                  // 哈希路由下不能直接改 location.hash，否则会冲掉路由
+                  e.preventDefault()
+                  document.getElementById(t.id)?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                  })
+                }}
+                className="-ml-px block cursor-pointer border-l-2 border-transparent py-1 pl-3 text-[13px] text-ink-soft transition-colors hover:border-[hsl(var(--amber))] hover:text-ink"
               >
                 {t.label}
               </a>
