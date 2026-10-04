@@ -1,0 +1,146 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/26-is-subsequence-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const S = 'abc';
+  const T = 'ahbgdc';
+  
+  function buildSteps() {
+    const steps = [];
+    const tState = [];
+    for (let k = 0; k < T.length; k++) tState.push(0);
+  
+    let i = 0;
+    let j = 0;
+  
+    function snap(phase, ok, note) {
+      return {
+        i: i,
+        j: j,
+        phase: phase,
+        ok: ok,
+        tState: tState.slice(),
+        result: null,
+        note: note
+      };
+    }
+  
+    steps.push(snap('init', null,
+      '初始状态：i=0 指向 s 的首字符，j=0 指向 t 的首字符。j 从左到右扫过 t，只有 s[i] 与 t[j] 相等时 i 才前进，不相等时只丢弃 t 的这个字符。'));
+  
+    while (j < T.length && i < S.length) {
+      const ok = S[i] === T[j];
+      steps.push(snap('compare', ok,
+        "比较 s[" + i + "]='" + S[i] + "' 与 t[" + j + "]='" + T[j] + "' → " + (ok ? '相等。' : '不相等。')
+        + (ok ? 's 当前需要的字符在 t 中出现了，i 前进一位，去匹配 s 的下一个字符。'
+              : 't 的这个字符不是 s 现在需要的，跳过它，i 不动。')));
+      if (ok) {
+        tState[j] = 2;
+        i++;
+        j++;
+        steps.push(snap('matched', true,
+          "匹配成功：t[" + (j - 1) + "]='" + T[j - 1] + "' 正好是 s[" + (i - 1) + "]='" + S[i - 1] + "'，i → " + i + "，j → " + j + "。"));
+      } else {
+        tState[j] = 1;
+        j++;
+        steps.push(snap('skipped', false,
+          "不匹配：t[" + (j - 1) + "]='" + T[j - 1] + "' 无法匹配 s[" + i + "]='" + S[i] + "'，只有 j → " + j + "，i 保持不变。"));
+      }
+    }
+  
+    const result = i === S.length;
+    steps.push({
+      i: i,
+      j: j,
+      phase: 'done',
+      ok: result,
+      tState: tState.slice(),
+      result: result,
+      note: result
+        ? '循环结束：i=' + i + ' 已等于 s 的长度，说明 s 的每个字符都按原顺序在 t 中找到了对应位置 → s 是 t 的子序列，返回 true。'
+        : '循环结束：i=' + i + ' 小于 s 的长度 ' + S.length + '，s 中还有字符没能在 t 中按顺序匹配到 → 返回 false。'
+    });
+  
+    return steps;
+  }
+  
+  function render(step, idx, ctx) {
+    ctx.stage.innerHTML = '';
+  
+    function charRow(title, chars, stateFn, ptrFn) {
+      const block = Demo.el('div', 'col');
+      block.appendChild(Demo.el('div', 'panel__title', title));
+      const row = Demo.el('div', 'row');
+      for (let k = 0; k < chars.length; k++) {
+        const col = Demo.el('div', 'col');
+        col.appendChild(Demo.el('div', 'ptr ptr--dim', String(k)));
+        const cell = Demo.el('div', 'cell', Demo.esc(chars[k]));
+        const st = stateFn(k);
+        if (st) cell.classList.add(st);
+        col.appendChild(cell);
+        const info = ptrFn(k);
+        const ptr = Demo.el('div', 'ptr', info.text);
+        if (info.cls) ptr.classList.add(info.cls);
+        if (!info.text) ptr.classList.add('ptr--dim');
+        col.appendChild(ptr);
+        row.appendChild(col);
+      }
+      block.appendChild(row);
+      return block;
+    }
+  
+    const box = Demo.el('div', 'col');
+    box.style.gap = '14px';
+    box.style.width = '100%';
+  
+    box.appendChild(charRow('s（子序列，长度 ' + S.length + '）', S.split(''), function (k) {
+      if (k < step.i) return 'is-ok';
+      if (k === step.i && step.phase !== 'done') return 'is-active';
+      return null;
+    }, function (k) {
+      return (k === step.i && step.phase !== 'done') ? { text: 'i', cls: 'ptr--violet' } : { text: '', cls: null };
+    }));
+  
+    box.appendChild(charRow('t（目标串，长度 ' + T.length + '）', T.split(''), function (k) {
+      if (step.phase === 'done') return step.tState[k] === 2 ? 'is-ok' : 'cell--dim';
+      if (k === step.j) return 'is-active';
+      if (step.tState[k] === 2) return 'is-ok';
+      if (step.tState[k] === 1) return 'cell--dim';
+      return null;
+    }, function (k) {
+      return (k === step.j && step.phase !== 'done') ? { text: 'j', cls: 'ptr--info' } : { text: '', cls: null };
+    }));
+  
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.style.textAlign = 'center';
+    let html = 'i = ' + step.i + ' / ' + S.length + '（s 中已匹配的字符数），j = ' + step.j + ' / ' + T.length + '（t 中已扫描的位置）';
+    if (step.phase === 'compare') {
+      html += ' &nbsp; 本轮比较：<code>' + Demo.esc(S[step.i]) + '</code> vs <code>' + Demo.esc(T[step.j]) + '</code> '
+        + (step.ok ? '<span class="tag tag--ok">相等，i 前进</span>' : '<span class="tag tag--bad">不相等，只推进 j</span>');
+    }
+    if (step.result === true) html += ' &nbsp;<span class="tag tag--ok">结果 true</span>';
+    if (step.result === false) html += ' &nbsp;<span class="tag tag--bad">结果 false</span>';
+    panel.innerHTML = html;
+    box.appendChild(panel);
+  
+    ctx.stage.appendChild(box);
+  }
+  
+  Demo.create({
+    title: '26. 判断子序列 — 同向双指针扫描 t',
+    info: '输入：s = "abc"，t = "ahbgdc"。t 中划掉不需要的字符后得到 a-b-c，顺序与 s 一致。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'j 正在扫描的 t 字符' },
+      { color: 'var(--demo-violet)', label: 'i 当前等待匹配的 s 字符' },
+      { color: 'var(--demo-ok)', label: '已匹配的字符' },
+      { color: 'var(--demo-muted)', label: 't 中已被丢弃的字符' }
+    ],
+    render: render
+  });
+  return Demo.__config
+}

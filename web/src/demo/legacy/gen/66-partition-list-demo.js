@@ -1,0 +1,211 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/66-partition-list-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const VALS = [1, 4, 3, 2, 5, 2];
+  const X = 3;
+  const ORIG = VALS.map(function (v, i) { return i; });
+  
+  function buildSteps() {
+    // 真实链表：1 → 4 → 3 → 2 → 5 → 2 → nil，next 存节点对象
+    const nodes = VALS.map(function (v, i) { return { id: i, val: v, next: null }; });
+    for (let i = 0; i < nodes.length - 1; i++) nodes[i].next = nodes[i + 1];
+  
+    const smallDummy = { id: -1, val: null, next: null };
+    const largeDummy = { id: -2, val: null, next: null };
+    let small = smallDummy;
+    let large = largeDummy;
+    let head = nodes[0];
+  
+    const steps = [];
+    const smallIds = [];
+    const largeIds = [];
+  
+    function walkIds(start) {
+      const out = [];
+      let p = start;
+      while (p !== null) { out.push(p.id); p = p.next; }
+      return out;
+    }
+  
+    function push(note, extra) {
+      const step = {
+        rest: head ? walkIds(head) : [],
+        small: [smallDummy.id].concat(smallIds),
+        large: [largeDummy.id].concat(largeIds),
+        cur: head ? head.id : null,
+        smallTail: small.id,
+        largeTail: large.id,
+        merged: null,
+        done: false,
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(function (k) { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    push('初始化：smallDummy 与 largeDummy 两个哨兵分别作为「小于 x」和「大于等于 x」两条链的表头，small / large 指向各自链尾；head 从原链表头开始逐个考察。');
+  
+    while (head !== null) {
+      const nxt = head.next;
+      if (head.val < X) {
+        small.next = head;
+        small = head;
+        smallIds.push(head.id);
+        push('考察节点 ' + head.val + '：' + head.val + ' < x = ' + X + ' → 挂到 small 链尾，small 后移一步指向它。节点在原链表中的相对顺序被原样保留。', { side: 'small' });
+      } else {
+        large.next = head;
+        large = head;
+        largeIds.push(head.id);
+        push('考察节点 ' + head.val + '：' + head.val + ' ≥ x = ' + X + ' → 挂到 large 链尾，large 后移一步指向它。', { side: 'large' });
+      }
+      head = nxt;
+    }
+  
+    push('原链表遍历结束，每个节点都被分到了两条链之一，且各自的相对顺序保持不变。此时 large 链尾的 Next 还指向原链表里的某个节点，是个悬空的旧指针。');
+  
+    large.next = null;
+    push('先切断 large 链尾的旧指针：large.Next = nil。如果不断开，拼接后大链会连回小链的节点，形成环导致死循环。');
+  
+    small.next = largeDummy.next;
+    const merged = walkIds(smallDummy);
+    push('拼接：small 链尾的 Next 指向 largeDummy.Next，两条链合成一条。返回 smallDummy.Next，得到 [' +
+      merged.filter(function (id) { return id >= 0; }).map(function (id) { return VALS[id]; }).join(', ') +
+      ']。一次遍历 O(n)，只用了常数个指针，没有新建节点。', { done: true, merged: merged });
+  
+    return steps;
+  }
+  
+  function arrowCol() {
+    const col = Demo.el('div', 'col');
+    col.appendChild(Demo.el('div', 'arrow', '→'));
+    col.appendChild(Demo.el('div', 'ptr ptr--dim', '&nbsp;'));
+    return col;
+  }
+  
+  function nodeCol(id, opts) {
+    const o = opts || {};
+    const col = Demo.el('div', 'col');
+    const isDummy = id < 0;
+    const node = Demo.el('div', 'll-node', isDummy ? 'dummy' : Demo.esc(String(VALS[id])));
+    if (isDummy) {
+      node.style.borderStyle = 'dashed';
+      node.style.color = 'var(--demo-muted)';
+      node.style.fontSize = '12px';
+    }
+    if (o.className) node.classList.add(o.className);
+    if (o.style) Object.keys(o.style).forEach(function (k) { node.style[k] = o.style[k]; });
+    col.appendChild(node);
+  
+    const ptr = Demo.el('div', 'ptr', o.ptr ? Demo.esc(o.ptr) : '&nbsp;');
+    if (!o.ptr) ptr.classList.add('ptr--dim');
+    else if (o.ptrClass) ptr.classList.add(o.ptrClass);
+    col.appendChild(ptr);
+    return col;
+  }
+  
+  function chainRow(ids, decorate) {
+    const row = Demo.el('div', 'row');
+    ids.forEach(function (id, i) {
+      row.appendChild(nodeCol(id, decorate ? decorate(id, i) : {}));
+      row.appendChild(arrowCol());
+    });
+    const nilCol = Demo.el('div', 'col');
+    const nilNode = Demo.el('div', 'll-node', 'nil');
+    nilNode.style.borderStyle = 'dashed';
+    nilNode.style.color = 'var(--demo-muted)';
+    nilCol.appendChild(nilNode);
+    nilCol.appendChild(Demo.el('div', 'ptr ptr--dim', '&nbsp;'));
+    row.appendChild(nilCol);
+    return row;
+  }
+  
+  const SMALL_STYLE = { background: 'var(--demo-ok-soft)', borderColor: 'var(--demo-ok)', color: 'var(--demo-ok)' };
+  const LARGE_STYLE = { background: 'var(--demo-violet-soft)', borderColor: 'var(--demo-violet)', color: 'var(--demo-violet)' };
+  
+  Demo.create({
+    title: '66. 分隔链表 — 两条哨兵链分装，最后首尾拼接',
+    info: '输入：head = [1, 4, 3, 2, 5, 2]，x = 3。小于 3 的节点放 small 链，大于等于 3 的放 large 链，两链内部保持原有相对顺序。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 420,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'head 当前考察节点' },
+      { color: 'var(--demo-ok)', label: 'small 链（val < x）' },
+      { color: 'var(--demo-violet)', label: 'large 链（val ≥ x）' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const origPanel = Demo.el('div', 'panel');
+      origPanel.style.width = '100%';
+      origPanel.appendChild(Demo.el('div', 'panel__title', '原链表（变淡的节点已经分拣完毕，head 从左往右扫）'));
+      origPanel.appendChild(chainRow(ORIG, function (id) {
+        const rest = step.rest.indexOf(id) >= 0;
+        const opts = {};
+        if (!rest) {
+          opts.style = { opacity: '0.35' };
+        } else if (id === step.cur) {
+          opts.className = 'is-active';
+          opts.ptr = 'head';
+        }
+        return opts;
+      }));
+      ctx.stage.appendChild(origPanel);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-start';
+  
+      const smallPanel = Demo.el('div', 'panel');
+      smallPanel.appendChild(Demo.el('div', 'panel__title', 'small 链（val < x = ' + X + '），链尾 small'));
+      smallPanel.appendChild(chainRow(step.small, function (id) {
+        if (id < 0) return {};
+        const opts = { style: SMALL_STYLE };
+        if (id === step.smallTail) opts.ptr = 'small';
+        return opts;
+      }));
+  
+      const largePanel = Demo.el('div', 'panel');
+      largePanel.appendChild(Demo.el('div', 'panel__title', 'large 链（val ≥ x = ' + X + '），链尾 large'));
+      largePanel.appendChild(chainRow(step.large, function (id) {
+        if (id < 0) return {};
+        const opts = { style: LARGE_STYLE };
+        if (id === step.largeTail) opts.ptr = 'large';
+        return opts;
+      }));
+  
+      row.appendChild(smallPanel);
+      row.appendChild(largePanel);
+      if (!step.done) ctx.stage.appendChild(row);
+  
+      const status = Demo.el('div', 'row');
+      status.appendChild(Demo.el('span', 'tag tag--info', 'x = ' + X));
+      status.appendChild(Demo.el('span', 'tag', 'head → ' + (step.cur === null ? 'nil（遍历结束）' : '节点 ' + VALS[step.cur])));
+      status.appendChild(Demo.el('span', 'tag tag--ok', 'small 已有 ' + (step.small.length - 1) + ' 个'));
+      status.appendChild(Demo.el('span', 'tag tag--violet', 'large 已有 ' + (step.large.length - 1) + ' 个'));
+      ctx.stage.appendChild(status);
+  
+      if (step.merged) {
+        const mergedPanel = Demo.el('div', 'panel');
+        mergedPanel.style.width = '100%';
+        mergedPanel.appendChild(Demo.el('div', 'panel__title', '拼接结果：smallDummy.Next（小链在前，大链在后，各自保持相对顺序）'));
+        mergedPanel.appendChild(chainRow(step.merged, function (id) {
+          if (id < 0) return {};
+          return { className: 'is-ok' };
+        }));
+        ctx.stage.appendChild(mergedPanel);
+      } else {
+        const hint = Demo.el('div', 'panel');
+        hint.style.width = '100%';
+        hint.style.textAlign = 'center';
+        hint.innerHTML = '分拣规则：按值决定去 small 还是 large，<strong>只改 next 指针、不新建节点</strong>；' +
+          '全部扫完后 <strong>large.Next = nil</strong> 断尾，再 <strong>small.Next = largeDummy.Next</strong> 拼接。';
+        ctx.stage.appendChild(hint);
+      }
+    }
+  });
+  return Demo.__config
+}

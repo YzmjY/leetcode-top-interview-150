@@ -1,0 +1,211 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/30-minimum-size-subarray-sum-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [2, 3, 1, 2, 4, 3];
+  const TARGET = 7;
+  
+  function buildSteps() {
+    const n = NUMS.length;
+    const steps = [];
+    let left = 0, sum = 0, minLen = n + 1, bestL = -1, bestR = -1;
+  
+    steps.push({
+      left: left, right: -1, sum: sum, minLen: minLen, bestL: bestL, bestR: bestR,
+      added: -1, removed: -1, phase: 'init', answer: 0, candidate: -1,
+      note: `初始化：数组共 ${n} 个元素，target = ${TARGET}。窗口是 nums[left..right]，初始 left = 0、right = -1（空窗口），窗口和 sum = 0。minLen 先记成 ${n + 1}——它比数组还长，代表「目前还没有找到任何合法窗口」。`
+    });
+  
+    for (let right = 0; right < n; right++) {
+      const before = sum;
+      sum += NUMS[right];
+      const reached = sum >= TARGET;
+  
+      steps.push({
+        left: left, right: right, sum: sum, minLen: minLen, bestL: bestL, bestR: bestR,
+        added: right, removed: -1, phase: 'expand', answer: 0, candidate: -1,
+        note: `右指针 right 扩到 ${right}：把 nums[${right}] = ${NUMS[right]} 并入窗口，sum = ${before} + ${NUMS[right]} = ${sum}。比较 sum 与 target = ${TARGET}：` +
+          (reached
+            ? `${sum} ≥ ${TARGET}，窗口已经达标，进入内层 while 循环，尝试收缩左边界去找更短的解。`
+            : `${sum} < ${TARGET}，还没达标，只能继续把右边界往右扩。`)
+      });
+  
+      while (sum >= TARGET) {
+        const curLen = right - left + 1;
+        const prevMin = minLen;
+        const improved = curLen < minLen;
+        if (improved) {
+          minLen = curLen;
+          bestL = left;
+          bestR = right;
+        }
+  
+        steps.push({
+          left: left, right: right, sum: sum, minLen: minLen, bestL: bestL, bestR: bestR,
+          added: -1, removed: -1, phase: 'found', answer: 0, candidate: curLen,
+          note: `窗口 nums[${left}..${right}] 的和 sum = ${sum} ≥ ${TARGET}，是一个合法解，长度 = ${right} − ${left} + 1 = ${curLen}。和已记录的最小长度比较：` +
+            (improved
+              ? (prevMin > n
+                ? `此前还没有任何合法解，直接记下 minLen = ${curLen}，候选区间为 nums[${left}..${right}]。`
+                : `${curLen} < ${prevMin}，更短，刷新 minLen = ${curLen}，候选区间改为 nums[${left}..${right}]。`)
+              : `${curLen} ≥ ${prevMin}，不比已知答案更短，minLen 保持不变。`) +
+            ` 因为数组元素全是正整数，继续收缩只会让 sum 更小，所以要立刻再试一次更短的窗口。`
+        });
+  
+        const removed = left;
+        sum -= NUMS[left];
+        left++;
+  
+        steps.push({
+          left: left, right: right, sum: sum, minLen: minLen, bestL: bestL, bestR: bestR,
+          added: -1, removed: removed, phase: 'shrink', answer: 0, candidate: -1,
+          note: `收缩左边界：把 nums[${removed}] = ${NUMS[removed]} 移出窗口，sum = ${sum + NUMS[removed]} − ${NUMS[removed]} = ${sum}，left 右移到 ${left}。` +
+            (sum >= TARGET
+              ? `此时 sum 仍然 ≥ ${TARGET}，while 循环会再判断一次，窗口还能继续缩短。`
+              : `此时 sum 已经 < ${TARGET}，退出内层循环，回到外层继续扩右边界。`)
+        });
+      }
+    }
+  
+    const answer = minLen > n ? 0 : minLen;
+  
+    steps.push({
+      left: left, right: n - 1, sum: sum, minLen: minLen, bestL: bestL, bestR: bestR,
+      added: -1, removed: -1, phase: 'done', answer: answer, candidate: -1,
+      note: answer === 0
+        ? `right 已经扫到数组末尾，全程都没有出现 sum ≥ ${TARGET} 的窗口，说明不存在合法子数组，返回 0。`
+        : `right 已经扫到数组末尾。过程中记录的最小长度是 ${answer}，对应 nums[${bestL}..${bestR}] = [${NUMS.slice(bestL, bestR + 1).join(', ')}]。正确性：元素全为正整数，固定 left 时 sum 随 right 单调不减，所以一旦 sum ≥ target 就可以放心收缩，直到第一次不达标为止；每个元素被加进窗口和移出窗口各一次，总复杂度 O(n)。`
+    });
+  
+    return steps;
+  }
+  
+  function arrayRow(step) {
+    const row = Demo.el('div', 'row');
+    const done = step.phase === 'done';
+  
+    NUMS.forEach(function (value, idx) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(value));
+  
+      if (done) {
+        if (step.answer > 0 && idx >= step.bestL && idx <= step.bestR) cell.classList.add('is-ok');
+        else cell.classList.add('cell--dim');
+      } else if (idx === step.added) {
+        cell.classList.add('is-active');
+      } else if (idx === step.removed) {
+        cell.classList.add('is-warn');
+      } else if (step.right >= step.left && idx >= step.left && idx <= step.right) {
+        cell.classList.add('is-info');
+      }
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (!done && step.right >= step.left) {
+        if (idx === step.left) labels.push('left');
+        if (idx === step.right) labels.push('right');
+      }
+      const ptr = Demo.el('div', 'ptr', labels.length ? Demo.esc(labels.join(' ')) : String(idx));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+  
+    return row;
+  }
+  
+  function windowPanel(title, l, r, cellClass, tagText, tagClass) {
+    const panel = Demo.el('div', 'panel');
+    panel.appendChild(Demo.el('div', 'panel__title', Demo.esc(title)));
+    const row = Demo.el('div', 'row');
+    if (l >= 0 && r >= l) {
+      for (let k = l; k <= r; k++) {
+        row.appendChild(Demo.el('div', 'cell cell--sm ' + cellClass, Demo.esc(NUMS[k])));
+      }
+    } else {
+      row.appendChild(Demo.el('span', 'tag', '空窗口'));
+    }
+    panel.appendChild(row);
+    const tagRow = Demo.el('div', 'row');
+    tagRow.appendChild(Demo.el('span', 'tag ' + tagClass, Demo.esc(tagText)));
+    panel.appendChild(tagRow);
+    return panel;
+  }
+  
+  Demo.create({
+    title: '30. 长度最小的子数组 — 变长滑动窗口，左指针只进不退',
+    info: `输入：target = ${TARGET}，nums = [${NUMS.join(', ')}]（示例 1，输出 2，对应子数组 [4, 3]）。窗口 nums[left..right] 的和记为 sum，minLen 记录已发现的合法窗口最小长度。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 380,
+    legend: [
+      { color: 'var(--demo-accent)', label: '刚并入窗口的元素' },
+      { color: 'var(--demo-info)', label: '当前窗口 nums[left..right]' },
+      { color: 'var(--demo-warn)', label: '刚被移出窗口的元素' },
+      { color: 'var(--demo-ok)', label: '目前的最优候选区间' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const arrayPanel = Demo.el('div', 'panel');
+      arrayPanel.style.width = '100%';
+      arrayPanel.appendChild(Demo.el('div', 'panel__title',
+        step.phase === 'done' ? '数组 nums（扫描结束）' : '数组 nums（窗口正在左右移动）'));
+      arrayPanel.appendChild(arrayRow(step));
+      ctx.stage.appendChild(arrayPanel);
+  
+      const barPanel = Demo.el('div', 'panel');
+      barPanel.style.width = '100%';
+      barPanel.appendChild(Demo.el('div', 'panel__title', '窗口和 sum 与目标 target 的关系'));
+      const bar = Demo.el('div', 'bar');
+      bar.style.width = '100%';
+      const fill = Demo.el('div', 'bar__fill');
+      fill.style.width = Math.min(100, (step.sum / TARGET) * 100) + '%';
+      if (step.sum >= TARGET) fill.style.background = 'var(--demo-ok)';
+      bar.appendChild(fill);
+      bar.appendChild(Demo.el('div', 'bar__label',
+        Demo.esc('sum = ' + step.sum + ' ／ target = ' + TARGET)));
+      barPanel.appendChild(bar);
+  
+      const tagRow = Demo.el('div', 'row');
+      tagRow.style.marginTop = '8px';
+      const curLen = step.right >= step.left ? step.right - step.left + 1 : 0;
+      tagRow.appendChild(Demo.el('span', 'tag tag--info', Demo.esc('当前窗口长度 = ' + curLen)));
+      tagRow.appendChild(Demo.el('span',
+        'tag ' + (step.sum >= TARGET ? 'tag--ok' : 'tag'),
+        step.sum >= TARGET ? '窗口已覆盖 target' : '窗口未达到 target'));
+      tagRow.appendChild(Demo.el('span', 'tag tag--violet',
+        Demo.esc('minLen = ' + (step.minLen > NUMS.length ? '∞' : step.minLen))));
+      if (step.phase === 'found') {
+        tagRow.appendChild(Demo.el('span', 'tag tag--warn', Demo.esc('本次候选长度 = ' + step.candidate)));
+      }
+      barPanel.appendChild(tagRow);
+      ctx.stage.appendChild(barPanel);
+  
+      const row = Demo.el('div', 'row');
+      const liveWindow = [step.left, step.right];
+      row.appendChild(windowPanel(
+        '当前窗口 nums[left..right]',
+        liveWindow[0], liveWindow[1], 'is-info',
+        'sum = ' + step.sum, 'tag--info'));
+      row.appendChild(windowPanel(
+        step.bestL >= 0 ? `最优候选 nums[${step.bestL}..${step.bestR}]` : '最优候选（暂无）',
+        step.bestL, step.bestR, 'is-ok',
+        step.minLen > NUMS.length ? 'minLen = ∞' : '长度 = ' + step.minLen, 'tag--ok'));
+      ctx.stage.appendChild(row);
+  
+      const result = Demo.el('div', 'panel',
+        `left = <strong>${step.left}</strong> ｜ right = <strong>${step.phase === 'init' ? '−1' : step.right}</strong> ｜ sum = <strong>${step.sum}</strong> ｜ minLen = <strong>${step.minLen > NUMS.length ? '∞' : step.minLen}</strong>` +
+        (step.phase === 'done'
+          ? ` &nbsp;<span class="tag tag--ok">答案 = ${step.answer}</span>`
+            + (step.answer > 0 ? ` &nbsp;<span class="tag tag--violet">${NUMS.slice(step.bestL, step.bestR + 1).join(' + ')} = ${step.answer && NUMS.slice(step.bestL, step.bestR + 1).reduce((a, b) => a + b, 0)}</span>` : '')
+          : ''));
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

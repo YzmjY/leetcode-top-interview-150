@@ -1,0 +1,186 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/94-course-schedule-ii-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const N = 4;
+  const PREREQ = [[1, 0], [2, 0], [3, 1], [3, 2]];
+  const POS = { 0: { x: 320, y: 75 }, 1: { x: 150, y: 195 }, 2: { x: 490, y: 195 }, 3: { x: 320, y: 315 } };
+  
+  function buildSteps() {
+    const adj = [];
+    for (let i = 0; i < N; i++) adj.push([]);
+    const indeg = [];
+    for (let i = 0; i < N; i++) indeg.push(0);
+    const queue = [];
+    const order = [];
+    const steps = [];
+  
+    function snap(note, extra) {
+      const step = {
+        adj: adj.map(a => a.slice()),
+        indeg: indeg.slice(),
+        queue: queue.slice(),
+        order: order.slice(),
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    snap('初始：numCourses = 4，先修关系 [[1,0],[2,0],[3,1],[3,2]]。入度 = 这门课还有几门先修课没学；入度为 0 的课可以立刻学。Kahn 算法就是不断取出入度为 0 的课，并「解锁」它的后继。');
+  
+    PREREQ.forEach(p => {
+      const course = p[0];
+      const pre = p[1];
+      adj[pre].push(course);
+      indeg[course] += 1;
+      snap('处理先修关系 [' + course + ',' + pre + ']：要学 ' + course + ' 必须先学 ' + pre + ' → 建边 ' + pre + '→' + course + '，课程 ' + course + ' 的入度 +1（现在是 ' + indeg[course] + '）。', { edge: [pre, course] });
+    });
+  
+    snap('邻接表与入度构建完成：0→[' + adj[0].join(',') + ']，1→[' + adj[1].join(',') + ']，2→[' + adj[2].join(',') + ']，3→[' + adj[3].join(',') + ']；入度 = [' + indeg.join(',') + ']。');
+  
+    for (let i = 0; i < N; i++) {
+      if (indeg[i] === 0) queue.push(i);
+    }
+    snap('扫描入度表，把入度为 0 的课程 ' + queue.join('、') + ' 全部入队：它们没有任何没完成的前置要求，可以最先学。', { enqueued: queue.slice() });
+  
+    while (queue.length > 0) {
+      const cur = queue.shift();
+      order.push(cur);
+      snap('出队课程 ' + cur + '：把它追加到结果数组，得到 [' + order.join(', ') + ']。接下来看它的后继能不能因为这门课学完而解锁。', { cur: cur });
+  
+      adj[cur].forEach(nxt => {
+        indeg[nxt] -= 1;
+        const unlocked = indeg[nxt] === 0;
+        if (unlocked) queue.push(nxt);
+        snap('课程 ' + cur + ' 学完 → 后继 ' + nxt + ' 少了一门先修课，入度减 1（现在 ' + indeg[nxt] + '）' +
+          (unlocked ? '，降为 0 → 入队，它可以学了。' : '，还不为 0，继续等待。'), { cur: cur, edge: [cur, nxt], unlocked: unlocked });
+      });
+    }
+  
+    const ok = order.length === N;
+    snap(ok
+      ? '队列已空，结果数组长度 ' + N + ' 等于课程总数 → 无环，返回拓扑顺序 [' + order.join(', ') + ']。每个点和每条边各处理一次，时间 O(V+E)。'
+      : '队列提前空了，只排出 ' + order.length + '/' + N + ' 门课 → 剩余课程互相牵制（存在环），返回空数组。', { done: true, ok: ok });
+    return steps;
+  }
+  
+  function nodeStyle(step, v) {
+    if (step.order.indexOf(v) !== -1) return { fill: 'var(--demo-ok)', stroke: 'var(--demo-ok)', text: 'var(--demo-card)' };
+    if (step.queue.indexOf(v) !== -1) return { fill: 'var(--demo-warn)', stroke: 'var(--demo-warn)', text: 'var(--demo-card)' };
+    return { fill: 'var(--demo-subtle)', stroke: 'var(--demo-border)', text: 'var(--demo-text)' };
+  }
+  
+  function graphSvg(step) {
+    const palette = { muted: 'var(--demo-muted)', accent: 'var(--demo-accent)' };
+    let out = '<defs>';
+    Object.keys(palette).forEach(key => {
+      out += '<marker id="tp-' + key + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">' +
+        '<path d="M0,1 L10,5 L0,9 z" style="fill:' + palette[key] + '"/></marker>';
+    });
+    out += '</defs>';
+  
+    for (let u = 0; u < N; u++) {
+      step.adj[u].forEach(v => {
+        const p = POS[u];
+        const q = POS[v];
+        const dx = q.x - p.x;
+        const dy = q.y - p.y;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const isCur = step.edge && step.edge[0] === u && step.edge[1] === v;
+        const kind = isCur ? 'accent' : 'muted';
+        const x1 = p.x + dx / len * 34;
+        const y1 = p.y + dy / len * 34;
+        const x2 = q.x - dx / len * 34;
+        const y2 = q.y - dy / len * 34;
+        out += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) +
+          '" style="stroke:' + palette[kind] + ';stroke-width:' + (isCur ? 3.5 : 2) + '" marker-end="url(#tp-' + kind + ')"/>';
+      });
+    }
+  
+    for (let v = 0; v < N; v++) {
+      const p = POS[v];
+      const col = nodeStyle(step, v);
+      if (step.cur === v) {
+        out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="41" style="fill:none;stroke:var(--demo-accent);stroke-width:3"/>';
+      }
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="32" style="fill:' + col.fill + ';stroke:' + col.stroke + ';stroke-width:2.5"/>';
+      out += '<text x="' + p.x + '" y="' + (p.y - 2) + '" text-anchor="middle" style="fill:' + col.text + ';font:600 18px sans-serif">' + v + '</text>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 16) + '" text-anchor="middle" style="fill:' + col.text + ';font:500 11px sans-serif">入度 ' + step.indeg[v] + '</text>';
+    }
+  
+    return '<div style="width:100%"><svg viewBox="0 0 640 380" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+  }
+  
+  function chipRow(values, cls, emptyText) {
+    const row = Demo.el('div', 'row');
+    if (!values.length) {
+      row.appendChild(Demo.el('div', 'tag', emptyText));
+    } else {
+      values.forEach(v => {
+        const cell = Demo.el('div', 'cell cell--sm', String(v));
+        cell.classList.add(cls);
+        row.appendChild(cell);
+      });
+    }
+    return row;
+  }
+  
+  Demo.create({
+    title: '94. 课程表 II — Kahn 算法输出拓扑序',
+    info: 'numCourses = 4，prerequisites = [[1,0],[2,0],[3,1],[3,2]]（示例 2）。反复取出入度为 0 的课程，边输出顺序边解锁后继。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 420,
+    legend: [
+      { color: 'var(--demo-ok)', label: '已排入顺序' },
+      { color: 'var(--demo-warn)', label: '已在队列中（入度为 0）' },
+      { color: 'var(--demo-accent)', label: '当前处理的边' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = graphSvg(step);
+      ctx.stage.appendChild(wrap);
+  
+      const statusRow = Demo.el('div', 'row');
+      statusRow.style.width = '100%';
+      statusRow.style.alignItems = 'flex-start';
+  
+      const queuePanel = Demo.el('div', 'panel');
+      queuePanel.appendChild(Demo.el('div', 'panel__title', '队列（入度为 0）'));
+      queuePanel.appendChild(chipRow(step.queue, 'is-warn', '（空）'));
+  
+      const orderPanel = Demo.el('div', 'panel');
+      orderPanel.appendChild(Demo.el('div', 'panel__title', '结果数组 result'));
+      orderPanel.appendChild(chipRow(step.order, 'is-ok', '（还没开始）'));
+  
+      statusRow.appendChild(queuePanel);
+      statusRow.appendChild(orderPanel);
+      ctx.stage.appendChild(statusRow);
+  
+      const tablePanel = Demo.el('div', 'panel');
+      tablePanel.style.width = '100%';
+      tablePanel.appendChild(Demo.el('div', 'panel__title', '入度表'));
+      let head = '<tr><th>课程</th>';
+      let body = '<tr><td>入度</td>';
+      for (let v = 0; v < N; v++) {
+        const hot = step.edge && step.edge[1] === v;
+        head += '<th' + (hot ? ' style="background:var(--demo-accent-soft);color:var(--demo-accent-strong)"' : '') + '>' + v + '</th>';
+        body += '<td' + (hot ? ' style="background:var(--demo-accent-soft);color:var(--demo-accent-strong);font-weight:700"' : '') + '>' + step.indeg[v] + '</td>';
+      }
+      head += '</tr>';
+      body += '</tr>';
+      tablePanel.appendChild(Demo.el('div', null, '<table class="map-table">' + head + body + '</table>'));
+      tablePanel.appendChild(Demo.el('div', null, step.done
+        ? (step.ok ? '<span class="tag tag--ok">拓扑排序完成</span>' : '<span class="tag tag--bad">存在环，返回空数组</span>')
+        : '<span class="tag tag--info">已排 ' + step.order.length + ' / ' + N + ' 门</span>'));
+      ctx.stage.appendChild(tablePanel);
+    }
+  });
+  return Demo.__config
+}

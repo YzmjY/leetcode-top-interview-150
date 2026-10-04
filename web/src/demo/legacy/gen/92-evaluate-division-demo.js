@@ -1,0 +1,227 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/92-evaluate-division-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const EQUATIONS = [['a', 'b'], ['b', 'c']];
+  const VALUES = [2.0, 3.0];
+  const QUERIES = [['a', 'c'], ['b', 'a'], ['a', 'e'], ['a', 'a'], ['x', 'x']];
+  const POS = { a: { x: 100, y: 190 }, b: { x: 320, y: 80 }, c: { x: 540, y: 190 } };
+  
+  function fmt(v) {
+    return String(Math.round(v * 10000) / 10000);
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const edges = [];
+    const adj = {};
+    const results = [];
+  
+    function snap(note, extra) {
+      const step = {
+        edges: edges.map(e => ({ u: e.u, v: e.v, w: e.w })),
+        results: results.map(r => ({ q: r.q.slice(), a: r.a })),
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    snap('输入：equations = [["a","b"],["b","c"]]，values = [2.0, 3.0]。把每个变量看成图上的点，a/b = v 就是两条有向边：a→b 权重 v、b→a 权重 1/v。查询 a/c 就等价于在图上求一条路径并把边权相乘。');
+  
+    EQUATIONS.forEach((eq, idx) => {
+      const u = eq[0];
+      const v = eq[1];
+      const w = VALUES[idx];
+      if (!adj[u]) adj[u] = [];
+      if (!adj[v]) adj[v] = [];
+      adj[u].push({ to: v, w: w });
+      adj[v].push({ to: u, w: 1 / w });
+      edges.push({ u: u, v: v, w: w });
+      edges.push({ u: v, v: u, w: 1 / w });
+      snap('处理等式 ' + u + '/' + v + ' = ' + fmt(w) + '：加两条有向边 —— ' + u + '→' + v + ' 权重 ' + fmt(w) + '，' + v + '→' + u + ' 权重 ' + fmt(1 / w) + '。反向边让除法可以「倒过来」查。', { curEdge: [u, v] });
+    });
+  
+    snap('加权有向图构建完成。a 到 c 只有一条路径 a→b→c，把边权相乘就是 a/c 的答案。', {});
+  
+    let current = null;
+  
+    QUERIES.forEach(q => {
+      const A = q[0];
+      const B = q[1];
+      current = q.slice();
+  
+      if (!POS[A] || !POS[B]) {
+        results.push({ q: q.slice(), a: -1 });
+        snap('查询 ' + A + '/' + B + '：' + (!POS[A] ? A : B) + ' 从未在任何等式中出现过，图上没有这个点 → 无法确定，答案 -1.0。', { query: q.slice(), answer: -1 });
+        return;
+      }
+  
+      if (A === B) {
+        results.push({ q: q.slice(), a: 1 });
+        snap('查询 ' + A + '/' + A + '：同一个变量，比值恒为 1.0，不需要搜索。', { query: q.slice(), answer: 1 });
+        return;
+      }
+  
+      snap('查询 ' + A + '/' + B + '：从 ' + A + ' 出发做 DFS，累计比值初始为 1.0（相当于 ' + A + '/' + A + '），路径 [ ' + A + ' ]。', { query: q.slice(), path: [A], product: 1 });
+  
+      const visited = {};
+      const stack = [{ node: A, product: 1, path: [A] }];
+      let answer = null;
+  
+      while (stack.length > 0 && answer === null) {
+        const cur = stack.pop();
+        if (visited[cur.node]) continue;
+        visited[cur.node] = true;
+  
+        if (cur.node === B) {
+          answer = cur.product;
+          results.push({ q: q.slice(), a: answer });
+          snap('出栈 ' + cur.node + '：正是查询的目标 ' + B + ' → 答案 ' + A + '/' + B + ' = ' + fmt(answer) + '（路径 ' + cur.path.join(' → ') + ' 上的边权相乘）。', { query: q.slice(), path: cur.path, product: answer, answer: answer });
+          break;
+        }
+  
+        const actions = [];
+        const skips = [];
+        const outs = adj[cur.node] || [];
+        for (let k = outs.length - 1; k >= 0; k--) {
+          const e = outs[k];
+          if (visited[e.to]) { skips.push(e.to); continue; }
+          stack.push({ node: e.to, product: cur.product * e.w, path: cur.path.concat(e.to) });
+          actions.push(e.to + '（权重 ' + fmt(e.w) + ' → 累计 ' + fmt(cur.product * e.w) + '）');
+        }
+  
+        let note = '出栈 ' + cur.node + '：不是目标 ' + B + '，累计比值 ' + fmt(cur.product) + '。';
+        note += actions.length ? '沿边扩展：' + actions.join('、') + '，压栈等待深入。' : '它没有可扩展的边。';
+        note += skips.length ? ' 已访问过的 ' + skips.join('、') + ' 直接跳过，避免绕环。' : '';
+        snap(note, { query: q.slice(), path: cur.path, product: cur.product, curNode: cur.node });
+      }
+    });
+  
+    snap('全部查询结束：' + QUERIES.map(q => q[0] + '/' + q[1] + '=' + fmt(results.find(r => r.q[0] === q[0] && r.q[1] === q[1]).a)).join('，') + '。每次查询就是图上一次 DFS，时间 O(V+E)。', { done: true });
+  
+    return steps;
+  }
+  
+  function directedEdge(a, b) {
+    const p = POS[a];
+    const q = POS[b];
+    const dx = q.x - p.x;
+    const dy = q.y - p.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    const px = -uy;
+    const py = ux;
+    const off = 9;
+    const r = 32;
+    const x1 = p.x + px * off + ux * r;
+    const y1 = p.y + py * off + uy * r;
+    const x2 = q.x + px * off - ux * r;
+    const y2 = q.y + py * off - uy * r;
+    const lx = (x1 + x2) / 2 + px * 15;
+    const ly = (y1 + y2) / 2 + py * 15;
+    return { x1: x1, y1: y1, x2: x2, y2: y2, lx: lx, ly: ly };
+  }
+  
+  function edgeColor(u, v, step) {
+    const path = step.path || [];
+    for (let k = 0; k + 1 < path.length; k++) {
+      if (path[k] === u && path[k + 1] === v) return 'accent';
+    }
+    if (step.curEdge && step.curEdge[0] === u && step.curEdge[1] === v) return 'warn';
+    return 'muted';
+  }
+  
+  function graphSvg(step) {
+    const palette = {
+      muted: 'var(--demo-muted)',
+      accent: 'var(--demo-accent)',
+      warn: 'var(--demo-warn)',
+      ok: 'var(--demo-ok)'
+    };
+  
+    let out = '<defs>';
+    Object.keys(palette).forEach(key => {
+      out += '<marker id="ed-' + key + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">' +
+        '<path d="M0,1 L10,5 L0,9 z" style="fill:' + palette[key] + '"/></marker>';
+    });
+    out += '</defs>';
+  
+    const seen = {};
+    step.edges.forEach(e => {
+      const key = e.u + '>' + e.v;
+      if (seen[key]) return;
+      seen[key] = true;
+      const g = directedEdge(e.u, e.v);
+      const kind = edgeColor(e.u, e.v, step);
+      out += '<line x1="' + g.x1.toFixed(1) + '" y1="' + g.y1.toFixed(1) + '" x2="' + g.x2.toFixed(1) + '" y2="' + g.y2.toFixed(1) +
+        '" style="stroke:' + palette[kind] + ';stroke-width:' + (kind === 'muted' ? 2 : 3.5) + '" marker-end="url(#ed-' + kind + ')"/>';
+      out += '<text x="' + g.lx.toFixed(1) + '" y="' + g.ly.toFixed(1) + '" text-anchor="middle" style="fill:' + palette[kind] +
+        ';font:600 13px monospace">' + e.u + '/' + e.v + '=' + fmt(e.w) + '</text>';
+    });
+  
+    Object.keys(POS).forEach(name => {
+      const p = POS[name];
+      const isCur = step.curNode === name
+        || (step.answer !== undefined && step.query && (step.query[0] === name || step.query[1] === name))
+        || (!step.curNode && step.answer === undefined && step.query && !step.done && step.query[0] === name);
+      if (isCur) {
+        out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="38" style="fill:none;stroke:var(--demo-warn);stroke-width:3"/>';
+      }
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="30" style="fill:var(--demo-accent);stroke:var(--demo-accent-strong);stroke-width:2.5"/>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 6) + '" text-anchor="middle" style="fill:var(--demo-card);font:600 18px sans-serif">' + name + '</text>';
+    });
+  
+    return '<div style="width:100%"><svg viewBox="0 0 640 300" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+  }
+  
+  Demo.create({
+    title: '92. 除法求值 — 加权有向图上的路径乘积',
+    info: 'equations = [["a","b"],["b","c"]]，values = [2.0, 3.0]；查询 5 组，逐条在图上做 DFS 并累乘边权。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 420,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前路径上的边' },
+      { color: 'var(--demo-warn)', label: '当前关注的边 / 变量（橙色圈）' },
+      { color: 'var(--demo-muted)', label: '其它有向边' },
+      { color: 'var(--demo-ok)', label: '已得出答案' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = graphSvg(step);
+      ctx.stage.appendChild(wrap);
+  
+      if (step.product !== undefined) {
+        const bar = Demo.el('div', 'panel');
+        bar.style.width = '100%';
+        bar.appendChild(Demo.el('div', 'panel__title', '当前累计比值'));
+        bar.appendChild(Demo.el('div', null,
+          '路径 <code>' + Demo.esc((step.path || []).join(' → ')) + '</code> &nbsp; 累计比值 = <strong>' + fmt(step.product) + '</strong>'));
+        ctx.stage.appendChild(bar);
+      }
+  
+      const queryPanel = Demo.el('div', 'panel');
+      queryPanel.style.width = '100%';
+      queryPanel.appendChild(Demo.el('div', 'panel__title', '查询与答案'));
+      let table = '<table class="map-table"><tr><th>查询</th><th>答案</th></tr>';
+      QUERIES.forEach(q => {
+        const name = q[0] + ' / ' + q[1];
+        const done = step.results.find(r => r.q[0] === q[0] && r.q[1] === q[1]);
+        const isCur = step.query && step.query[0] === q[0] && step.query[1] === q[1] && !done;
+        table += '<tr' + (isCur ? ' class="is-active"' : '') + '><td>' + name + '</td><td>' +
+          (done ? fmt(done.a) : '?') + '</td></tr>';
+      });
+      table += '</table>';
+      queryPanel.appendChild(Demo.el('div', null, table));
+      ctx.stage.appendChild(queryPanel);
+    }
+  });
+  return Demo.__config
+}

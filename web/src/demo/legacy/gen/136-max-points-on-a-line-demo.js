@@ -1,0 +1,249 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/136-max-points-on-a-line-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const POINTS = [[1, 1], [3, 2], [5, 3], [4, 1], [2, 3], [1, 4]];
+  
+  function gcd(a, b) {
+    while (b !== 0) {
+      const t = a % b;
+      a = b;
+      b = t;
+    }
+    return a;
+  }
+  
+  function slopeInfo(p1, p2) {
+    const dx = p2[0] - p1[0];
+    const dy = p2[1] - p1[1];
+    if (dx === 0) return { key: 'vertical', dx, dy, g: Math.abs(dy), rx: 0, ry: 1, label: 'vertical（dx = 0）' };
+    if (dy === 0) return { key: 'horizontal', dx, dy, g: Math.abs(dx), rx: 1, ry: 0, label: 'horizontal（dy = 0）' };
+    const g = gcd(Math.abs(dx), Math.abs(dy));
+    let rx = dx / g, ry = dy / g;
+    if (rx < 0) { rx = -rx; ry = -ry; }
+    return { key: ry + '/' + rx, dx, dy, g, rx, ry, label: 'dy/dx = ' + ry + '/' + rx };
+  }
+  
+  function copyGroups(groups) {
+    return groups.map(g => ({ key: g.key, label: g.label, count: g.count, js: g.js.slice(), rx: g.rx, ry: g.ry }));
+  }
+  
+  function buildSteps() {
+    const n = POINTS.length;
+    const steps = [];
+    let maxCount = 0, bestBase = -1, bestGroup = null;
+  
+    steps.push({
+      phase: 'init', base: -1, line: null, maxCount,
+      note: `初始状态：共 ${n} 个点，最多共线点数 maxCount = 0。`
+        + `做法是枚举每个点作为基准，把「基准点到其余点」的斜率用哈希表计数：同一条直线上的点与基准点算出的斜率必然相同，`
+        + `出现次数最多的斜率 + 基准点自己，就是过该基准点的直线上最多的点数。`
+    });
+  
+    for (let i = 0; i < n; i++) {
+      const groups = [];
+      const byKey = {};
+      const rows = [];
+      for (let j = 0; j < n; j++) {
+        if (i === j) continue;
+        const info = slopeInfo(POINTS[i], POINTS[j]);
+        if (!byKey[info.key]) {
+          const g = { key: info.key, label: info.label, count: 0, js: [], rx: info.rx, ry: info.ry };
+          byKey[info.key] = g;
+          groups.push(g);
+        }
+        byKey[info.key].count += 1;
+        byKey[info.key].js.push(j);
+        rows.push({
+          j, dx: info.dx, dy: info.dy, g: info.g, key: info.key, label: info.label, gcdNeed: info.g !== 1
+        });
+      }
+  
+      let localBest = null;
+      groups.forEach(g => { if (!localBest || g.count > localBest.count) localBest = g; });
+  
+      steps.push({
+        phase: 'table', base: i, rows, groups: copyGroups(groups), localBest: localBest.key,
+        line: null, maxCount, bestBase,
+        note: `以点 ${i} ${pointText(i)} 为基准，遍历其余 ${n - 1} 个点：`
+          + `先算 dx = x_j − x_i、dy = y_j − y_i，再把两者同时除以 gcd 化成最简分数当作斜率键`
+          + `（例如 dx = 4、dy = 2 与 dx = 2、dy = 1 会被归成同一个斜率），避免用浮点除法带来的精度误差。`
+          + `共得到 ${groups.length} 种不同的斜率。`
+      });
+  
+      const cand = localBest.count + 1;
+      const prevMax = maxCount;
+      const refreshed = cand > prevMax;
+      if (refreshed) {
+        maxCount = cand;
+        bestBase = i;
+        bestGroup = localBest;
+      }
+      steps.push({
+        phase: 'max', base: i, rows, groups: copyGroups(groups), localBest: localBest.key,
+        line: localBest, localMax: localBest.count, cand, maxCount, bestBase,
+        refreshed,
+        note: `斜率表里出现次数最多的是 ${localBest.label}，共 ${localBest.count} 个点与基准点同斜率，`
+          + `加上基准点自己得到 ${localBest.count} + 1 = ${cand} 个点共线。`
+          + (refreshed
+            ? `比之前的 ${prevMax} 更大，刷新 maxCount = ${cand}。`
+            : `没有超过当前的 ${maxCount}，maxCount 不变。`)
+      });
+    }
+  
+    const onLine = [bestBase].concat(bestGroup.js).sort((a, b) => a - b);
+    steps.push({
+      phase: 'done', base: bestBase, line: bestGroup, maxCount, bestBase, bestGroup: copyGroups([bestGroup])[0],
+      onLine,
+      note: `所有基准点都枚举完毕，最终 maxCount = ${maxCount}。`
+        + `取得这个值的是以点 ${bestBase} ${pointText(bestBase)} 为基准、斜率 ${bestGroup.label} 的那组：`
+        + `${onLine.map(k => pointText(k)).join('、')} 恰好落在同一条直线上。`
+        + `每个基准点都要扫一遍其余点，时间 O(n² log M)（M 为坐标范围），哈希表空间 O(n)。`
+    });
+  
+    return steps;
+  }
+  
+  function pointText(i) {
+    return `(${POINTS[i][0]}, ${POINTS[i][1]})`;
+  }
+  
+  function planeMarkup(step) {
+    const W = 560, H = 360;
+    const cx = v => 80 + (v - 1) * 92;
+    const cy = v => 292 - (v - 1) * 72;
+    const groupJs = step.line ? step.line.js : [];
+  
+    let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" style="max-width:100%">';
+  
+    for (let gx = 1; gx <= 5; gx++) {
+      svg += '<line x1="' + cx(gx) + '" y1="' + (cy(4) - 30) + '" x2="' + cx(gx) + '" y2="' + (cy(1) + 30)
+        + '" style="stroke:var(--demo-border);stroke-width:1;stroke-dasharray:4 4"/>';
+    }
+    for (let gy = 1; gy <= 4; gy++) {
+      svg += '<line x1="' + (cx(1) - 40) + '" y1="' + cy(gy) + '" x2="' + (cx(5) + 40) + '" y2="' + cy(gy)
+        + '" style="stroke:var(--demo-border);stroke-width:1;stroke-dasharray:4 4"/>';
+    }
+  
+    if (step.line && step.base >= 0) {
+      const bx = POINTS[step.base][0], by = POINTS[step.base][1];
+      const nx = step.line.rx, ny = step.line.ry;
+      const norm = Math.sqrt(nx * nx + ny * ny) || 1;
+      const t = 2.8;
+      svg += '<line x1="' + cx(bx - nx / norm * t) + '" y1="' + cy(by - ny / norm * t)
+        + '" x2="' + cx(bx + nx / norm * t) + '" y2="' + cy(by + ny / norm * t)
+        + '" style="stroke:var(--demo-ok);stroke-width:3;stroke-linecap:round;opacity:.7"/>';
+    }
+  
+    POINTS.forEach((p, idx) => {
+      const isBase = idx === step.base;
+      const onLine = groupJs.indexOf(idx) >= 0;
+      let fill = 'var(--demo-subtle)';
+      let stroke = 'var(--demo-muted)';
+      let r = 8;
+      if (onLine) { fill = 'var(--demo-ok-soft)'; stroke = 'var(--demo-ok)'; r = 10; }
+      if (isBase) { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; r = 11; }
+      svg += '<circle cx="' + cx(p[0]) + '" cy="' + cy(p[1]) + '" r="' + r + '" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:3"/>';
+      svg += '<text x="' + (cx(p[0]) + 13) + '" y="' + (cy(p[1]) - 10)
+        + '" style="fill:var(--demo-muted);font-size:11px;font-family:var(--demo-mono)">#' + idx + '</text>';
+    });
+  
+    svg += '<text x="' + cx(1) + '" y="' + (cy(1) + 50) + '" style="fill:var(--demo-muted);font-size:11px">x: 1 → 5</text>';
+    svg += '<text x="' + (cx(1) - 70) + '" y="' + (cy(4) - 30) + '" style="fill:var(--demo-muted);font-size:11px">y: 4</text>';
+    svg += '<text x="' + (cx(1) - 70) + '" y="' + (cy(1) + 4) + '" style="fill:var(--demo-muted);font-size:11px">y: 1</text>';
+    svg += '</svg>';
+    return svg;
+  }
+  
+  Demo.create({
+    title: '136. 直线上最多的点数 — 枚举基准点 + 斜率哈希表',
+    info: `输入：points = [${POINTS.map(p => '[' + p.join(',') + ']').join(', ')}]，共 ${POINTS.length} 个点，答案是 4。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前基准点 i' },
+      { color: 'var(--demo-ok)', label: '该斜率下的共线点' },
+      { color: 'var(--demo-muted)', label: '其余待比较的点' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const plane = Demo.el('div', 'panel');
+      plane.appendChild(Demo.el('div', 'panel__title',
+        step.base >= 0
+          ? `坐标平面：基准点 #${step.base} ${pointText(step.base)}`
+          : '坐标平面：' + POINTS.map((p, k) => `#${k}(${p[0]},${p[1]})`).join(' ')));
+      plane.style.width = '100%';
+      const holder = Demo.el('div');
+      holder.innerHTML = planeMarkup(step);
+      plane.appendChild(holder);
+      ctx.stage.appendChild(plane);
+  
+      if (step.groups && step.groups.length) {
+        const chips = Demo.el('div', 'row');
+        chips.style.justifyContent = 'center';
+        step.groups.forEach(g => {
+          const tag = Demo.el('div', 'tag' + (step.line && g.key === step.line.key ? ' tag--ok' : ''),
+            Demo.esc(g.label + ' → ' + g.count + ' 个点'));
+          chips.appendChild(tag);
+        });
+        const panel = Demo.el('div', 'panel');
+        panel.appendChild(Demo.el('div', 'panel__title', '斜率哈希表（每种斜率命中的点数）'));
+        panel.style.width = '100%';
+        panel.appendChild(chips);
+        ctx.stage.appendChild(panel);
+      }
+  
+      if (step.rows) {
+        const table = Demo.el('table', 'map-table');
+        const head = Demo.el('tr');
+        ['点 j', '坐标', 'dx', 'dy', 'gcd', '化简后的斜率', '该斜率累计'].forEach(h => head.appendChild(Demo.el('th', null, h)));
+        table.appendChild(head);
+        const counted = {};
+        step.rows.forEach(r => {
+          counted[r.key] = (counted[r.key] || 0) + 1;
+          const tr = Demo.el('tr');
+          const inLine = step.line && r.key === step.line.key;
+          if (inLine) tr.classList.add('is-active');
+          [r.j, `(${POINTS[r.j][0]}, ${POINTS[r.j][1]})`, r.dx, r.dy, r.g, r.label, counted[r.key]]
+            .forEach(v => tr.appendChild(Demo.el('td', null, Demo.esc(v))));
+          table.appendChild(tr);
+        });
+        const wrap = Demo.el('div', 'panel');
+        wrap.appendChild(Demo.el('div', 'panel__title',
+          step.line ? `基准点 #${step.base} 到其余各点的斜率（高亮的是出现最多的斜率）` : `基准点 #${step.base} 到其余各点的斜率`));
+        wrap.style.width = '100%';
+        wrap.style.overflowX = 'auto';
+        wrap.appendChild(table);
+        ctx.stage.appendChild(wrap);
+      }
+  
+      if (step.phase === 'max' || step.phase === 'done') {
+        const line = step.line;
+        const cand = step.phase === 'max' ? step.cand : step.onLine.length;
+        const members = step.phase === 'max'
+          ? [step.base].concat(line.js).sort((a, b) => a - b)
+          : step.onLine;
+        const summary = Demo.el('div', 'panel',
+          `<span class="tag tag--info">斜率 ${Demo.esc(line.label)}</span>&nbsp;`
+          + `直线上的点：${members.map(k => '#' + k + pointText(k)).join('、')}，共 ${cand} 个`
+          + `&nbsp;<span class="tag ${step.phase === 'done' ? 'tag--ok' : (step.refreshed ? 'tag--ok' : 'tag--warn')}">`
+          + `maxCount = ${step.maxCount}</span>`);
+        summary.style.width = '100%';
+        summary.style.textAlign = 'center';
+        ctx.stage.appendChild(summary);
+      }
+  
+      if (step.phase === 'init') {
+        const hint = Demo.el('div', 'panel',
+          `n = ${POINTS.length}，一共有 ${POINTS.length} 个基准点要枚举，每次都要重新建一张斜率哈希表。`);
+        hint.style.width = '100%';
+        hint.style.textAlign = 'center';
+        ctx.stage.appendChild(hint);
+      }
+    }
+  });
+  return Demo.__config
+}

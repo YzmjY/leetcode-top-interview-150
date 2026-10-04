@@ -1,0 +1,195 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/10-jump-game-ii-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [2, 3, 1, 1, 4];
+  
+  /* 把跳跃看成 BFS：layer[i] = 从 0 到 i 的最少跳跃次数（-1 表示不可达） */
+  function bfsLayers(nums) {
+    const n = nums.length;
+    const layer = [];
+    for (let i = 0; i < n; i++) layer.push(-1);
+    layer[0] = 0;
+    for (let i = 0; i < n; i++) {
+      if (layer[i] < 0) continue;
+      const to = Math.min(n - 1, i + nums[i]);
+      for (let j = i + 1; j <= to; j++) {
+        if (layer[j] < 0) layer[j] = layer[i] + 1;
+      }
+    }
+    return layer;
+  }
+  
+  function buildSteps() {
+    const nums = NUMS;
+    const n = nums.length;
+    const layers = bfsLayers(nums);
+    const steps = [];
+  
+    let jumps = 0, curEnd = 0, curFarthest = 0;
+  
+    steps.push({
+      nums: nums, layers: layers, i: -1, jumps: jumps, curEnd: curEnd, curFarthest: curFarthest,
+      jumped: false, done: false,
+      note: '初始化：jumps = 0，curEnd = 0，curFarthest = 0。把跳跃看成逐层扩散——curEnd 是当前这一跳最多覆盖到的下标（本层右边界），curFarthest 是这一层里所有位置再跳一步能触达的最远处。站在最后一个下标上不需要再跳，所以循环只扫到 n - 2。'
+    });
+  
+    for (let i = 0; i < n - 1; i++) {
+      const prevFarthest = curFarthest;
+      const cand = i + nums[i];
+      if (cand > curFarthest) curFarthest = cand;
+  
+      let scanNote = `扫描 i = ${i}：nums[${i}] = ${nums[i]}，从这里再跳一步最远能到 i + nums[${i}] = ${i} + ${nums[i]} = ${cand}。`;
+      scanNote += cand > prevFarthest
+        ? `比原来的 curFarthest = ${prevFarthest} 更远，说明这一层里有个「跳板」能把下一层的边界推得更远，更新 curFarthest = ${cand}。`
+        : `没有超过原来的 curFarthest = ${prevFarthest}，这个跳板对下一层没有帮助，curFarthest 保持不变。`;
+  
+      steps.push({
+        nums: nums, layers: layers, i: i, jumps: jumps, curEnd: curEnd, curFarthest: curFarthest,
+        jumped: false, done: false,
+        note: scanNote
+      });
+  
+      if (i === curEnd) {
+        const oldEnd = curEnd;
+        jumps += 1;
+        curEnd = curFarthest;
+        const covers = curEnd >= n - 1;
+  
+        let note = `i = ${i} 正好走到当前这一跳的边界 curEnd = ${oldEnd}：这个区间里所有落脚点都已考察完，已经没有别的选择，必须再跳一次。jumps 从 ${jumps - 1} 增加到 ${jumps}，新边界 curEnd = curFarthest = ${curEnd}。`;
+        note += covers
+          ? ` curEnd = ${curEnd} ≥ n - 1 = ${n - 1}，这一跳已经把终点罩住了，算法提前结束，不需要再往后扫。`
+          : ` 终点 n - 1 = ${n - 1} 还没被覆盖，继续考察下一层。`;
+  
+        steps.push({
+          nums: nums, layers: layers, i: i, jumps: jumps, curEnd: curEnd, curFarthest: curFarthest,
+          jumped: true, done: false,
+          note: note
+        });
+  
+        if (covers) break;
+      }
+    }
+  
+    steps.push({
+      nums: nums, layers: layers, i: n - 1, jumps: jumps, curEnd: curEnd, curFarthest: curFarthest,
+      jumped: false, done: true,
+      note: `结论：共跳跃 ${jumps} 次。一次跳跃覆盖的下标构成一层，层数就是最少跳跃次数，所以数组里每个下标所需的跳数（下面每格的小字）与层数完全一致：` +
+        nums.map(function (v, k) { return k + '→' + layers[k] + '跳'; }).join('，') +
+        `。整个算法只扫描一遍数组，时间 O(n)，只用三个变量，空间 O(1)。`
+    });
+  
+    return steps;
+  }
+  
+  function arrayRow(step) {
+    const nums = step.nums;
+    const n = nums.length;
+    const row = Demo.el('div', 'row');
+  
+    for (let idx = 0; idx < n; idx++) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(nums[idx]));
+  
+      const inRange = idx <= step.curEnd;
+      const unreached = idx > step.curFarthest;
+  
+      if (idx === step.i) cell.classList.add('is-active');
+      else if (unreached && !step.done) cell.classList.add('cell--dim');
+      else if (inRange) cell.classList.add('is-info');
+  
+      if (idx === step.curFarthest && !step.done) cell.classList.add('is-warn');
+      if (idx === step.curEnd && !step.done && idx !== step.i) cell.classList.add('is-violet');
+      if (step.done) cell.classList.add('is-ok');
+  
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (idx === step.i && !step.done) labels.push('i');
+      if (idx === step.curFarthest && !step.done) labels.push('curFarthest');
+      if (idx === step.curEnd && !step.done && idx !== step.i) labels.push('curEnd');
+  
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : '');
+      if (labels.length === 0) ptr.classList.add('ptr--dim');
+      else if (labels.indexOf('i') >= 0) ptr.classList.add('ptr--info');
+      else if (labels.indexOf('curFarthest') >= 0) ptr.classList.add('ptr--warn');
+      else ptr.classList.add('ptr--violet');
+      col.appendChild(ptr);
+  
+      const layer = step.layers[idx];
+      const lptr = Demo.el('div', 'ptr', layer < 0 ? '不可达' : '第 ' + layer + ' 跳');
+      if (layer < 0) lptr.classList.add('ptr--dim');
+      else if (layer === 1) lptr.classList.add('ptr--info');
+      else if (layer === 2) lptr.classList.add('ptr--ok');
+      col.appendChild(lptr);
+  
+      row.appendChild(col);
+    }
+    return row;
+  }
+  
+  Demo.create({
+    title: '10. 跳跃游戏 II — 按层贪心，求最少跳跃次数',
+    info: '输入：nums = [2,3,1,1,4]（示例 1）。curEnd 划定当前这一跳的区间，curFarthest 记录该区间里跳板能触达的最远位置。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 320,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前扫描的 i' },
+      { color: 'var(--demo-info)', label: '当前这一跳可覆盖的区间（≤ curEnd）' },
+      { color: 'var(--demo-violet)', label: '本跳边界 curEnd' },
+      { color: 'var(--demo-warn)', label: '本层能触达的最远处 curFarthest' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const n = step.nums.length;
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.appendChild(Demo.el('div', 'panel__title',
+        step.done ? '数组 nums（每个下标下面是到达它所需的最少跳跃次数）' : '数组 nums（正在考察本跳区间内的跳板）'));
+      panel.appendChild(arrayRow(step));
+      ctx.stage.appendChild(panel);
+  
+      const state = Demo.el('div', 'row');
+      const vars = [
+        ['已跳次数 jumps', String(step.jumps)],
+        ['本跳边界 curEnd', String(step.curEnd)],
+        ['最远可达 curFarthest', String(step.curFarthest)]
+      ];
+      vars.forEach(function (it) {
+        const box = Demo.el('div', 'panel');
+        box.appendChild(Demo.el('div', 'panel__title', Demo.esc(it[0])));
+        box.appendChild(Demo.el('div', 'tag', Demo.esc(it[1])));
+        state.appendChild(box);
+      });
+      ctx.stage.appendChild(state);
+  
+      const barPanel = Demo.el('div', 'panel');
+      barPanel.style.width = '100%';
+      barPanel.appendChild(Demo.el('div', 'panel__title', '目的地覆盖进度'));
+      const bar = Demo.el('div', 'bar');
+      bar.style.width = '100%';
+      const fill = Demo.el('div', 'bar__fill');
+      const covered = Math.min(n, step.curEnd + 1);
+      fill.style.width = Math.round((covered / n) * 100) + '%';
+      if (step.done) fill.style.background = 'var(--demo-ok)';
+      bar.appendChild(fill);
+      bar.appendChild(Demo.el('div', 'bar__label',
+        step.done ? '最少跳跃 ' + step.jumps + ' 次' : 'curEnd = ' + step.curEnd + ' / 目标 ' + (n - 1)));
+      barPanel.appendChild(bar);
+  
+      const tags = Demo.el('div', 'row');
+      tags.appendChild(Demo.el('span', 'tag ' + (step.done ? 'tag--ok' : 'tag--info'),
+        step.done ? '答案 jumps = ' + step.jumps : '扫描中'));
+      if (step.jumped) tags.appendChild(Demo.el('span', 'tag tag--violet', '触发第 ' + step.jumps + ' 次跳跃'));
+      barPanel.appendChild(tags);
+  
+      ctx.stage.appendChild(barPanel);
+    }
+  });
+  return Demo.__config
+}

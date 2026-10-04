@@ -1,0 +1,234 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/87-kth-smallest-element-in-a-bst-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const DATA = [5, 3, 6, 2, 4, null, null, 1];
+  const K = 3;
+  const GAP = 84;
+  
+  const NODES = [];
+  
+  function buildTree(arr) {
+    const nodes = arr.map((v, i) => (v == null ? null : { val: v, id: i, left: null, right: null }));
+    nodes.forEach(n => { if (n) NODES[n.id] = n; });
+    if (!nodes.length || !nodes[0]) return null;
+    const queue = [nodes[0]];
+    let next = 1;
+    while (queue.length > 0 && next < nodes.length) {
+      const node = queue.shift();
+      node.left = next < nodes.length ? (nodes[next++] || null) : null;
+      if (node.left) queue.push(node.left);
+      node.right = next < nodes.length ? (nodes[next++] || null) : null;
+      if (node.right) queue.push(node.right);
+    }
+    return nodes[0];
+  }
+  
+  const ROOT = buildTree(DATA);
+  
+  function layout(root) {
+    const pos = [];
+    let order = 0;
+    let maxDepth = 0;
+    (function walk(node, depth) {
+      if (!node) return;
+      walk(node.left, depth + 1);
+      pos[node.id] = { x: 0, y: 0, order: order, depth: depth };
+      order += 1;
+      if (depth > maxDepth) maxDepth = depth;
+      walk(node.right, depth + 1);
+    })(root, 0);
+    const width = 660;
+    const startX = (width - (order - 1) * GAP) / 2;
+    pos.forEach(p => {
+      p.x = startX + p.order * GAP;
+      p.y = 46 + p.depth * 84;
+    });
+    return { pos: pos, width: width, height: 46 + maxDepth * 84 + 46, maxDepth: maxDepth };
+  }
+  
+  const LAYOUT = layout(ROOT);
+  
+  function labelOf(id) {
+    return NODES[id] ? NODES[id].val : '?';
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const stack = [];
+    const visited = [];
+    let cur = ROOT;
+    let k = K;
+    let answer = null;
+    let phase = 'init';
+  
+    function snap(note, extra) {
+      const step = {
+        stack: stack.map(n => n.id),
+        visited: visited.slice(),
+        cur: cur ? cur.id : null,
+        k: k,
+        answer: answer,
+        phase: phase,
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(k2 => { step[k2] = extra[k2]; });
+      steps.push(step);
+    }
+  
+    snap('初始状态：k = ' + K + '，栈为空，cur 指向根节点 5。BST 的中序遍历结果升序，所以「第 k 个被访问的节点」就是第 k 小的元素。');
+  
+    while (cur || stack.length > 0) {
+      while (cur) {
+        stack.push(cur);
+        const pushed = cur;
+        phase = 'push';
+        cur = cur.left;
+        snap('先一路向左：把节点 ' + pushed.val + ' 压栈（它自己还没访问，等左子树处理完再弹出），cur 移到 ' + pushed.val +
+          '.left' + (cur ? ' = ' + cur.val : '（空）') + '。最小值一定在最左端，所以必须先钻到最左边。');
+      }
+  
+      const node = stack.pop();
+      visited.push(node.val);
+      k -= 1;
+      phase = 'pop';
+      if (k === 0) {
+        cur = node;
+        answer = node.id;
+        snap('弹出栈顶 ' + node.val + '，这是中序访问的第 ' + visited.length + ' 个节点。计数减到 k = 0 → 它就是第 ' + K +
+          ' 小的元素，返回 ' + node.val + '。', { done: true });
+        return steps;
+      }
+  
+      cur = node.right;
+      snap('弹出栈顶 ' + node.val + '（中序访问的第 ' + visited.length + ' 个节点，值 ' + node.val +
+        '）。还不是第 ' + K + ' 小，计数 k 减到 ' + k + '，接着去访问它的右子树' + (cur ? '（cur = ' + cur.val + '）' : '（右子树为空）') + '。');
+    }
+  
+    snap('遍历结束但没有找到第 ' + K + ' 小的元素（题目保证 1 <= k <= n，正常不会走到这里）。', { done: true });
+    return steps;
+  }
+  
+  function treeSvg(step) {
+    const L = LAYOUT;
+    let out = '';
+  
+    NODES.forEach(node => {
+      if (!node) return;
+      ['left', 'right'].forEach(side => {
+        const child = node[side];
+        if (!child) return;
+        const p = L.pos[node.id];
+        const q = L.pos[child.id];
+        out += '<line x1="' + p.x + '" y1="' + (p.y + 24) + '" x2="' + q.x + '" y2="' + (q.y - 24) +
+          '" style="stroke:var(--demo-border);stroke-width:2"/>';
+      });
+    });
+  
+    NODES.forEach(node => {
+      if (!node) return;
+      const p = L.pos[node.id];
+      let fill = 'var(--demo-subtle)';
+      let stroke = 'var(--demo-border)';
+      let text = 'var(--demo-text)';
+      let ring = null;
+      if (step.stack.indexOf(node.id) >= 0) { fill = 'var(--demo-info-soft)'; stroke = 'var(--demo-info)'; text = 'var(--demo-info)'; }
+      if (step.visited.indexOf(node.val) >= 0) { fill = 'var(--demo-ok-soft)'; stroke = 'var(--demo-ok)'; text = 'var(--demo-ok)'; }
+      if (step.cur === node.id) { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; text = 'var(--demo-accent-strong)'; }
+      if (step.answer === node.id) {
+        fill = 'var(--demo-pink)';
+        stroke = 'var(--demo-pink)';
+        text = 'var(--demo-card)';
+        ring = 'var(--demo-pink)';
+      }
+      if (ring) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="29" style="fill:none;stroke:' + ring + ';stroke-width:3"/>';
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="24" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2.5"/>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 6) + '" text-anchor="middle" style="fill:' + text +
+        ';font:600 16px sans-serif">' + node.val + '</text>';
+    });
+  
+    return '<div style="width:100%"><svg viewBox="0 0 ' + L.width + ' ' + L.height +
+      '" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+  }
+  
+  Demo.create({
+    title: '87. BST 中第 K 小的元素 — 迭代中序 + 计数',
+    info: 'root = [5,3,6,2,4,null,null,1]，k = 3，期望输出 3。中序序列是 [1,2,3,4,5,6]，第 3 个即 3。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 520,
+    legend: [
+      { color: 'var(--demo-info)', label: '栈中待访问' },
+      { color: 'var(--demo-accent)', label: '当前 cur / 刚弹出' },
+      { color: 'var(--demo-ok)', label: '已按中序访问' },
+      { color: 'var(--demo-pink)', label: '第 k 小（答案）' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = treeSvg(step);
+      ctx.stage.appendChild(wrap);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-end';
+  
+      const stackPanel = Demo.el('div', 'panel');
+      stackPanel.appendChild(Demo.el('div', 'panel__title', '中序栈（栈顶在下方）'));
+      const stackBox = Demo.el('div', 'stack');
+      if (step.stack.length === 0) {
+        stackBox.appendChild(Demo.el('div', 'stack__item', '（空）'));
+      } else {
+        step.stack.forEach((id, idx) => {
+          const item = Demo.el('div', 'stack__item', labelOf(id));
+          if (idx === step.stack.length - 1) item.classList.add('is-active');
+          stackBox.appendChild(item);
+        });
+      }
+      stackPanel.appendChild(stackBox);
+  
+      const statePanel = Demo.el('div', 'panel');
+      statePanel.appendChild(Demo.el('div', 'panel__title', '计数器'));
+      statePanel.appendChild(Demo.el('div', null,
+        '目标 K = <strong>' + K + '</strong> &nbsp; 剩余 k = <strong>' + step.k + '</strong>'));
+      statePanel.appendChild(Demo.el('div', null,
+        '已访问 <strong>' + step.visited.length + '</strong> 个节点'));
+      statePanel.appendChild(Demo.el('div', null,
+        'cur = <strong>' + (step.cur == null ? '—' : labelOf(step.cur)) + '</strong>'));
+      statePanel.appendChild(Demo.el('div', null, step.answer != null
+        ? '<span class="tag tag--ok">第 ' + K + ' 小 = ' + labelOf(step.answer) + '</span>'
+        : (step.phase === 'push'
+          ? '<span class="tag tag--info">向左压栈，找最小值</span>'
+          : '<span class="tag tag--info">弹出访问，还要再数 ' + step.k + ' 个</span>')));
+  
+      row.appendChild(stackPanel);
+      row.appendChild(statePanel);
+      ctx.stage.appendChild(row);
+  
+      const seqPanel = Demo.el('div', 'panel');
+      seqPanel.style.width = '100%';
+      seqPanel.appendChild(Demo.el('div', 'panel__title', '中序访问序列（下标从 1 开始计数）'));
+      const srow = Demo.el('div', 'row');
+      if (step.visited.length === 0) {
+        srow.appendChild(Demo.el('span', 'ptr ptr--dim', '（还没有节点被弹出）'));
+      } else {
+        step.visited.forEach((v, idx) => {
+          const col = Demo.el('div', 'col');
+          const cell = Demo.el('div', 'cell', Demo.esc(v));
+          if (idx + 1 === K) cell.classList.add('is-pink');
+          else cell.classList.add('is-ok');
+          col.appendChild(cell);
+          col.appendChild(Demo.el('div', 'ptr' + (idx + 1 === K ? ' ptr--pink' : ' ptr--dim'), '第' + (idx + 1)));
+          srow.appendChild(col);
+        });
+      }
+      seqPanel.appendChild(srow);
+      ctx.stage.appendChild(seqPanel);
+    }
+  });
+  return Demo.__config
+}

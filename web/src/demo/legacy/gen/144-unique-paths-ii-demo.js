@@ -1,0 +1,179 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/144-unique-paths-ii-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const OBSTACLE_GRID = [[0, 0, 0], [0, 1, 0], [0, 0, 0]];
+  const ROWS = OBSTACLE_GRID.length;
+  const COLS = OBSTACLE_GRID[0].length;
+  
+  function isWall(i, j) {
+    return OBSTACLE_GRID[i][j] === 1;
+  }
+  
+  function buildSteps() {
+    const m = ROWS, n = COLS;
+    const dp = [];
+    for (let i = 0; i < m; i++) {
+      dp.push(new Array(n).fill(null));
+    }
+    const steps = [];
+  
+    function snap() {
+      return dp.map(function (row) { return row.slice(); });
+    }
+  
+    steps.push({
+      phase: 'init', i: -1, j: -1, dp: snap(),
+      srcUp: null, srcLeft: null, chosen: null,
+      note: 'dp[i][j] 表示从左上角走到 (i,j) 的不同路径数。中心 (1,1) 是障碍物，用 ✕ 标出。' +
+        '障碍物本身不可达，dp 值恒为 0；它是怎么影响周围格子的，往下看每一步。'
+    });
+  
+    for (let i = 0; i < m; i++) {
+      for (let j = 0; j < n; j++) {
+        const srcUp = i > 0 ? [i - 1, j] : null;
+        const srcLeft = j > 0 ? [i, j - 1] : null;
+        let chosen = null;
+        let note;
+  
+        if (isWall(i, j)) {
+          dp[i][j] = 0;
+          note = '(' + i + ',' + j + ') 是障碍物，dp[' + i + '][' + j + '] = 0：' +
+            '没有任何路径能经过这里，所以在递推中它贡献的路径数就是 0。' +
+            '注意这个 0 会自然地传播出去——后面凡是只依赖这一格的格子，加到的也是 0。';
+        } else if (i === 0 && j === 0) {
+          dp[i][j] = 1;
+          note = '起点就是终点之外的第一个位置，dp[0][0] = 1：把「什么都不走」算作一条路径。' +
+            '（如果起点是障碍物，整题答案直接是 0。）';
+        } else if (i === 0) {
+          dp[i][j] = dp[i][j - 1];
+          chosen = dp[i][j] === 0 ? null : 'left';
+          note = '第一行只能从左边过来，所以 dp[0][' + j + '] = dp[0][' + (j - 1) + '] = ' + dp[i][j] + '。' +
+            '规则是「一旦左边是障碍或不可达，从这里往右的整段都变成 0」——因为贴着上边界只有这一条路。';
+        } else if (j === 0) {
+          dp[i][j] = dp[i - 1][j];
+          chosen = dp[i][j] === 0 ? null : 'up';
+          note = '第一列只能从上边下来，所以 dp[' + i + '][0] = dp[' + (i - 1) + '][0] = ' + dp[i][j] + '。' +
+            '同理，第一列一旦被障碍截断，下方整段都不可达。';
+        } else {
+          const up = dp[i - 1][j];
+          const left = dp[i][j - 1];
+          dp[i][j] = up + left;
+          chosen = 'both';
+          note = 'dp[' + i + '][' + j + '] 由两个方向汇总：从上方 (' + (i - 1) + ',' + j + ') 下来的 dp[' + (i - 1) + '][' + j +
+            '] = ' + up + ' 条，从左边 (' + i + ',' + (j - 1) + ') 过来的 dp[' + i + '][' + (j - 1) + '] = ' + left +
+            ' 条。两条来路的路径集合互不重叠（最后一步方向不同），所以直接相加：' + up + ' + ' + left + ' = ' + dp[i][j] + '。';
+        }
+  
+        steps.push({
+          phase: isWall(i, j) ? 'wall' : 'calc', i: i, j: j, dp: snap(),
+          srcUp: srcUp, srcLeft: srcLeft, chosen: chosen,
+          note: note
+        });
+      }
+    }
+  
+    steps.push({
+      phase: 'done', i: m - 1, j: n - 1, dp: snap(),
+      srcUp: null, srcLeft: null, chosen: null,
+      note: '填表结束，dp[' + (m - 1) + '][' + (n - 1) + '] = ' + dp[m - 1][n - 1] + ' 就是从左上角到右下角的不同路径数，与题目示例一致：' +
+        '① 右 → 右 → 下 → 下；② 下 → 下 → 右 → 右。两条都绕开了中心的障碍物。' +
+        '复杂度：每个格子 O(1) 转移，时间 O(m·n)；滚动数组可把空间降到 O(n)。'
+    });
+  
+    return steps;
+  }
+  
+  function cellClass(step, i, j) {
+    if (isWall(i, j)) return 'is-bad';
+    if (step.phase === 'done') return step.dp[i][j] == null ? 'is-dim' : 'is-ok';
+    if (i === step.i && j === step.j) return 'is-active';
+    if (step.phase === 'calc' && step.chosen !== 'both') {
+      const chosen = step.chosen === 'up' ? step.srcUp : (step.chosen === 'left' ? step.srcLeft : null);
+      if (chosen && chosen[0] === i && chosen[1] === j) return 'is-violet';
+    }
+    if (step.chosen === 'both') {
+      if (step.srcUp && step.srcUp[0] === i && step.srcUp[1] === j) return 'is-violet';
+      if (step.srcLeft && step.srcLeft[0] === i && step.srcLeft[1] === j) return 'is-info';
+    }
+    if (step.dp[i][j] == null) return 'is-dim';
+    return '';
+  }
+  
+  function gridView(step) {
+    const grid = Demo.el('div', 'grid');
+    grid.style.gridTemplateColumns = 'repeat(' + COLS + ', 76px)';
+    for (let i = 0; i < ROWS; i++) {
+      for (let j = 0; j < COLS; j++) {
+        const cls = cellClass(step, i, j);
+        const cell = Demo.el('div', 'grid-cell' + (cls ? ' ' + cls : ''));
+        cell.style.flexDirection = 'column';
+        cell.style.minWidth = '76px';
+        cell.style.height = '56px';
+        if (isWall(i, j)) {
+          cell.innerHTML = '<span style="font-size:16px">✕</span><span style="font-size:11px">障碍物</span>';
+          if (i === step.i && j === step.j) cell.style.outline = '2px solid var(--demo-accent)';
+        } else {
+          const v = step.dp[i][j];
+          cell.innerHTML = '<span style="font-size:11px">(' + i + ',' + j + ')</span>' +
+            '<span style="font-size:17px">' + (v == null ? '·' : v) + '</span>';
+        }
+        grid.appendChild(cell);
+      }
+    }
+    return grid;
+  }
+  
+  Demo.create({
+    title: '144. 不同路径 II — 带障碍物的二维 DP',
+    info: '输入：obstacleGrid = [[0,0,0],[0,1,0],[0,0,0]]（示例 1）。转移：障碍物 dp[i][j] = 0，否则 dp[i][j] = dp[i-1][j] + dp[i][j-1]。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 340,
+    legend: [
+      { color: 'var(--demo-accent)', label: '正在计算的格子' },
+      { color: 'var(--demo-danger)', label: '障碍物（路径数为 0）' },
+      { color: 'var(--demo-violet)', label: '来自上方的路径数' },
+      { color: 'var(--demo-info)', label: '来自左方的路径数' },
+      { color: 'var(--demo-ok)', label: '最终答案' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.style.textAlign = 'center';
+      panel.appendChild(Demo.el('div', 'panel__title', 'dp 表（每格显示到达它的不同路径数，(i,j) 为坐标）'));
+      panel.appendChild(gridView(step));
+      ctx.stage.appendChild(panel);
+  
+      const info = Demo.el('div', 'panel');
+      info.style.width = '100%';
+      info.style.textAlign = 'center';
+      if (step.phase === 'init') {
+        info.innerHTML = 'dp 表先全部留空 &nbsp;<span class="tag">障碍物用 ✕ 标出</span>';
+      } else if (step.phase === 'done') {
+        info.innerHTML = '不同路径数 = <strong>' + step.dp[ROWS - 1][COLS - 1] + '</strong>' +
+          ' &nbsp;<span class="tag tag--ok">dp[2][2]</span>' +
+          ' &nbsp;<span class="tag tag--info">时间 O(m·n) · 空间 O(n)（一维滚动）</span>';
+      } else if (step.phase === 'wall') {
+        info.innerHTML = '位置 (' + step.i + ',' + step.j + ') 是障碍物 &nbsp;' +
+          '<span class="tag tag--bad">dp[' + step.i + '][' + step.j + '] = 0，路径被掐断</span>';
+      } else {
+        const up = step.srcUp ? step.dp[step.i - 1][step.j] : null;
+        const left = step.srcLeft ? step.dp[step.i][step.j - 1] : null;
+        info.innerHTML =
+          'dp[' + step.i + '][' + step.j + '] = ' +
+          (up == null ? '—' : '上方 ' + up) + ' + ' + (left == null ? '—' : '左方 ' + left) +
+          ' = <strong>' + step.dp[step.i][step.j] + '</strong>' +
+          ' &nbsp;<span class="tag">' +
+          (step.chosen === 'both' ? '两个方向相加' : (step.chosen ? '只有一条来路' : '不可达 / 起点')) +
+          '</span>';
+      }
+      ctx.stage.appendChild(info);
+    }
+  });
+  return Demo.__config
+}

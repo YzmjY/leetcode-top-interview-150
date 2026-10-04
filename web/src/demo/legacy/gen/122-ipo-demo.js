@@ -1,0 +1,320 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/122-ipo-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const K = 2;
+  const W0 = 0;
+  const PROFITS = [1, 2, 3];
+  const CAPITAL = [0, 1, 1];
+  const ORDER = CAPITAL.map(function (c, i) { return i; }).sort(function (a, b) {
+    return CAPITAL[a] - CAPITAL[b] || a - b;
+  });
+  
+  function marksOf(pairs) {
+    const out = {};
+    pairs.forEach(function (p) { out[p[0]] = p[1]; });
+    return out;
+  }
+  
+  /* 堆数组 → 完全二叉树。sub 给出节点下方的小字（这里是项目编号）。 */
+  function heapSvg(entries, marks, sub) {
+    const n = entries.length;
+    if (n === 0) {
+      return '<div class="ptr ptr--dim" style="padding:12px 0">堆为空，没有可执行的项目</div>';
+    }
+    const GAP = 84, LEVEL = 76, PAD = 50;
+    const pos = new Array(n);
+    let order = 0, maxDepth = 0;
+    (function walk(i, depth) {
+      if (i >= n) return;
+      walk(2 * i + 1, depth + 1);
+      pos[i] = { order: order, depth: depth, x: 0, y: 0 };
+      order += 1;
+      if (depth > maxDepth) maxDepth = depth;
+      walk(2 * i + 2, depth + 1);
+    })(0, 0);
+    pos.forEach(function (p) { p.x = PAD + p.order * GAP; p.y = PAD + p.depth * LEVEL; });
+    const width = PAD * 2 + (order - 1) * GAP;
+    const height = PAD * 2 + maxDepth * LEVEL;
+    let out = '';
+    for (let i = 0; i < n; i++) {
+      for (let c = 2 * i + 1; c <= 2 * i + 2; c++) {
+        if (c < n) {
+          out += '<line x1="' + pos[i].x + '" y1="' + (pos[i].y + 22) + '" x2="' + pos[c].x +
+            '" y2="' + (pos[c].y - 22) + '" style="stroke:var(--demo-border);stroke-width:2"></line>';
+        }
+      }
+    }
+    for (let i = 0; i < n; i++) {
+      const st = marks[i] || 'n';
+      let fill = 'var(--demo-subtle)', stroke = 'var(--demo-border)', text = 'var(--demo-text)';
+      if (st === 'cmp') { fill = 'var(--demo-warn-soft)'; stroke = 'var(--demo-warn)'; text = 'var(--demo-warn)'; }
+      if (st === 'swap') { fill = 'var(--demo-pink-soft)'; stroke = 'var(--demo-pink)'; text = 'var(--demo-pink)'; }
+      if (st === 'active') { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; text = 'var(--demo-accent-strong)'; }
+      if (st === 'top') { fill = 'var(--demo-ok-soft)'; stroke = 'var(--demo-ok)'; text = 'var(--demo-ok)'; }
+      out += '<circle cx="' + pos[i].x + '" cy="' + pos[i].y + '" r="22" style="fill:' + fill +
+        ';stroke:' + stroke + ';stroke-width:2.5"></circle>';
+      out += '<text x="' + pos[i].x + '" y="' + (pos[i].y + 5) + '" text-anchor="middle" font-size="15" ' +
+        'font-weight="600" font-family="monospace" style="fill:' + text + '">' + entries[i] + '</text>';
+      out += '<text x="' + pos[i].x + '" y="' + (pos[i].y + 40) + '" text-anchor="middle" font-size="11" ' +
+        'style="fill:var(--demo-muted)">' + sub(i) + '</text>';
+    }
+    return '<svg viewBox="0 0 ' + width + ' ' + height + '" style="width:100%;max-width:' + width +
+      'px;height:auto;display:block;margin:0 auto">' + out + '</svg>';
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const heap = [];
+    const status = PROFITS.map(function () { return 'idle'; });
+    let w = W0;
+    let idx = 0;
+    let round = 0;
+    let phase = 'init';
+    let stopped = false;
+  
+    function snap(extra) {
+      const step = {
+        w: w, idx: idx, round: round, phase: phase,
+        heap: heap.map(function (e) { return { p: e.p, id: e.id }; }),
+        status: status.slice(),
+        marks: {},
+        note: '',
+        done: false
+      };
+      if (extra) Object.keys(extra).forEach(function (key) { step[key] = extra[key]; });
+      steps.push(step);
+    }
+  
+    snap({
+      note: '初始化：初始资本 w = ' + W0 + '，最多做 k = ' + K + ' 个项目。' +
+        '先把项目按「所需资本」升序排好：' +
+        ORDER.map(function (id) { return 'P' + id + '(需' + CAPITAL[id] + '，赚' + PROFITS[id] + ')'; }).join(' → ') +
+        '，idx 指针指向下一个还没解锁的项目。' +
+        '每一轮只做两件事：把「所需资本 ≤ 当前资本」的项目全部按利润放进大顶堆，再从堆顶挑利润最大的执行。'
+    });
+  
+    for (round = 0; round < K && !stopped; round++) {
+      while (idx < PROFITS.length && CAPITAL[ORDER[idx]] <= w) {
+        const id = ORDER[idx];
+        heap.push({ p: PROFITS[id], id: id });
+        status[id] = 'inheap';
+        let cur = heap.length - 1;
+        snap({
+          marks: marksOf([[cur, 'active']]),
+          note: '第 ' + (round + 1) + ' 轮：排在队首的项目 P' + id + ' 所需资本 ' + CAPITAL[id] + ' ≤ 当前资本 ' + w +
+            '，已经可以启动，把它的利润 ' + PROFITS[id] + ' 放进大顶堆堆尾 heap[' + cur + ']。'
+        });
+        while (cur > 0) {
+          const parent = (cur - 1) >> 1;
+          const a = heap[cur].p;
+          const b = heap[parent].p;
+          snap({
+            marks: marksOf([[cur, 'cmp'], [parent, 'cmp']]),
+            note: '向上调整：比较子节点 heap[' + cur + '] = ' + a + '（项目 P' + heap[cur].id + '）与父节点 heap[' +
+              parent + '] = ' + b + '（项目 P' + heap[parent].id + '）。'
+          });
+          if (a > b) {
+            const tmp = heap[cur];
+            heap[cur] = heap[parent];
+            heap[parent] = tmp;
+            snap({
+              marks: marksOf([[parent, 'swap'], [cur, 'swap']]),
+              note: a + ' > ' + b + '，大顶堆要求「父 ≥ 子」，交换：利润 ' + a + ' 上浮到 heap[' + parent +
+                ']，利润 ' + b + ' 下沉，继续向上比较。'
+            });
+            cur = parent;
+          } else {
+            snap({
+              marks: marksOf([[cur, 'active'], [parent, 'active']]),
+              note: a + ' ≤ ' + b + '，父节点已经不小于子节点，大顶堆性质满足，停止上浮。'
+            });
+            break;
+          }
+        }
+        idx++;
+      }
+  
+      if (heap.length === 0) {
+        phase = 'stop';
+        snap({
+          note: '第 ' + (round + 1) + ' 轮：当前资本 w = ' + w + '，剩下的项目所需资本都大于它，可以先做的项目已经做完了，' +
+            '再往后资本也不会增加，提前结束。'
+        });
+        stopped = true;
+        break;
+      }
+  
+      const chosen = heap[0];
+      snap({
+        marks: marksOf([[0, 'top']]),
+        note: '第 ' + (round + 1) + ' 轮：所有能启动的项目都已入堆，堆顶 heap[0] = ' + chosen.p + '（项目 P' + chosen.id +
+          '）利润最大，本轮就执行它。'
+      });
+  
+      if (heap.length === 1) {
+        heap.pop();
+      } else {
+        const lastEntry = heap[heap.length - 1];
+        heap[0] = lastEntry;
+        heap.pop();
+        snap({
+          marks: marksOf([[0, 'active']]),
+          note: '删除堆顶：把堆尾的利润 ' + lastEntry.p + '（项目 P' + lastEntry.id +
+            '）搬到根 heap[0]，再向下调整恢复大顶堆。'
+        });
+        let node = 0;
+        while (true) {
+          const l = 2 * node + 1;
+          const r = 2 * node + 2;
+          if (l >= heap.length) {
+            snap({ marks: marksOf([[node, 'active']]), note: 'heap[' + node + '] 已经没有子节点，向下调整结束，大顶堆恢复。' });
+            break;
+          }
+          let largest = node;
+          if (heap[l].p > heap[largest].p) largest = l;
+          if (r < heap.length && heap[r].p > heap[largest].p) largest = r;
+          const pairs = [[node, 'cmp'], [l, 'cmp']];
+          if (r < heap.length) pairs.push([r, 'cmp']);
+          let desc = '向下调整：比较 heap[' + node + '] = ' + heap[node].p + ' 与子节点 heap[' + l + '] = ' +
+            heap[l].p + (r < heap.length ? '、heap[' + r + '] = ' + heap[r].p : '') + '。';
+          if (largest === node) {
+            snap({ marks: marksOf(pairs), note: desc + '父节点已经最大，堆性质满足，调整结束。' });
+            break;
+          }
+          const bigV = heap[largest].p;
+          const nodeV = heap[node].p;
+          desc += 'heap[' + largest + '] = ' + bigV + ' 更大，交换：' + bigV + ' 上浮、' + nodeV + ' 下沉。';
+          const tmp = heap[node];
+          heap[node] = heap[largest];
+          heap[largest] = tmp;
+          snap({ marks: marksOf([[node, 'swap'], [largest, 'swap']]), note: desc });
+          node = largest;
+        }
+      }
+  
+      const before = w;
+      w += chosen.p;
+      status[chosen.id] = 'done';
+      snap({
+        note: '执行项目 P' + chosen.id + '，拿到利润 ' + chosen.p + '，资本从 ' + before + ' 增加到 ' + w +
+          '。资本只会变大，所以这一轮能做的项目，之后只会更容易做，贪心选最大的利润不会亏。'
+      });
+    }
+  
+    phase = 'end';
+    const finished = status.filter(function (s) { return s === 'done'; }).length;
+    snap({
+      done: true,
+      note: '轮次用完（或已无项目可做）：共完成 ' + finished + ' 个项目，最终资本 = ' + w +
+        '。每轮都在「当前付得起的项目」里挑利润最大的，这就是本题的贪心选择。'
+    });
+  
+    return steps;
+  }
+  
+  Demo.create({
+    title: '122. IPO — 按资本解锁 + 大顶堆挑最大利润',
+    info: '输入：k = 2, w = 0, profits = [1,2,3], capital = [0,1,1]，期望输出 4。每轮先把 capital ≤ w 的项目入大顶堆，再取利润最大的执行。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 440,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前入堆/调整的节点' },
+      { color: 'var(--demo-warn)', label: '正在比较' },
+      { color: 'var(--demo-pink)', label: '发生交换' },
+      { color: 'var(--demo-ok)', label: '堆顶（本轮执行）' },
+      { color: 'var(--demo-info)', label: '在堆中等候选' },
+      { color: 'var(--demo-muted)', label: '尚未解锁' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const qPanel = Demo.el('div', 'panel');
+      qPanel.style.width = '100%';
+      qPanel.appendChild(Demo.el('div', 'panel__title',
+        '项目队列（按所需资本升序，idx 指向下一个待解锁的项目）　当前 idx = ' + step.idx + ' / ' + PROFITS.length));
+      const table = Demo.el('table', 'map-table');
+      const head = Demo.el('thead');
+      head.innerHTML = '<tr><th>顺序</th><th>项目</th><th>所需资本</th><th>利润</th><th>状态</th></tr>';
+      table.appendChild(head);
+      const body = Demo.el('tbody');
+      let rows = '';
+      ORDER.forEach(function (id, pos) {
+        const st = step.status[id];
+        let cls = pos === step.idx ? ' class="is-active"' : '';
+        let tag;
+        if (st === 'done') tag = '<span class="tag tag--ok">已执行</span>';
+        else if (st === 'inheap') tag = '<span class="tag tag--info">在堆中</span>';
+        else if (pos >= step.idx) tag = '<span class="tag">未解锁</span>';
+        else tag = '<span class="tag tag--warn">已考虑</span>';
+        rows += '<tr' + cls + '><td>' + (pos + 1) + '</td><td>P' + id + '</td><td>' + CAPITAL[id] +
+          '</td><td>' + PROFITS[id] + '</td><td>' + tag + '</td></tr>';
+      });
+      body.innerHTML = rows;
+      table.appendChild(body);
+      qPanel.appendChild(table);
+      ctx.stage.appendChild(qPanel);
+  
+      const heapPanel = Demo.el('div', 'panel');
+      heapPanel.style.width = '100%';
+      heapPanel.appendChild(Demo.el('div', 'panel__title',
+        '大顶堆（按利润，数组下标 i → 左孩子 2i+1、右孩子 2i+2）　当前大小 ' + step.heap.length));
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = heapSvg(
+        step.heap.map(function (e) { return e.p; }),
+        step.marks,
+        function (k) { return 'P' + step.heap[k].id + ' [' + k + ']'; }
+      );
+      heapPanel.appendChild(wrap);
+      if (step.heap.length) {
+        const arow = Demo.el('div', 'row');
+        step.heap.forEach(function (e, k) {
+          const col = Demo.el('div', 'col');
+          const c = Demo.el('div', 'cell cell--sm', Demo.esc(e.p));
+          const mark = step.marks[k];
+          if (mark === 'top') c.classList.add('is-ok');
+          else if (mark === 'active') c.classList.add('is-active');
+          else if (mark === 'cmp') c.classList.add('is-warn');
+          else if (mark === 'swap') c.classList.add('is-pink');
+          else c.classList.add('is-info');
+          col.appendChild(c);
+          col.appendChild(Demo.el('div', 'ptr ptr--dim', 'P' + e.id));
+          arow.appendChild(col);
+        });
+        heapPanel.appendChild(arow);
+      }
+      ctx.stage.appendChild(heapPanel);
+  
+      const stateRow = Demo.el('div', 'row');
+      stateRow.style.width = '100%';
+      stateRow.style.alignItems = 'stretch';
+  
+      const s1 = Demo.el('div', 'panel');
+      s1.appendChild(Demo.el('div', 'panel__title', '资本与轮次'));
+      s1.appendChild(Demo.el('div', null, '当前资本 w = <strong>' + step.w + '</strong>'));
+      const used = step.status.filter(function (s) { return s === 'done'; }).length;
+      s1.appendChild(Demo.el('div', null, '已完成项目 ' + used + ' 个　剩余轮次 ' + Math.max(0, K - used)));
+      s1.appendChild(Demo.el('div', null, '当前轮次：第 ' + Math.min(step.round + 1, K) + ' / ' + K + ' 轮'));
+  
+      const s2 = Demo.el('div', 'panel');
+      s2.appendChild(Demo.el('div', 'panel__title', '结论'));
+      if (step.done) {
+        s2.appendChild(Demo.el('div', null, '<span class="tag tag--ok">最终最大资本 = ' + step.w + '</span>'));
+      } else if (step.heap.length) {
+        s2.appendChild(Demo.el('div', null, '<span class="tag tag--info">堆顶候选利润 ' + step.heap[0].p + '（项目 P' + step.heap[0].id + '）</span>'));
+      } else {
+        s2.appendChild(Demo.el('div', null, '<span class="tag">堆为空，等待解锁新项目</span>'));
+      }
+      s2.appendChild(Demo.el('div', null, '答案保证在 32 位有符号整数范围内，所有利润最终累加到 w。'));
+  
+      stateRow.appendChild(s1);
+      stateRow.appendChild(s2);
+      ctx.stage.appendChild(stateRow);
+    }
+  });
+  return Demo.__config
+}

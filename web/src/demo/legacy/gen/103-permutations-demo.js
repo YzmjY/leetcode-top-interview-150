@@ -1,0 +1,154 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/103-permutations-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [1, 2, 3];
+  
+  function buildSteps() {
+    const n = NUMS.length;
+    const steps = [];
+    const path = [];
+    const used = new Array(n).fill(false);
+    const results = [];
+  
+    function snap(extra) {
+      return {
+        path: path.slice(),
+        used: used.slice(),
+        results: results.slice(),
+        choiceIdx: extra.choiceIdx == null ? null : extra.choiceIdx,
+        phase: extra.phase,
+        note: extra.note
+      };
+    }
+  
+    steps.push(snap({
+      phase: 'init',
+      note: `初始化：nums = [${NUMS.join(', ')}]，path 为空，used 全部为 false。排列区分顺序，所以每一层都从下标 0 开始扫描整个数组；靠 used 数组保证同一条路径里每个元素只用一次，这才是去重的关键。`
+    }));
+  
+    function backtrack() {
+      if (path.length === n) {
+        results.push(path.slice());
+        steps.push(snap({
+          phase: 'collect',
+          note: `path 长度达到 n = ${n}，说明每个元素都恰好用了一次，得到一个完整排列 [${path.join(', ')}]，加入结果集后返回。`
+        }));
+        return;
+      }
+  
+      for (let i = 0; i < n; i++) {
+        if (used[i]) continue;
+  
+        used[i] = true;
+        path.push(NUMS[i]);
+        steps.push(snap({
+          choiceIdx: i, phase: 'choose',
+          note: `扫描到下标 ${i}：used[${i}] 为 false，可以选。选择 nums[${i}] = ${NUMS[i]}，置 used[${i}] = true，path 变为 [${path.join(', ')}]，然后递归到下一层。`
+        }));
+  
+        backtrack();
+  
+        path.pop();
+        used[i] = false;
+        steps.push(snap({
+          choiceIdx: i, phase: 'undo',
+          note: `撤销选择 nums[${i}] = ${NUMS[i]}：从 path 末尾弹出，并把 used[${i}] 复位为 false，这样在别的分支里它又能被使用。随后继续扫描下标 ${i + 1}。`
+        }));
+      }
+    }
+  
+    backtrack();
+  
+    steps.push(snap({
+      phase: 'done',
+      note: `回溯结束，共得到 ${results.length} 个排列，等于 ${n}! = ${results.length}。每个排列对应一条「每层选一个未用元素」的完整路径，所以既不重复也不遗漏。`
+    }));
+  
+    return steps;
+  }
+  
+  function numsRow(step) {
+    const row = Demo.el('div', 'row');
+    NUMS.forEach((value, i) => {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(value));
+      if (step.phase === 'undo' && step.choiceIdx === i) {
+        cell.classList.add('is-warn');
+      } else if (step.used[i]) {
+        cell.classList.add('is-ok');
+      }
+      if (step.phase === 'choose' && step.choiceIdx === i) {
+        cell.classList.remove('is-ok');
+        cell.classList.add('is-active');
+      }
+      col.appendChild(cell);
+  
+      const ptr = Demo.el('div', 'ptr', step.used[i] ? 'used=true' : 'used=false');
+      if (step.used[i]) ptr.classList.add('ptr--ok');
+      else ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+  
+      col.appendChild(Demo.el('div', 'ptr ptr--dim', '[' + i + ']'));
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  function pathRow(step) {
+    const row = Demo.el('div', 'row');
+    for (let i = 0; i < NUMS.length; i++) {
+      const value = step.path[i];
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell cell--lg', value == null ? '?' : Demo.esc(value));
+      if (value == null) cell.classList.add('cell--empty');
+      else if (step.phase === 'choose' && i === step.path.length - 1) cell.classList.add('is-active');
+      else cell.classList.add('is-ok');
+      col.appendChild(cell);
+      col.appendChild(Demo.el('div', 'ptr ptr--dim', '第' + i + '层'));
+      row.appendChild(col);
+    }
+    return row;
+  }
+  
+  Demo.create({
+    title: '103. 全排列 — used 标记 + 逐个撤销选择',
+    info: `输入：nums = [${NUMS.join(', ')}]。每层都从下标 0 开始尝试，用 used 数组跳过已经用过的元素。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本步选中的元素' },
+      { color: 'var(--demo-ok)', label: '已用（used = true）' },
+      { color: 'var(--demo-warn)', label: '刚被撤销的元素' }
+    ],
+    stageHeight: 300,
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      ctx.stage.appendChild(Demo.el('div', 'panel__title', 'nums 原数组与 used 标记'));
+      ctx.stage.appendChild(numsRow(step));
+  
+      const pathPanel = Demo.el('div', 'col');
+      pathPanel.appendChild(Demo.el('div', 'panel__title', 'path 路径（长度达到 n 时收集排列）'));
+      pathPanel.appendChild(pathRow(step));
+      ctx.stage.appendChild(pathPanel);
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.style.textAlign = 'center';
+      panel.appendChild(Demo.el('div', 'tag', '当前排列：' + (step.path.join('') || '（空）')));
+      const resRow = Demo.el('div', 'row');
+      resRow.style.marginTop = '6px';
+      if (!step.results.length) {
+        resRow.appendChild(Demo.el('span', 'ptr ptr--dim', '（还没有收集到排列）'));
+      } else {
+        step.results.forEach(r => resRow.appendChild(Demo.el('span', 'tag tag--ok', '[' + r.join(', ') + ']')));
+      }
+      panel.appendChild(resRow);
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

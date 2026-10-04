@@ -1,0 +1,178 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/45-happy-number-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const N = 19;
+  
+  function squareSum(n) {
+    const digits = String(n).split('').map(Number);
+    const parts = digits.map(function (d) { return d * d; });
+    const sum = parts.reduce(function (a, b) { return a + b; }, 0);
+    return { digits: digits, parts: parts, sum: sum };
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const seen = [];
+    const chain = [N];
+    let n = N;
+    let ok = null;
+  
+    steps.push({
+      phase: 'init', n: n, seen: [], chain: chain.slice(), digits: [], parts: [], sum: null,
+      note: `从 n = ${N} 出发。哈希集合 seen 用来记录所有出现过的数；每算出一个新数，先看它是否已经在 seen 里——如果重复出现，说明计算过程进入了循环，永远到不了 1，就可以直接判定不是快乐数。`
+    });
+  
+    while (n !== 1) {
+      const inSeen = seen.indexOf(n) >= 0;
+      if (inSeen) {
+        ok = false;
+        steps.push({
+          phase: 'cycle', n: n, seen: seen.slice(), chain: chain.slice(), digits: [], parts: [], sum: null,
+          note: `${n} 已经在 seen 集合中出现过，说明平方和序列从这里开始进入循环，永远无法到达 1，返回 false。这就是「无限循环」在算法里的精确含义：同一个数第二次出现。`
+        });
+        break;
+      }
+  
+      seen.push(n);
+      steps.push({
+        phase: 'record', n: n, seen: seen.slice(), chain: chain.slice(), digits: [], parts: [], sum: null,
+        note: `当前数 ${n} 不在 seen 里，把它加入集合（现在集合里有 ${seen.length} 个数）。然后计算它每位数字的平方和，得到下一次的 n。`
+      });
+  
+      const info = squareSum(n);
+      const prev = n;
+      n = info.sum;
+      chain.push(n);
+  
+      steps.push({
+        phase: 'square', from: prev, n: n, seen: seen.slice(), chain: chain.slice(),
+        digits: info.digits, parts: info.parts, sum: info.sum,
+        note: `把 ${prev} 拆成各位数字 ${info.digits.join('、')}，分别平方后相加：${info.parts.join(' + ')} = ${info.sum}，所以下一个 n = ${info.sum}。` +
+          (n === 1 ? ` 这一步得到 1，循环条件 n != 1 不再成立，跳出去返回 true。` : ` 继续对 ${n} 重复同样的操作。`)
+      });
+    }
+  
+    if (ok === null) ok = n === 1;
+  
+    steps.push({
+      phase: 'done', n: n, seen: seen.slice(), chain: chain.slice(), digits: [], parts: [], sum: null, ok: ok,
+      note: ok
+        ? `最终得到 1，说明 ${N} 是快乐数，返回 true。整条平方和序列是 ${chain.join(' → ')}。集合方法的时间复杂度是 O(log n)（每次要把数拆成位数），空间 O(log n)。还有个进阶写法：用快慢指针判圈，把空间降到 O(1)。`
+        : `计算进入循环 ${chain.slice(chain.indexOf(n)).join(' → ')}，永远到不了 1，返回 false。注意边界：不是快乐数时序列一定在有限步内出现重复，所以循环检测不会无限跑下去。`
+    });
+  
+    return steps;
+  }
+  
+  function chainPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', '平方和序列（每一步得到的新数接在右边）'));
+    const row = Demo.el('div', 'row');
+    step.chain.forEach(function (value, idx) {
+      if (idx > 0) row.appendChild(Demo.el('div', 'arrow', '→'));
+      const cell = Demo.el('div', 'cell', Demo.esc(value));
+      const isLast = idx === step.chain.length - 1;
+      if (isLast && step.phase !== 'init') cell.classList.add(step.phase === 'cycle' ? 'is-bad' : 'is-active');
+      else if (isLast && step.phase === 'init') cell.classList.add('is-active');
+      else cell.classList.add('is-ok');
+      row.appendChild(cell);
+    });
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  function computePanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', '本步在做：各位数字平方后相加'));
+  
+    const row = Demo.el('div', 'row');
+    if (step.phase === 'square') {
+      step.digits.forEach(function (d, idx) {
+        if (idx > 0) row.appendChild(Demo.el('div', 'arrow', '+'));
+        const cell = Demo.el('div', 'cell cell--sm', Demo.esc(d + '²'));
+        row.appendChild(cell);
+      });
+      row.appendChild(Demo.el('div', 'arrow', '='));
+      row.appendChild(Demo.el('div', 'cell cell--sm is-ok', Demo.esc(step.parts.join(' + '))));
+      row.appendChild(Demo.el('div', 'arrow', '='));
+      const cellSum = Demo.el('div', 'cell', Demo.esc(step.sum));
+      cellSum.classList.add('is-active');
+      row.appendChild(cellSum);
+    } else if (step.phase === 'record') {
+      row.appendChild(Demo.el('span', 'tag tag--info', `把 ${step.n} 记入 seen 集合`));
+    } else if (step.phase === 'cycle') {
+      row.appendChild(Demo.el('span', 'tag tag--bad', `${step.n} 重复出现，检测到循环`));
+    } else {
+      row.appendChild(Demo.el('span', 'tag tag--ok', 'n = 1，过程结束'));
+    }
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  function seenPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.appendChild(Demo.el('div', 'panel__title', '哈希集合 seen：出现过的数'));
+    const row = Demo.el('div', 'row');
+    if (step.seen.length === 0) {
+      row.appendChild(Demo.el('span', 'tag tag--info', '（空）'));
+    } else {
+      step.seen.forEach(function (value) {
+        const cell = Demo.el('div', 'cell cell--sm', Demo.esc(value));
+        if (value === step.n) cell.classList.add(step.phase === 'cycle' ? 'is-bad' : 'is-active');
+        else cell.classList.add('is-info');
+        row.appendChild(cell);
+      });
+    }
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  Demo.create({
+    title: '45. 快乐数 — 哈希集合检测平方和循环',
+    info: `输入：n = ${N}（示例 1，输出 true）。反复把 n 替换成各位数字的平方和，同时用集合 seen 记住出现过的数，一旦重复就说明进入了死循环。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 360,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前得到的数' },
+      { color: 'var(--demo-ok)', label: '已经走过的数' },
+      { color: 'var(--demo-danger)', label: '重复出现，检测到循环' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      ctx.stage.appendChild(chainPanel(step));
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-start';
+      const compute = computePanel(step);
+      compute.style.flex = '1';
+      row.appendChild(compute);
+      row.appendChild(seenPanel(step));
+      ctx.stage.appendChild(row);
+  
+      const state = Demo.el('div', 'panel');
+      state.style.width = '100%';
+      state.style.textAlign = 'center';
+      if (step.phase === 'init') {
+        state.innerHTML = `n = ${N}，序列刚刚开始 &nbsp;<span class="tag tag--warn">seen 为空</span>`;
+      } else if (step.phase === 'square') {
+        state.innerHTML = `${step.from} → ${step.sum} &nbsp;<span class="tag tag--info">继续迭代</span>`;
+      } else if (step.phase === 'record') {
+        state.innerHTML = `${step.n} 不在集合中，安全 &nbsp;<span class="tag tag--ok">加入 seen</span>`;
+      } else if (step.phase === 'cycle') {
+        state.innerHTML = `${step.n} 重复出现，序列进入循环 &nbsp;<span class="tag tag--bad">返回 false</span>`;
+      } else {
+        state.innerHTML = `n = 1，是快乐数 &nbsp;<span class="tag tag--ok">返回 true</span>`;
+      }
+      ctx.stage.appendChild(state);
+    }
+  });
+  return Demo.__config
+}

@@ -1,0 +1,201 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/46-contains-duplicate-ii-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [1, 2, 3, 1, 2, 3];
+  const K = 2;
+  
+  function buildSteps() {
+    const steps = [];
+    const lastIndex = {};
+    let found = null;
+  
+    function copyMap() {
+      const out = {};
+      Object.keys(lastIndex).forEach(function (key) { out[key] = lastIndex[key]; });
+      return out;
+    }
+  
+    function snap(extra) {
+      const step = { lastIndex: copyMap(), note: extra.note };
+      Object.keys(extra).forEach(function (key) {
+        if (key !== 'note') step[key] = extra[key];
+      });
+      steps.push(step);
+    }
+  
+    snap({
+      phase: 'init', i: -1, value: null, prev: -1, dist: null, hit: false,
+      note: `哈希表 lastIndex 记录「每个数值最近一次出现的下标」，初始为空。k = ${K}，也就是说只有下标差 ≤ ${K} 的两个相等元素才算答案。算法的关键：只需要保留最近一次的位置，因为更早的出现位置距离只会更大。`
+    });
+  
+    for (let i = 0; i < NUMS.length; i++) {
+      const value = NUMS[i];
+      const key = String(value);
+      const hasPrev = Object.prototype.hasOwnProperty.call(lastIndex, key);
+      const prev = hasPrev ? lastIndex[key] : -1;
+      const dist = hasPrev ? i - prev : null;
+      const hit = hasPrev && dist <= K;
+  
+      snap({
+        phase: hit ? 'hit' : 'scan', i: i, value: value, prev: prev, dist: dist, hit: hit, hasPrev: hasPrev,
+        note: `扫描到 nums[${i}] = ${value}。查 lastIndex：` +
+          (hasPrev
+            ? `它的上一次出现是下标 ${prev}，下标差 ${i} − ${prev} = ${dist}，与 k = ${K} 比较：` +
+              (hit
+                ? `${dist} ≤ ${K}，满足条件，说明存在这样的一对下标，可以返回 true。`
+                : `${dist} > ${K}，这一对距离太远，不满足条件。注意此时仍然要把 ${value} 的最近位置更新为 ${i}，因为后面还可能遇到更近的 ${value}。`)
+            : `此前从未出现过 ${value}，所以它不可能和更早的元素构成答案，直接把 lastIndex[${value}] 记为 ${i}。`)
+      });
+  
+      if (hit) {
+        found = [prev, i];
+        snap({
+          phase: 'found', i: i, value: value, prev: prev, dist: dist, hit: true, answer: found,
+          note: `返回 true：nums[${prev}] 和 nums[${i}] 都是 ${value}，下标差 ${dist} ≤ k = ${K}。整个算法只扫描一次数组，每个元素做一次哈希查找，时间 O(n)；哈希表为每个不同的数值保存一条最近位置记录，空间 O(n)。如果改成滑动窗口、及时删掉窗口外的旧下标，空间可以进一步降到 O(min(n, k))。`
+        });
+        break;
+      }
+  
+      lastIndex[key] = i;
+  
+      snap({
+        phase: 'update', i: i, value: value, prev: prev, dist: dist, hit: false,
+        note: `更新 lastIndex[${value}] = ${i}，覆盖掉可能存在的旧位置 ${prev >= 0 ? prev : '（无）'}。这一步不能省：留下最近的位置，后续元素判断距离时才不会漏掉合法答案。`
+      });
+    }
+  
+    snap({
+      phase: 'done', i: NUMS.length, value: null, prev: -1, dist: null, hit: false, ok: found !== null,
+      note: found !== null
+        ? `找到了满足条件的下标对 [${found[0]}, ${found[1]}]，返回 true。`
+        : `数组扫描完毕，所有重复元素的最近距离都大于 k = ${K}，不存在满足条件的下标对，返回 false。以 nums = [1,2,3,1,2,3]、k = 2 为例，每对相同元素的下标差都是 3，所以答案是 false。`
+    });
+  
+    return steps;
+  }
+  
+  function windowOf(step) {
+    const from = Math.max(0, step.i - K);
+    return { from: from, to: step.i };
+  }
+  
+  function arrayPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', `数组 nums（k = ${K}，浅蓝区间是下标只差不超过 ${K} 的范围）`));
+    const row = Demo.el('div', 'row');
+    const win = windowOf(step);
+    NUMS.forEach(function (value, j) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(value));
+      if (j === step.i && step.phase !== 'done') {
+        cell.classList.add(step.hit ? 'is-ok' : 'is-active');
+      } else if (j === step.prev && (step.phase === 'hit' || step.phase === 'found' || step.phase === 'scan')) {
+        cell.classList.add(step.hit ? 'is-ok' : 'is-warn');
+      } else if (step.phase !== 'done' && j >= win.from && j < win.to) {
+        cell.classList.add('is-info');
+      } else if (step.phase === 'done') {
+        cell.classList.add('is-info');
+      } else {
+        cell.classList.add('cell--dim');
+      }
+      col.appendChild(cell);
+      const labels = [];
+      if (j === step.i && step.phase !== 'done') labels.push('i');
+      if (j === step.prev && step.prev >= 0 && step.phase !== 'update') labels.push('上次');
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : String(j));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  function mapPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.appendChild(Demo.el('div', 'panel__title', '哈希表 lastIndex：数值 → 最近下标'));
+    let html = '<table class="map-table"><tr><th>数值</th><th>最近下标</th></tr>';
+    const keys = Object.keys(step.lastIndex);
+    if (keys.length === 0) {
+      html += '<tr><td colspan="2">（空）</td></tr>';
+    } else {
+      keys.forEach(function (key) {
+        const active = step.value !== null && String(step.value) === key && step.phase !== 'init';
+        html += '<tr' + (active ? ' class="is-active"' : '') + '>' +
+          '<td>' + Demo.esc(key) + '</td><td>' + Demo.esc(step.lastIndex[key]) + '</td></tr>';
+      });
+    }
+    html += '</table>';
+    panel.appendChild(Demo.el('div', null, html));
+    return panel;
+  }
+  
+  Demo.create({
+    title: '46. 存在重复元素 II — 只记住每个值最近一次的下标',
+    info: `输入：nums = [${NUMS.join(', ')}]，k = ${K}（示例 3，输出 false）。相同数值的两两下标差都是 3，超过 k。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 360,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前扫描的元素' },
+      { color: 'var(--demo-info)', label: '与当前下标相差 ≤ k 的范围' },
+      { color: 'var(--demo-warn)', label: '上一次出现的位置（距离超限）' },
+      { color: 'var(--demo-ok)', label: '满足条件的下标对' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      ctx.stage.appendChild(arrayPanel(step));
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-start';
+      row.appendChild(mapPanel(step));
+  
+      const check = Demo.el('div', 'panel');
+      check.appendChild(Demo.el('div', 'panel__title', '距离判定'));
+      const col = Demo.el('div', 'col');
+      if (step.dist === null || step.i < 0 || step.phase === 'done') {
+        col.appendChild(Demo.el('span', 'tag ' + (step.phase === 'done' ? (step.ok ? 'tag--ok' : 'tag--bad') : 'tag--info'),
+          step.phase === 'done'
+            ? (step.ok ? '存在距离 ≤ k 的重复对' : `所有重复对的距离都大于 k = ${K}`)
+            : '尚无可比较的上一次出现'));
+      } else {
+        col.appendChild(Demo.el('span', 'tag tag--info', `i − 上次 = ${step.i} − ${step.prev} = ${step.dist}`));
+        col.appendChild(Demo.el('span', 'tag tag--violet', `k = ${K}`));
+        col.appendChild(Demo.el('span', 'tag ' + (step.hit ? 'tag--ok' : 'tag--warn'),
+          step.hit ? `${step.dist} ≤ ${K}，满足` : `${step.dist} > ${K}，不满足`));
+      }
+      check.appendChild(col);
+      row.appendChild(check);
+      ctx.stage.appendChild(row);
+  
+      const state = Demo.el('div', 'panel');
+      state.style.width = '100%';
+      state.style.textAlign = 'center';
+      if (step.phase === 'init') {
+        state.innerHTML = '准备扫描第一个元素 &nbsp;<span class="tag tag--warn">哈希表为空</span>';
+      } else if (step.phase === 'scan') {
+        state.innerHTML = step.hasPrev
+          ? `距离 ${step.dist} > k = ${K}，这一对不算数 &nbsp;<span class="tag tag--warn">继续扫描</span>`
+          : `lastIndex 中没有 ${Demo.esc(step.value)}，首次出现 &nbsp;<span class="tag tag--info">继续</span>`;
+      } else if (step.phase === 'update') {
+        state.innerHTML = `距离超限，但仍更新 lastIndex[${Demo.esc(step.value)}] = ${step.i} &nbsp;<span class="tag tag--warn">继续扫描</span>`;
+      } else if (step.phase === 'hit') {
+        state.innerHTML = `<span class="tag tag--ok">距离 ${step.dist} ≤ ${K}，满足条件</span>`;
+      } else if (step.phase === 'found') {
+        state.innerHTML = `<span class="tag tag--ok">答案 = true，下标对 [${step.answer.join(', ')}]</span>`;
+      } else {
+        state.innerHTML = step.ok
+          ? '<span class="tag tag--ok">返回 true</span>'
+          : `所有重复元素的距离都超过 ${K} &nbsp;<span class="tag tag--bad">返回 false</span>`;
+      }
+      ctx.stage.appendChild(state);
+    }
+  });
+  return Demo.__config
+}

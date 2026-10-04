@@ -1,0 +1,220 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/60-copy-list-with-random-pointer-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NODES = [
+    [7, null],
+    [13, 0],
+    [11, 4],
+    [10, 2],
+    [1, 0]
+  ];
+  
+  function buildSteps() {
+    const n = NODES.length;
+    const steps = [];
+  
+    steps.push({
+      created: 0, linked: 0, cur: -1, phase: 'init', nextTarget: null, randTarget: null,
+      note: '输入是 5 个节点，每个节点除了 next 还有一个 random 指针（图中紫色弧线，null 表示不指向任何节点）。目标是新建一份完全独立的链表，结构和原链表一模一样。'
+    });
+  
+    for (let j = 0; j < n; j++) {
+      steps.push({
+        created: j + 1, linked: 0, cur: j, phase: 'create', nextTarget: null, randTarget: null,
+        note: '第一遍 · 第 ' + (j + 1) + ' 次：按原链表的值新建节点「新 #' + j + '」，取值 ' + NODES[j][0] +
+          '，并在哈希表里记下映射「原 #' + j + ' → 新 #' + j + '」。这一步只建节点，next 和 random 都还留空——先把所有新节点备齐，后面处理 random 时才不会指向一个还不存在的节点。'
+      });
+    }
+  
+    for (let j = 0; j < n; j++) {
+      const nx = j + 1 < n ? j + 1 : null;
+      const rd = NODES[j][1];
+      steps.push({
+        created: n, linked: j + 1, cur: j, phase: 'link', nextTarget: nx, randTarget: rd,
+        note: '第二遍 · 第 ' + (j + 1) + ' 次：查哈希表，把「新 #' + j + '」的 next 指向 ' +
+          (nx == null ? 'nil（原节点没有下一个）' : '新 #' + nx + '（原 #' + j + ' 的 next 指向原 #' + nx + '）') +
+          '，random 指向 ' +
+          (rd == null ? 'nil（原节点的 random 为空）' : '新 #' + rd + '（原 #' + j + ' 的 random 指向原 #' + rd + '）') +
+          '。因为第一遍已经建好全部新节点，这里查表一定能命中，不会指向原链表的节点。'
+      });
+    }
+  
+    steps.push({
+      created: n, linked: n, cur: -1, phase: 'done', nextTarget: null, randTarget: null,
+      note: '返回 map[head]（即新 #0）。复制链表的 next 与 random 结构和原链表完全一致，而且所有指针都指向新节点。两遍遍历时间 O(n)，哈希表额外空间 O(n)。'
+    });
+  
+    return steps;
+  }
+  
+  function buildSvg(step) {
+    const n = NODES.length;
+    const W = 100;
+    const H = 56;
+    const GAP = 60;
+    const X0 = 60;
+    const left = i => X0 + i * (W + GAP);
+    const midX = i => left(i) + W / 2;
+    const origY = 44;
+    const copyY = 280;
+    const origCy = origY + H / 2;
+    const copyCy = copyY + H / 2;
+    const origBottom = origY + H;
+    const copyBottom = copyY + H;
+  
+    let s = '<svg viewBox="0 0 860 452" style="width:100%;height:auto;max-width:860px">';
+    s += '<defs>';
+    [
+      ['mNext', 'var(--demo-muted)'],
+      ['mRand', 'var(--demo-violet)'],
+      ['mAccent', 'var(--demo-accent)'],
+      ['mOk', 'var(--demo-ok)']
+    ].forEach(m => {
+      s += '<marker id="' + m[0] + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">' +
+        '<path d="M0,0 L10,5 L0,10 Z" style="fill:' + m[1] + '"/></marker>';
+    });
+    s += '</defs>';
+  
+    function hLine(x1, x2, y, color, marker) {
+      return '<line x1="' + x1 + '" y1="' + y + '" x2="' + x2 + '" y2="' + y +
+        '" style="stroke:' + color + '" stroke-width="2" marker-end="url(#' + marker + ')"/>';
+    }
+    function arc(x1, x2, yBase, depth, color, marker) {
+      return '<path d="M' + x1 + ',' + yBase + ' C' + x1 + ',' + (yBase + depth) + ' ' + x2 + ',' + (yBase + depth) +
+        ' ' + x2 + ',' + yBase + '" fill="none" style="stroke:' + color + '" stroke-width="2" marker-end="url(#' + marker + ')"/>';
+    }
+  
+    s += '<text x="20" y="' + (origCy + 5) + '" text-anchor="start" style="fill:var(--demo-muted);font:600 12px var(--demo-mono)">原链表</text>';
+    s += '<text x="20" y="' + (copyCy + 5) + '" text-anchor="start" style="fill:var(--demo-muted);font:600 12px var(--demo-mono)">复制链表</text>';
+  
+    for (let i = 0; i + 1 < n; i++) {
+      s += hLine(left(i) + W, left(i + 1), origCy, 'var(--demo-muted)', 'mNext');
+    }
+  
+    for (let i = 0; i < n; i++) {
+      const rd = NODES[i][1];
+      if (rd == null) continue;
+      const fresh = step.phase === 'link' && step.cur === i;
+      s += arc(left(i) + W / 2, left(rd) + W / 2, origBottom, 34 + i * 26,
+        fresh ? 'var(--demo-accent)' : 'var(--demo-violet)', fresh ? 'mAccent' : 'mRand');
+    }
+  
+    for (let j = 0; j < n; j++) {
+      const exists = j < step.created;
+      const linked = j < step.linked;
+      const isCur = j === step.cur;
+      let fill = 'var(--demo-card)';
+      let stroke = 'var(--demo-border)';
+      let dash = '';
+      if (isCur) {
+        fill = 'var(--demo-accent-soft)';
+        stroke = 'var(--demo-accent)';
+      } else if (linked) {
+        fill = 'var(--demo-ok-soft)';
+        stroke = 'var(--demo-ok)';
+      } else if (exists) {
+        fill = 'var(--demo-violet-soft)';
+        stroke = 'var(--demo-violet)';
+      } else {
+        dash = 'stroke-dasharray="6 5";';
+      }
+      const x = left(j);
+      s += '<rect x="' + x + '" y="' + copyY + '" width="' + W + '" height="' + H + '" rx="8" style="fill:' + fill +
+        ';stroke:' + stroke + ';stroke-width:2.5;' + dash + (exists ? '' : 'opacity:0.45') + '"/>';
+      s += '<text x="' + midX(j) + '" y="' + (copyY + 36) + '" text-anchor="middle" style="fill:var(--demo-text);font:600 17px var(--demo-mono)">' +
+        (exists ? NODES[j][0] : '?') + '</text>';
+      s += '<text x="' + midX(j) + '" y="' + (copyY - 10) + '" text-anchor="middle" style="fill:var(--demo-muted);font:11px var(--demo-mono)">新 #' + j + '</text>';
+    }
+  
+    for (let j = 0; j + 1 < n; j++) {
+      if (j >= step.linked) continue;
+      const fresh = step.phase === 'link' && step.cur === j;
+      s += hLine(left(j) + W, left(j + 1), copyCy, fresh ? 'var(--demo-accent)' : 'var(--demo-ok)', fresh ? 'mAccent' : 'mOk');
+    }
+  
+    for (let j = 0; j < n; j++) {
+      if (j >= step.linked) continue;
+      const rd = NODES[j][1];
+      if (rd == null) continue;
+      const fresh = step.phase === 'link' && step.cur === j;
+      s += arc(left(j) + W / 2, left(rd) + W / 2, copyBottom, 20 + j * 22,
+        fresh ? 'var(--demo-accent)' : 'var(--demo-violet)', fresh ? 'mAccent' : 'mRand');
+    }
+  
+    for (let i = 0; i < n; i++) {
+      const isCur = i === step.cur && (step.phase === 'create' || step.phase === 'link');
+      const x = left(i);
+      s += '<rect x="' + x + '" y="' + origY + '" width="' + W + '" height="' + H + '" rx="8" style="fill:' +
+        (isCur ? 'var(--demo-accent-soft)' : 'var(--demo-card)') + ';stroke:' + (isCur ? 'var(--demo-accent)' : 'var(--demo-border)') +
+        ';stroke-width:2.5"/>';
+      s += '<text x="' + midX(i) + '" y="' + (origY + 36) + '" text-anchor="middle" style="fill:var(--demo-text);font:600 17px var(--demo-mono)">' +
+        NODES[i][0] + '</text>';
+      s += '<text x="' + midX(i) + '" y="' + (origY - 10) + '" text-anchor="middle" style="fill:var(--demo-muted);font:11px var(--demo-mono)">原 #' + i + '</text>';
+    }
+  
+    s += '</svg>';
+    return s;
+  }
+  
+  function buildTable(step) {
+    const table = Demo.el('table', 'map-table');
+    const head = Demo.el('tr');
+    head.appendChild(Demo.el('th', null, '原节点'));
+    head.appendChild(Demo.el('th', null, '新节点'));
+    table.appendChild(head);
+    for (let j = 0; j < NODES.length; j++) {
+      const tr = Demo.el('tr');
+      if (j < step.created && j === step.cur) tr.classList.add('is-active');
+      tr.appendChild(Demo.el('td', null, '#' + j + '（' + NODES[j][0] + '）'));
+      tr.appendChild(Demo.el('td', null, j < step.created ? '#' + j + '（' + NODES[j][0] + '）' : '—'));
+      table.appendChild(tr);
+    }
+    return table;
+  }
+  
+  Demo.create({
+    title: '60. 随机链表的复制 — 哈希表 + 两遍遍历',
+    info: '输入：head = [[7,null],[13,0],[11,4],[10,2],[1,0]]（每个元素是 [值, random 指向的下标]）。难点是 random 可能指向还没创建的节点，所以先用哈希表建好全部新节点，再统一连指针。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 520,
+    legend: [
+      { color: 'var(--demo-violet)', label: 'random 指针（null 不画）' },
+      { color: 'var(--demo-accent)', label: '本步处理的节点 / 指针' },
+      { color: 'var(--demo-ok)', label: 'next 与 random 都已连好' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.appendChild(Demo.el('div', 'panel__title',
+        step.phase === 'create' ? '第一遍：新建所有节点（next / random 留空）'
+          : step.phase === 'link' ? '第二遍：按哈希表连 next 与 random'
+            : '原链表与复制链表的对应关系'));
+      const holder = Demo.el('div');
+      holder.style.width = '100%';
+      holder.innerHTML = buildSvg(step);
+      panel.appendChild(holder);
+      ctx.stage.appendChild(panel);
+  
+      const mapPanel = Demo.el('div', 'panel');
+      mapPanel.style.width = '100%';
+      mapPanel.appendChild(Demo.el('div', 'panel__title', 'old2New 哈希表（高亮行是本步刚加入 / 正在处理的映射）'));
+      mapPanel.appendChild(buildTable(step));
+      ctx.stage.appendChild(mapPanel);
+  
+      const tags = Demo.el('div', 'panel');
+      tags.style.width = '100%';
+      tags.style.textAlign = 'center';
+      tags.innerHTML = '已新建 <strong>' + step.created + '</strong> / ' + NODES.length + ' 个新节点　｜　' +
+        '已连好指针 <strong>' + step.linked + '</strong> / ' + NODES.length + ' 个' +
+        (step.phase === 'done' ? ' &nbsp;<span class="tag tag--ok">复制完成</span>' : '');
+      ctx.stage.appendChild(tags);
+    }
+  });
+  return Demo.__config
+}

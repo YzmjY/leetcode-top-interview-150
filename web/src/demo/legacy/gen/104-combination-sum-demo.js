@@ -1,0 +1,201 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/104-combination-sum-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const CANDIDATES = [2, 3, 6, 7];
+  const TARGET = 7;
+  
+  function buildSteps() {
+    const steps = [];
+    const path = [];
+    const results = [];
+    let sum = 0;
+  
+    function snap(extra) {
+      return {
+        path: path.slice(),
+        results: results.slice(),
+        sum,
+        remaining: extra.remaining,
+        start: extra.start == null ? null : extra.start,
+        chosen: extra.chosen == null ? null : extra.chosen,
+        chosenIdx: extra.chosenIdx == null ? -1 : extra.chosenIdx,
+        pruneIdx: extra.pruneIdx == null ? -1 : extra.pruneIdx,
+        phase: extra.phase,
+        note: extra.note
+      };
+    }
+  
+    steps.push(snap({
+      remaining: TARGET, start: 0, phase: 'init',
+      note: `初始化：candidates = [${CANDIDATES.join(', ')}]（已升序排序），target = ${TARGET}，path 为空，sum = 0。每层从 start 开始尝试，递归时仍然传 i 而不是 i + 1，因为同一个数字可以重复选。`
+    }));
+  
+    function backtrack(start, remaining) {
+      if (remaining === 0) {
+        results.push(path.slice());
+        steps.push(snap({
+          remaining, start, phase: 'collect',
+          note: `remaining 减到 0，说明 path 里数字的和正好等于 target = ${TARGET}，得到一个组合 [${path.join(', ')}]，加入结果集后返回。`
+        }));
+        return;
+      }
+  
+      steps.push(snap({
+        remaining, start, phase: 'enter',
+        note: `进入新的一层：start = ${start}，剩余目标 remaining = ${remaining}。只需要在 candidates[${start}..] 中挑选，因为更小的数字在更靠前的分支里已经考虑过，从 start 开始才能避免产生重复组合。`
+      }));
+  
+      for (let i = start; i < CANDIDATES.length; i++) {
+        const c = CANDIDATES[i];
+        if (c > remaining) {
+          steps.push(snap({
+            remaining, start, pruneIdx: i, phase: 'prune',
+            note: `candidates[${i}] = ${c} 已经大于剩余目标 remaining = ${remaining}。因为数组升序排列，后面所有候选数只会更大，即使选了也一定超和，所以直接 break，把这一层剩下的分支整体剪掉。`
+          }));
+          break;
+        }
+  
+        path.push(c);
+        sum += c;
+        steps.push(snap({
+          remaining, start, chosen: c, chosenIdx: i, phase: 'choose',
+          note: `选择 candidates[${i}] = ${c}：path 变为 [${path.join(', ')}]，sum 变为 ${sum}，剩余目标从 ${remaining} 减少到 ${remaining - c}。下一层仍然从下标 ${i} 开始，所以 ${c} 还可以继续被选。`
+        }));
+  
+        backtrack(i, remaining - c);
+  
+        path.pop();
+        sum -= c;
+        steps.push(snap({
+          remaining, start, chosen: c, chosenIdx: i, phase: 'undo',
+          note: `撤销选择 candidates[${i}] = ${c}：从 path 弹出，sum 回到 ${sum}，剩余目标恢复为 ${remaining}，for 循环继续尝试下一个更大的候选数。`
+        }));
+      }
+    }
+  
+    backtrack(0, TARGET);
+  
+    steps.push(snap({
+      remaining: 0, phase: 'done',
+      note: `全部搜索结束，共得到 ${results.length} 个组合：${results.map(r => '[' + r.join(',') + ']').join('、')}。重复选同一个数靠「下一层仍传 i」实现，去重靠「每层只从 start 往后选」实现。`
+    }));
+  
+    return steps;
+  }
+  
+  function barRow(step) {
+    const row = Demo.el('div', 'row');
+    const bar = Demo.el('div', 'bar');
+    bar.style.width = '260px';
+    const fill = Demo.el('div', 'bar__fill');
+    fill.style.width = Math.max(0, Math.min(1, step.remaining / TARGET)) * 100 + '%';
+    const label = Demo.el('div', 'bar__label', 'remaining = ' + step.remaining + ' / ' + TARGET);
+    bar.appendChild(fill);
+    bar.appendChild(label);
+    row.appendChild(bar);
+    row.appendChild(Demo.el('span', 'tag', 'sum = ' + step.sum));
+    return row;
+  }
+  
+  function candidateRow(step) {
+    const row = Demo.el('div', 'row');
+    CANDIDATES.forEach((c, i) => {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(c));
+      const inPath = step.start != null && i >= step.start && step.path.indexOf(c) >= 0;
+      if (step.phase === 'prune' && step.pruneIdx === i) {
+        cell.classList.add('is-bad');
+      } else if (step.phase === 'undo' && step.chosenIdx === i) {
+        cell.classList.add('is-warn');
+      } else if (step.phase === 'choose' && step.chosenIdx === i) {
+        cell.classList.add('is-active');
+      } else if (inPath) {
+        cell.classList.add('is-ok');
+      } else if (step.start != null && i < step.start) {
+        cell.classList.add('cell--dim');
+      } else if (step.start != null && i === step.start) {
+        cell.classList.add('is-active');
+      }
+      col.appendChild(cell);
+  
+      const ptr = Demo.el('div', 'ptr', i === step.start && step.start != null ? 'start' : '');
+      if (step.phase === 'prune' && step.pruneIdx === i) {
+        ptr.textContent = '剪枝';
+        ptr.classList.add('ptr--bad');
+      } else if (i === step.start && step.start != null) {
+        ptr.classList.add('ptr--violet');
+      } else {
+        ptr.classList.add('ptr--dim');
+      }
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  function pathRow(step) {
+    const row = Demo.el('div', 'row');
+    const slots = Math.max(4, step.path.length);
+    for (let i = 0; i < slots; i++) {
+      const value = step.path[i];
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell cell--lg', value == null ? '+' : Demo.esc(value));
+      if (value == null) cell.classList.add('cell--empty');
+      else if (step.phase === 'choose' && i === step.path.length - 1) cell.classList.add('is-active');
+      else cell.classList.add('is-ok');
+      col.appendChild(cell);
+      row.appendChild(col);
+    }
+    row.appendChild(Demo.el('span', 'arrow', '='));
+    row.appendChild(Demo.el('span', 'cell cell--lg is-violet', Demo.esc(step.sum)));
+    return row;
+  }
+  
+  Demo.create({
+    title: '104. 组合总和 — 可重复选择 + 排序剪枝',
+    info: `输入：candidates = [${CANDIDATES.join(', ')}]，target = ${TARGET}。同一个数字可以重复使用，组合之间按元素个数区分。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本层正在尝试的候选数' },
+      { color: 'var(--demo-danger)', label: '超出剩余目标，剪枝 break' },
+      { color: 'var(--demo-warn)', label: '刚被撤销的选择' },
+      { color: 'var(--demo-ok)', label: '当前 path 已选数字' },
+      { color: 'var(--demo-violet)', label: '本层起点 start / 当前和' }
+    ],
+    stageHeight: 320,
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      ctx.stage.appendChild(Demo.el('div', 'panel__title', '剩余目标与当前 sum'));
+      ctx.stage.appendChild(barRow(step));
+  
+      const candPanel = Demo.el('div', 'col');
+      candPanel.appendChild(Demo.el('div', 'panel__title',
+        step.start == null ? '候选数' : `候选数（本层从下标 ${step.start} 即 ${CANDIDATES[step.start]} 开始）`));
+      candPanel.appendChild(candidateRow(step));
+      ctx.stage.appendChild(candPanel);
+  
+      const pathPanel = Demo.el('div', 'col');
+      pathPanel.appendChild(Demo.el('div', 'panel__title', 'path 组合（累加恰好等于 target 时收集）'));
+      pathPanel.appendChild(pathRow(step));
+      ctx.stage.appendChild(pathPanel);
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.style.textAlign = 'center';
+      const resRow = Demo.el('div', 'row');
+      if (!step.results.length) {
+        resRow.appendChild(Demo.el('span', 'ptr ptr--dim', '（还没有收集到组合）'));
+      } else {
+        step.results.forEach(r => resRow.appendChild(Demo.el('span', 'tag tag--ok', '[' + r.join(', ') + ']')));
+      }
+      panel.appendChild(resRow);
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

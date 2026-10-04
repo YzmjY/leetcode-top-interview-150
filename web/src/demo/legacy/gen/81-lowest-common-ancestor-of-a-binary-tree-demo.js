@@ -1,0 +1,289 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/81-lowest-common-ancestor-of-a-binary-tree-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const TREE = [3, 5, 1, 6, 2, 0, 8, null, null, 7, 4];
+  const P = 6;
+  const Q = 4;
+  
+  const NODE_PAINT = {
+    default: ['var(--demo-subtle)', 'var(--demo-border)', 'var(--demo-text)'],
+    accent:  ['var(--demo-accent-soft)', 'var(--demo-accent)', 'var(--demo-accent-strong)'],
+    ok:      ['var(--demo-ok-soft)', 'var(--demo-ok)', 'var(--demo-ok)'],
+    info:    ['var(--demo-info-soft)', 'var(--demo-info)', 'var(--demo-info)'],
+    pink:    ['var(--demo-pink-soft)', 'var(--demo-pink)', 'var(--demo-pink)']
+  };
+  
+  function buildTree(arr) {
+    if (!arr.length || arr[0] == null) return null;
+    let seq = 0;
+    const root = { id: seq++, val: arr[0], left: null, right: null };
+    const queue = [root];
+    let i = 1;
+    while (i < arr.length && queue.length) {
+      const node = queue.shift();
+      const lv = arr[i++];
+      if (lv != null) { node.left = { id: seq++, val: lv, left: null, right: null }; queue.push(node.left); }
+      if (i < arr.length) {
+        const rv = arr[i++];
+        if (rv != null) { node.right = { id: seq++, val: rv, left: null, right: null }; queue.push(node.right); }
+      }
+    }
+    return root;
+  }
+  
+  function snapTree(node) {
+    if (!node) return null;
+    return { id: node.id, val: node.val, left: snapTree(node.left), right: snapTree(node.right) };
+  }
+  
+  function findVal(node, val) {
+    if (!node) return null;
+    if (node.val === val) return node;
+    return findVal(node.left, val) || findVal(node.right, val);
+  }
+  
+  function findById(node, id) {
+    if (!node || id == null) return null;
+    if (node.id === id) return node;
+    return findById(node.left, id) || findById(node.right, id);
+  }
+  
+  function treeSVG(root, paintOf, badgeOf) {
+    if (!root) return '<div class="panel" style="width:100%;text-align:center">（空树）</div>';
+    const pos = {};
+    let count = 0, maxDepth = 0;
+    (function walk(node, depth) {
+      if (!node) return;
+      walk(node.left, depth + 1);
+      pos[node.id] = { x: count++, y: depth };
+      if (depth > maxDepth) maxDepth = depth;
+      walk(node.right, depth + 1);
+    })(root, 0);
+  
+    const gapX = 66, gapY = 78, padX = 36, padY = 32, r = 21;
+    const W = count * gapX + padX * 2;
+    const H = (maxDepth + 1) * gapY + padY * 2;
+    const cx = id => padX + pos[id].x * gapX + gapX / 2;
+    const cy = id => padY + pos[id].y * gapY + gapY / 2;
+  
+    let edges = '';
+    (function drawEdges(node) {
+      if (!node) return;
+      [node.left, node.right].forEach(child => {
+        if (!child) return;
+        const dx = pos[child.id].x - pos[node.id].x;
+        const dy = pos[child.id].y - pos[node.id].y;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        edges += '<line x1="' + (cx(node.id) + dx / len * r).toFixed(1) + '" y1="' + (cy(node.id) + dy / len * r).toFixed(1) +
+          '" x2="' + (cx(child.id) - dx / len * r).toFixed(1) + '" y2="' + (cy(child.id) - dy / len * r).toFixed(1) +
+          '" style="stroke:var(--demo-border);stroke-width:2"/>';
+        drawEdges(child);
+      });
+    })(root);
+  
+    let nodes = '';
+    (function drawNodes(node) {
+      if (!node) return;
+      let info = paintOf ? paintOf(node) : null;
+      if (typeof info === 'string') info = { state: info };
+      info = info || {};
+      const paint = NODE_PAINT[info.state] || NODE_PAINT.default;
+      if (info.ring) {
+        nodes += '<circle cx="' + cx(node.id) + '" cy="' + cy(node.id) + '" r="' + (r + 6) + '" style="fill:none;stroke:' + info.ring + ';stroke-width:3"/>';
+      }
+      nodes += '<circle cx="' + cx(node.id) + '" cy="' + cy(node.id) + '" r="' + r + '" style="fill:' + paint[0] + ';stroke:' + paint[1] + ';stroke-width:2.5"/>';
+      nodes += '<text x="' + cx(node.id) + '" y="' + (cy(node.id) + 6) + '" text-anchor="middle" style="fill:' + paint[2] + ';font:600 16px sans-serif">' + Demo.esc(node.val) + '</text>';
+      const badge = badgeOf ? badgeOf(node) : null;
+      if (badge) {
+        nodes += '<text x="' + cx(node.id) + '" y="' + (cy(node.id) + r + 17) + '" text-anchor="middle" style="fill:var(--demo-muted);font:600 12px sans-serif">' + Demo.esc(badge) + '</text>';
+      }
+      drawNodes(node.left);
+      drawNodes(node.right);
+    })(root);
+  
+    return '<div style="width:100%"><svg viewBox="0 0 ' + W + ' ' + (H + 20) + '" style="width:100%;height:auto;display:block;max-height:400px">' + edges + nodes + '</svg></div>';
+  }
+  
+  function buildSteps() {
+    const root = buildTree(TREE);
+    const pNode = findVal(root, P);
+    const qNode = findVal(root, Q);
+    const steps = [];
+    const stack = [];
+    const found = [];
+    let answer = null;
+  
+    function snap(note, extra) {
+      const step = {
+        tree: snapTree(root),
+        note: note,
+        stack: stack.map(id => findById(root, id).val),
+        found: found.slice(),
+        answer: answer
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    function markFound(id) {
+      if (found.indexOf(id) === -1) found.push(id);
+    }
+  
+    snap('初始：p = ' + P + '，q = ' + Q + '（同一棵树上的两个节点）。递归函数 lowestCommonAncestor 的含义是「返回当前子树里找到的关键节点」：子树里没有 p/q 就返回 null。先从根 ' + root.val + ' 开始。', { active: root.id });
+  
+    function dfs(node) {
+      if (!node) return null;
+  
+      if (node.id === pNode.id || node.id === qNode.id) {
+        markFound(node.id);
+        snap('节点 ' + node.val + ' 就是 ' + (node.val === P ? 'p' : 'q') +
+          ' 本身。命中终止条件，不再往下递归 —— 一个节点可以是自己的祖先，所以整个子树收敛为一个返回值 ' + node.val + '。',
+          { active: node.id, phase: 'hit', hit: node.id, ret: node.val });
+        return node;
+      }
+  
+      stack.push(node.id);
+  
+      if (!node.left && !node.right) {
+        snap('进入节点 ' + node.val + '：它不是 p/q，而且没有孩子，左右子树都只能返回 null。', { active: node.id, phase: 'enter' });
+        stack.pop();
+        snap('节点 ' + node.val + ' 返回 null：这棵子树里既没有 p 也没有 q。', { active: node.id, phase: 'pass' });
+        return null;
+      }
+  
+      snap('进入节点 ' + node.val + '：它既不是 p 也不是 q，于是先递归左子树，再递归右子树。', { active: node.id, phase: 'enter' });
+  
+      const left = dfs(node.left);
+      snap('节点 ' + node.val + ' 的左子树返回 ' + (left ? left.val : 'null') + '。', { active: node.id, phase: 'left', leftVal: left ? left.val : null });
+  
+      const right = dfs(node.right);
+      snap('节点 ' + node.val + ' 的右子树返回 ' + (right ? right.val : 'null') + '。', { active: node.id, phase: 'right', leftVal: left ? left.val : null, rightVal: right ? right.val : null });
+  
+      stack.pop();
+  
+      if (left && right) {
+        if (answer == null) answer = node.id;
+        snap('关键判断：左子树返回了 ' + left.val + '，右子树返回了 ' + right.val +
+          ' —— p 和 q 分居节点 ' + node.val + ' 的两侧，' + node.val +
+          ' 就是能把两者连起来的最深的那个共同祖先，于是返回 ' + node.val + '。它继续被上层原样传递。',
+          { active: node.id, phase: 'merge', leftVal: left.val, rightVal: right.val, merged: node.id });
+        return node;
+      }
+  
+      const res = left || right;
+      if (res) markFound(res.id);
+      snap(res
+        ? '只有一边返回了 ' + res.val + '：说明 p 和 q 都在这同一边的子树里，节点 ' + node.val + ' 只是路径上的普通节点，把 ' + res.val + ' 原样向上传递。'
+        : '左右子树都返回 null：这棵子树里既没有 p 也没有 q，节点 ' + node.val + ' 返回 null。',
+        { active: node.id, phase: 'pass', ret: res ? res.val : null });
+      return res;
+    }
+  
+    const res = dfs(root);
+    snap('递归结束，返回节点 ' + res.val + '，即 p = ' + P + ' 与 q = ' + Q + ' 的最近公共祖先（' + P + ' 在 ' + res.val + ' 的左子树，' + Q + ' 在它的右子树）。时间 O(n)，空间 O(h)。',
+      { active: res.id, phase: 'done', done: true });
+    return steps;
+  }
+  
+  Demo.create({
+    title: '81. 二叉树的最近公共祖先 — 后序递归回传关键节点',
+    info: 'root = [3,5,1,6,2,0,8,null,null,7,4]，p = ' + P + '，q = ' + Q + '，答案应为 5（6 在 5 左侧、4 在 5 右侧）。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 470,
+    legend: [
+      { color: 'var(--demo-info)', label: 'p = 6' },
+      { color: 'var(--demo-pink)', label: 'q = 4' },
+      { color: 'var(--demo-ok)', label: '返回了非 null 的子树根' },
+      { color: 'var(--demo-accent)', label: '当前节点' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = treeSVG(step.tree, node => {
+        const isP = node.val === P;
+        const isQ = node.val === Q;
+        const isAnswer = step.answer === node.id;
+        if (step.active === node.id) {
+          return { state: 'accent', ring: isAnswer ? 'var(--demo-ok)' : 'var(--demo-accent)' };
+        }
+        if (isAnswer) return 'ok';
+        if (isP) return 'info';
+        if (isQ) return 'pink';
+        if (step.found.indexOf(node.id) >= 0) return 'ok';
+        return 'default';
+      }, node => {
+        const labels = [];
+        if (node.val === P) labels.push('p');
+        if (node.val === Q) labels.push('q');
+        if (step.answer === node.id) labels.push('答案');
+        return labels.length ? labels.join('/') : null;
+      });
+      ctx.stage.appendChild(wrap);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-start';
+      row.style.gap = '12px';
+  
+      const stackPanel = Demo.el('div', 'panel');
+      stackPanel.appendChild(Demo.el('div', 'panel__title', '递归调用栈（栈顶为当前节点）'));
+      const stackBox = Demo.el('div', 'stack');
+      if (step.stack.length === 0) {
+        stackBox.appendChild(Demo.el('div', 'stack__item', '空'));
+      } else {
+        step.stack.forEach((val, k) => {
+          const item = Demo.el('div', 'stack__item', 'lca(' + val + ')');
+          if (k === step.stack.length - 1) item.classList.add('is-active');
+          stackBox.appendChild(item);
+        });
+      }
+      stackPanel.appendChild(stackBox);
+  
+      const infoPanel = Demo.el('div', 'panel');
+      infoPanel.style.flex = '1';
+      infoPanel.appendChild(Demo.el('div', 'panel__title', '返回值'));
+      if (step.phase === 'merge') {
+        infoPanel.appendChild(Demo.el('div', null,
+          '左子树返回 <strong>' + step.leftVal + '</strong>，右子树返回 <strong>' + step.rightVal + '</strong><br>' +
+          '两边都非空 → 当前节点就是最近公共祖先<br><span class="tag tag--ok">返回 ' + step.merged + '</span>'));
+      } else if (step.phase === 'hit') {
+        infoPanel.appendChild(Demo.el('div', null,
+          '命中 ' + (step.ret === P ? 'p' : 'q') + '，直接返回<strong>' + step.ret + '</strong><br>' +
+          '<span class="tag tag--ok">节点自己就是祖先</span>'));
+      } else if (step.phase === 'pass') {
+        infoPanel.appendChild(Demo.el('div', null,
+          '返回 <strong>' + (step.ret == null ? 'null' : step.ret) + '</strong><br>' +
+          '<span class="tag tag--warn">无分叉，原样回传</span>'));
+      } else if (step.phase === 'done') {
+        infoPanel.appendChild(Demo.el('div', null,
+          '最近公共祖先 = <strong>' + findById(step.tree, step.answer).val + '</strong><br>' +
+          '<span class="tag tag--ok">返回节点 ' + findById(step.tree, step.answer).val + '</span>'));
+      } else {
+        infoPanel.appendChild(Demo.el('div', null,
+          '左子树返回 ' + (step.leftVal == null ? '…' : step.leftVal) + '<br>' +
+          '右子树返回 ' + (step.rightVal == null ? '…' : step.rightVal) + '<br>' +
+          '<span class="tag tag--info">等待子树结果</span>'));
+      }
+  
+      row.appendChild(stackPanel);
+      row.appendChild(infoPanel);
+  
+      if (step.answer != null) {
+        const ansCell = Demo.el('div', 'panel');
+        ansCell.appendChild(Demo.el('div', 'panel__title', '已定位的祖先'));
+        const ansNode = findById(step.tree, step.answer);
+        ansCell.appendChild(Demo.el('div', 'cell is-ok', Demo.esc(ansNode ? ansNode.val : '—')));
+        row.appendChild(ansCell);
+      }
+  
+      ctx.stage.appendChild(row);
+    }
+  });
+  return Demo.__config
+}

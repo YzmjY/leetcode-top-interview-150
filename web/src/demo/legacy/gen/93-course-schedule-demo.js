@@ -1,0 +1,186 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/93-course-schedule-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const N = 2;
+  const PREREQ = [[1, 0], [0, 1]];
+  const POS = { 0: { x: 200, y: 155 }, 1: { x: 440, y: 155 } };
+  const STATE_NAME = ['白色（未访问）', '灰色（访问中）', '黑色（已完成）'];
+  
+  function buildSteps() {
+    const adj = [];
+    for (let i = 0; i < N; i++) adj.push([]);
+    const state = [];
+    for (let i = 0; i < N; i++) state.push(0);
+    const callStack = [];
+    const steps = [];
+    let hasCycle = false;
+  
+    function snap(note, extra) {
+      const step = {
+        adj: adj.map(a => a.slice()),
+        state: state.slice(),
+        callStack: callStack.slice(),
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    PREREQ.forEach(p => { adj[p[1]].push(p[0]); });
+  
+    snap('初始：numCourses = 2，先修关系 [[1,0],[0,1]] —— 学课程 1 要先学课程 0，学课程 0 又要先学课程 1。邻接表 0→[1]、1→[0]。用三色标记做 DFS：白色 = 没碰过，灰色 = 正在访问（还在递归栈里），黑色 = 已完成。');
+  
+    for (let i = 0; i < N; i++) {
+      if (state[i] !== 0) continue;
+      snap('外层循环：课程 ' + i + ' 还是白色，从它开始 DFS（每个节点都要试一遍，避免漏掉不连通的部分）。', { start: i });
+      if (!dfs(i, null)) break;
+    }
+  
+    function dfs(u, from) {
+      if (state[u] === 1) {
+        hasCycle = true;
+        snap('检查边 ' + from + '→' + u + '：课程 ' + u + ' 的状态是灰色 —— 它还在当前递归栈里，说明沿着边又绕回了自己，这就是环！', { cur: u, badEdge: [from, u] });
+        return false;
+      }
+      if (state[u] === 2) {
+        snap('课程 ' + u + ' 已是黑色（早就处理完），直接跳过，不重复访问。', { cur: u });
+        return true;
+      }
+  
+      state[u] = 1;
+      callStack.push(u);
+      snap('dfs(' + u + ')：状态由白色变成灰色，表示正在访问它（已压入递归栈）。', { cur: u });
+  
+      for (const v of adj[u]) {
+        snap('检查课程 ' + u + ' 的后继：边 ' + u + '→' + v + '，递归调用 dfs(' + v + ')。', { cur: u, edge: [u, v] });
+        if (!dfs(v, u)) return false;
+      }
+  
+      state[u] = 2;
+      callStack.pop();
+      snap('课程 ' + u + ' 的所有后继都处理完且没有发现环，状态由灰变黑（彻底完成）。', { cur: u });
+      return true;
+    }
+  
+    snap(hasCycle
+      ? '返回 false：图中存在环，两门课互为先修，谁都没法先学 → 无法完成所有课程。若像示例 1 那样只有 0→1，DFS 会把节点依次标黑并返回 true。'
+      : '返回 true：所有课程都被标黑，没有遇到灰色节点，不存在环 → 可以完成所有课程。', { done: true, ok: !hasCycle });
+    return steps;
+  }
+  
+  function nodeFill(stateVal) {
+    if (stateVal === 1) return { fill: 'var(--demo-warn)', stroke: 'var(--demo-warn)', text: 'var(--demo-card)' };
+    if (stateVal === 2) return { fill: 'var(--demo-ok)', stroke: 'var(--demo-ok)', text: 'var(--demo-card)' };
+    return { fill: 'var(--demo-subtle)', stroke: 'var(--demo-border)', text: 'var(--demo-text)' };
+  }
+  
+  function graphSvg(step) {
+    const palette = { muted: 'var(--demo-muted)', accent: 'var(--demo-accent)', danger: 'var(--demo-danger)' };
+    let out = '<defs>';
+    Object.keys(palette).forEach(key => {
+      out += '<marker id="cs-' + key + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">' +
+        '<path d="M0,1 L10,5 L0,9 z" style="fill:' + palette[key] + '"/></marker>';
+    });
+    out += '</defs>';
+  
+    const pairs = [];
+    step.adj.forEach((list, u) => {
+      list.forEach(v => { if (pairs.indexOf(u + '>' + v) === -1) pairs.push(u + '>' + v); });
+    });
+  
+    pairs.forEach(key => {
+      const parts = key.split('>');
+      const u = Number(parts[0]);
+      const v = Number(parts[1]);
+      const p = POS[u];
+      const q = POS[v];
+      const dx = q.x - p.x;
+      const dy = q.y - p.y;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const ux = dx / len;
+      const uy = dy / len;
+      const off = 10;
+      const x1 = p.x - uy * off + ux * 36;
+      const y1 = p.y + ux * off + uy * 36;
+      const x2 = q.x - uy * off - ux * 36;
+      const y2 = q.y + ux * off - uy * 36;
+      const isBad = step.badEdge && step.badEdge[0] === u && step.badEdge[1] === v;
+      const isCur = step.edge && step.edge[0] === u && step.edge[1] === v;
+      const kind = isBad ? 'danger' : (isCur ? 'accent' : 'muted');
+      out += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) +
+        '" style="stroke:' + palette[kind] + ';stroke-width:' + (kind === 'muted' ? 2 : 3.5) + '" marker-end="url(#cs-' + kind + ')"/>';
+      out += '<text x="' + ((x1 + x2) / 2 - uy * 16).toFixed(1) + '" y="' + ((y1 + y2) / 2 + ux * 16 + 4).toFixed(1) +
+        '" text-anchor="middle" style="fill:' + palette[kind] + ';font:600 13px monospace">' + u + '→' + v + '</text>';
+    });
+  
+    for (let v = 0; v < N; v++) {
+      const p = POS[v];
+      const col = nodeFill(step.state[v]);
+      if (step.cur === v) {
+        out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="43" style="fill:none;stroke:var(--demo-accent);stroke-width:3"/>';
+      }
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="34" style="fill:' + col.fill + ';stroke:' + col.stroke + ';stroke-width:2.5"/>';
+      out += '<text x="' + p.x + '" y="' + (p.y - 2) + '" text-anchor="middle" style="fill:' + col.text + ';font:600 16px sans-serif">课程 ' + v + '</text>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 17) + '" text-anchor="middle" style="fill:' + col.text + ';font:500 11px sans-serif">' + STATE_NAME[step.state[v]].slice(0, 2) + '</text>';
+    }
+  
+    return '<div style="width:100%"><svg viewBox="0 0 640 300" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+  }
+  
+  Demo.create({
+    title: '93. 课程表 — DFS 三色标记检测环',
+    info: 'numCourses = 2，prerequisites = [[1,0],[0,1]]（示例 2）。灰色节点再次被访问，就说明有环。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 400,
+    legend: [
+      { color: 'var(--demo-subtle)', label: '白色：未访问' },
+      { color: 'var(--demo-warn)', label: '灰色：访问中（在递归栈里）' },
+      { color: 'var(--demo-ok)', label: '黑色：已完成' },
+      { color: 'var(--demo-danger)', label: '构成环的边' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = graphSvg(step);
+      ctx.stage.appendChild(wrap);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-end';
+  
+      const stackPanel = Demo.el('div', 'panel');
+      stackPanel.appendChild(Demo.el('div', 'panel__title', '递归栈（栈顶在下方）'));
+      const stackBox = Demo.el('div', 'stack');
+      if (step.callStack.length === 0) {
+        stackBox.appendChild(Demo.el('div', 'stack__item', '（空）'));
+      } else {
+        step.callStack.forEach((v, k) => {
+          const item = Demo.el('div', 'stack__item', 'dfs(' + v + ')');
+          if (k === step.callStack.length - 1) item.classList.add('is-active');
+          stackBox.appendChild(item);
+        });
+      }
+      stackPanel.appendChild(stackBox);
+  
+      const statePanel = Demo.el('div', 'panel');
+      statePanel.appendChild(Demo.el('div', 'panel__title', '课程状态'));
+      for (let v = 0; v < N; v++) {
+        statePanel.appendChild(Demo.el('div', null, '课程 ' + v + '：' + STATE_NAME[step.state[v]]));
+      }
+      statePanel.appendChild(Demo.el('div', null, step.done
+        ? (step.ok ? '<span class="tag tag--ok">无环 → 返回 true</span>' : '<span class="tag tag--bad">存在环 → 返回 false</span>')
+        : '<span class="tag tag--info">继续 DFS</span>'));
+  
+      row.appendChild(stackPanel);
+      row.appendChild(statePanel);
+      ctx.stage.appendChild(row);
+    }
+  });
+  return Demo.__config
+}

@@ -1,0 +1,112 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/02-remove-element-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [0, 1, 2, 2, 3, 0, 4, 2];
+  const VAL = 2;
+  
+  function buildSteps() {
+    const nums = NUMS.slice();
+    const n = nums.length;
+    const steps = [];
+    let slow = 0;
+  
+    steps.push({
+      nums: nums.slice(), slow, fast: null, write: null, phase: 'init',
+      note: '初始化：slow = 0 指向第一个可写入的空位，fast 从下标 0 开始扫描。此时所有元素都还没被分类。'
+    });
+  
+    for (let fast = 0; fast < n; fast++) {
+      const cur = nums[fast];
+      if (cur !== VAL) {
+        const w = slow;
+        nums[slow] = cur;
+        slow++;
+        steps.push({
+          nums: nums.slice(), slow, fast, write: w, phase: 'keep',
+          note: `比较 nums[${fast}] = ${cur} 与 val = ${VAL}：不相等，必须保留。把 ${cur} 写到慢指针位置 nums[${w}]，slow 右移到 ${slow}。因为 slow 始终不超过 fast，写入不会碰到还没扫描的元素。`
+        });
+      } else {
+        steps.push({
+          nums: nums.slice(), slow, fast, write: null, phase: 'skip',
+          note: `比较 nums[${fast}] = ${cur} 与 val = ${VAL}：相等，需要移除。fast 继续右移，slow 停在 ${slow} —— 这个位置空出来，留给后面遇到的非 ${VAL} 元素覆盖。`
+        });
+      }
+    }
+  
+    steps.push({
+      nums: nums.slice(), slow, fast: n, write: null, phase: 'done',
+      note: `fast 越界，扫描结束。保留的元素共有 k = slow = ${slow} 个，全部集中在 nums 的前 ${slow} 位；下标 ≥ ${slow} 的元素属于废弃区，不计入结果。题目允许前 k 个元素以任意顺序排列，快慢指针保持原相对顺序，得到 [${nums.slice(0, slow).join(', ')}]。`
+    });
+  
+    return steps;
+  }
+  
+  function buildRow(step) {
+    const row = Demo.el('div', 'row');
+    step.nums.forEach((value, i) => {
+      let cls = 'cell';
+      if (step.phase !== 'init') {
+        if (i === step.fast) {
+          cls += step.phase === 'skip' ? ' is-bad' : ' is-active';
+        } else if (i < step.slow) {
+          cls += ' is-ok';
+          if (step.phase === 'keep' && i === step.write) cls += ' is-violet';
+        } else {
+          cls += ' cell--dim';
+        }
+      }
+  
+      const col = Demo.el('div', 'col');
+      col.appendChild(Demo.el('div', cls, Demo.esc(value)));
+  
+      const labels = [];
+      if (step.fast != null && step.fast === i) labels.push('fast');
+      if (step.slow === i) labels.push('slow');
+      const ptr = Demo.el('div', 'ptr', labels.join(' '));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (labels.indexOf('slow') >= 0) ptr.classList.add('ptr--violet');
+      if (step.phase === 'skip' && step.fast === i) {
+        ptr.classList.remove('ptr--violet');
+        ptr.classList.add('ptr--bad');
+      }
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  Demo.create({
+    title: '2. 移除元素 — 快慢指针一次扫描',
+    info: `nums = [${NUMS.join(', ')}]，val = ${VAL}。原地移除所有等于 val 的元素，返回新长度 k。`,
+    steps: buildSteps(),
+    desc: (s, i) => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'fast：当前扫描元素' },
+      { color: 'var(--demo-violet)', label: '刚写入的位置' },
+      { color: 'var(--demo-ok)', label: '已保留（有效区）' },
+      { color: 'var(--demo-danger)', label: '等于 val，被移除' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const row = buildRow(step);
+      ctx.stage.appendChild(row);
+  
+      const k = step.slow;
+      const kept = step.nums.slice(0, k);
+      const rest = step.nums.slice(k);
+      const panel = Demo.el('div', 'panel');
+      panel.innerHTML =
+        '<div><span class="tag tag--ok">有效区 k = ' + k + '</span>&nbsp; [ ' +
+        (kept.length ? Demo.esc(kept.join(', ')) : '（空）') + ' ]</div>' +
+        '<div style="margin-top:6px"><span class="tag">下标 ≥ k（不属于结果）</span>&nbsp; [ ' +
+        (rest.length ? Demo.esc(rest.join(', ')) : '（空）') + ' ]</div>';
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

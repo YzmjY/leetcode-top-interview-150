@@ -1,0 +1,157 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/53-simplify-path-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const PATH = '/a/./b/../../c/';
+  
+  function partText(part) {
+    if (part === '') return '∅';
+    return part;
+  }
+  
+  function buildSteps() {
+    const parts = PATH.split('/');
+    const stack = [];
+    const steps = [];
+  
+    function snap(o) {
+      steps.push({
+        k: o.k,
+        part: o.part,
+        stack: stack.slice(),
+        phase: o.phase,
+        action: o.action,
+        note: o.note
+      });
+    }
+  
+    snap({
+      k: -1, part: null, phase: 'init', action: '分割路径',
+      note: '初始状态：path = "' + PATH + '"。把它按 "/" 分割成 ' + parts.length + ' 段：'
+        + parts.map(partText).join(' | ') + '。其中空串（∅）来自首尾斜杠或连续斜杠，"." 表示当前目录，".." 表示上级目录，其余是普通目录名。'
+    });
+  
+    for (let k = 0; k < parts.length; k++) {
+      const part = parts[k];
+      if (part === '' || part === '.') {
+        snap({
+          k: k, part: part, phase: 'skip', action: '忽略该段',
+          note: '第 ' + k + ' 段是' + (part === '' ? '空串（由斜杠产生，多个连续斜杠都归约为一个）' : '"."（当前目录本身）')
+            + '，对最终路径没有贡献，直接跳过。栈不变：' + (stack.length ? stack.join(' / ') : '（空）') + '。'
+        });
+      } else if (part === '..') {
+        if (stack.length > 0) {
+          const popped = stack.pop();
+          snap({
+            k: k, part: part, phase: 'pop', action: '弹出栈顶',
+            note: '第 ' + k + ' 段是 ".."，表示切换到上一级目录：把栈顶的 "' + popped + '" 弹出。剩余栈：'
+              + (stack.length ? stack.join(' / ') : '（空）') + '。'
+          });
+        } else {
+          snap({
+            k: k, part: part, phase: 'root', action: '已在根目录',
+            note: '第 ' + k + ' 段是 ".."，但栈已经空了，说明当前就在根目录 "/"，根目录是能到达的最高层，再往上没有目录可退，所以什么都不做。'
+          });
+        }
+      } else {
+        stack.push(part);
+        snap({
+          k: k, part: part, phase: 'push', action: '压入栈',
+          note: '第 ' + k + ' 段 "' + part + '" 是普通目录名（不是 "." 也不是 ".."），压入栈，表示进入该目录。栈：' + stack.join(' / ') + '。'
+        });
+      }
+    }
+  
+    const result = '/' + stack.join('/');
+    snap({
+      k: parts.length, part: null, phase: 'done', action: '拼接结果',
+      note: '所有段处理完毕，把栈里的目录用 "/" 连接、前面补上根斜杠，得到规范路径 "' + result + '"（栈为空时结果就是 "/"）。'
+        + '分割与遍历各一次，时间 O(n)，栈空间 O(n)。'
+    });
+  
+    return steps;
+  }
+  
+  function render(step, idx, ctx) {
+    ctx.stage.innerHTML = '';
+  
+    const pathPanel = Demo.el('div', 'panel');
+    pathPanel.style.width = '100%';
+    pathPanel.innerHTML = '<div class="panel__title">输入路径</div><code>' + Demo.esc(PATH) + '</code>';
+    ctx.stage.appendChild(pathPanel);
+  
+    const partsPanel = Demo.el('div', 'panel');
+    partsPanel.style.width = '100%';
+    partsPanel.appendChild(Demo.el('div', 'panel__title', '按 "/" 分割后的段（∅ 表示空串）'));
+    const row = Demo.el('div', 'row');
+    const parts = PATH.split('/');
+    parts.forEach(function (part, k) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(partText(part)));
+      if (k === step.k && step.phase !== 'init') cell.classList.add('is-active');
+      else if (step.k > k || step.phase === 'done') cell.classList.add('cell--dim');
+      col.appendChild(cell);
+      const ptr = Demo.el('div', 'ptr', k === step.k ? 'k' : String(k));
+      if (k !== step.k) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    partsPanel.appendChild(row);
+    ctx.stage.appendChild(partsPanel);
+  
+    const mainRow = Demo.el('div', 'row');
+    mainRow.style.width = '100%';
+    mainRow.style.alignItems = 'flex-start';
+  
+    const stackPanel = Demo.el('div', 'panel');
+    stackPanel.appendChild(Demo.el('div', 'panel__title', '目录栈（自下而上，上方是当前所在目录）'));
+    const stackBox = Demo.el('div', 'stack');
+    if (step.stack.length === 0) {
+      stackBox.appendChild(Demo.el('div', 'stack__item', '（根目录 /）'));
+    } else {
+      step.stack.forEach(function (name, k) {
+        const item = Demo.el('div', 'stack__item', Demo.esc(name));
+        if (k === step.stack.length - 1) item.classList.add('is-active');
+        stackBox.appendChild(item);
+      });
+    }
+    stackPanel.appendChild(stackBox);
+    mainRow.appendChild(stackPanel);
+  
+    const infoPanel = Demo.el('div', 'panel');
+    infoPanel.style.flex = '1';
+    infoPanel.appendChild(Demo.el('div', 'panel__title', '本段处理'));
+    infoPanel.appendChild(Demo.el('div', null,
+      '<span class="tag' + (step.phase === 'done' ? ' tag--ok' : (step.phase === 'pop' ? ' tag--warn' : ' tag--info')) + '">'
+      + Demo.esc(step.action) + '</span>'));
+    infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">当前段：<code>'
+      + (step.part == null ? '—' : Demo.esc(partText(step.part))) + '</code></div>'));
+    infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:6px">栈深度：<code>' + step.stack.length + '</code></div>'));
+    infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">当前规范路径：<code>/'
+      + Demo.esc(step.stack.join('/')) + '</code></div>'));
+    if (step.phase === 'done') {
+      infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px"><span class="tag tag--ok">结果 "/'
+        + Demo.esc(step.stack.join('/')) + '"</span></div>'));
+    }
+    mainRow.appendChild(infoPanel);
+  
+    ctx.stage.appendChild(mainRow);
+  }
+  
+  Demo.create({
+    title: '53. 简化路径 — 用栈模拟目录进出',
+    info: '输入：path = "/a/./b/../../c/"（示例 4）。先按 "/" 切分，再逐段处理："." 与空串忽略，".." 弹栈（栈空则忽略），其余压栈，最后拼接，期望输出 "/c"。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 380,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前处理的段 / 栈顶目录' },
+      { color: 'var(--demo-warn)', label: '".." 触发弹栈' },
+      { color: 'var(--demo-muted)', label: '已处理过的段' }
+    ],
+    render: render
+  });
+  return Demo.__config
+}

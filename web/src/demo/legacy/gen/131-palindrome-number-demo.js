@@ -1,0 +1,163 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/131-palindrome-number-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const X = 12321;
+  
+  function buildSteps() {
+    const steps = [];
+    let x = X, reversed = 0;
+  
+    steps.push({
+      x, reversed,
+      note: `初始状态：x = ${X}，reversed = 0。为了不转成字符串、也避免整体反转导致溢出，只反转右半部分，再和左半部分比较。`
+    });
+  
+    if (x < 0 || (x % 10 === 0 && x !== 0)) {
+      steps.push({
+        x, reversed, blocked: true, done: true, ok: false,
+        note: '前置判断命中：负数带着负号，以 0 结尾的非零数最高位不可能是 0，两种情况都不可能对称，直接返回 false。'
+      });
+      return steps;
+    }
+  
+    steps.push({
+      x, reversed, checked: true,
+      note: `前置判断：x = ${X} 不是负数，末位也不是 0，排除掉必然不是回文的情况，进入「反转一半」主循环。`
+    });
+  
+    while (x > reversed) {
+      const digit = x % 10;
+      const prevRev = reversed;
+      const prevX = x;
+      reversed = reversed * 10 + digit;
+      x = Math.floor(x / 10);
+      steps.push({
+        x, reversed, digit,
+        note: `判断 x > reversed 成立（${prevX} > ${prevRev}）：说明还没处理到一半，可以继续弹出末位 ${digit}。`
+          + `reversed = ${prevRev} × 10 + ${digit} = ${reversed}，x = ⌊${prevX} / 10⌋ = ${x}。`
+      });
+    }
+  
+    const odd = x !== reversed;
+    const half = Math.floor(reversed / 10);
+    const isPal = x === reversed || x === half;
+    steps.push({
+      x, reversed, half, odd, done: true, ok: isPal,
+      note: `判断 x > reversed 不再成立（x = ${x}，reversed = ${reversed}），停止反转：此时已经处理了一半以上的位数。`
+        + (odd
+          ? `总位数是奇数，reversed 的末位是落单的中间数字，去掉它后再比：x = ${x} 与 ⌊reversed / 10⌋ = ${half}`
+          : `总位数是偶数，可直接比：x = ${x} 与 reversed = ${reversed}`)
+        + ` —— ${isPal ? '两者相等，所以 ' + X + ' 是回文数。' : '两者不相等，所以 ' + X + ' 不是回文数。'}`
+    });
+  
+    return steps;
+  }
+  
+  function digitCells(value, cls, activeLast) {
+    const row = Demo.el('div', 'row');
+    const text = String(value);
+    for (let i = 0; i < text.length; i++) {
+      const cell = Demo.el('div', 'cell', Demo.esc(text[i]));
+      if (cls) cell.classList.add(cls);
+      if (activeLast && i === text.length - 1) cell.classList.add('is-active');
+      row.appendChild(cell);
+    }
+    return row;
+  }
+  
+  function comparePanel(labelA, a, labelB, b, same) {
+    const panel = Demo.el('div', 'panel');
+    panel.appendChild(Demo.el('div', 'panel__title', Demo.esc(labelA + ' 与 ' + labelB)));
+    const row = Demo.el('div', 'row');
+    row.appendChild(digitCells(a, same ? 'is-ok' : 'is-bad'));
+    row.appendChild(Demo.el('span', 'arrow', '↔'));
+    row.appendChild(digitCells(b, same ? 'is-ok' : 'is-bad'));
+    panel.appendChild(row);
+    panel.appendChild(Demo.el('div', 'ptr ' + (same ? 'ptr--ok' : 'ptr--bad'),
+      Demo.esc(a + ' ' + (same ? '=' : '≠') + ' ' + b)));
+    return panel;
+  }
+  
+  Demo.create({
+    title: '131. 回文数 — 只反转一半数字',
+    info: `输入：x = ${X}（奇数位示例；示例中的 121 同理，10 与 -121 会被前置判断直接排除）`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本次弹入 reversed 的数字' },
+      { color: 'var(--demo-info)', label: 'x 中还没处理的部分' },
+      { color: 'var(--demo-ok)', label: '比较相等' },
+      { color: 'var(--demo-danger)', label: '比较不等' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const digits = String(X).split('');
+      const left = String(step.x).length;
+      const popped = digits.length - left;
+  
+      const rowOrigin = Demo.el('div', 'row');
+      digits.forEach((ch, idx) => {
+        const col = Demo.el('div', 'col');
+        const cell = Demo.el('div', 'cell', Demo.esc(ch));
+        if (idx < popped) cell.classList.add('cell--dim');
+        else if (step.done && step.ok) cell.classList.add('is-ok');
+        else if (step.done) cell.classList.add('cell--dim');
+        else cell.classList.add('is-info');
+        col.appendChild(cell);
+        const ptr = Demo.el('div', 'ptr', idx === left - 1 ? 'x' : '');
+        if (!ptr.innerHTML) ptr.classList.add('ptr--dim');
+        col.appendChild(ptr);
+        rowOrigin.appendChild(col);
+      });
+  
+      const panelOrigin = Demo.el('div', 'panel');
+      panelOrigin.appendChild(Demo.el('div', 'panel__title',
+        `原始数字 ${X}（浅色为已弹出、加入 reversed 的末位；指针 x 指向剩余部分的末尾）`));
+      panelOrigin.appendChild(rowOrigin);
+      panelOrigin.style.width = '100%';
+      ctx.stage.appendChild(panelOrigin);
+  
+      const rowRev = digitCells(step.reversed, null, !step.done && step.digit != null);
+      const panelRev = Demo.el('div', 'panel');
+      panelRev.appendChild(Demo.el('div', 'panel__title',
+        `reversed = ${step.reversed}（把 x 弹出的一位一位倒着拼起来）`));
+      panelRev.appendChild(rowRev);
+      panelRev.style.width = '100%';
+      ctx.stage.appendChild(panelRev);
+  
+      if (step.blocked) {
+        const blocked = Demo.el('div', 'panel',
+          '<span class="tag tag--bad">前置判断已返回 false</span> 该输入不可能构成回文，主循环一次都不会执行。');
+        blocked.style.width = '100%';
+        blocked.style.textAlign = 'center';
+        ctx.stage.appendChild(blocked);
+        return;
+      }
+  
+      if (!step.done) {
+        const formula = Demo.el('div', 'panel',
+          `本步：reversed = (旧值) × 10 + x % 10 ，x = ⌊x / 10⌋ &nbsp;→&nbsp; `
+          + `<code>x = ${step.x}</code>&nbsp; <code>reversed = ${step.reversed}</code>`);
+        formula.style.width = '100%';
+        formula.style.textAlign = 'center';
+        ctx.stage.appendChild(formula);
+        return;
+      }
+  
+      const label = step.odd ? `⌊reversed / 10⌋ = ${step.half}` : `reversed = ${step.reversed}`;
+      ctx.stage.appendChild(comparePanel(`x = ${step.x}`, step.x, label, step.odd ? step.half : step.reversed, step.ok));
+      const verdict = Demo.el('div', 'panel',
+        `<span class="tag ${step.ok ? 'tag--ok' : 'tag--bad'}">${step.ok ? '是回文数' : '不是回文数'}</span>`
+        + `&nbsp; ${step.odd ? '奇数位：去掉中间那位再比，' : '偶数位：直接比较，'}`
+        + `只反转了一半数字，时间复杂度 O(log x)、空间 O(1)。`);
+      verdict.style.width = '100%';
+      verdict.style.textAlign = 'center';
+      ctx.stage.appendChild(verdict);
+    }
+  });
+  return Demo.__config
+}

@@ -1,0 +1,262 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/32-substring-with-concatenation-of-all-words-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const S = 'barfoothefoobarman';
+  const WORDS = ['foo', 'bar'];
+  const WORD_LEN = WORDS[0].length;
+  const TOTAL_LEN = WORD_LEN * WORDS.length;
+  const TARGET_COUNT = (function () {
+    const t = {};
+    WORDS.forEach(function (w) { t[w] = (t[w] || 0) + 1; });
+    return t;
+  })();
+  const KINDS = Object.keys(TARGET_COUNT).length;
+  const TARGET_TEXT = Object.keys(TARGET_COUNT).map(function (k) {
+    return k + ' × ' + TARGET_COUNT[k];
+  }).join('，');
+  
+  function buildSteps() {
+    const s = S;
+    const steps = [];
+    const results = [];
+  
+    steps.push({
+      offset: -1, left: 0, right: -WORD_LEN, windowCount: {}, matched: 0, results: [],
+      phase: 'init', word: '', inTarget: false, removedAt: -1, removedWord: '', recorded: false,
+      note: `初始化：s = "${s}"，words = [${WORDS.map(function (w) { return '"' + w + '"'; }).join(', ')}]。每个单词长度 wordLen = ${WORD_LEN}，共 ${WORDS.length} 个单词，所以任何串联子串的长度都固定为 ${WORD_LEN} × ${WORDS.length} = ${TOTAL_LEN}。目标词频 targetCount = { ${TARGET_TEXT} }。答案的起点不一定落在 ${WORD_LEN} 的整数倍上，因此外层要枚举 offset = 0 … ${WORD_LEN - 1} 共 ${WORD_LEN} 种偏移。`
+    });
+  
+    for (let offset = 0; offset < WORD_LEN; offset++) {
+      let left = offset;
+      let windowCount = {};
+      let matched = 0;
+  
+      steps.push({
+        offset: offset, left: left, right: offset - WORD_LEN, windowCount: {}, matched: 0,
+        results: results.slice(), phase: 'offset', word: '', inTarget: false,
+        removedAt: -1, removedWord: '', recorded: false,
+        note: `第 ${offset + 1} 轮扫描：offset = ${offset}。这一轮只在索引 ${offset}, ${offset + WORD_LEN}, ${offset + 2 * WORD_LEN}, … 处切单词，left 先放到 ${offset}，窗口词频清空，matched = 0。`
+      });
+  
+      for (let right = offset; right + WORD_LEN <= s.length; right += WORD_LEN) {
+        const word = s.slice(right, right + WORD_LEN);
+        const inTarget = (TARGET_COUNT[word] || 0) > 0;
+        const windowEnd = right + WORD_LEN;
+        let removedAt = -1;
+        let removedWord = '';
+        let recorded = false;
+  
+        steps.push({
+          offset: offset, left: left, right: right, windowCount: Object.assign({}, windowCount),
+          matched: matched, results: results.slice(), phase: 'probe', word: word, inTarget: inTarget,
+          removedAt: -1, removedWord: '', recorded: false,
+          note: `取出 s[${right}..${windowEnd - 1}] = "${word}"，右边界推进到 ${windowEnd}。当前窗口是 [${left}, ${windowEnd})，宽度 ${windowEnd - left}。` +
+            (inTarget
+              ? `"${word}" 在 words 中，目标需要 ${TARGET_COUNT[word]} 个，窗口里目前有 ${windowCount[word] || 0} 个。`
+              : `"${word}" 不在 words 中——只要窗口包含它，就不可能是 words 中所有单词的排列连接。`)
+        });
+  
+        if (inTarget) {
+          windowCount[word] = (windowCount[word] || 0) + 1;
+          const justMatched = windowCount[word] === TARGET_COUNT[word];
+          if (justMatched) matched++;
+  
+          let note = `把 "${word}" 计入窗口：windowCount["${word}"] = ${windowCount[word]}，目标需要 ${TARGET_COUNT[word]} 个 → ` +
+            (justMatched
+              ? `这一种刚好凑齐，matched 增加到 ${matched} / ${KINDS}。`
+              : `还没凑齐（还差 ${TARGET_COUNT[word] - windowCount[word]} 个），matched 保持 ${matched} / ${KINDS}。`);
+  
+          if (windowEnd - left > TOTAL_LEN) {
+            removedAt = left;
+            removedWord = s.slice(left, left + WORD_LEN);
+            if ((TARGET_COUNT[removedWord] || 0) > 0) {
+              if (windowCount[removedWord] === TARGET_COUNT[removedWord]) matched--;
+              windowCount[removedWord]--;
+            }
+            left = left + WORD_LEN;
+            note += ` 此时窗口 [${removedAt}, ${windowEnd}) 的宽度 ${windowEnd - removedAt} 大于固定长度 ${TOTAL_LEN}，左边界必须右移一个单词：把 ${removedAt} 处的 "${removedWord}" 移出窗口，left 变成 ${left}。`;
+            if ((TARGET_COUNT[removedWord] || 0) > 0) {
+              note += `移出后窗口里 "${removedWord}" 还剩 ${windowCount[removedWord]} 个，matched = ${matched} / ${KINDS}。`;
+            }
+            note += ` 这一步保证了检查时窗口里恰好只有 ${WORDS.length} 个单词。`;
+          } else {
+            note += ` 窗口 [${left}, ${windowEnd}) 宽度 ${windowEnd - left} 没有超过 ${TOTAL_LEN}，暂时不收缩。`;
+          }
+  
+          if (matched === KINDS) {
+            results.push(left);
+            recorded = true;
+            note += ` 窗口内 ${KINDS} 种单词的计数都与目标一致，宽度又正好是 ${TOTAL_LEN} → s[${left}..${windowEnd - 1}] = "${s.slice(left, windowEnd)}" 正是 words 的一种排列，把起点 ${left} 记入答案（当前答案 [${results.join(', ')}]）。`;
+          }
+  
+          steps.push({
+            offset: offset, left: left, right: right, windowCount: Object.assign({}, windowCount),
+            matched: matched, results: results.slice(), phase: 'update', word: word, inTarget: true,
+            removedAt: removedAt, removedWord: removedWord, recorded: recorded, note: note
+          });
+        } else {
+          windowCount = {};
+          matched = 0;
+          left = right + WORD_LEN;
+          steps.push({
+            offset: offset, left: left, right: right, windowCount: {}, matched: 0,
+            results: results.slice(), phase: 'update', word: word, inTarget: false,
+            removedAt: -1, removedWord: '', recorded: false,
+            note: `因为 "${word}" 不在 words 中，窗口在这里断开：清空窗口词频、matched 归零，left 直接跳到 ${left}（跳过这个非法单词），从下一个单词位置重新开始。任何跨越这个单词的窗口都不可能匹配，所以这样跳不会漏解。`
+          });
+        }
+      }
+    }
+  
+    const answerCount = {};
+    if (results.length) {
+      for (let k = results[0]; k < results[0] + TOTAL_LEN; k += WORD_LEN) {
+        const w = s.slice(k, k + WORD_LEN);
+        answerCount[w] = (answerCount[w] || 0) + 1;
+      }
+    }
+  
+    steps.push({
+      offset: -1, left: -1, right: -1, windowCount: answerCount, matched: results.length ? KINDS : 0,
+      results: results.slice(), phase: 'done', word: '', inTarget: false,
+      removedAt: -1, removedWord: '', recorded: false,
+      note: `${WORD_LEN} 种偏移全部扫描完毕。最终答案：[${results.join(', ')}]，对应子串 ${results.map(function (i) { return '"' + s.slice(i, i + TOTAL_LEN) + '"'; }).join('、')}。正确性：窗口被限制为恰好 ${TOTAL_LEN} 个字符，词频完全相等当且仅当这些单词恰好是 words 的一个排列；每个单词位置最多被左右指针各访问一次，所以总时间 O(wordLen × n)。`
+    });
+  
+    return steps;
+  }
+  
+  function charRow(step) {
+    const wrap = Demo.el('div', 'col');
+    const chars = S.split('');
+    const done = step.phase === 'done';
+    const showWindow = step.phase !== 'init' && step.phase !== 'done' && step.phase !== 'offset';
+    const winEnd = step.right + WORD_LEN;
+    const wordStart = step.right;
+    const wordEnd = step.right + WORD_LEN;
+    const perRow = 9;
+    let row = null;
+  
+    chars.forEach(function (ch, idx) {
+      if (idx % perRow === 0) {
+        row = Demo.el('div', 'row');
+        wrap.appendChild(row);
+      }
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(ch));
+  
+      if (done) {
+        const inAnswer = step.results.some(function (start) { return idx >= start && idx < start + TOTAL_LEN; });
+        cell.classList.add(inAnswer ? 'is-ok' : 'cell--dim');
+      } else if (showWindow && idx >= wordStart && idx < wordEnd) {
+        cell.classList.add('is-active');
+      } else if (showWindow && step.removedAt >= 0 && idx >= step.removedAt && idx < step.removedAt + WORD_LEN) {
+        cell.classList.add('is-warn');
+      } else if (showWindow && idx >= step.left && idx < winEnd) {
+        cell.classList.add(step.matched === KINDS ? 'is-ok' : 'is-info');
+      }
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (showWindow) {
+        if (idx === step.left) labels.push('left');
+        if (idx === step.right) labels.push('right');
+      }
+      const ptr = Demo.el('div', 'ptr', labels.length ? Demo.esc(labels.join(' ')) : String(idx));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+  
+    return wrap;
+  }
+  
+  function countTable(step) {
+    const rows = Object.keys(TARGET_COUNT).map(function (w) {
+      const got = step.windowCount[w] || 0;
+      const need = TARGET_COUNT[w];
+      const state = got === need ? '已凑齐' : (got > need ? '超出' : '还差 ' + (need - got));
+      const active = step.phase !== 'done' && step.word === w;
+      return `<tr class="${active ? 'is-active' : ''}"><td>${Demo.esc(w)}</td><td>${got}</td>` +
+        `<td>${need}</td><td>${state}</td></tr>`;
+    }).join('');
+    return Demo.el('table', 'map-table',
+      `<tr><th>单词</th><th>窗口计数</th><th>目标</th><th>状态</th></tr>${rows}`);
+  }
+  
+  Demo.create({
+    title: '32. 串联所有单词的子串 — 按单词跳跃的定长滑动窗口',
+    info: `输入：s = "${S}"，words = [${WORDS.map(function (w) { return '"' + w + '"'; }).join(', ')}]（示例 1，输出 [0, 9]）。串联子串长度固定为 ${TOTAL_LEN}，需要枚举 ${WORD_LEN} 种起点偏移。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 400,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前读入的单词' },
+      { color: 'var(--demo-info)', label: '当前窗口（≤ 固定长度）' },
+      { color: 'var(--demo-ok)', label: '词频完全匹配的窗口 / 最终答案' },
+      { color: 'var(--demo-warn)', label: '刚被移出窗口的单词' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const arrayPanel = Demo.el('div', 'panel');
+      arrayPanel.style.width = '100%';
+      arrayPanel.appendChild(Demo.el('div', 'panel__title',
+        step.phase === 'done'
+          ? '字符串 s（全部偏移扫描完毕）'
+          : (step.phase === 'init'
+            ? '字符串 s（尚未开始扫描）'
+            : `字符串 s（offset = ${step.offset} 这一轮，按步长 ${WORD_LEN} 切单词）`)));
+      arrayPanel.appendChild(charRow(step));
+      ctx.stage.appendChild(arrayPanel);
+  
+      const mid = Demo.el('div', 'row');
+      const tablePanel = Demo.el('div', 'panel');
+      tablePanel.appendChild(Demo.el('div', 'panel__title',
+        step.phase === 'done' ? '答案窗口的词频 windowCount 与目标词频对照' : '窗口词频 windowCount 与目标词频对照'));
+      tablePanel.appendChild(countTable(step));
+      mid.appendChild(tablePanel);
+  
+      const infoPanel = Demo.el('div', 'panel');
+      infoPanel.appendChild(Demo.el('div', 'panel__title', '窗口与匹配状态'));
+      const tagRow = Demo.el('div', 'row');
+      tagRow.appendChild(Demo.el('span', 'tag tag--info',
+        step.phase === 'init' || step.phase === 'done' || !step.word
+          ? '当前单词 = —'
+          : '当前单词 = "' + step.word + '"'));
+      const statusText = step.phase === 'init' || step.phase === 'done'
+        ? '等待扫描'
+        : (step.phase === 'offset' ? '新一轮开始' : (step.inTarget ? '在 words 中' : '不在 words 中'));
+      const statusClass = step.phase === 'init' || step.phase === 'done' || step.phase === 'offset'
+        ? ''
+        : (step.inTarget ? 'tag--ok' : 'tag--bad');
+      tagRow.appendChild(Demo.el('span', 'tag ' + statusClass, statusText));
+      infoPanel.appendChild(tagRow);
+  
+      const tagRow2 = Demo.el('div', 'row');
+      tagRow2.style.marginTop = '6px';
+      tagRow2.appendChild(Demo.el('span', 'tag tag--violet',
+        Demo.esc('matched = ' + step.matched + ' / ' + KINDS)));
+      tagRow2.appendChild(Demo.el('span', 'tag',
+        Demo.esc('窗口 = [' + (step.phase === 'init' || step.phase === 'done' ? '—' : step.left) +
+          ', ' + (step.phase === 'init' || step.phase === 'done' ? '—' : step.right + WORD_LEN) + ')')));
+      if (step.recorded) tagRow2.appendChild(Demo.el('span', 'tag tag--ok', '匹配成功，记录起点'));
+      infoPanel.appendChild(tagRow2);
+      mid.appendChild(infoPanel);
+      ctx.stage.appendChild(mid);
+  
+      const result = Demo.el('div', 'panel',
+        `targetCount 共 <strong>${KINDS}</strong> 种单词 ｜ offset = <strong>${step.phase === 'init' || step.phase === 'done' ? '—' : step.offset}</strong> ｜ left = <strong>${step.phase === 'done' ? '—' : step.left}</strong> ｜ 已找到起点 = <strong>[${step.results.join(', ')}]</strong>` +
+        (step.phase === 'done'
+          ? ` &nbsp;<span class="tag tag--ok">答案 = [${step.results.join(', ')}]</span>`
+          : ''));
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

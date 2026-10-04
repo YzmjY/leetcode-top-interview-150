@@ -1,0 +1,238 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/76-path-sum-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const TREE = [5, 4, 8, 11, null, 13, 4, 7, 2, null, null, null, 1];
+  const TARGET = 22;
+  
+  const NODE_PAINT = {
+    default: ['var(--demo-subtle)', 'var(--demo-border)', 'var(--demo-text)'],
+    accent:  ['var(--demo-accent-soft)', 'var(--demo-accent)', 'var(--demo-accent-strong)'],
+    ok:      ['var(--demo-ok-soft)', 'var(--demo-ok)', 'var(--demo-ok)'],
+    bad:     ['var(--demo-danger-soft)', 'var(--demo-danger)', 'var(--demo-danger)'],
+    warn:    ['var(--demo-warn-soft)', 'var(--demo-warn)', 'var(--demo-warn)'],
+    violet:  ['var(--demo-violet-soft)', 'var(--demo-violet)', 'var(--demo-violet)']
+  };
+  
+  function buildTree(arr) {
+    if (!arr.length || arr[0] == null) return null;
+    let seq = 0;
+    const root = { id: seq++, val: arr[0], left: null, right: null };
+    const queue = [root];
+    let i = 1;
+    while (i < arr.length && queue.length) {
+      const node = queue.shift();
+      const lv = arr[i++];
+      if (lv != null) { node.left = { id: seq++, val: lv, left: null, right: null }; queue.push(node.left); }
+      if (i < arr.length) {
+        const rv = arr[i++];
+        if (rv != null) { node.right = { id: seq++, val: rv, left: null, right: null }; queue.push(node.right); }
+      }
+    }
+    return root;
+  }
+  
+  function snapTree(node) {
+    if (!node) return null;
+    return { id: node.id, val: node.val, left: snapTree(node.left), right: snapTree(node.right) };
+  }
+  
+  function treeSVG(root, paintOf, badgeOf) {
+    if (!root) return '<div class="panel" style="width:100%;text-align:center">（空树）</div>';
+    const pos = {};
+    let count = 0, maxDepth = 0;
+    (function walk(node, depth) {
+      if (!node) return;
+      walk(node.left, depth + 1);
+      pos[node.id] = { x: count++, y: depth };
+      if (depth > maxDepth) maxDepth = depth;
+      walk(node.right, depth + 1);
+    })(root, 0);
+  
+    const gapX = 66, gapY = 78, padX = 36, padY = 32, r = 21;
+    const W = count * gapX + padX * 2;
+    const H = (maxDepth + 1) * gapY + padY * 2;
+    const cx = id => padX + pos[id].x * gapX + gapX / 2;
+    const cy = id => padY + pos[id].y * gapY + gapY / 2;
+  
+    let edges = '';
+    (function drawEdges(node) {
+      if (!node) return;
+      [node.left, node.right].forEach(child => {
+        if (!child) return;
+        const dx = pos[child.id].x - pos[node.id].x;
+        const dy = pos[child.id].y - pos[node.id].y;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        edges += '<line x1="' + (cx(node.id) + dx / len * r).toFixed(1) + '" y1="' + (cy(node.id) + dy / len * r).toFixed(1) +
+          '" x2="' + (cx(child.id) - dx / len * r).toFixed(1) + '" y2="' + (cy(child.id) - dy / len * r).toFixed(1) +
+          '" style="stroke:var(--demo-border);stroke-width:2"/>';
+        drawEdges(child);
+      });
+    })(root);
+  
+    let nodes = '';
+    (function drawNodes(node) {
+      if (!node) return;
+      let info = paintOf ? paintOf(node) : null;
+      if (typeof info === 'string') info = { state: info };
+      info = info || {};
+      const paint = NODE_PAINT[info.state] || NODE_PAINT.default;
+      if (info.ring) {
+        nodes += '<circle cx="' + cx(node.id) + '" cy="' + cy(node.id) + '" r="' + (r + 6) + '" style="fill:none;stroke:' + info.ring + ';stroke-width:3"/>';
+      }
+      nodes += '<circle cx="' + cx(node.id) + '" cy="' + cy(node.id) + '" r="' + r + '" style="fill:' + paint[0] + ';stroke:' + paint[1] + ';stroke-width:2.5"/>';
+      nodes += '<text x="' + cx(node.id) + '" y="' + (cy(node.id) + 6) + '" text-anchor="middle" style="fill:' + paint[2] + ';font:600 16px sans-serif">' + Demo.esc(node.val) + '</text>';
+      const badge = badgeOf ? badgeOf(node) : null;
+      if (badge) {
+        nodes += '<text x="' + cx(node.id) + '" y="' + (cy(node.id) + r + 17) + '" text-anchor="middle" style="fill:var(--demo-muted);font:600 12px sans-serif">' + Demo.esc(badge) + '</text>';
+      }
+      drawNodes(node.left);
+      drawNodes(node.right);
+    })(root);
+  
+    return '<div style="width:100%"><svg viewBox="0 0 ' + W + ' ' + (H + 20) + '" style="width:100%;height:auto;display:block;max-height:430px">' + edges + nodes + '</svg></div>';
+  }
+  
+  function buildSteps() {
+    const root = buildTree(TREE);
+    const steps = [];
+    const path = [];
+    const failed = [];
+    let found = null;
+    let answerPath = null;
+  
+    function snap(note, extra) {
+      const step = {
+        tree: snapTree(root),
+        note: note,
+        path: path.map(n => ({ id: n.id, val: n.val })),
+        failed: failed.slice()
+      };
+      if (found != null) step.found = found;
+      if (answerPath) step.answerPath = answerPath.slice();
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    snap('初始状态：targetSum = 22，从根节点 5 开始 DFS。path 记录根到当前节点的路径，remain 表示「还差多少才能凑够 22」。', { remain: TARGET, active: root.id });
+  
+    function dfs(node, remain) {
+      if (!node) {
+        snap('顺着一边走到空节点，这条分支不可能构成完整路径，直接返回 false。', { remain: remain });
+        return false;
+      }
+  
+      path.push(node);
+      remain -= node.val;
+  
+      if (!node.left && !node.right) {
+        const ok = remain === 0;
+        if (ok) {
+          found = node.id;
+          answerPath = path.map(n => ({ id: n.id, val: n.val }));
+        } else {
+          failed.push(node.id);
+        }
+        snap('节点 ' + node.val + ' 是叶子，路径 [' + path.map(n => n.val).join(' → ') + '] 的和为 ' + (TARGET - remain) +
+          '，remain = ' + remain + (ok
+            ? '，恰好为 0 —— 这条路径成立，返回 true。'
+            : '，不为 0 —— 这条路径不成立，返回 false 并回溯。'), { remain: remain, active: node.id, leaf: node.id });
+        path.pop();
+        return ok;
+      }
+  
+      snap('进入节点 ' + node.val + '（不是叶子），remain = ' + TARGET + ' 减去已走过节点的和 = ' + remain + '，继续向下搜索。', { remain: remain, active: node.id });
+  
+      if (dfs(node.left, remain)) {
+        snap('左子树返回 true。因为代码写的是 `hasPathSum(left) || hasPathSum(right)`，或运算短路，节点 ' + node.val + ' 直接返回 true，右子树不再访问。', { remain: remain, active: node.id });
+        path.pop();
+        return true;
+      }
+      snap('左子树返回 false，当前节点 ' + node.val + ' 还不能确定，转去搜索右子树。', { remain: remain, active: node.id });
+      if (dfs(node.right, remain)) {
+        snap('右子树返回 true，节点 ' + node.val + ' 随之返回 true，结果继续往上传递。', { remain: remain, active: node.id });
+        path.pop();
+        return true;
+      }
+      snap('左右子树都返回 false，节点 ' + node.val + ' 只能返回 false，回溯到父节点。', { remain: remain, active: node.id });
+      path.pop();
+      return false;
+    }
+  
+    const result = dfs(root, TARGET);
+    snap('DFS 结束，hasPathSum = ' + result + '。命中的路径是 5 → 4 → 11 → 2，和为 22。时间 O(n)，空间 O(h) 递归栈。', { remain: 0, done: true, result: result });
+  
+    return steps;
+  }
+  
+  Demo.create({
+    title: '76. 路径总和 — 自顶向下 DFS + 剩余和',
+    info: 'root = [5,4,8,11,null,13,4,7,2,null,null,null,1]，targetSum = 22，答案应为 true（路径 5 → 4 → 11 → 2）。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 480,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前递归路径上的节点' },
+      { color: 'var(--demo-ok)', label: '命中目标的叶子' },
+      { color: 'var(--demo-danger)', label: '走不通的叶子' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = treeSVG(step.tree, node => {
+        if (step.done) {
+          if (step.answerPath && step.answerPath.some(e => e.id === node.id)) return 'ok';
+          if (step.failed.indexOf(node.id) >= 0) return 'bad';
+          return 'default';
+        }
+        if (step.found === node.id) return 'ok';
+        if (step.failed.indexOf(node.id) >= 0) return 'bad';
+        if (step.path.some(p => p.id === node.id)) return 'accent';
+        return 'default';
+      }, node => (step.active === node.id && step.remain != null) ? 'remain ' + step.remain : null);
+      ctx.stage.appendChild(wrap);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-start';
+      row.style.gap = '12px';
+  
+      const pathPanel = Demo.el('div', 'panel');
+      pathPanel.style.flex = '1';
+      pathPanel.appendChild(Demo.el('div', 'panel__title', '当前递归路径 path'));
+      const pathRow = Demo.el('div', 'row');
+      pathRow.style.justifyContent = 'flex-start';
+      const shown = (step.done && step.answerPath) ? step.answerPath : step.path;
+      if (shown.length === 0) {
+        pathRow.appendChild(Demo.el('div', 'cell cell--empty', '空'));
+      } else {
+        shown.forEach((entry, k) => {
+          if (k) pathRow.appendChild(Demo.el('div', 'arrow', '→'));
+          const cell = Demo.el('div', 'cell', Demo.esc(entry.val));
+          if (entry.id === step.found) cell.classList.add('is-ok');
+          else if (entry.id === step.active) cell.classList.add('is-active');
+          pathRow.appendChild(cell);
+        });
+      }
+      pathPanel.appendChild(pathRow);
+  
+      const sumPanel = Demo.el('div', 'panel');
+      sumPanel.appendChild(Demo.el('div', 'panel__title', '剩余和 remain'));
+      sumPanel.appendChild(Demo.el('div', null,
+        'targetSum = <strong>' + TARGET + '</strong><br>' +
+        'remain = <strong>' + (step.remain == null ? '—' : step.remain) + '</strong><br>' +
+        (step.done
+          ? '<span class="tag ' + (step.result ? 'tag--ok' : 'tag--bad') + '">返回 ' + step.result + '</span>'
+          : '<span class="tag tag--info">搜索中</span>')));
+  
+      row.appendChild(pathPanel);
+      row.appendChild(sumPanel);
+      ctx.stage.appendChild(row);
+    }
+  });
+  return Demo.__config
+}

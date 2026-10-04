@@ -1,0 +1,179 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/51-minimum-number-of-arrows-to-burst-balloons-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const POINTS = [[10, 16], [2, 8], [1, 6], [7, 12]];
+  
+  function buildSteps() {
+    const arr = POINTS.map(function (p) { return [p[0], p[1]]; });
+    const n = arr.length;
+    const steps = [];
+    let arrows = [];
+    let arrowPos = null;
+  
+    function snap(o) {
+      steps.push({
+        arr: arr.map(function (p) { return [p[0], p[1]]; }),
+        arrows: arrows.map(function (a) { return { pos: a.pos, covers: a.covers.slice() }; }),
+        arrowPos: arrowPos,
+        cur: o.cur == null ? -1 : o.cur,
+        key: o.key == null ? -1 : o.key,
+        phase: o.phase,
+        note: o.note
+      });
+    }
+  
+    snap({
+      phase: 'init',
+      note: '初始状态：points = [[10,16], [2,8], [1,6], [7,12]]，一共 4 个气球，起点顺序是乱的。贪心策略是「按右端点升序排序，每次把箭射在当前最紧迫气球的右端点上」，所以先排序。'
+    });
+  
+    for (let k = 1; k < n; k++) {
+      const key = arr[k];
+      snap({
+        phase: 'sort-pick', key: k,
+        note: '插入排序：取出 [' + key[0] + ', ' + key[1] + ']，按右端点 x_end = ' + key[1] + ' 在左边已排序的区间里找位置。'
+      });
+      let j = k - 1;
+      while (j >= 0 && arr[j][1] > key[1]) {
+        const moved = arr[j];
+        arr[j + 1] = arr[j];
+        snap({
+          phase: 'sort-move', key: k, cur: j,
+          note: '比较右端点：' + moved[1] + ' > ' + key[1] + '，区间 [' + moved[0] + ', ' + moved[1] + '] 的右端点更大、没那么紧迫，把它后移一位让位。'
+        });
+        j -= 1;
+      }
+      arr[j + 1] = key;
+      snap({
+        phase: 'sort-put', key: j + 1,
+        note: '把 [' + key[0] + ', ' + key[1] + '] 放到下标 ' + (j + 1) + '。右端点越小越先被处理，这样一支箭射在它的右端点时，最有可能顺带覆盖后面更多的气球。'
+      });
+    }
+  
+    snap({
+      phase: 'sorted',
+      note: '排序完成：' + arr.map(function (p) { return '[' + p[0] + ',' + p[1] + ']'; }).join('、') + '，右端点单调不减。接下来一趟线性扫描即可。'
+    });
+  
+    arrows = [{ pos: arr[0][1], covers: [0] }];
+    arrowPos = arr[0][1];
+    snap({
+      phase: 'shoot-first', cur: 0,
+      note: '第一个气球 [' + arr[0][0] + ', ' + arr[0][1] + '] 的右端点 ' + arr[0][1] + ' 是所有右端点里最小的。把第一支箭射在 x = ' + arrowPos + '：这是能引爆它、又尽量靠右的位置。箭数 arrows = 1。'
+    });
+  
+    for (let i = 1; i < n; i++) {
+      const p = arr[i];
+      if (p[0] > arrowPos) {
+        arrows.push({ pos: p[1], covers: [i] });
+        arrowPos = p[1];
+        snap({
+          phase: 'new-arrow', cur: i,
+          note: '气球 [' + p[0] + ', ' + p[1] + '] 的起点 ' + p[0] + ' > 当前箭的位置 ' + arrowPos + '，说明现在这支箭够不到它。必须再射一支：射在它的右端点 ' + p[1] + '（同样取右端点，给后面的气球留出最大覆盖范围）。arrows = ' + arrows.length + '。'
+        });
+      } else {
+        arrows[arrows.length - 1].covers.push(i);
+        snap({
+          phase: 'covered', cur: i,
+          note: '气球 [' + p[0] + ', ' + p[1] + '] 的起点 ' + p[0] + ' ≤ 当前箭的位置 ' + arrowPos + ' ≤ 它的右端点 ' + p[1] + '，所以被第 ' + arrows.length + ' 支箭顺带引爆，不用增加箭数。'
+        });
+      }
+    }
+  
+    snap({
+      phase: 'done',
+      note: '所有气球都处理完，最少需要 ' + arrows.length + ' 支箭，位置分别在 x = ' + arrows.map(function (a) { return a.pos; }).join(' 和 x = ')
+        + '。按右端点排序保证每次都能用一支箭覆盖尽量多的气球，所以这个贪心得到的就是最优解。复杂度 O(n log n)。'
+    });
+  
+    return steps;
+  }
+  
+  function render(step, idx, ctx) {
+    ctx.stage.innerHTML = '';
+  
+    const xMin = 0, xMax = 18, X0 = 44, X1 = 756;
+    function xs(v) { return X0 + v * (X1 - X0) / (xMax - xMin); }
+  
+    const n = step.arr.length;
+    const rowsTop = 30, rowH = 30;
+    const rowsBottom = rowsTop + n * rowH;
+    const axisY = rowsBottom + 8;
+    const H = axisY + 40;
+  
+    const isSortPhase = step.phase.indexOf('sort-') === 0 || step.phase === 'init';
+  
+    const p = [];
+    p.push('<svg viewBox="0 0 800 ' + H + '" style="width:100%;max-width:800px;height:auto;display:block" role="img">');
+    p.push('<text x="8" y="16" style="fill:var(--demo-muted);font-size:12px;font-weight:700">'
+      + (isSortPhase ? '气球（按右端点排序进行中）' : '气球（已按右端点升序）') + '</text>');
+  
+    for (let k = 0; k < n; k++) {
+      const pt = step.arr[k];
+      const y = rowsTop + k * rowH;
+      const covered = step.arrows.some(function (a) { return pt[0] <= a.pos && a.pos <= pt[1]; });
+      let fill = 'var(--demo-subtle)';
+      let stroke = 'var(--demo-border)';
+      if (k === step.key) { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; }
+      else if (k === step.cur) { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; }
+      else if (covered) { fill = 'var(--demo-ok-soft)'; stroke = 'var(--demo-ok)'; }
+      else if (step.cur >= 0 && k < step.cur) { fill = 'var(--demo-subtle)'; stroke = 'var(--demo-border)'; }
+  
+      const dim = step.cur >= 0 && k < step.cur && k !== step.cur ? ';opacity:0.5' : '';
+      p.push('<rect x="' + xs(pt[0]) + '" y="' + y + '" width="' + Math.max(10, xs(pt[1]) - xs(pt[0])) + '" height="20" rx="10" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2' + dim + '"/>');
+      p.push('<text x="' + ((xs(pt[0]) + xs(pt[1])) / 2) + '" y="' + (y + 14) + '" text-anchor="middle" style="fill:var(--demo-text);font-size:11px;font-weight:700;font-family:var(--demo-mono)">[' + pt[0] + ',' + pt[1] + ']</text>');
+      p.push('<text x="20" y="' + (y + 14) + '" text-anchor="middle" style="fill:var(--demo-muted);font-size:10px;font-family:var(--demo-mono)">' + k + '</text>');
+    }
+  
+    step.arrows.forEach(function (a, k) {
+      const x = xs(a.pos);
+      p.push('<line x1="' + x + '" y1="' + (rowsTop - 6) + '" x2="' + x + '" y2="' + (rowsBottom - 4) + '" style="stroke:var(--demo-danger);stroke-width:2;stroke-dasharray:5 3"/>');
+      p.push('<polygon points="' + (x - 6) + ',' + (rowsTop - 16) + ' ' + (x + 6) + ',' + (rowsTop - 16) + ' ' + x + ',' + (rowsTop - 6) + '" style="fill:var(--demo-danger)"/>');
+      p.push('<text x="' + x + '" y="' + (rowsTop - 20) + '" text-anchor="middle" style="fill:var(--demo-danger);font-size:11px;font-weight:700;font-family:var(--demo-mono)">箭' + (k + 1) + '</text>');
+    });
+  
+    p.push('<line x1="' + (X0 - 10) + '" y1="' + axisY + '" x2="' + (X1 + 10) + '" y2="' + axisY + '" style="stroke:var(--demo-border);stroke-width:1.5"/>');
+    for (let v = xMin; v <= xMax; v++) {
+      p.push('<line x1="' + xs(v) + '" y1="' + axisY + '" x2="' + xs(v) + '" y2="' + (axisY + 4) + '" style="stroke:var(--demo-border);stroke-width:1"/>');
+      if (v % 2 === 0) p.push('<text x="' + xs(v) + '" y="' + (axisY + 16) + '" text-anchor="middle" style="fill:var(--demo-muted);font-size:9px;font-family:var(--demo-mono)">' + v + '</text>');
+    }
+    p.push('<text x="' + (X1 + 4) + '" y="' + (axisY + 16) + '" style="fill:var(--demo-muted);font-size:10px">x</text>');
+    p.push('</svg>');
+  
+    const chart = Demo.el('div', 'col');
+    chart.style.width = '100%';
+    chart.innerHTML = p.join('');
+    ctx.stage.appendChild(chart);
+  
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.style.textAlign = 'center';
+    const arrowTags = step.arrows.map(function (a, k) {
+      return '<span class="tag tag--bad">箭 ' + (k + 1) + ' @ x = ' + a.pos + '（覆盖 ' + a.covers.length + ' 个）</span>';
+    }).join(' &nbsp; ');
+    panel.innerHTML = (isSortPhase || step.arrows.length === 0
+      ? '<span class="tag tag--warn">还没有射箭</span>'
+      : arrowTags)
+      + ' &nbsp; 当前箭数：<code>' + step.arrows.length + '</code>'
+      + (step.phase === 'done' ? ' &nbsp;<span class="tag tag--ok">答案 ' + step.arrows.length + ' 支箭</span>' : '');
+    ctx.stage.appendChild(panel);
+  }
+  
+  Demo.create({
+    title: '51. 用最少数量的箭引爆气球 — 按右端点排序的贪心',
+    info: '输入：points = [[10,16], [2,8], [1,6], [7,12]]（示例 1）。每支箭是一条竖线，射在 x = 6 和 x = 12 处可引爆全部 4 个气球，答案为 2。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 300,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前处理的气球' },
+      { color: 'var(--demo-danger)', label: '射出的箭（竖线位置）' },
+      { color: 'var(--demo-ok)', label: '已被某支箭覆盖的气球' }
+    ],
+    render: render
+  });
+  return Demo.__config
+}

@@ -1,0 +1,187 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/47-longest-consecutive-sequence-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [100, 4, 200, 1, 3, 2];
+  
+  function buildSteps() {
+    const steps = [];
+    const set = new Set(NUMS);
+    const sorted = Array.from(set).sort(function (a, b) { return a - b; });
+    let longest = 0;
+  
+    function snap(extra) {
+      const step = { longest: longest, note: extra.note };
+      Object.keys(extra).forEach(function (key) {
+        if (key !== 'note') step[key] = extra[key];
+      });
+      steps.push(step);
+    }
+  
+    snap({
+      phase: 'init', i: -1, num: null, query: null, queryFound: false, run: [], len: 0, skip: false,
+      note: `先把所有数字放进哈希集合：{${sorted.join(', ')}}，这样判断「某个数在不在」只需 O(1)。然后遍历原数组，对每个数 num 检查 num − 1 是否也在集合里：如果在，说明 num 只是某个更长序列的中间点，跳过它；如果不在，num 就是一个序列的起点，从它出发向右延伸数长度。这样每个数最多被访问两次，整体 O(n)。`
+    });
+  
+    NUMS.forEach(function (num, i) {
+      const hasPrev = set.has(num - 1);
+  
+      if (hasPrev) {
+        snap({
+          phase: 'skip', i: i, num: num, query: num - 1, queryFound: true, run: [], len: 0, skip: true,
+          note: `处理 num = ${num}：查询 num − 1 = ${num - 1}，它存在于集合中，说明 ${num} 不是序列起点（从 ${num - 1} 开始数会得到更长的序列），直接跳过，不做任何延伸。正是这一步保证每个数字只被当作起点统计一次，复杂度才是 O(n) 而不是 O(n²)。`
+        });
+        return;
+      }
+  
+      snap({
+        phase: 'start', i: i, num: num, query: num - 1, queryFound: false, run: [num], len: 1, skip: false,
+        note: `处理 num = ${num}：查询 num − 1 = ${num - 1}，它不在集合中，说明 ${num} 是一个连续序列的起点。从它开始向右延伸，当前序列 [${num}]，长度 1。`
+      });
+  
+      let cur = num;
+      let len = 1;
+      const run = [num];
+  
+      while (set.has(cur + 1)) {
+        cur += 1;
+        len += 1;
+        run.push(cur);
+        snap({
+          phase: 'extend', i: i, num: num, query: cur, queryFound: true, run: run.slice(), len: len, skip: false,
+          note: `查询 ${cur - 1} + 1 = ${cur}，它在集合中，于是把 ${cur} 接到序列末尾，序列变成 [${run.join(', ')}]，当前长度 ${len}。继续看下一个数还在不在。`
+        });
+      }
+  
+      const next = cur + 1;
+      const prevLongest = longest;
+      const improved = len > longest;
+      if (improved) longest = len;
+  
+      snap({
+        phase: 'update', i: i, num: num, query: next, queryFound: false, run: run.slice(), len: len,
+        prevLongest: prevLongest, improved: improved, skip: false,
+        note: `查询 ${cur} + 1 = ${next}，它不在集合中，序列到此结束，长度为 ${len}。与历史最长 ${prevLongest} 比较：` +
+          (improved ? `${len} > ${prevLongest}，更新 longest = ${len}。` : `${len} ≤ ${prevLongest}，longest 保持不变。`) +
+          ` 注意延伸过程只用了哈希查找，总查找次数与数字个数成正比。`
+      });
+    });
+  
+    snap({
+      phase: 'done', i: NUMS.length, num: null, query: null, queryFound: false,
+      run: [1, 2, 3, 4], len: 4, skip: false,
+      note: `数组遍历完毕，全程记录的最长长度是 ${longest}，对应序列 [1, 2, 3, 4]。虽然这些数字在数组里并不相邻，但哈希集合只关心「值是否连续」。复杂度：时间 O(n)，空间 O(n)。`
+    });
+  
+    return steps;
+  }
+  
+  function arrayPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', '输入数组 nums（按原顺序遍历）'));
+    const row = Demo.el('div', 'row');
+    NUMS.forEach(function (num, i) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(num));
+      if (i === step.i && step.phase !== 'done') cell.classList.add('is-active');
+      else if (i < step.i || step.phase === 'done') cell.classList.add('cell--dim');
+      col.appendChild(cell);
+      const ptr = Demo.el('div', 'ptr', String(i));
+      if (i !== step.i) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  function setPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', '哈希集合（已排序显示，方便观察连续性）'));
+    const sorted = Array.from(new Set(NUMS)).sort(function (a, b) { return a - b; });
+    const row = Demo.el('div', 'row');
+    sorted.forEach(function (value) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(value));
+      if (step.query === value && step.phase !== 'init') cell.classList.add(step.queryFound ? 'is-ok' : 'is-bad');
+      else if (step.run.indexOf(value) >= 0) cell.classList.add('is-active');
+      col.appendChild(cell);
+      const label = Demo.el('div', 'ptr', step.query === value ? (step.queryFound ? '在' : '不在') : '·');
+      if (step.query !== value) label.classList.add('ptr--dim');
+      col.appendChild(label);
+      row.appendChild(col);
+    });
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  function runPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', '当前正在延伸的连续序列'));
+    const row = Demo.el('div', 'row');
+    if (step.run.length === 0) {
+      row.appendChild(Demo.el('span', 'tag tag--info', step.phase === 'skip' ? '不是起点，跳过' : '（尚未开始）'));
+    } else {
+      step.run.forEach(function (value, idx) {
+        if (idx > 0) row.appendChild(Demo.el('div', 'arrow', '→'));
+        const cell = Demo.el('div', 'cell', Demo.esc(value));
+        if (idx === step.run.length - 1 && step.phase !== 'update') cell.classList.add('is-active');
+        else cell.classList.add('is-ok');
+        row.appendChild(cell);
+      });
+    }
+    panel.appendChild(row);
+  
+    const tags = Demo.el('div', 'row');
+    tags.style.marginTop = '6px';
+    tags.appendChild(Demo.el('span', 'tag tag--violet', '当前长度 = ' + step.len));
+    tags.appendChild(Demo.el('span', 'tag tag--ok', '历史最长 = ' + step.longest));
+    panel.appendChild(tags);
+    return panel;
+  }
+  
+  Demo.create({
+    title: '47. 最长连续序列 — 只从序列起点向右延伸',
+    info: `输入：nums = [${NUMS.join(', ')}]（示例 1，输出 4，最长序列为 [1,2,3,4]）。先用哈希集合换 O(1) 查找，再让每个连续序列只被它的起点统计一次。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 420,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前遍历的元素 / 已延伸的序列' },
+      { color: 'var(--demo-ok)', label: '查询命中：该数存在于集合中' },
+      { color: 'var(--demo-danger)', label: '查询落空：序列在这里断开' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      ctx.stage.appendChild(arrayPanel(step));
+      ctx.stage.appendChild(setPanel(step));
+      ctx.stage.appendChild(runPanel(step));
+  
+      const state = Demo.el('div', 'panel');
+      state.style.width = '100%';
+      state.style.textAlign = 'center';
+      if (step.phase === 'init') {
+        state.innerHTML = `集合中共 ${new Set(NUMS).size} 个不同的数 &nbsp;<span class="tag tag--warn">准备开始遍历</span>`;
+      } else if (step.phase === 'skip') {
+        state.innerHTML = `${step.num - 1} 在集合中，${step.num} 不是起点 &nbsp;<span class="tag tag--info">跳过</span>`;
+      } else if (step.phase === 'start') {
+        state.innerHTML = `${Demo.esc(step.num)} − 1 不在集合中，${Demo.esc(step.num)} 作为起点 &nbsp;<span class="tag tag--warn">开始延伸</span>`;
+      } else if (step.phase === 'extend') {
+        state.innerHTML = `找到 ${step.query}，序列长度增加到 ${step.len} &nbsp;<span class="tag tag--ok">继续向右找</span>`;
+      } else if (step.phase === 'update') {
+        state.innerHTML = `序列 [${step.run.join(', ')}] 长度为 ${step.len} &nbsp;` +
+          (step.improved ? '<span class="tag tag--ok">刷新 longest</span>' : '<span class="tag tag--info">未能刷新</span>');
+      } else {
+        state.innerHTML = `最长连续序列长度 = ${step.longest} &nbsp;<span class="tag tag--ok">返回 ${step.longest}</span>`;
+      }
+      ctx.stage.appendChild(state);
+    }
+  });
+  return Demo.__config
+}

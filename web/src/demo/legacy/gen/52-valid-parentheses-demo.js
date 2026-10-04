@@ -1,0 +1,167 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/52-valid-parentheses-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const S = '()[]{}';
+  const PAIRS = { ')': '(', ']': '[', '}': '{' };
+  
+  function buildSteps() {
+    const stack = [];
+    const steps = [];
+  
+    function snap(o) {
+      steps.push({
+        i: o.i,
+        ch: o.ch == null ? null : o.ch,
+        stack: stack.slice(),
+        phase: o.phase,
+        action: o.action,
+        note: o.note
+      });
+    }
+  
+    snap({
+      i: 0, ch: null, phase: 'init', action: '初始化',
+      note: '初始状态：栈为空，i = 0 指向字符串第一个字符。map 里登记了「右括号 → 对应的左括号」，这样遇到右括号时能一眼看出该弹出哪个左括号。'
+    });
+  
+    for (let i = 0; i < S.length; i++) {
+      const ch = S[i];
+      if (PAIRS[ch]) {
+        const want = PAIRS[ch];
+        if (stack.length === 0) {
+          snap({
+            i: i, ch: ch, phase: 'fail-empty', action: '返回 false',
+            note: '遇到右括号 ' + ch + '，但栈是空的，没有任何未闭合的左括号可以配对它 → 直接返回 false。'
+          });
+          return steps;
+        }
+        const top = stack[stack.length - 1];
+        if (top !== want) {
+          snap({
+            i: i, ch: ch, phase: 'fail-mismatch', action: '返回 false',
+            note: '遇到右括号 ' + ch + '，栈顶是 ' + top + '，而它需要的是 ' + want + '，类型不匹配 → 直接返回 false。'
+          });
+          return steps;
+        }
+        stack.pop();
+        snap({
+          i: i, ch: ch, phase: 'pop', action: '弹出栈顶',
+          note: '遇到右括号 ' + ch + '：它需要的左括号是 ' + want + '，栈顶恰好是 ' + want + '，配对成功 → 弹出栈顶。剩余栈内容：' + (stack.length ? stack.join(' ') : '（空）') + '。'
+        });
+      } else {
+        stack.push(ch);
+        snap({
+          i: i, ch: ch, phase: 'push', action: '入栈',
+          note: '字符 ' + ch + ' 是左括号，先记下它，压入栈中等待配对。栈自下而上的内容：' + stack.join(' ') + '。'
+        });
+      }
+    }
+  
+    snap({
+      i: S.length, ch: null, phase: 'done', action: '返回 true',
+      note: '字符串扫描完毕，栈里还有 ' + stack.length + ' 个元素。'
+        + (stack.length === 0
+          ? '栈为空，说明每个左括号都按后进先出的顺序被正确的右括号闭合了 → 返回 true。'
+          : '栈不为空，说明还有左括号没被闭合 → 返回 false。')
+    });
+  
+    return steps;
+  }
+  
+  function render(step, idx, ctx) {
+    ctx.stage.innerHTML = '';
+  
+    const charPanel = Demo.el('div', 'panel');
+    charPanel.style.width = '100%';
+    charPanel.appendChild(Demo.el('div', 'panel__title', '字符串 s（只含括号）'));
+    const charRow = Demo.el('div', 'row');
+    for (let k = 0; k < S.length; k++) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(S[k]));
+      if (step.i === k && step.ch != null) {
+        cell.classList.add(step.phase === 'pop' ? 'is-ok' : (step.phase.indexOf('fail') === 0 ? 'is-bad' : 'is-active'));
+      } else if (step.i > k || step.phase === 'done') {
+        cell.classList.add('is-info');
+      }
+      col.appendChild(cell);
+      const ptr = Demo.el('div', 'ptr', step.i === k ? 'i' : String(k));
+      if (step.i !== k) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      charRow.appendChild(col);
+    }
+    charPanel.appendChild(charRow);
+    ctx.stage.appendChild(charPanel);
+  
+    const row = Demo.el('div', 'row');
+    row.style.width = '100%';
+    row.style.alignItems = 'flex-start';
+  
+    const stackPanel = Demo.el('div', 'panel');
+    stackPanel.appendChild(Demo.el('div', 'panel__title', '栈（自下而上入栈，上方为栈顶）'));
+    const stackBox = Demo.el('div', 'stack');
+    if (step.stack.length === 0) {
+      stackBox.appendChild(Demo.el('div', 'stack__item', '（空）'));
+    } else {
+      step.stack.forEach(function (c, k) {
+        const item = Demo.el('div', 'stack__item', Demo.esc(c));
+        if (k === step.stack.length - 1 && (step.phase === 'pop' || step.phase.indexOf('fail') === 0)) {
+          item.classList.add('is-active');
+        }
+        stackBox.appendChild(item);
+      });
+    }
+    stackPanel.appendChild(stackBox);
+    if (step.phase === 'pop') {
+      stackPanel.appendChild(Demo.el('div', 'ptr ptr--ok', '刚弹出：' + Demo.esc(step.ch)));
+    } else if (step.phase === 'push') {
+      stackPanel.appendChild(Demo.el('div', 'ptr', '刚入栈：' + Demo.esc(step.ch)));
+    }
+    row.appendChild(stackPanel);
+  
+    const infoPanel = Demo.el('div', 'panel');
+    infoPanel.appendChild(Demo.el('div', 'panel__title', '本次操作'));
+    infoPanel.appendChild(Demo.el('div', null, '<span class="tag'
+      + (step.phase === 'init' ? ' tag--warn' : (step.phase.indexOf('fail') === 0 ? ' tag--bad' : ' tag--info')) + '">'
+      + Demo.esc(step.action) + '</span>'));
+    infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">当前字符：<code>'
+      + (step.ch == null ? '—' : Demo.esc(step.ch)) + '</code></div>'));
+    infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:6px">栈大小：<code>' + step.stack.length + '</code></div>'));
+    infoPanel.appendChild(Demo.el('div', null, step.phase === 'done'
+      ? '<div style="margin-top:8px">' + (step.stack.length === 0
+        ? '<span class="tag tag--ok">结果 true</span>'
+        : '<span class="tag tag--bad">结果 false</span>') + '</div>'
+      : ''));
+    row.appendChild(infoPanel);
+  
+    ctx.stage.appendChild(row);
+  
+    const mapPanel = Demo.el('div', 'panel');
+    mapPanel.style.width = '100%';
+    let t = '<table class="map-table" style="margin:0 auto"><tr><th>右括号</th><th>需要的左括号</th></tr>';
+    [')', ']', '}'].forEach(function (r) {
+      const active = step.ch === r;
+      t += '<tr' + (active ? ' class="is-active"' : '') + '><td>' + r + '</td><td>' + PAIRS[r] + '</td></tr>';
+    });
+    t += '</table>';
+    mapPanel.innerHTML = '<div class="panel__title">配对映射表 map</div>' + t;
+    ctx.stage.appendChild(mapPanel);
+  }
+  
+  Demo.create({
+    title: '52. 有效的括号 — 栈 + 括号映射表',
+    info: '输入：s = "()[]{}"（示例 2），期望输出 true。左括号入栈；遇到右括号就检查栈顶是否为对应的左括号，匹配则弹出，否则立即返回 false；最终栈必须为空。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 360,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前字符（左括号，入栈）' },
+      { color: 'var(--demo-ok)', label: '配对成功，弹出栈顶' },
+      { color: 'var(--demo-danger)', label: '不匹配 / 栈为空，返回 false' }
+    ],
+    render: render
+  });
+  return Demo.__config
+}

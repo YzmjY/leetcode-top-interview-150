@@ -1,0 +1,279 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/98-implement-trie-prefix-tree-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const OPS = [
+    { op: 'insert', word: 'apple' },
+    { op: 'search', word: 'apple' },
+    { op: 'search', word: 'app' },
+    { op: 'startsWith', word: 'app' },
+    { op: 'insert', word: 'app' },
+    { op: 'search', word: 'app' }
+  ];
+  
+  function snapshotTrie(root) {
+    const nodes = {};
+    const order = [];
+    (function walk(n) {
+      const children = {};
+      Object.keys(n.children).sort().forEach(k => { children[k] = n.children[k].id; });
+      nodes[n.id] = {
+        id: n.id, ch: n.ch, isEnd: n.isEnd, word: n.word,
+        parent: n.parent ? n.parent.id : null, children: children
+      };
+      order.push(n.id);
+      Object.keys(n.children).sort().forEach(k => walk(n.children[k]));
+    })(root);
+    return { nodes: nodes, order: order, root: root.id };
+  }
+  
+  function layoutTrie(tree) {
+    const pos = {};
+    let leaf = 0;
+    let depth = 0;
+    (function walk(id, d) {
+      const n = tree.nodes[id];
+      depth = Math.max(depth, d);
+      const keys = Object.keys(n.children);
+      if (keys.length === 0) {
+        pos[id] = { x: d * 78 + 52, y: leaf * 62 + 42 };
+        leaf += 1;
+        return pos[id].y;
+      }
+      let sum = 0;
+      keys.forEach(k => { sum += walk(n.children[k], d + 1); });
+      pos[id] = { x: d * 78 + 52, y: sum / keys.length };
+      return pos[id].y;
+    })(tree.root, 0);
+    return { pos: pos, depth: depth, leaves: Math.max(leaf, 1) };
+  }
+  
+  function trieSvg(tree, opt) {
+    const o = opt || {};
+    const lay = layoutTrie(tree);
+    const width = lay.depth * 78 + 130;
+    const height = Math.max(lay.leaves * 62 + 90, 150);
+    let out = '';
+  
+    tree.order.forEach(id => {
+      const n = tree.nodes[id];
+      Object.keys(n.children).forEach(k => {
+        const cid = n.children[k];
+        const p = lay.pos[id];
+        const q = lay.pos[cid];
+        const onPath = o.chain && o.chain.indexOf(id) >= 0 && o.chain.indexOf(cid) >= 0;
+        out += '<line x1="' + (p.x + 25) + '" y1="' + p.y + '" x2="' + (q.x - 25) + '" y2="' + q.y +
+          '" style="stroke:' + (onPath ? 'var(--demo-accent)' : 'var(--demo-border)') + ';stroke-width:' + (onPath ? 3.5 : 2) + '"/>';
+      });
+    });
+  
+    tree.order.forEach(id => {
+      const n = tree.nodes[id];
+      const p = lay.pos[id];
+      let fill = 'var(--demo-subtle)';
+      let text = 'var(--demo-text)';
+      if (o.chain && o.chain.indexOf(id) >= 0) { fill = 'var(--demo-accent-soft)'; text = 'var(--demo-accent-strong)'; }
+      if (o.created && o.created.indexOf(id) >= 0) { fill = 'var(--demo-ok-soft)'; text = 'var(--demo-ok)'; }
+      if (o.failed && o.failed.indexOf(id) >= 0) { fill = 'var(--demo-danger-soft)'; text = 'var(--demo-danger)'; }
+      if (o.curNode === id) {
+        out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="31" style="fill:none;stroke:var(--demo-warn);stroke-width:3"/>';
+      }
+      if (n.isEnd) {
+        out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="27" style="fill:none;stroke:var(--demo-ok);stroke-width:2.5"/>';
+      }
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="23" style="fill:' + fill + ';stroke:var(--demo-border);stroke-width:2"/>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle" style="fill:' + text +
+        ';font:600 14px monospace">' + (n.ch === '' ? '根' : n.ch) + '</text>';
+    });
+  
+    return '<div style="width:100%"><svg viewBox="0 0 ' + width + ' ' + height + '" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    let nextId = 0;
+    function makeNode(ch, parent) {
+      return { id: nextId++, ch: ch, parent: parent, children: {}, isEnd: false, word: '' };
+    }
+    const root = makeNode('', null);
+    const log = [];
+  
+    function snap(note, extra) {
+      const step = {
+        trie: snapshotTrie(root),
+        log: log.map(l => ({ op: l.op, result: l.result })),
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    snap('初始：Trie 只有一个根节点。每个节点包含 26 个子指针和一个 isEnd 标记——isEnd 用来区分「apple 本身是单词」和「app 只是某个单词的前缀」。');
+  
+    OPS.forEach(op => {
+      const label = op.op + '("' + op.word + '")';
+      log.push({ op: label, result: '进行中' });
+      const li = log.length - 1;
+      const isInsert = op.op === 'insert';
+  
+      if (isInsert) {
+        let node = root;
+        let chain = [root.id];
+        const created = [];
+        const firstNote = 'insert("' + op.word + '")：从根节点出发，沿单词的字符逐层向下走；子节点不存在就新建，存在就复用（共享前缀，不重复建）。';
+        snap(firstNote, { opLabel: label, curWord: op.word, index: -1, matched: 0, curNode: root.id, chain: chain.slice(), created: created.slice(), logActive: li });
+  
+        for (let i = 0; i < op.word.length; i++) {
+          const ch = op.word[i];
+          let nxt = node.children[ch];
+          const isNew = !nxt;
+          if (isNew) {
+            nxt = makeNode(ch, node);
+            node.children[ch] = nxt;
+            created.push(nxt.id);
+          }
+          node = nxt;
+          chain = chain.concat(nxt.id);
+          snap('insert("' + op.word + '") 第 ' + (i + 1) + ' 个字符 "' + ch + '"：当前节点下' +
+            (isNew ? '没有这个子节点 → 新建一个节点（绿色）' : '已经有这个子节点 → 直接复用，这就是前缀共享') +
+            '，指针下移。当前已插入前缀 "' + op.word.slice(0, i + 1) + '"。',
+            { opLabel: label, curWord: op.word, index: i, matched: i + 1, curNode: node.id, chain: chain.slice(), created: created.slice(), logActive: li });
+        }
+  
+        node.isEnd = true;
+        log[li].result = 'null';
+        snap('走完 "' + op.word + '" 的 ' + op.word.length + ' 个字符后，把最后一个节点的 isEnd 置为 true（图中多出一圈绿色细环）——' +
+          '这一步才真正声明 "' + op.word + '" 是一个完整单词，否则它只是别的前缀。insert 没有返回值。',
+          { opLabel: label, curWord: op.word, index: op.word.length - 1, matched: op.word.length, curNode: node.id, chain: chain.slice(), created: created.slice(), logActive: li, markEnd: true });
+        return;
+      }
+  
+      const isSearch = op.op === 'search';
+      snap(op.op + '("' + op.word + '")：和插入一样从根节点逐字符下行，但一个字符对不上就立刻返回 false，不必再看后面的字符。',
+        { opLabel: label, curWord: op.word, index: -1, matched: 0, curNode: root.id, chain: [root.id], logActive: li });
+  
+      let node = root;
+      let chain = [root.id];
+      let failed = false;
+  
+      for (let i = 0; i < op.word.length; i++) {
+        const ch = op.word[i];
+        const nxt = node.children[ch];
+        if (!nxt) {
+          failed = true;
+          log[li].result = 'false';
+          snap(op.op + '("' + op.word + '")：需要字符 "' + ch + '"（第 ' + (i + 1) + ' 个），但节点"' +
+            (node.ch === '' ? '根' : node.ch) + '"下没有这个子节点 → 路径断裂，直接返回 false。',
+            { opLabel: label, curWord: op.word, index: i, matched: i, curNode: node.id, chain: chain.slice(), failedNode: node.id, logActive: li });
+          break;
+        }
+        node = nxt;
+        chain = chain.concat(nxt.id);
+        snap(op.op + '("' + op.word + '")：第 ' + (i + 1) + ' 个字符 "' + ch + '" 匹配成功，指针下移到前缀 "' +
+          op.word.slice(0, i + 1) + '" 对应的节点。',
+          { opLabel: label, curWord: op.word, index: i, matched: i + 1, curNode: node.id, chain: chain.slice(), logActive: li });
+      }
+  
+      if (!failed) {
+        let res;
+        let note;
+        if (isSearch) {
+          res = node.isEnd;
+          note = 'search("' + op.word + '")：' + op.word.length + ' 个字符全部匹配，停在 "' + op.word + '" 的节点上，检查 isEnd = ' + res +
+            ' → 返回 ' + res + '。' + (res ? '（说明这个词被 insert 过）' : '（路径存在只说明它是某个已插入单词的前缀，search 要求整个词被插入过）');
+        } else {
+          res = true;
+          note = 'startsWith("' + op.word + '")：' + op.word.length + ' 个字符全部匹配，节点存在即可返回 true —— startsWith 不检查 isEnd，' +
+            '所以即使 "' + op.word + '" 本身还没被插入，只要它是某个单词的前缀就成立。';
+        }
+        log[li].result = String(res);
+        snap(note, { opLabel: label, curWord: op.word, index: op.word.length - 1, matched: op.word.length, curNode: node.id, chain: chain.slice(), logActive: li, result: res, checkEnd: isSearch });
+      }
+    });
+  
+    snap('全部操作结束。Trie 中共 ' + nextId + ' 个节点（含根）。注意 insert("apple") 之后 search("app") 返回 false，' +
+      '而 insert("app") 只是把 "app" 末节点的 isEnd 置为 true，并没有新建任何节点——这就是 isEnd 标记的作用。',
+      { done: true });
+    return steps;
+  }
+  
+  function wordCells(step) {
+    const row = Demo.el('div', 'row');
+    for (let i = 0; i < step.curWord.length; i++) {
+      const cell = Demo.el('div', 'cell', Demo.esc(step.curWord[i]));
+      if (i < step.matched) {
+        cell.classList.add('is-ok');
+      } else if (i === step.index && i >= step.matched) {
+        cell.classList.add('is-bad');
+      } else {
+        cell.classList.add('cell--dim');
+      }
+      row.appendChild(cell);
+    }
+    return row;
+  }
+  
+  Demo.create({
+    title: '98. 实现 Trie（前缀树）— 逐字符下行与 isEnd 标记',
+    info: '操作序列：insert("apple")、search("apple")、search("app")、startsWith("app")、insert("app")、search("app")，期望结果 [null, true, false, true, null, true]。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 480,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前匹配路径 / 正在处理的节点' },
+      { color: 'var(--demo-ok)', label: '本次新建的节点 / isEnd 单词结尾' },
+      { color: 'var(--demo-warn)', label: '当前指针所在节点' },
+      { color: 'var(--demo-danger)', label: '匹配失败的位置' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = trieSvg(step.trie, { chain: step.chain, created: step.created, curNode: step.curNode, failed: step.failedNode != null ? [step.failedNode] : [] });
+      ctx.stage.appendChild(wrap);
+  
+      const bottom = Demo.el('div', 'row');
+      bottom.style.width = '100%';
+      bottom.style.alignItems = 'flex-start';
+  
+      const opPanel = Demo.el('div', 'panel');
+      opPanel.appendChild(Demo.el('div', 'panel__title', '当前操作'));
+      opPanel.appendChild(Demo.el('div', null, 'Trie.' + (step.opLabel || '完成')));
+      if (step.curWord) {
+        const row = Demo.el('div', 'row');
+        row.appendChild(wordCells(step));
+        opPanel.appendChild(row);
+      }
+      if (step.result != null) {
+        opPanel.appendChild(Demo.el('div', null, '返回：<span class="tag ' + (step.result ? 'tag--ok' : 'tag--bad') + '">' + step.result + '</span>'));
+      } else if (step.markEnd) {
+        opPanel.appendChild(Demo.el('div', null, '<span class="tag tag--ok">isEnd = true</span>'));
+      } else if (step.checkEnd) {
+        opPanel.appendChild(Demo.el('div', null, '<span class="tag tag--warn">检查 isEnd</span>'));
+      } else {
+        opPanel.appendChild(Demo.el('div', null, '<span class="tag tag--info">匹配中</span>'));
+      }
+      opPanel.appendChild(Demo.el('div', 'panel__title', 'isEnd 为 true 的节点会在图中多出一圈绿色细环'));
+  
+      const logPanel = Demo.el('div', 'panel');
+      logPanel.style.flex = '1';
+      logPanel.appendChild(Demo.el('div', 'panel__title', '操作日志'));
+      let table = '<table class="map-table"><tr><th>操作</th><th>返回</th></tr>';
+      step.log.forEach((entry, k) => {
+        table += '<tr' + (k === step.logActive ? ' class="is-active"' : '') + '><td>' + Demo.esc(entry.op) + '</td><td>' +
+          Demo.esc(entry.result) + '</td></tr>';
+      });
+      if (!step.log.length) table += '<tr><td colspan="2">（还没有操作）</td></tr>';
+      table += '</table>';
+      logPanel.appendChild(Demo.el('div', null, table));
+  
+      bottom.appendChild(opPanel);
+      bottom.appendChild(logPanel);
+      ctx.stage.appendChild(bottom);
+    }
+  });
+  return Demo.__config
+}

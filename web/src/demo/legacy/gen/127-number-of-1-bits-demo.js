@@ -1,0 +1,188 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/127-number-of-1-bits-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const N = 11;
+  
+  function bin32(v) {
+    return (v >>> 0).toString(2).padStart(32, '0');
+  }
+  
+  function lowBitPos(v) {
+    let p = 0;
+    let t = v >>> 0;
+    while ((t & 1) === 0) {
+      t = t >>> 1;
+      p += 1;
+    }
+    return p;
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    let n = N >>> 0;
+    let count = 0;
+  
+    steps.push({
+      n, nBefore: n, nMinus1: null, andVal: null, count, lowPos: lowBitPos(n),
+      phase: 'init',
+      note: `初始化：n = ${N}，二进制 ${bin32(N)}，count = 0。只要 n 不为 0，就执行一次 n = n & (n - 1)。`
+    });
+  
+    while (n !== 0) {
+      const nBefore = n;
+      const lowPos = lowBitPos(n);
+      const nMinus1 = (n - 1) >>> 0;
+      const andVal = (n & (n - 1)) >>> 0;
+      n = andVal;
+      count += 1;
+      steps.push({
+        n, nBefore, nMinus1, andVal, count, lowPos, phase: 'clear',
+        note: `第 ${count} 次：n 最低位的 1 在第 ${lowPos} 位。n - 1 把这位变成 0、把它右边的位全变成 1；` +
+          `两者相与后，这一位连同它右边都归零，最低位的 1 被消掉，count 加 1，n 变为 ${n}（${bin32(n)}）。`
+      });
+    }
+  
+    steps.push({
+      n, nBefore: n, nMinus1: null, andVal: null, count, lowPos: null, phase: 'done',
+      note: `此时 n 已经等于 0，循环结束。每次循环恰好消掉一个 1，循环执行的次数就是答案：1 的个数为 ${count}。`
+    });
+  
+    return steps;
+  }
+  
+  function labelNode(text) {
+    const node = Demo.el('div', 'panel__title', Demo.esc(text));
+    node.style.width = '76px';
+    node.style.textAlign = 'right';
+    node.style.marginBottom = '0';
+    return node;
+  }
+  
+  function groupRow(bits, decorate) {
+    const row = Demo.el('div', 'row');
+    row.style.gap = '12px';
+    for (let g = 0; g < 4; g++) {
+      const col = Demo.el('div', 'col');
+      col.style.gap = '4px';
+      const head = Demo.el('div', 'panel__title', `位 ${31 - g * 8}–${24 - g * 8}`);
+      head.style.fontSize = '11px';
+      head.style.marginBottom = '0';
+      col.appendChild(head);
+  
+      const grp = Demo.el('div', 'row');
+      grp.style.gap = '2px';
+      grp.style.flexWrap = 'nowrap';
+      for (let k = 0; k < 8; k++) {
+        const idx = g * 8 + k;
+        const cell = Demo.el('div', 'cell cell--sm');
+        cell.textContent = bits[idx];
+        cell.style.minWidth = '20px';
+        cell.style.width = '20px';
+        cell.style.height = '26px';
+        cell.style.fontSize = '12px';
+        cell.style.padding = '0';
+        decorate(cell, idx);
+        grp.appendChild(cell);
+      }
+      col.appendChild(grp);
+      row.appendChild(col);
+    }
+    return row;
+  }
+  
+  function byteRow(label, byteBits, decorate) {
+    const row = Demo.el('div', 'row');
+    row.appendChild(labelNode(label));
+    for (let k = 0; k < 8; k++) {
+      const cell = Demo.el('div', 'cell cell--sm');
+      cell.textContent = byteBits[k];
+      cell.style.minWidth = '30px';
+      cell.style.fontSize = '13px';
+      decorate(cell, k);
+      row.appendChild(cell);
+    }
+    return row;
+  }
+  
+  function bytePtrs(col) {
+    const row = Demo.el('div', 'row');
+    row.appendChild(labelNode(''));
+    for (let k = 0; k < 8; k++) {
+      const ptr = Demo.el('div', 'ptr', k === col ? '▲' : '');
+      ptr.style.minWidth = '30px';
+      row.appendChild(ptr);
+    }
+    return row;
+  }
+  
+  Demo.create({
+    title: '127. 位1的个数 — Brian Kernighan 算法：n = n & (n-1) 消除最低位的 1',
+    info: `输入：n = ${N}（32 位无符号整数，二进制 ${bin32(N)}），返回二进制表达式中 1 的个数。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前被消除的最低位 1' },
+      { color: 'var(--demo-warn)', label: 'n-1 中翻转的位' },
+      { color: 'var(--demo-ok)', label: '相与后清零的位 / 计数器' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+      const byteOf = v => (v & 0xff).toString(2).padStart(8, '0').split('');
+      const lowInByte = step.lowPos == null ? null : (step.lowPos < 8 ? step.lowPos : null);
+      const markCol = lowInByte == null ? -1 : 7 - lowInByte;
+  
+      const topLabel = Demo.el('div', 'panel__title',
+        `当前 n = ${step.n}　二进制 ${bin32(step.n)}`);
+      topLabel.style.marginBottom = '4px';
+      ctx.stage.appendChild(topLabel);
+  
+      ctx.stage.appendChild(groupRow(bin32(step.n).split(''), (cell, idx) => {
+        if (markCol >= 0 && idx === 31 - step.lowPos) cell.classList.add('is-active');
+        else if (cell.textContent === '0') cell.classList.add('cell--dim');
+      }));
+  
+      const detail = Demo.el('div', 'col');
+      detail.style.gap = '6px';
+      detail.style.marginTop = '10px';
+  
+      if (step.phase === 'clear') {
+        detail.appendChild(byteRow('n =', byteOf(step.nBefore), (cell, k) => {
+          if (k === markCol) cell.classList.add('is-active');
+        }));
+        detail.appendChild(bytePtrs(markCol));
+        detail.appendChild(byteRow('n - 1 =', byteOf(step.nMinus1), (cell, k) => {
+          if (markCol >= 0 && k >= markCol) cell.classList.add('is-warn');
+        }));
+        detail.appendChild(byteRow('n & (n-1) =', byteOf(step.andVal), (cell, k) => {
+          if (markCol >= 0 && k >= markCol) cell.classList.add('is-ok');
+        }));
+      } else {
+        detail.appendChild(byteRow('n 低 8 位 =', byteOf(step.n), (cell, k) => {
+          if (k === markCol) cell.classList.add('is-active');
+        }));
+      }
+      ctx.stage.appendChild(detail);
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.style.textAlign = 'center';
+      if (step.phase === 'done') {
+        panel.innerHTML =
+          `1 的个数 = <strong>${step.count}</strong>　` +
+          `<span class="tag tag--ok">n 已归零，循环结束</span>`;
+      } else if (step.phase === 'init') {
+        panel.innerHTML =
+          `count = <span class="tag">0</span>，最低位的 1 在第 ${step.lowPos} 位，准备开始第一次消除。`;
+      } else {
+        panel.innerHTML =
+          `最低位的 1 在第 ${step.lowPos} 位：n &amp; (n-1) = <strong>${step.andVal}</strong>　` +
+          `count = <span class="tag tag--ok">${step.count}</span>`;
+      }
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

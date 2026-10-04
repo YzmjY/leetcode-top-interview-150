@@ -1,0 +1,226 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/35-spiral-matrix-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const MATRIX = [
+    [1, 2, 3, 4],
+    [5, 6, 7, 8],
+    [9, 10, 11, 12]
+  ];
+  const M = MATRIX.length;
+  const N = MATRIX[0].length;
+  
+  const DIR_NAME = ['左 → 右（上边界）', '上 → 下（右边界）', '右 → 左（下边界）', '下 → 上（左边界）'];
+  
+  function buildSteps() {
+    let top = 0, bottom = M - 1, left = 0, right = N - 1;
+    const result = [];
+    const visited = [];
+    const steps = [];
+  
+    function snapshot(extra) {
+      return Object.assign({
+        top: top, bottom: bottom, left: left, right: right,
+        result: result.slice(),
+        visited: visited.map(function (p) { return p.slice(); })
+      }, extra);
+    }
+  
+    function visit(r, c, dir) {
+      const value = MATRIX[r][c];
+      result.push(value);
+      visited.push([r, c]);
+      steps.push(snapshot({
+        kind: 'visit', dir: dir, cell: [r, c],
+        note: '取值 matrix[' + r + '][' + c + '] = ' + value + '，追加到结果末尾（当前第 ' + result.length + ' 个元素）。'
+      }));
+    }
+  
+    steps.push(snapshot({
+      kind: 'init', dir: null, cell: null,
+      note: '初始化四条边界：top=' + top + '、bottom=' + bottom + '、left=' + left + '、right=' + right +
+        '，只要 top ≤ bottom 且 left ≤ right 就继续按顺时针走一圈。'
+    }));
+  
+    let round = 0;
+    while (top <= bottom && left <= right) {
+      round++;
+      const before = { top: top, bottom: bottom, left: left, right: right };
+  
+      steps.push(snapshot({
+        kind: 'seg', dir: 0, cell: null,
+        note: '第 ' + round + ' 轮 · ① ' + DIR_NAME[0] + '：j 从 left=' + left + ' 到 right=' + right + '，收集 top=' + top + ' 这一行的元素。'
+      }));
+      for (let j = left; j <= right; j++) visit(top, j, 0);
+      top++;
+      steps.push(snapshot({
+        kind: 'shrink', dir: 0, cell: null,
+        note: '上边界整行已收集完，收缩：top ' + before.top + ' → ' + top + '，下一次循环不会再碰这一行。'
+      }));
+  
+      steps.push(snapshot({
+        kind: 'seg', dir: 1, cell: null,
+        note: '② ' + DIR_NAME[1] + '：i 从 top=' + top + ' 到 bottom=' + bottom + '，收集 right=' + right + ' 这一列的元素。'
+      }));
+      for (let i = top; i <= bottom; i++) visit(i, right, 1);
+      right--;
+      steps.push(snapshot({
+        kind: 'shrink', dir: 1, cell: null,
+        note: '右边界整列已收集完，收缩：right ' + before.right + ' → ' + right + '。'
+      }));
+  
+      if (top <= bottom) {
+        steps.push(snapshot({
+          kind: 'guard', dir: 2, cell: null,
+          note: '③ 先检查 top ≤ bottom（' + top + ' ≤ ' + bottom + ' 成立），才可以从右到左收集 bottom=' + bottom + ' 这一行，否则单行矩阵会被重复收集。'
+        }));
+        for (let j = right; j >= left; j--) visit(bottom, j, 2);
+        const oldBottom = bottom;
+        bottom--;
+        steps.push(snapshot({
+          kind: 'shrink', dir: 2, cell: null,
+          note: '下边界整行已收集完，收缩：bottom ' + oldBottom + ' → ' + bottom + '。'
+        }));
+      } else {
+        steps.push(snapshot({
+          kind: 'guard', dir: 2, cell: null,
+          note: '③ 检查 top ≤ bottom（' + top + ' ≤ ' + bottom + ' 不成立），说明剩下的行已经被上面两步取完，跳过下边界，避免重复。'
+        }));
+      }
+  
+      if (left <= right) {
+        steps.push(snapshot({
+          kind: 'guard', dir: 3, cell: null,
+          note: '④ 先检查 left ≤ right（' + left + ' ≤ ' + right + ' 成立），才可以从下到上收集 left=' + left + ' 这一列。'
+        }));
+        for (let i = bottom; i >= top; i--) visit(i, left, 3);
+        const oldLeft = left;
+        left++;
+        steps.push(snapshot({
+          kind: 'shrink', dir: 3, cell: null,
+          note: '左边界整列已收集完，收缩：left ' + oldLeft + ' → ' + left + '。'
+        }));
+      } else {
+        steps.push(snapshot({
+          kind: 'guard', dir: 3, cell: null,
+          note: '④ 检查 left ≤ right（' + left + ' ≤ ' + right + ' 不成立），剩下的列已被取完，跳过左边界，避免重复。'
+        }));
+      }
+    }
+  
+    steps.push(snapshot({
+      kind: 'done', dir: null, cell: null,
+      note: '边界交叉（top=' + top + ' > bottom=' + bottom + '），循环结束。共访问 ' + result.length +
+        ' 个元素，即矩阵全部 ' + (M * N) + ' 格，结果为 [' + result.join(', ') + ']。'
+    }));
+  
+    return steps;
+  }
+  
+  function isVisited(step, r, c) {
+    for (let i = 0; i < step.visited.length; i++) {
+      if (step.visited[i][0] === r && step.visited[i][1] === c) return i;
+    }
+    return -1;
+  }
+  
+  function ptrNode(text, cls) {
+    const node = Demo.el('div', 'ptr' + (cls ? ' ' + cls : ''), text);
+    node.style.height = '36px';
+    node.style.display = 'flex';
+    node.style.alignItems = 'center';
+    node.style.justifyContent = 'center';
+    return node;
+  }
+  
+  Demo.create({
+    title: '35. 螺旋矩阵 — 边界收缩，顺时针剥圈',
+    info: '输入：3 行 4 列矩阵 [[1,2,3,4],[5,6,7,8],[9,10,11,12]]，按顺时针螺旋顺序返回全部 12 个元素。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前取值格子' },
+      { color: 'var(--demo-ok)', label: '已收集的元素（角标是收集顺序）' },
+      { color: 'var(--demo-warn)', label: 'top / bottom / left / right 指针' },
+      { color: 'var(--demo-muted)', label: '已收缩、不在当前边界圈内' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div', 'row');
+      wrap.style.alignItems = 'flex-start';
+      wrap.style.gap = '8px';
+  
+      const rowPtrs = Demo.el('div', 'col');
+      for (let r = 0; r < M; r++) {
+        let text = '', cls = 'ptr--dim';
+        if (step.top === r && step.bottom === r) { text = 'tb'; cls = 'ptr--warn'; }
+        else if (step.top === r) { text = 'top'; cls = 'ptr--warn'; }
+        else if (step.bottom === r) { text = 'bottom'; cls = 'ptr--warn'; }
+        rowPtrs.appendChild(ptrNode(text, cls));
+      }
+      wrap.appendChild(rowPtrs);
+  
+      const body = Demo.el('div', 'col');
+      body.style.gap = '6px';
+  
+      const grid = Demo.el('div', 'grid');
+      grid.style.gridTemplateColumns = 'repeat(' + N + ', 48px)';
+      for (let r = 0; r < M; r++) {
+        for (let c = 0; c < N; c++) {
+          const cell = Demo.el('div', 'grid-cell', Demo.esc(MATRIX[r][c]));
+          cell.style.height = '36px';
+          const order = isVisited(step, r, c);
+          const current = step.cell && step.cell[0] === r && step.cell[1] === c;
+          if (current) cell.classList.add('is-active');
+          else if (order >= 0) cell.classList.add('is-ok');
+          else if (r < step.top || r > step.bottom || c < step.left || c > step.right) cell.classList.add('is-dim');
+          if (order >= 0) {
+            cell.innerHTML = Demo.esc(MATRIX[r][c]) +
+              '<span style="font-size:10px;color:var(--demo-muted);margin-left:3px;">' + (order + 1) + '</span>';
+          }
+          grid.appendChild(cell);
+        }
+      }
+      body.appendChild(grid);
+  
+      const colPtrs = Demo.el('div', 'row');
+      for (let c = 0; c < N; c++) {
+        const node = ptrNode('', 'ptr--dim');
+        node.style.width = '48px';
+        node.style.minWidth = '48px';
+        if (step.left === c && step.right === c) { node.textContent = 'lr'; node.className = 'ptr ptr--warn'; }
+        else if (step.left === c) { node.textContent = 'left'; node.className = 'ptr ptr--warn'; }
+        else if (step.right === c) { node.textContent = 'right'; node.className = 'ptr ptr--warn'; }
+        colPtrs.appendChild(node);
+      }
+      body.appendChild(colPtrs);
+      wrap.appendChild(body);
+      ctx.stage.appendChild(wrap);
+  
+      const tags = Demo.el('div', 'row');
+      tags.appendChild(Demo.el('div', 'tag', 'top = ' + step.top));
+      tags.appendChild(Demo.el('div', 'tag', 'bottom = ' + step.bottom));
+      tags.appendChild(Demo.el('div', 'tag', 'left = ' + step.left));
+      tags.appendChild(Demo.el('div', 'tag', 'right = ' + step.right));
+      if (step.dir != null) {
+        tags.appendChild(Demo.el('div', 'tag tag--warn', '第 ' + (step.dir + 1) + ' 步：' + DIR_NAME[step.dir]));
+      }
+      ctx.stage.appendChild(tags);
+  
+      const resultRow = Demo.el('div', 'row');
+      resultRow.appendChild(Demo.el('div', 'panel__title', 'result'));
+      for (let k = 0; k < step.result.length; k++) {
+        const cell = Demo.el('div', 'cell cell--sm', Demo.esc(step.result[k]));
+        if (k === step.result.length - 1) cell.classList.add('is-active');
+        else cell.classList.add('is-ok');
+        resultRow.appendChild(cell);
+      }
+      if (!step.result.length) resultRow.appendChild(Demo.el('div', 'ptr ptr--dim', '空'));
+      ctx.stage.appendChild(resultRow);
+    }
+  });
+  return Demo.__config
+}

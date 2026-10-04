@@ -1,0 +1,220 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/34-valid-sudoku-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const BOARD = [
+    ['8', '3', '.', '.', '7', '.', '.', '.', '.'],
+    ['6', '.', '.', '1', '9', '5', '.', '.', '.'],
+    ['.', '9', '8', '.', '.', '.', '.', '6', '.'],
+    ['8', '.', '.', '.', '6', '.', '.', '.', '3'],
+    ['4', '.', '.', '8', '.', '3', '.', '.', '1'],
+    ['7', '.', '.', '.', '2', '.', '.', '.', '6'],
+    ['.', '6', '.', '.', '.', '.', '2', '8', '.'],
+    ['.', '.', '.', '4', '1', '9', '.', '.', '5'],
+    ['.', '.', '.', '.', '8', '.', '.', '7', '9']
+  ];
+  
+  function boxOf(r, c) {
+    return Math.floor(r / 3) * 3 + Math.floor(c / 3);
+  }
+  
+  function buildSteps() {
+    const rows = [], cols = [], boxes = [];
+    const rowsAt = [], colsAt = [], boxesAt = [];
+    for (let k = 0; k < 9; k++) {
+      rows.push({}); cols.push({}); boxes.push({});
+      rowsAt.push({}); colsAt.push({}); boxesAt.push({});
+    }
+    const marked = [];
+    const steps = [];
+  
+    function digits(map) {
+      return Object.keys(map).sort();
+    }
+  
+    function fmt(list) {
+      return list.length ? '{' + list.join(',') + '}' : '空';
+    }
+  
+    function snapshot(r, c, b, extra) {
+      return Object.assign({
+        r: r, c: c, boxIdx: b,
+        conflictWith: null,
+        marked: marked.map(function (p) { return p.slice(); }),
+        rowDigits: r == null ? [] : digits(rows[r]),
+        colDigits: c == null ? [] : digits(cols[c]),
+        boxDigits: b == null ? [] : digits(boxes[b])
+      }, extra);
+    }
+  
+    steps.push(snapshot(null, null, null, {
+      kind: 'init',
+      note: '开始扫描 9×9 棋盘。为每一行、每一列、每个 3×3 宫各维护一张「已出现数字」表；遇到空白格 . 直接跳过。'
+    }));
+  
+    let stop = false;
+    for (let r = 0; r < 9 && !stop; r++) {
+      for (let c = 0; c < 9 && !stop; c++) {
+        const v = BOARD[r][c];
+        if (v === '.') continue;
+  
+        const b = boxOf(r, c);
+        const inRow = !!rows[r][v];
+        const inCol = !!cols[c][v];
+        const inBox = !!boxes[b][v];
+        const where = inRow ? rowsAt[r][v] : (inCol ? colsAt[c][v] : boxesAt[b][v]);
+  
+        if (inRow || inCol || inBox) {
+          const hitName = inRow ? ('行 ' + r) : (inCol ? ('列 ' + c) : ('宫 ' + (b + 1)));
+          steps.push(snapshot(r, c, b, {
+            kind: 'conflict',
+            conflictWith: where.slice(),
+            note: '检查 (' + r + ',' + c + ') 的数字 ' + v + '：' +
+              hitName + ' 里已经在 (' + where[0] + ',' + where[1] + ') 出现过 ' + v +
+              '，重复了 → 立即返回 false。'
+          }));
+          stop = true;
+          break;
+        }
+  
+        steps.push(snapshot(r, c, b, {
+          kind: 'check',
+          note: '检查 (' + r + ',' + c + ') 的数字 ' + v + '：行 ' + r + ' 已有 ' + fmt(digits(rows[r])) +
+            '，列 ' + c + ' 已有 ' + fmt(digits(cols[c])) + '，宫 ' + (b + 1) + ' 已有 ' +
+            fmt(digits(boxes[b])) + '，三处都没有 ' + v + '，可以记录。'
+        }));
+  
+        rows[r][v] = true; rowsAt[r][v] = [r, c];
+        cols[c][v] = true; colsAt[c][v] = [r, c];
+        boxes[b][v] = true; boxesAt[b][v] = [r, c];
+        marked.push([r, c]);
+  
+        steps.push(snapshot(r, c, b, {
+          kind: 'mark',
+          note: '把 ' + v + ' 记入 行 ' + r + '、列 ' + c + '、宫 ' + (b + 1) + ' 三张表，' +
+            '该格状态变为「已确定」，之后同范围内的格子再出现 ' + v + ' 就会被判为重复。'
+        }));
+      }
+    }
+  
+    const conflictStep = steps[steps.length - 1];
+  
+    steps.push(snapshot(conflictStep.kind === 'conflict' ? conflictStep.r : null,
+      conflictStep.kind === 'conflict' ? conflictStep.c : null,
+      conflictStep.kind === 'conflict' ? conflictStep.boxIdx : null, {
+      kind: 'done',
+      conflictWith: conflictStep.kind === 'conflict' ? conflictStep.conflictWith.slice() : null,
+      note: conflictStep.kind === 'conflict'
+        ? '结论：返回 false。算法一旦发现重复就提前结束，本次只检查了 ' + (marked.length + 1) + ' 个已填数字。'
+        : '结论：返回 true。81 格全部扫描完都没有出现行、列、宫冲突。'
+    }));
+  
+    return steps;
+  }
+  
+  function cellClass(step, r, c) {
+    const value = BOARD[r][c];
+    if (step.r === r && step.c === c) {
+      return step.kind === 'conflict' ? 'is-bad' : 'is-active';
+    }
+    if (step.conflictWith && step.conflictWith[0] === r && step.conflictWith[1] === c) return 'is-bad';
+    let isMarked = false;
+    for (let i = 0; i < step.marked.length; i++) {
+      if (step.marked[i][0] === r && step.marked[i][1] === c) { isMarked = true; break; }
+    }
+    if (isMarked) return 'is-ok';
+    if (value === '.') return 'is-dim';
+    if (step.r != null && (r === step.r || c === step.c || boxOf(r, c) === step.boxIdx)) return 'is-info';
+    return '';
+  }
+  
+  function sudokuCell(step, r, c) {
+    const value = BOARD[r][c];
+    const cls = cellClass(step, r, c);
+    const node = Demo.el('div', 'grid-cell' + (cls ? ' ' + cls : ''), value === '.' ? '·' : Demo.esc(value));
+    if (value === '.') node.style.color = 'var(--demo-muted)';
+    return node;
+  }
+  
+  function digitStrip(label, present, active, isConflict) {
+    const row = Demo.el('div', 'row');
+    row.style.justifyContent = 'flex-start';
+    row.style.marginTop = '4px';
+    const tag = Demo.el('div', 'ptr', label);
+    tag.style.minWidth = '52px';
+    tag.style.textAlign = 'right';
+    row.appendChild(tag);
+    for (let d = 1; d <= 9; d++) {
+      const s = String(d);
+      const cell = Demo.el('div', 'grid-cell', s);
+      cell.style.minWidth = '24px';
+      cell.style.width = '24px';
+      cell.style.height = '24px';
+      cell.style.fontSize = '12px';
+      if (s === active) cell.classList.add(isConflict ? 'is-bad' : 'is-active');
+      else if (present.indexOf(s) >= 0) cell.classList.add('is-ok');
+      else cell.classList.add('is-dim');
+      row.appendChild(cell);
+    }
+    return row;
+  }
+  
+  Demo.create({
+    title: '34. 有效的数独 — 行 / 列 / 宫三重去重',
+    info: '输入：示例 2 的棋盘（左上角 5 改成 8，其余与示例 1 相同），判定 9×9 数独是否有效。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前检查的格子' },
+      { color: 'var(--demo-ok)', label: '已记录的数字' },
+      { color: 'var(--demo-info)', label: '同行 / 同列 / 同宫范围' },
+      { color: 'var(--demo-danger)', label: '重复冲突' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div', 'col');
+      for (let br = 0; br < 3; br++) {
+        const rowEl = Demo.el('div', 'row');
+        rowEl.style.gap = '10px';
+        rowEl.style.alignItems = 'flex-start';
+        for (let bc = 0; bc < 3; bc++) {
+          const b = br * 3 + bc;
+          const panel = Demo.el('div', 'panel');
+          if (step.boxIdx === b) panel.style.borderColor = 'var(--demo-accent)';
+          panel.appendChild(Demo.el('div', 'panel__title', '宫 ' + (b + 1)));
+          const grid = Demo.el('div', 'grid');
+          grid.style.gridTemplateColumns = 'repeat(3, 34px)';
+          for (let dr = 0; dr < 3; dr++) {
+            for (let dc = 0; dc < 3; dc++) {
+              grid.appendChild(sudokuCell(step, br * 3 + dr, bc * 3 + dc));
+            }
+          }
+          panel.appendChild(grid);
+          rowEl.appendChild(panel);
+        }
+        wrap.appendChild(rowEl);
+      }
+      ctx.stage.appendChild(wrap);
+  
+      if (step.r == null) {
+        const tag = Demo.el('div', 'tag' + (step.kind === 'done' && step.conflictWith ? ' tag--bad' : ''),
+          step.kind === 'init' ? '等待开始扫描' : '扫描结束');
+        ctx.stage.appendChild(tag);
+        return;
+      }
+  
+      const active = BOARD[step.r][step.c];
+      const isConflict = step.kind === 'conflict';
+      const table = Demo.el('div', 'panel');
+      table.appendChild(Demo.el('div', 'panel__title', '当前格 (' + step.r + ',' + step.c + ') = ' + Demo.esc(active) + ' 的三张占用表'));
+      table.appendChild(digitStrip('行 ' + step.r, step.rowDigits, active, isConflict));
+      table.appendChild(digitStrip('列 ' + step.c, step.colDigits, active, isConflict));
+      table.appendChild(digitStrip('宫 ' + (step.boxIdx + 1), step.boxDigits, active, isConflict));
+      ctx.stage.appendChild(table);
+    }
+  });
+  return Demo.__config
+}

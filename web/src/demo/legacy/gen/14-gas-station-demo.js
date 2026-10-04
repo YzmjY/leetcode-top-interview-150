@@ -1,0 +1,189 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/14-gas-station-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const CASES = [
+    { label: '示例 1', gas: [1, 2, 3, 4, 5], cost: [3, 4, 5, 1, 2] },
+    { label: '示例 2', gas: [2, 3, 4], cost: [3, 4, 3] }
+  ];
+  
+  /* 真实跑一遍题解的贪心：先看总量，再一次遍历用 tank 判断起点是否可行 */
+  function simulate(label, gas, cost, steps) {
+    const n = gas.length;
+    let totalGas = 0, totalCost = 0;
+    for (let i = 0; i < n; i++) {
+      totalGas += gas[i];
+      totalCost += cost[i];
+    }
+  
+    const base = { label: label, gas: gas, cost: cost, totalGas: totalGas, totalCost: totalCost };
+  
+    function push(extra) {
+      const s = { i: -1, start: -1, tank: 0, failAt: -1, done: false, answer: null, note: '' };
+      Object.keys(base).forEach(function (k) { s[k] = base[k]; });
+      Object.keys(extra).forEach(function (k) { s[k] = extra[k]; });
+      steps.push(s);
+    }
+  
+    push({
+      note: `【${label}】先把总量算清楚：gas 总和 = ${gas.join(' + ')} = ${totalGas}，cost 总和 = ${cost.join(' + ')} = ${totalCost}。`
+    });
+  
+    if (totalGas < totalCost) {
+      push({
+        done: true, answer: -1,
+        note: `【${label}】比较总量：总加油 ${totalGas} < 总耗油 ${totalCost}，跑完一圈净亏 ${totalCost - totalGas} 升。不论从哪个站出发，一整天能加的油就是这么多，所以再试也没用，直接返回 -1。`
+      });
+      return;
+    }
+  
+    push({
+      start: 0,
+      note: `【${label}】总加油 ${totalGas} ≥ 总耗油 ${totalCost}，说明一定存在唯一解，值得继续找。下面从头遍历：start 记录当前尝试的起点（先设成 0），tank 记录从 start 一路开过来的油量结余。`
+    });
+  
+    let start = 0;
+    let tank = 0;
+  
+    for (let i = 0; i < n; i++) {
+      const delta = gas[i] - cost[i];
+      const prevTank = tank;
+      tank += delta;
+  
+      const next = (i + 1) % n;
+      const detail = `i = ${i}：在加油站 ${i} 加 gas[${i}] = ${gas[i]} 升，开往加油站 ${next} 消耗 cost[${i}] = ${cost[i]} 升，净变化 ${delta >= 0 ? '+' : ''}${delta}。从 start 起累计的油箱结余 tank 由 ${prevTank} 变成 ${tank}。`;
+  
+      if (tank < 0) {
+        push({
+          i: i, start: start, tank: tank, failAt: i,
+          note: `【${label}】${detail} tank = ${tank} < 0：还没开到加油站 ${next} 油就耗光了，说明从 start = ${start} 出发的这条路线走不通。`
+        });
+        const oldStart = start;
+        start = i + 1;
+        tank = 0;
+        push({
+          i: i, start: start, tank: tank, failAt: i,
+          note: `【${label}】关键结论：从 ${oldStart} 出发到不了加油站 ${next}。` +
+            (oldStart < i
+              ? `那么 ${oldStart} 到 ${i} 之间的任意一站出发也同样到不了：它们开到 ${i} 时油箱里的油只会更少（少了前面几站攒下的结余）。`
+              : `这个起点本身就被否掉了。`) +
+            `所以把起点直接跳到 i + 1 = ${start}，油箱清零重新起跑，被跳过的站统统不用再试——这一步把 O(n²) 的暴力枚举降成了 O(n)。`
+        });
+      } else {
+        push({
+          i: i, start: start, tank: tank, failAt: -1,
+          note: `【${label}】${detail} tank = ${tank} ≥ 0：油够开到加油站 ${next}，从 start = ${start} 出发的行程目前一直可行，继续往后走。`
+        });
+      }
+    }
+  
+    push({
+      done: true, start: start, answer: start,
+      note: `【${label}】结论：遍历结束时 start = ${start}，tank = ${tank} ≥ 0。因为总加油 ≥ 总耗油已经保证了绕行一圈一定能回到出发点（前面缺的油会在后半圈补上），所以答案是加油站 ${start}。整个算法只遍历一次数组：时间 O(n)，只用 start 和 tank 两个变量，空间 O(1)。`
+    });
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    CASES.forEach(function (c) { simulate(c.label, c.gas, c.cost, steps); });
+    return steps;
+  }
+  
+  function rowOf(step, values, title, cellFor) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', Demo.esc(title)));
+    const row = Demo.el('div', 'row');
+    values.forEach(function (v, idx) {
+      const col = Demo.el('div', 'col');
+      col.appendChild(cellFor(v, idx));
+      const ptrLabels = [];
+      if (idx === step.i && !step.done) ptrLabels.push('i');
+      if (idx === step.start && (step.done || idx !== step.i)) ptrLabels.push('start');
+      const ptr = Demo.el('div', 'ptr', ptrLabels.length ? ptrLabels.join(' ') : String(idx));
+      if (!ptrLabels.length) ptr.classList.add('ptr--dim');
+      else if (ptrLabels.indexOf('i') >= 0) ptr.classList.add('ptr--info');
+      else ptr.classList.add('ptr--ok');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  Demo.create({
+    title: '14. 加油站 — 一次遍历确定起点',
+    info: '示例 1：gas = [1,2,3,4,5]，cost = [3,4,5,1,2] → 3；示例 2：gas = [2,3,4]，cost = [3,4,3] → -1。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 420,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前遍历到的加油站 i' },
+      { color: 'var(--demo-ok)', label: '当前起点 start' },
+      { color: 'var(--demo-danger)', label: '油箱见底，起点作废' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const head = Demo.el('div', 'row');
+      head.appendChild(Demo.el('span', 'tag', Demo.esc('用例 ' + step.label)));
+      head.appendChild(Demo.el('span', 'tag ' + (step.done ? (step.answer >= 0 ? 'tag--ok' : 'tag--bad') : 'tag--info'),
+        step.done
+          ? (step.answer >= 0 ? '结论：从加油站 ' + step.answer + ' 出发可绕行一周' : '结论：无法绕行一周，返回 -1')
+          : '扫描中'));
+      head.appendChild(Demo.el('span', 'tag tag--violet', '总加油 ' + step.totalGas + ' / 总耗油 ' + step.totalCost));
+      ctx.stage.appendChild(head);
+  
+      ctx.stage.appendChild(rowOf(step, step.gas, '每个加油站的汽油 gas[i]', function (v, idx) {
+        const cell = Demo.el('div', 'cell cell--sm', Demo.esc(v));
+        if (idx === step.i && !step.done) cell.classList.add('is-active');
+        if (idx === step.start) cell.classList.add('is-ok');
+        return cell;
+      }));
+  
+      ctx.stage.appendChild(rowOf(step, step.cost, '开往下一站的消耗 cost[i]', function (v, idx) {
+        const cell = Demo.el('div', 'cell cell--sm', Demo.esc(v));
+        if (idx === step.i && !step.done) cell.classList.add('is-active');
+        if (idx === step.start) cell.classList.add('is-ok');
+        return cell;
+      }));
+  
+      ctx.stage.appendChild(rowOf(step, step.gas.map(function (g, idx) { return g - step.cost[idx]; }),
+        '净收益 net[i] = gas[i] - cost[i]（正数是这段路攒油，负数是耗油）', function (v, idx) {
+          const cell = Demo.el('div', 'cell cell--sm', (v > 0 ? '+' : '') + v);
+          cell.classList.add(v >= 0 ? 'is-info' : 'is-warn');
+          if (idx === step.i && !step.done) cell.classList.add('is-active');
+          if (idx === step.start) cell.classList.add('is-ok');
+          return cell;
+        }));
+  
+      const tankPanel = Demo.el('div', 'panel');
+      tankPanel.style.width = '100%';
+      tankPanel.appendChild(Demo.el('div', 'panel__title',
+        '油箱当前结余 tank（从 start 出发一路累积的净油量，< 0 表示这段路走不通）'));
+      const bar = Demo.el('div', 'bar');
+      bar.style.width = '100%';
+      const fill = Demo.el('div', 'bar__fill');
+      const scale = Math.max(1, step.totalGas);
+      fill.style.width = Math.min(100, Math.round((Math.abs(step.tank) / scale) * 100)) + '%';
+      fill.style.background = step.tank < 0 ? 'var(--demo-danger)' : (step.done ? 'var(--demo-ok)' : 'var(--demo-accent)');
+      bar.appendChild(fill);
+      bar.appendChild(Demo.el('div', 'bar__label',
+        'tank = ' + step.tank + (step.tank < 0 ? '（< 0，起点作废）' : '')));
+      tankPanel.appendChild(bar);
+  
+      const state = Demo.el('div', 'row');
+      state.appendChild(Demo.el('span', 'tag ' + (step.tank < 0 ? 'tag--bad' : 'tag--ok'),
+        'tank = ' + step.tank));
+      state.appendChild(Demo.el('span', 'tag tag--ok',
+        step.start < 0 ? '还没有开始尝试起点' : 'start = ' + step.start));
+      if (step.failAt >= 0) state.appendChild(Demo.el('span', 'tag tag--bad', '在第 ' + (step.failAt + 1) + ' 站断油'));
+      tankPanel.appendChild(state);
+  
+      ctx.stage.appendChild(tankPanel);
+    }
+  });
+  return Demo.__config
+}

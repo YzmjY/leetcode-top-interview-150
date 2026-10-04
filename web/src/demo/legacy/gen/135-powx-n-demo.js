@@ -1,0 +1,172 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/135-powx-n-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const XV = 2;
+  const NV = 10;
+  
+  function bin(n) {
+    return n.toString(2);
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    let x = XV;
+    let n = NV;
+    const bits = bin(Math.abs(NV));
+  
+    let negated = false;
+    if (n < 0) {
+      x = 1 / x;
+      n = -n;
+      negated = true;
+    }
+  
+    let result = 1;
+    let base = x;
+    const history = [];
+  
+    steps.push({
+      n, result, base, k: 0, bits, history: [],
+      note: `初始状态：x = ${XV}，n = ${NV}（二进制 ${bits}）。`
+        + (negated
+          ? `n 是负数，先取倒数：x = 1 / ${XV} = ${x}，n = ${n}，指数转成正数后再算。`
+          : `n 不小于 0，不需要取倒数，直接进入快速幂。`)
+        + `result = 1 是乘法的单位元，base = x = ${base} 表示当前二进制位对应的权重 x^(2^k)。`
+    });
+  
+    while (n > 0) {
+      const bit = n & 1;
+      const weight = Math.pow(2, history.length);
+      const usedBase = base;
+      let action;
+      if (bit === 1) {
+        result = result * base;
+        action = `当前位是 1：把权重乘进结果，result = ${result / usedBase} × ${usedBase} = ${result}`;
+      } else {
+        action = `当前位是 0：这一位不贡献，result 保持不变（仍为 ${result}）`;
+      }
+      base = base * base;
+      n = n >> 1;
+      history.push({
+        k: history.length, weight, bit, base: usedBase,
+        action, result, nextBase: base
+      });
+      steps.push({
+        n, result, base, k: history.length - 1, bits, bit, weight, usedBase,
+        history: history.map(h => Object.assign({}, h)),
+        note: `看 n = ${n * 2 + bit} 的最低位（权重 2^${history.length - 1} = ${weight}）：`
+          + `这一位是 ${bit}。${action}。接着把权重平方：base = ${usedBase}² = ${base}，n 右移一位得 ${n}。`
+      });
+    }
+  
+    steps.push({
+      n, result, base, k: history.length - 1, bits, history: history.map(h => Object.assign({}, h)), done: true,
+      note: `n 已经移位到 0，循环结束。n = ${NV} 的二进制 ${bits} 中为 1 的位是 2^${history.filter(h => h.bit === 1).map(h => h.k).join(' 与 2^')}，`
+        + `所以 ${XV}^${NV} = ${history.filter(h => h.bit === 1).map(h => h.base).join(' × ')} = ${result}。`
+        + `乘法的次数只有二进制位数 ${history.length} 次，远少于连乘 ${NV} 次。`
+    });
+  
+    return steps;
+  }
+  
+  function valueCells(value, cls, extra) {
+    const row = Demo.el('div', 'row');
+    const text = String(value);
+    for (let i = 0; i < text.length; i++) {
+      const cell = Demo.el('div', 'cell', Demo.esc(text[i]));
+      if (cls) cell.classList.add(cls);
+      if (extra && i === text.length - 1) cell.classList.add(extra);
+      row.appendChild(cell);
+    }
+    return row;
+  }
+  
+  Demo.create({
+    title: '135. Pow(x, n) — 快速幂（二进制拆分指数）',
+    info: `输入：x = ${XV}，n = ${NV}。把指数写成二进制，x^n 拆成若干个 x^(2^k) 的乘积，指数每轮减半，复杂度 O(log n)。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前处理的二进制位' },
+      { color: 'var(--demo-muted)', label: '已处理过的低位' },
+      { color: 'var(--demo-ok)', label: '该位为 1，权重已乘入 result' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const len = step.bits.length;
+      const curIdx = len - 1 - step.k;
+  
+      const bitsPanel = Demo.el('div', 'panel');
+      bitsPanel.appendChild(Demo.el('div', 'panel__title',
+        `n = ${NV} 的二进制 ${step.bits}（指针指向当前最低位，从右往左一位一位处理）`));
+      bitsPanel.style.width = '100%';
+      const bitRow = Demo.el('div', 'row');
+      step.bits.split('').forEach((ch, idx) => {
+        const col = Demo.el('div', 'col');
+        const cell = Demo.el('div', 'cell', Demo.esc(ch));
+        if (idx === curIdx && !step.done) cell.classList.add('is-active');
+        else if (idx > curIdx || step.done) cell.classList.add('cell--dim');
+        if (ch === '1' && (idx > curIdx || step.done)) cell.classList.add('is-ok');
+        col.appendChild(cell);
+        col.appendChild(Demo.el('div', 'ptr' + (idx === curIdx && !step.done ? '' : ' ptr--dim'),
+          idx === curIdx && !step.done ? `2^${len - 1 - idx}` : ''));
+        bitRow.appendChild(col);
+      });
+      bitsPanel.appendChild(bitRow);
+      ctx.stage.appendChild(bitsPanel);
+  
+      const values = Demo.el('div', 'panel');
+      values.appendChild(Demo.el('div', 'panel__title', 'result 累乘结果 与 base 当前权重'));
+      values.style.width = '100%';
+      const valueRow = Demo.el('div', 'row');
+      const resultCol = Demo.el('div', 'col');
+      resultCol.appendChild(Demo.el('div', 'panel__title', `result = ${step.result}`));
+      resultCol.appendChild(valueCells(step.result, step.done ? 'is-ok' : null, step.result > 1 && !step.done ? 'is-active' : null));
+      valueRow.appendChild(resultCol);
+      valueRow.appendChild(Demo.el('span', 'arrow', '×'));
+      const baseCol = Demo.el('div', 'col');
+      baseCol.appendChild(Demo.el('div', 'panel__title', `base = ${step.base}`));
+      baseCol.appendChild(valueCells(step.base, 'is-violet'));
+      valueRow.appendChild(baseCol);
+      values.appendChild(valueRow);
+      ctx.stage.appendChild(values);
+  
+      if (step.history.length) {
+        const table = Demo.el('table', 'map-table');
+        const head = Demo.el('tr');
+        ['第几位 k', '权重 2^k', '该位', 'base = x^(2^k)', '操作', 'result'].forEach(h => head.appendChild(Demo.el('th', null, h)));
+        table.appendChild(head);
+        step.history.forEach((h, k) => {
+          const tr = Demo.el('tr');
+          if (k === step.history.length - 1 && !step.done) tr.classList.add('is-active');
+          [h.k, Math.pow(2, h.k), h.bit, h.base, h.bit === 1 ? 'result ×= base' : '跳过', h.result]
+            .forEach(v => tr.appendChild(Demo.el('td', null, Demo.esc(v))));
+          table.appendChild(tr);
+        });
+        const wrap = Demo.el('div', 'panel');
+        wrap.appendChild(Demo.el('div', 'panel__title', '每轮看一位，指数右移直到为 0'));
+        wrap.style.width = '100%';
+        wrap.style.overflowX = 'auto';
+        wrap.appendChild(table);
+        ctx.stage.appendChild(wrap);
+      }
+  
+      if (step.done) {
+        const ones = step.history.filter(h => h.bit === 1);
+        const out = Demo.el('div', 'panel',
+          `<span class="tag tag--ok">${XV}^${NV} = ${step.result}</span>&nbsp; 指数拆解：`
+          + `${NV} = ${ones.map(h => Math.pow(2, h.k)).join(' + ')}，于是 `
+          + `${XV}^${NV} = ${ones.map(h => h.base).join(' × ')} = ${step.result}。`
+          + `循环只跑 ${step.history.length} 轮，每轮指数减半。`);
+        out.style.width = '100%';
+        out.style.textAlign = 'center';
+        ctx.stage.appendChild(out);
+      }
+    }
+  });
+  return Demo.__config
+}

@@ -1,0 +1,225 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/12-insert-delete-getrandom-o1-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const OPERATIONS = [
+    { op: 'insert', val: 1 },
+    { op: 'remove', val: 2 },
+    { op: 'insert', val: 2 },
+    { op: 'getRandom' },
+    { op: 'remove', val: 1 },
+    { op: 'insert', val: 2 },
+    { op: 'getRandom' }
+  ];
+  
+  function opText(o) {
+    return o.op + '(' + (o.val == null ? '' : o.val) + ')';
+  }
+  
+  /* 真实实现一遍 RandomizedSet：动态数组存值，哈希表存「值 → 数组下标」 */
+  function buildSteps() {
+    const nums = [];
+    const map = new Map();
+    const steps = [];
+  
+    function snapshot(extra) {
+      const entries = [];
+      map.forEach(function (v, k) { entries.push([k, v]); });
+      const base = {
+        nums: nums.slice(), entries: entries,
+        op: null, ret: null, phase: 'idle', highlightIdx: -1, overwritten: null, randomIdx: -1
+      };
+      Object.keys(extra || {}).forEach(function (k) { base[k] = extra[k]; });
+      return base;
+    }
+  
+    steps.push(snapshot({
+      note: '初始化：nums 是空数组（负责 O(1) 随机访问），valToIdx 是空哈希表（负责 O(1) 查值在数组中的下标）。两个结构必须始终保持一致。'
+    }));
+  
+    OPERATIONS.forEach(function (o) {
+      if (o.op === 'insert') {
+        if (map.has(o.val)) {
+          steps.push(snapshot({
+            op: o.op, val: o.val, ret: false, phase: 'reject', highlightIdx: map.get(o.val),
+            note: `insert(${o.val})：先查哈希表，发现 ${o.val} 已经存在（在下标 ${map.get(o.val)} 处）。集合不允许重复元素，所以什么都不做，直接返回 false——注意这里没有任何搬移，所以是 O(1)。`
+          }));
+          return;
+        }
+        const idx = nums.length;
+        map.set(o.val, idx);
+        nums.push(o.val);
+        steps.push(snapshot({
+          op: o.op, val: o.val, ret: true, phase: 'append', highlightIdx: idx,
+          note: `insert(${o.val})：哈希表里查不到 ${o.val}，说明它是新元素。把它追加到数组末尾下标 ${idx}，同时在哈希表登记 ${o.val} → ${idx}，返回 true。追加和登记都是 O(1)。`
+        }));
+        return;
+      }
+  
+      if (o.op === 'remove') {
+        if (!map.has(o.val)) {
+          steps.push(snapshot({
+            op: o.op, val: o.val, ret: false, phase: 'reject',
+            note: `remove(${o.val})：查哈希表，没有 ${o.val} 这条记录，说明集合中不存在它，直接返回 false。`
+          }));
+          return;
+        }
+  
+        const idx = map.get(o.val);
+        const lastIdx = nums.length - 1;
+        const lastVal = nums[lastIdx];
+  
+        steps.push(snapshot({
+          op: o.op, val: o.val, ret: null, phase: 'locate', highlightIdx: idx,
+          note: `remove(${o.val})：哈希表查到 ${o.val} 在数组下标 ${idx}。数组删除中间元素本来要把后面所有元素左移，是 O(n)；为了避开它，先看数组末尾：末尾下标 ${lastIdx} 上的元素是 ${lastVal}，准备让它来填 ${o.val} 留下的位置。`
+        }));
+  
+        if (idx !== lastIdx) {
+          nums[idx] = lastVal;
+          map.set(lastVal, idx);
+          steps.push(snapshot({
+            op: o.op, val: o.val, ret: null, phase: 'move', highlightIdx: idx, overwritten: o.val,
+            note: `把末尾元素 ${lastVal} 直接写到下标 ${idx}，覆盖掉要删除的 ${o.val}；同时更新哈希表：${lastVal} 的下标从 ${lastIdx} 改成 ${idx}。这一步把「删中间」变成了「删末尾」，只改了一个位置。`
+          }));
+        }
+  
+        nums.pop();
+        map.delete(o.val);
+        steps.push(snapshot({
+          op: o.op, val: o.val, ret: true, phase: 'pop', highlightIdx: -1,
+          note: (idx === lastIdx
+            ? `要删的 ${o.val} 本来就在数组末尾，`
+            : `此时数组末尾还剩下一份多余的 ${lastVal}（${lastVal} 的正主已经在下标 ${idx} 了），`) +
+            `把数组末尾 pop 掉，再从哈希表删除 ${o.val} → ${idx}，返回 true。删除同样是 O(1)。`
+        }));
+        return;
+      }
+  
+      // getRandom：等概率随机取一个下标
+      const randomIdx = Math.floor(Math.random() * nums.length);
+      const picked = nums[randomIdx];
+      steps.push(snapshot({
+        op: o.op, ret: picked, phase: 'random', highlightIdx: randomIdx, randomIdx: randomIdx,
+        note: `getRandom()：集合当前有 ${nums.length} 个元素，随机生成下标 ${randomIdx}（每个下标概率相同，都是 1/${nums.length}），返回 nums[${randomIdx}] = ${picked}。因为元素都存在一段连续数组里，随机取才是等概率的——这正是必须让数组保持「紧凑无空洞」的原因。` +
+          (nums.length === 1 ? '此时集合里只剩这一个元素，所以必然返回它。' : `每次刷新页面随机结果可能不同，题解示例中这次返回 2。`)
+      }));
+    });
+  
+    const entries = [];
+    map.forEach(function (v, k) { entries.push([k, v]); });
+  
+    steps.push({
+      nums: nums.slice(), entries: entries, op: null, ret: null, phase: 'done', highlightIdx: -1,
+      overwritten: null, randomIdx: -1,
+      note: `全部操作执行完毕，集合中剩下 [${nums.join(', ')}]。三种操作都是 O(1)：insert 追加+登记；remove 用末尾元素覆盖被删位置再 pop；getRandom 靠数组下标等概率抽样，哈希表则始终提供 O(1) 的「值 → 下标」定位。空间 O(n)。`
+    });
+  
+    return steps;
+  }
+  
+  function arrayPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.flex = '1';
+    panel.appendChild(Demo.el('div', 'panel__title', '动态数组 nums（下标 → 值）'));
+    const row = Demo.el('div', 'row');
+  
+    if (step.nums.length === 0) {
+      row.appendChild(Demo.el('div', 'cell cell--empty', '空'));
+    } else {
+      step.nums.forEach(function (v, idx) {
+        const col = Demo.el('div', 'col');
+        const cell = Demo.el('div', 'cell', Demo.esc(v));
+        if (idx === step.highlightIdx) cell.classList.add('is-active');
+        if (step.phase === 'append' && idx === step.highlightIdx) cell.classList.add('is-ok');
+        if (step.phase === 'done') cell.classList.add('is-ok');
+        col.appendChild(cell);
+        const ptr = Demo.el('div', 'ptr', '[' + idx + ']');
+        if (idx === step.highlightIdx) ptr.classList.add('ptr--info');
+        else ptr.classList.add('ptr--dim');
+        col.appendChild(ptr);
+        row.appendChild(col);
+      });
+    }
+  
+    panel.appendChild(row);
+  
+    if (step.overwritten != null) {
+      const tagRow = Demo.el('div', 'row');
+      tagRow.appendChild(Demo.el('span', 'tag tag--warn',
+        '下标 ' + step.highlightIdx + ' 的 ' + step.overwritten + ' 已被末尾元素覆盖'));
+      panel.appendChild(tagRow);
+    }
+  
+    return panel;
+  }
+  
+  function mapPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.flex = '1';
+    panel.appendChild(Demo.el('div', 'panel__title', '哈希表 valToIdx（值 → 数组下标）'));
+  
+    if (step.entries.length === 0) {
+      panel.appendChild(Demo.el('div', 'tag', '空'));
+      return panel;
+    }
+  
+    const table = Demo.el('table', 'map-table');
+    const thead = Demo.el('thead');
+    const hr = Demo.el('tr');
+    hr.appendChild(Demo.el('th', null, '值 val'));
+    hr.appendChild(Demo.el('th', null, '下标'));
+    thead.appendChild(hr);
+    table.appendChild(thead);
+  
+    const tbody = Demo.el('tbody');
+    step.entries.forEach(function (pair) {
+      const tr = Demo.el('tr');
+      if (pair[1] === step.highlightIdx) tr.classList.add('is-active');
+      tr.appendChild(Demo.el('td', null, Demo.esc(pair[0])));
+      tr.appendChild(Demo.el('td', null, Demo.esc(pair[1])));
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    panel.appendChild(table);
+    return panel;
+  }
+  
+  Demo.create({
+    title: '12. O(1) 插入 / 删除 / 随机获取 — 数组 + 哈希表',
+    info: '按题解示例依次执行：insert(1)、remove(2)、insert(2)、getRandom()、remove(1)、insert(2)、getRandom()。数组保证等概率随机取，哈希表保证 O(1) 定位。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 360,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本次操作涉及的数组下标 / 哈希表条目' },
+      { color: 'var(--demo-ok)', label: '新插入的元素' },
+      { color: 'var(--demo-warn)', label: '被末尾元素覆盖的位置' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const head = Demo.el('div', 'row');
+      head.appendChild(Demo.el('span', 'tag',
+        step.op ? '当前操作：' + Demo.esc(opText({ op: step.op, val: step.val })) : (step.phase === 'done' ? '全部操作完成' : '初始状态')));
+      if (step.phase === 'random') {
+        head.appendChild(Demo.el('span', 'tag tag--ok', '随机返回 ' + step.ret));
+      } else if (step.ret === true) {
+        head.appendChild(Demo.el('span', 'tag tag--ok', '返回 true'));
+      } else if (step.ret === false) {
+        head.appendChild(Demo.el('span', 'tag tag--bad', '返回 false'));
+      }
+      head.appendChild(Demo.el('span', 'tag tag--info',
+        '集合大小 ' + step.nums.length + ' / 哈希表 ' + step.entries.length + ' 条'));
+      ctx.stage.appendChild(head);
+  
+      const row = Demo.el('div', 'row');
+      row.style.alignItems = 'stretch';
+      row.appendChild(arrayPanel(step));
+      row.appendChild(mapPanel(step));
+      ctx.stage.appendChild(row);
+    }
+  });
+  return Demo.__config
+}

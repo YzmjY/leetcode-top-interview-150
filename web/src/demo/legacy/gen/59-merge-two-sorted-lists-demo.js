@@ -1,0 +1,196 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/59-merge-two-sorted-lists-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const L1 = [1, 2, 4];
+  const L2 = [1, 3, 4];
+  
+  function link(values) {
+    const nodes = values.map(v => ({ v: v }));
+    for (let k = 0; k + 1 < nodes.length; k++) nodes[k].next = nodes[k + 1];
+    return nodes;
+  }
+  
+  function walk(head) {
+    const out = [];
+    let cur = head;
+    while (cur) { out.push(cur.v); cur = cur.next; }
+    return out;
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const a = link(L1);
+    const b = link(L2);
+    const dummy = { v: null, dummy: true, next: null };
+  
+    let cur = dummy;
+    let p = a[0] || null;
+    let q = b[0] || null;
+    let i1 = 0;
+    let i2 = 0;
+    const out = [];
+  
+    steps.push({
+      i1: 0, i2: 0, out: [], picked: null,
+      phase: 'init', done: false,
+      note: '初始化：建一个哨兵节点 dummy，cur 指向它。l1、l2 的指针分别指向各自头节点。dummy 让「结果链表为空」和「插入第一个节点」不再需要特判，最后返回 dummy.Next 即可。'
+    });
+  
+    while (p && q) {
+      let picked;
+      let val;
+      if (p.v <= q.v) {
+        picked = 'l1';
+        val = p.v;
+        cur.next = p;
+        p = p.next;
+        i1 += 1;
+      } else {
+        picked = 'l2';
+        val = q.v;
+        cur.next = q;
+        q = q.next;
+        i2 += 1;
+      }
+      cur = cur.next;
+      out.push(val);
+  
+      const cmpText = picked === 'l1'
+        ? 'l1 的 ' + val + ' 与 l2 的 ' + q.v + ' 比较：' + val + ' <= ' + q.v + '，取 l1 的节点。'
+        : 'l1 的 ' + p.v + ' 与 l2 的 ' + val + ' 比较：' + p.v + ' > ' + val + '，取 l2 的节点。';
+      const nextPtr = picked === 'l1' ? (p ? 'l1 指针后移到 ' + p.v : 'l1 指针走到 nil') : (q ? 'l2 指针后移到 ' + q.v : 'l2 指针走到 nil');
+  
+      steps.push({
+        i1: i1, i2: i2, out: out.slice(), picked: picked,
+        phase: 'pick', done: false,
+        note: cmpText + '把该节点挂到 cur 后面（直接复用原节点，没有新建节点），' + nextPtr + '，cur 前进到刚挂上的节点。'
+      });
+    }
+  
+    const restValues = walk(p || q);
+    restValues.forEach(v => out.push(v));
+  
+    steps.push({
+      i1: L1.length, i2: L2.length, out: out.slice(), picked: null,
+      phase: 'rest', done: false,
+      note: (restValues.length
+        ? '其中一个链表已经走完（指针为 nil），把另一个链表剩下的 [' + restValues.join(', ') + '] 整段接在 cur 后面。'
+        : '两个链表同时走完，没有剩余节点需要拼接。') + ' 因为两个链表本身有序，剩余这段一定不小于已合并的所有节点，直接接上即可。'
+    });
+  
+    steps.push({
+      i1: L1.length, i2: L2.length, out: out.slice(), picked: null,
+      phase: 'done', done: true,
+      note: '返回 dummy.Next，合并结果 = [' + out.join(', ') + ']。每个节点只被访问一次，时间 O(n + m)；只用了 dummy 和几个指针，额外空间 O(1)。'
+    });
+  
+    return steps;
+  }
+  
+  function rowOf(items) {
+    const row = Demo.el('div', 'row');
+    items.forEach((it, k) => {
+      if (k > 0) {
+        const arrow = Demo.el('div', 'arrow', '→');
+        arrow.style.width = '24px';
+        arrow.style.textAlign = 'center';
+        row.appendChild(arrow);
+      }
+      const col = Demo.el('div', 'col');
+      const node = Demo.el('div', 'll-node');
+      node.style.width = it.wide ? '56px' : '46px';
+      node.style.flex = 'none';
+      if (it.dim) {
+        node.style.borderStyle = 'dashed';
+        node.style.opacity = '0.4';
+      }
+      if (it.dummy) node.style.fontSize = '11px';
+      node.innerHTML = Demo.esc(it.text);
+      if (it.cls) node.classList.add(it.cls);
+      col.appendChild(node);
+  
+      const ptr = Demo.el('div', 'ptr', it.ptr || '');
+      if (!it.ptr) ptr.classList.add('ptr--dim');
+      if (it.ptrCls) ptr.classList.add(it.ptrCls);
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  function listPanel(title, items) {
+    const block = Demo.el('div', 'col');
+    block.style.width = '100%';
+    block.appendChild(Demo.el('div', 'panel__title', Demo.esc(title)));
+    block.appendChild(rowOf(items));
+    return block;
+  }
+  
+  Demo.create({
+    title: '59. 合并两个有序链表 — 双指针 + dummy 哨兵',
+    info: '输入：l1 = [' + L1.join(', ') + ']，l2 = [' + L2.join(', ') + ']（均非递减）。每轮比较两个链表的头节点，把较小的那个摘下来接到结果链表尾部，直到其中一条走空。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 400,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前被选中的节点 / cur' },
+      { color: 'var(--demo-ok)', label: '已并入结果链表' },
+      { color: 'var(--demo-info)', label: 'l1、l2 的当前指针' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.appendChild(Demo.el('div', 'panel__title', '两个输入链表与合并中的结果链表'));
+  
+      panel.appendChild(listPanel('l1（剩余 ' + (L1.length - step.i1) + ' 个）', L1.map((v, k) => ({
+        text: v,
+        cls: k < step.i1 ? 'is-ok' : '',
+        ptr: k === step.i1 && !step.done ? 'l1' : '',
+        ptrCls: k === step.i1 ? 'ptr--info' : ''
+      }))));
+  
+      panel.appendChild(listPanel('l2（剩余 ' + (L2.length - step.i2) + ' 个）', L2.map((v, k) => ({
+        text: v,
+        cls: k < step.i2 ? 'is-ok' : '',
+        ptr: k === step.i2 && !step.done ? 'l2' : '',
+        ptrCls: k === step.i2 ? 'ptr--info' : ''
+      }))));
+  
+      const outItems = [{ text: 'dummy', dummy: true, wide: true, ptr: 'dummy', ptrCls: 'ptr--violet' }];
+      step.out.forEach((v, k) => {
+        const isLast = k === step.out.length - 1;
+        outItems.push({
+          text: v,
+          cls: step.done || !isLast ? 'is-ok' : 'is-active',
+          ptr: !step.done && isLast ? 'cur' : '',
+          ptrCls: 'ptr--ok'
+        });
+      });
+      panel.appendChild(listPanel('结果链表（返回 dummy.Next）', outItems));
+      ctx.stage.appendChild(panel);
+  
+      const tags = Demo.el('div', 'panel');
+      tags.style.width = '100%';
+      tags.style.textAlign = 'center';
+      let html = '';
+      if (step.phase === 'init') {
+        html = '结果为空，dummy 与 cur 都指向哨兵节点。';
+      } else if (step.phase === 'pick') {
+        html = (step.picked === 'l1' ? 'l1' : 'l2') + ' 胜出，取节点 ' + step.out[step.out.length - 1] +
+          ' &nbsp;<span class="tag">已合并 ' + step.out.length + ' 个</span>';
+      } else if (step.phase === 'rest') {
+        html = '剩余的整段已拼接 &nbsp;<span class="tag tag--ok">已合并 ' + step.out.length + ' 个</span>';
+      } else {
+        html = '合并结果 [' + step.out.join(', ') + '] &nbsp;<span class="tag tag--ok">完成</span>';
+      }
+      tags.innerHTML = html;
+      ctx.stage.appendChild(tags);
+    }
+  });
+  return Demo.__config
+}

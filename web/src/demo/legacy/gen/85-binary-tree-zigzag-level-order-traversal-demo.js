@@ -1,0 +1,294 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/85-binary-tree-zigzag-level-order-traversal-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const DATA = [3, 9, 20, null, null, 15, 7];
+  const GAP = 84;
+  
+  const NODES = [];
+  
+  function buildTree(arr) {
+    const nodes = arr.map((v, i) => (v == null ? null : { val: v, id: i, left: null, right: null }));
+    nodes.forEach(n => { if (n) NODES[n.id] = n; });
+    if (!nodes.length || !nodes[0]) return null;
+    const queue = [nodes[0]];
+    let next = 1;
+    while (queue.length > 0 && next < nodes.length) {
+      const node = queue.shift();
+      node.left = next < nodes.length ? (nodes[next++] || null) : null;
+      if (node.left) queue.push(node.left);
+      node.right = next < nodes.length ? (nodes[next++] || null) : null;
+      if (node.right) queue.push(node.right);
+    }
+    return nodes[0];
+  }
+  
+  const ROOT = buildTree(DATA);
+  
+  function layout(root) {
+    const pos = [];
+    let order = 0;
+    let maxDepth = 0;
+    (function walk(node, depth) {
+      if (!node) return;
+      walk(node.left, depth + 1);
+      pos[node.id] = { x: 0, y: 0, order: order, depth: depth };
+      order += 1;
+      if (depth > maxDepth) maxDepth = depth;
+      walk(node.right, depth + 1);
+    })(root, 0);
+    const width = 660;
+    const startX = (width - (order - 1) * GAP) / 2;
+    pos.forEach(p => {
+      p.x = startX + p.order * GAP;
+      p.y = 46 + p.depth * 84;
+    });
+    return { pos: pos, width: width, height: 46 + maxDepth * 84 + 46, maxDepth: maxDepth };
+  }
+  
+  const LAYOUT = layout(ROOT);
+  
+  function labelOf(id) {
+    return NODES[id] ? NODES[id].val : '?';
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const queue = [];
+    const processed = [];
+    const result = [];
+    let level = [];
+    let levelIndex = 0;
+    let levelSize = 0;
+    let levelDepth = -1;
+    let leftToRight = true;
+    let cur = null;
+    let curLevel = 0;
+    let lastSlot = -1;
+  
+    function snap(note, extra) {
+      const step = {
+        queue: queue.map(n => n.id),
+        processed: processed.slice(),
+        result: result.map(row => row.slice()),
+        level: level.slice(),
+        levelIndex: levelIndex,
+        levelSize: levelSize,
+        levelDepth: levelDepth,
+        leftToRight: leftToRight,
+        cur: cur,
+        curLevel: curLevel,
+        lastSlot: lastSlot,
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    function dirText() {
+      return leftToRight ? '从左到右 →' : '从右到左 ←';
+    }
+  
+    queue.push(ROOT);
+    snap('初始状态：根节点 3 入队，方向标志 leftToRight = true（第 0 层从左往右）。做法是：先按普通 BFS 顺序出队，再按方向把值填进 level 数组的对应下标。');
+  
+    while (queue.length > 0) {
+      levelSize = queue.length;
+      levelDepth = LAYOUT.pos[queue[0].id].depth;
+      level = [];
+      for (let k = 0; k < levelSize; k++) level.push(null);
+      cur = null;
+      lastSlot = -1;
+      snap('第 ' + levelIndex + ' 层开始：本层 ' + levelSize + ' 个节点，方向为「' + dirText() +
+        '」。先开一个长度固定为 ' + levelSize + ' 的 level 数组（内容全是空位），出队时按方向决定每个值落在哪个下标。');
+  
+      for (let i = 0; i < levelSize; i++) {
+        const node = queue.shift();
+        cur = node.id;
+        curLevel = i;
+        const slot = leftToRight ? i : levelSize - 1 - i;
+        level[slot] = node.val;
+        lastSlot = slot;
+        const kids = [];
+        if (node.left) { queue.push(node.left); kids.push(node.left.val); }
+        if (node.right) { queue.push(node.right); kids.push(node.right.val); }
+        processed.push(node.id);
+        snap('出队本层第 ' + i + ' 个节点 ' + node.val + '（BFS 顺序永远是左→右）。方向是「' + dirText() + '」，所以它应该放在下标 ' +
+          (leftToRight ? i + '（正着数）' : (levelSize - 1 - i) + '（倒着数）') + '，写入后 level = [' +
+          level.map(v => (v == null ? '空' : v)).join(', ') + ']' +
+          (kids.length ? '；子节点 ' + kids.join('、') + ' 照常按左→右入队，顺序不受影响。' : '。'));
+      }
+  
+      result.push(level.slice());
+      snap('本层收集完毕，level = [' + level.join(', ') + '] 加入结果。随后把方向取反：下一层变成「' +
+        (leftToRight ? '从右到左 ←' : '从左到右 →') + '」，这样层与层之间就交替了。');
+      leftToRight = !leftToRight;
+      levelIndex += 1;
+    }
+  
+    levelDepth = -1;
+    cur = null;
+    snap('队列为空，遍历结束。锯齿形结果 = [' + result.map(row => '[' + row.join(', ') + ']').join(', ') +
+      ']。入队顺序始终不变，只是每层往数组里填值的方向在交替，整体仍是 O(n)。', { done: true });
+    return steps;
+  }
+  
+  function treeSvg(step) {
+    const L = LAYOUT;
+    let out = '';
+  
+    if (step.levelDepth >= 0) {
+      const y = 46 + step.levelDepth * 84;
+      out += '<rect x="8" y="' + (y - 34) + '" width="' + (L.width - 16) + '" height="68" rx="10" style="fill:var(--demo-accent-soft)"/>';
+    }
+  
+    NODES.forEach(node => {
+      if (!node) return;
+      ['left', 'right'].forEach(side => {
+        const child = node[side];
+        if (!child) return;
+        const p = L.pos[node.id];
+        const q = L.pos[child.id];
+        out += '<line x1="' + p.x + '" y1="' + (p.y + 24) + '" x2="' + q.x + '" y2="' + (q.y - 24) +
+          '" style="stroke:var(--demo-border);stroke-width:2"/>';
+      });
+    });
+  
+    NODES.forEach(node => {
+      if (!node) return;
+      const p = L.pos[node.id];
+      let fill = 'var(--demo-subtle)';
+      let stroke = 'var(--demo-border)';
+      let text = 'var(--demo-text)';
+      let ring = null;
+      if (step.levelDepth >= 0 && L.pos[node.id].depth === step.levelDepth) {
+        fill = 'var(--demo-warn-soft)';
+        stroke = 'var(--demo-warn)';
+        text = 'var(--demo-warn)';
+      }
+      if (step.processed.indexOf(node.id) >= 0) { fill = 'var(--demo-ok-soft)'; stroke = 'var(--demo-ok)'; text = 'var(--demo-ok)'; }
+      if (step.queue.indexOf(node.id) >= 0) { fill = 'var(--demo-info-soft)'; stroke = 'var(--demo-info)'; text = 'var(--demo-info)'; }
+      if (step.cur === node.id) {
+        fill = 'var(--demo-accent)';
+        stroke = 'var(--demo-accent)';
+        text = 'var(--demo-card)';
+        ring = 'var(--demo-warn)';
+      }
+      if (ring) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="29" style="fill:none;stroke:' + ring + ';stroke-width:3"/>';
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="24" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2.5"/>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 6) + '" text-anchor="middle" style="fill:' + text +
+        ';font:600 16px sans-serif">' + node.val + '</text>';
+    });
+  
+    return '<div style="width:100%"><svg viewBox="0 0 ' + L.width + ' ' + L.height +
+      '" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+  }
+  
+  Demo.create({
+    title: '85. 锯齿形层序遍历 — BFS + 按方向填入固定下标',
+    info: 'root = [3,9,20,null,null,15,7]，期望输出 [[3],[20,9],[15,7]]。出队顺序不变，只在写入 level 时按下标倒着装。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 500,
+    legend: [
+      { color: 'var(--demo-warn)', label: '当前层' },
+      { color: 'var(--demo-accent)', label: '本步出队的节点 / 刚填的下标' },
+      { color: 'var(--demo-ok)', label: '已出队' },
+      { color: 'var(--demo-info)', label: '队列中待处理' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = treeSvg(step);
+      ctx.stage.appendChild(wrap);
+  
+      const dirRow = Demo.el('div', 'row');
+      if (step.done) {
+        dirRow.appendChild(Demo.el('span', 'tag tag--ok', '所有层已按交替方向收集完毕'));
+      } else {
+        dirRow.appendChild(Demo.el('span', step.leftToRight ? 'tag tag--info' : 'tag tag--violet',
+          '第 ' + step.levelIndex + ' 层方向：' + (step.leftToRight ? '从左到右 →' : '从右到左 ←')));
+      }
+      ctx.stage.appendChild(dirRow);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-end';
+  
+      const queuePanel = Demo.el('div', 'panel');
+      queuePanel.appendChild(Demo.el('div', 'panel__title', '队列（BFS 出队顺序：左 → 右）'));
+      const qrow = Demo.el('div', 'row');
+      if (step.queue.length === 0) {
+        qrow.appendChild(Demo.el('span', 'ptr ptr--dim', '（空）'));
+      } else {
+        step.queue.forEach((id, k) => {
+          const cell = Demo.el('div', 'cell cell--sm', Demo.esc(labelOf(id)));
+          cell.classList.add(k === 0 ? 'is-active' : 'is-info');
+          qrow.appendChild(cell);
+        });
+      }
+      queuePanel.appendChild(qrow);
+  
+      const levelPanel = Demo.el('div', 'panel');
+      levelPanel.appendChild(Demo.el('div', 'panel__title',
+        step.done ? '最后收集的一层（数字是下标）' : '正在填充的 level 数组（数字是下标）'));
+      const lrow = Demo.el('div', 'row');
+      if (step.level.length === 0) {
+        lrow.appendChild(Demo.el('span', 'ptr ptr--dim', '（空）'));
+      } else {
+        step.level.forEach((v, k) => {
+          const col = Demo.el('div', 'col');
+          const cell = Demo.el('div', 'cell cell--sm', v == null ? '·' : Demo.esc(v));
+          if (v == null) cell.classList.add('cell--empty');
+          if (k === step.lastSlot) cell.classList.add('is-active');
+          else if (v != null) cell.classList.add('is-ok');
+          col.appendChild(cell);
+          col.appendChild(Demo.el('div', 'ptr' + (k === step.lastSlot ? '' : ' ptr--dim'), '[' + k + ']'));
+          lrow.appendChild(col);
+        });
+      }
+      levelPanel.appendChild(lrow);
+  
+      row.appendChild(queuePanel);
+      row.appendChild(levelPanel);
+      ctx.stage.appendChild(row);
+  
+      const resultPanel = Demo.el('div', 'panel');
+      resultPanel.style.width = '100%';
+      resultPanel.appendChild(Demo.el('div', 'panel__title', '结果数组'));
+      if (step.result.length === 0) {
+        resultPanel.appendChild(Demo.el('span', 'ptr ptr--dim', '（还没有完整的一层）'));
+      } else {
+        step.result.forEach((values, k) => {
+          const line = Demo.el('div', 'row');
+          line.appendChild(Demo.el('span', 'ptr', '第 ' + k + ' 层'));
+          values.forEach(v => line.appendChild(Demo.el('div', 'cell cell--sm is-ok', Demo.esc(v))));
+          line.appendChild(Demo.el('span', 'tag' + (k % 2 === 0 ? ' tag--info' : ' tag--violet'),
+            k % 2 === 0 ? '→' : '←'));
+          resultPanel.appendChild(line);
+        });
+        if (step.done) resultPanel.appendChild(Demo.el('span', 'tag tag--ok', '已完成'));
+      }
+      ctx.stage.appendChild(resultPanel);
+  
+      const status = Demo.el('div', 'panel');
+      status.style.width = '100%';
+      status.style.textAlign = 'center';
+      if (step.done) {
+        status.innerHTML = '遍历结束：<code>[' + step.result.map(r => '[' + r.join(',') + ']').join(', ') + ']</code>';
+      } else if (step.cur != null) {
+        status.innerHTML = '出队 <strong>' + labelOf(step.cur) + '</strong> → 填入下标 <strong>' + step.lastSlot + '</strong>';
+      } else {
+        status.innerHTML = step.levelSize > 0
+          ? '本层 levelSize = <strong>' + step.levelSize + '</strong>，开始按方向填值。'
+          : '根节点 <strong>' + labelOf(step.queue[0]) + '</strong> 已入队，点击「下一步」开始第 0 层。';
+      }
+      ctx.stage.appendChild(status);
+    }
+  });
+  return Demo.__config
+}

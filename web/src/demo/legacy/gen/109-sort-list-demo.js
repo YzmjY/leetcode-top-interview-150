@@ -1,0 +1,331 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/109-sort-list-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const VALS = [4, 2, 1, 3];
+  
+  function buildList(values) {
+    let head = null;
+    let prev = null;
+    values.forEach(v => {
+      const node = { val: v, next: null };
+      if (prev) prev.next = node; else head = node;
+      prev = node;
+    });
+    return head;
+  }
+  
+  function listValues(head) {
+    const out = [];
+    let cur = head;
+    let guard = 0;
+    while (cur && guard++ < 200) { out.push(cur.val); cur = cur.next; }
+    return out;
+  }
+  
+  function nodeList(head) {
+    const out = [];
+    let cur = head;
+    let guard = 0;
+    while (cur && guard++ < 200) { out.push(cur); cur = cur.next; }
+    return out;
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const frames = [];
+  
+    function snap(extra) {
+      const s = {
+        phase: 'init', seg: [], left: [], right: [], out: [],
+        slow: null, fast: null, l1: null, l2: null, pickSide: '', pickIdx: -1,
+        stack: frames.slice(), result: null, note: ''
+      };
+      const e = extra || {};
+      Object.keys(e).forEach(k => { s[k] = e[k]; });
+      steps.push(s);
+      return s;
+    }
+  
+    function merge(a, b) {
+      const na = nodeList(a);
+      const nb = nodeList(b);
+      const la = na.map(n => n.val);
+      const lb = nb.map(n => n.val);
+      frames.push('merge([' + la.join(',') + '], [' + lb.join(',') + '])');
+      snap({
+        phase: 'merge-start', left: la, right: lb, out: [], l1: 0, l2: 0,
+        note: '合并两个已排好序的链表 [' + la.join(', ') + '] 与 [' + lb.join(', ') +
+          ']：各自看头节点，谁小就先接进结果，然后把那一侧的指针后移。'
+      });
+  
+      const out = [];
+      const dummy = { val: null, next: null };
+      let cur = dummy;
+      let i = 0;
+      let j = 0;
+  
+      while (i < la.length && j < lb.length) {
+        const lv = la[i];
+        const rv = lb[j];
+        let from;
+        let idx;
+        let val;
+        if (lv <= rv) {
+          cur.next = na[i];
+          from = 'L';
+          idx = i;
+          val = lv;
+          i++;
+        } else {
+          cur.next = nb[j];
+          from = 'R';
+          idx = j;
+          val = rv;
+          j++;
+        }
+        cur = cur.next;
+        out.push(val);
+        snap({
+          phase: 'merge-pick', left: la, right: lb, out: out.slice(),
+          l1: i, l2: j, pickSide: from, pickIdx: idx,
+          note: '比较左链头 ' + lv + ' 与右链头 ' + rv + '：' + lv + (from === 'L' ? ' ≤ ' : ' > ') + rv +
+            '，把较小的 ' + val + ' 接到结果末尾，' + (from === 'L' ? '左' : '右') + '指针后移。结果前缀 ['
+            + out.join(', ') + ']。'
+        });
+      }
+  
+      if (i < la.length) {
+        cur.next = na[i];
+        for (let k = i; k < la.length; k++) out.push(la[k]);
+      } else if (j < lb.length) {
+        cur.next = nb[j];
+        for (let k = j; k < lb.length; k++) out.push(lb[k]);
+      }
+  
+      snap({
+        phase: 'merge-done', left: la, right: lb, out: out.slice(),
+        l1: la.length, l2: lb.length,
+        note: '其中一条链已经取空，把另一条链剩下的节点整段接到结果末尾即可（它们本来就有序）。合并结果 ['
+          + out.join(', ') + ']。'
+      });
+      frames.pop();
+      return dummy.next;
+    }
+  
+    function sortList(head) {
+      const seg = listValues(head);
+      frames.push('sortList([' + seg.join(',') + '])');
+      snap({
+        phase: 'enter', seg: seg,
+        note: seg.length <= 1
+          ? '进入 sortList([' + seg.join(', ') + '])：这一段只有 ' + seg.length + ' 个节点，不需要分割。'
+          : '进入 sortList([' + seg.join(', ') + '])。归并排序三步走：先用快慢指针找中点断开，再分别递归排序两半，最后合并两个有序链表。'
+      });
+  
+      if (head == null || head.next == null) {
+        snap({
+          phase: 'base', seg: seg,
+          note: '这一段只有 ' + seg.length + ' 个节点（0 或 1 个），天然有序，直接返回，不再分割。'
+        });
+        frames.pop();
+        return head;
+      }
+  
+      let slow = head;
+      let fast = head.next;
+      let si = 0;
+      let fi = 1;
+      snap({
+        phase: 'find', seg: seg, slow: si, fast: fi,
+        note: '快慢指针初始化：slow 指向第 1 个节点 ' + seg[0] + '，fast 指向第 2 个节点 ' + seg[1] +
+          '。fast 每轮走两步，slow 每轮走一步，fast 走到链尾时 slow 刚好在中间。'
+      });
+  
+      while (fast != null && fast.next != null) {
+        slow = slow.next;
+        si++;
+        fast = fast.next.next;
+        fi += 2;
+        snap({
+          phase: 'find', seg: seg, slow: si, fast: fi < seg.length ? fi : null,
+          note: 'slow 前进到第 ' + (si + 1) + ' 个节点 ' + seg[si] + '，fast 前进到' +
+            (fi < seg.length ? '第 ' + (fi + 1) + ' 个节点 ' + seg[fi] : '链尾之外（null）') +
+            '。继续判断 fast 及其后继是否为空。'
+        });
+      }
+  
+      const midHead = slow.next;
+      slow.next = null;
+      const leftArr = listValues(head);
+      const rightArr = listValues(midHead);
+      snap({
+        phase: 'split', seg: seg, left: leftArr, right: rightArr,
+        note: 'fast 走到链尾，循环结束，slow 停在 ' + slow.val + '（第 ' + (si + 1) +
+          ' 个节点）。从 slow.next 处断开：左半 [' + leftArr.join(', ') + ']，右半 [' + rightArr.join(', ') + ']。'
+      });
+  
+      const left = sortList(head);
+      const right = sortList(midHead);
+      const merged = merge(left, right);
+      frames.pop();
+      return merged;
+    }
+  
+    const head = buildList(VALS);
+    const sorted = sortList(head);
+    snap({
+      phase: 'done', result: listValues(sorted),
+      note: '排序完成：' + listValues(sorted).join(' → ') +
+        '。每层分割把规模减半，共 log n 层，每层合并代价 O(n)，总时间 O(n log n)。'
+    });
+  
+    return steps;
+  }
+  
+  function chainRow(values, opt) {
+    opt = opt || {};
+    const row = Demo.el('div', 'row');
+    if (!values.length) {
+      row.appendChild(Demo.el('div', 'ptr ptr--dim', '∅ null'));
+      return row;
+    }
+    const labels = opt.labels || {};
+    values.forEach((v, k) => {
+      const col = Demo.el('div', 'col');
+      const node = Demo.el('div', 'll-node', Demo.esc(v));
+      if (opt.pickIdx === k || opt.activeIdx === k) node.classList.add('is-active');
+      else if (opt.okUpTo != null && k <= opt.okUpTo) node.classList.add('is-ok');
+      col.appendChild(node);
+  
+      const label = labels[k];
+      const ptr = Demo.el('div', 'ptr', label ? Demo.esc(label) : '&nbsp;');
+      if (!label) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+      if (k < values.length - 1) row.appendChild(Demo.el('div', 'arrow', '→'));
+    });
+    row.appendChild(Demo.el('div', 'arrow', '→'));
+    row.appendChild(Demo.el('div', 'ptr ptr--dim', '∅'));
+    return row;
+  }
+  
+  function stackPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.appendChild(Demo.el('div', 'panel__title', '递归调用栈'));
+    const stack = Demo.el('div', 'stack');
+    if (!step.stack.length) {
+      stack.appendChild(Demo.el('div', 'stack__item', '（空）'));
+    } else {
+      step.stack.forEach((f, k) => {
+        const item = Demo.el('div', 'stack__item', Demo.esc(f));
+        if (k === step.stack.length - 1) item.classList.add('is-active');
+        stack.appendChild(item);
+      });
+    }
+    panel.appendChild(stack);
+    return panel;
+  }
+  
+  function segPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    const isMerge = step.phase.indexOf('merge') === 0;
+    panel.appendChild(Demo.el('div', 'panel__title',
+      isMerge ? '本次参与合并的两条链表' : '当前递归处理的子链表'));
+  
+    if (step.phase === 'split') {
+      const row = Demo.el('div', 'row');
+      row.style.alignItems = 'flex-start';
+      const b1 = Demo.el('div', 'col');
+      b1.appendChild(Demo.el('div', 'panel__title', '左半'));
+      b1.appendChild(chainRow(step.left, {}));
+      const b2 = Demo.el('div', 'col');
+      b2.appendChild(Demo.el('div', 'panel__title', '右半'));
+      b2.appendChild(chainRow(step.right, {}));
+      row.appendChild(b1);
+      row.appendChild(b2);
+      panel.appendChild(row);
+      return panel;
+    }
+  
+    if (isMerge) {
+      const chain = Demo.el('div', 'col');
+      chain.style.width = '100%';
+  
+      const l1 = Demo.el('div', 'col');
+      l1.appendChild(Demo.el('div', 'ptr', '左链'));
+      const l1Labels = {};
+      if (step.l1 != null && step.l1 < step.left.length) l1Labels[step.l1] = 'l1';
+      l1.appendChild(chainRow(step.left, {
+        labels: l1Labels,
+        pickIdx: step.pickSide === 'L' ? step.pickIdx : -1,
+        okUpTo: step.pickSide === 'L' && step.phase === 'merge-pick' ? step.pickIdx : null
+      }));
+      chain.appendChild(l1);
+  
+      const l2 = Demo.el('div', 'col');
+      l2.appendChild(Demo.el('div', 'ptr', '右链'));
+      const l2Labels = {};
+      if (step.l2 != null && step.l2 < step.right.length) l2Labels[step.l2] = 'l2';
+      l2.appendChild(chainRow(step.right, {
+        labels: l2Labels,
+        pickIdx: step.pickSide === 'R' ? step.pickIdx : -1,
+        okUpTo: step.pickSide === 'R' && step.phase === 'merge-pick' ? step.pickIdx : null
+      }));
+      chain.appendChild(l2);
+  
+      const res = Demo.el('div', 'col');
+      res.appendChild(Demo.el('div', 'ptr', '结果'));
+      res.appendChild(chainRow(step.out, {
+        activeIdx: step.phase === 'merge-pick' ? step.out.length - 1 : -1,
+        okUpTo: step.phase === 'merge-pick' ? step.out.length - 2 : step.out.length - 1
+      }));
+      chain.appendChild(res);
+  
+      panel.appendChild(chain);
+      return panel;
+    }
+  
+    const labels = {};
+    if (step.slow != null) labels[step.slow] = 'slow';
+    if (step.fast != null) labels[step.fast] = 'fast';
+    panel.appendChild(chainRow(step.seg, {
+      labels: labels,
+      activeIdx: step.fast != null ? step.fast : -1
+    }));
+    return panel;
+  }
+  
+  Demo.create({
+    title: '109. 排序链表 — 自顶向下归并排序',
+    info: 'head = [4, 2, 1, 3]，即链表 4 → 2 → 1 → 3。快慢指针找中点断开，递归排序两半，再合并两个有序链表。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 460,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前比较 / 刚接入的节点' },
+      { color: 'var(--demo-ok)', label: '已有序的部分' },
+      { color: 'var(--demo-muted)', label: '节点末尾的 ∅ 表示 next = null' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      if (step.phase !== 'done') {
+        ctx.stage.appendChild(segPanel(step));
+      } else {
+        const done = Demo.el('div', 'panel');
+        done.style.width = '100%';
+        done.appendChild(Demo.el('div', 'panel__title', '最终有序链表'));
+        done.appendChild(chainRow(step.result || [], { okUpTo: (step.result || []).length - 1 }));
+        ctx.stage.appendChild(done);
+      }
+  
+      ctx.stage.appendChild(stackPanel(step));
+    }
+  });
+  return Demo.__config
+}

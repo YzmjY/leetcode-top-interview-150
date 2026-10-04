@@ -1,0 +1,219 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/105-n-queens-ii-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const N = 4;
+  
+  function buildSteps() {
+    const steps = [];
+    const board = [];
+    for (let i = 0; i < N; i++) board.push(new Array(N).fill(0));
+  
+    const cols = new Array(N).fill(false);
+    const diag1 = new Array(2 * N - 1).fill(false);
+    const diag2 = new Array(2 * N - 1).fill(false);
+    let count = 0;
+  
+    function queens() {
+      const list = [];
+      for (let r = 0; r < N; r++) {
+        for (let c = 0; c < N; c++) if (board[r][c]) list.push([r, c]);
+      }
+      return list;
+    }
+  
+    function snap(extra) {
+      return {
+        board: board.map(row => row.slice()),
+        cols: cols.slice(),
+        diag1: diag1.slice(),
+        diag2: diag2.slice(),
+        count,
+        attempt: extra.attempt == null ? null : extra.attempt,
+        conflict: extra.conflict == null ? [] : extra.conflict,
+        conflictIdx: extra.conflictIdx == null ? null : extra.conflictIdx,
+        phase: extra.phase,
+        note: extra.note
+      };
+    }
+  
+    steps.push(snap({
+      phase: 'init',
+      note: `初始化：n = ${N}，棋盘为空，cols / diag1 / diag2 全部为 false。回溯按行放置，放好第 row 行才处理 row + 1 行，所以「不同行」这条约束天然满足，只需要用三个布尔数组检查列和两条对角线。`
+    }));
+  
+    function backtrack(row) {
+      if (row === N) {
+        count++;
+        steps.push(snap({
+          phase: 'solution',
+          note: `row 走到 ${N}，说明 ${N} 个皇后全部放下且互不攻击，找到一个合法解，解法数 count = ${count}。然后返回上一层，继续尝试其它摆法。`
+        }));
+        return;
+      }
+  
+      for (let col = 0; col < N; col++) {
+        const d1 = row - col + N - 1;
+        const d2 = row + col;
+  
+        let reason = null;
+        if (cols[col]) reason = { type: 'col', label: `第 ${col} 列已被占用（cols[${col}] = true）` };
+        else if (diag1[d1]) reason = { type: 'diag1', label: `正对角线索引 d1 = row − col + n − 1 = ${d1} 已被占用（diag1[${d1}] = true）` };
+        else if (diag2[d2]) reason = { type: 'diag2', label: `反对角线索引 d2 = row + col = ${d2} 已被占用（diag2[${d2}] = true）` };
+  
+        if (reason) {
+          const conflictCells = [];
+          queens().forEach(([r, c]) => {
+            if (reason.type === 'col' && c === col) conflictCells.push([r, c]);
+            if (reason.type === 'diag1' && r - c === row - col) conflictCells.push([r, c]);
+            if (reason.type === 'diag2' && r + c === row + col) conflictCells.push([r, c]);
+          });
+          steps.push(snap({
+            attempt: [row, col], conflict: conflictCells, phase: 'conflict',
+            note: `尝试在第 ${row} 行第 ${col} 列放皇后：${reason.label}，与已放下的皇后冲突，这一列直接 continue 跳过，不做任何标记。`
+          }));
+          continue;
+        }
+  
+        board[row][col] = 1;
+        cols[col] = true;
+        diag1[d1] = true;
+        diag2[d2] = true;
+        steps.push(snap({
+          attempt: [row, col], conflictIdx: { cols: col, diag1: d1, diag2: d2 }, phase: 'place',
+          note: `第 ${row} 行第 ${col} 列与所有已放的皇后都不冲突（cols[${col}]、diag1[${d1}]、diag2[${d2}] 都是 false）：放下皇后，并把这三个位置标记为 true，然后递归处理第 ${row + 1} 行。`
+        }));
+  
+        backtrack(row + 1);
+  
+        board[row][col] = 0;
+        cols[col] = false;
+        diag1[d1] = false;
+        diag2[d2] = false;
+        steps.push(snap({
+          attempt: [row, col], conflictIdx: { cols: col, diag1: d1, diag2: d2 }, phase: 'remove',
+          note: `第 ${row} 行第 ${col} 列的分支已经探索完：撤销皇后，复位 cols[${col}]、diag1[${d1}]、diag2[${d2}]，回到第 ${row} 行尝试下一列。`
+        }));
+      }
+    }
+  
+    backtrack(0);
+  
+    steps.push(snap({
+      phase: 'done',
+      note: `回溯结束，n = ${N} 时共有 ${count} 个不同的解法。搜索树的每条路径都对应一种摆法，冲突检查用三个布尔数组做到 O(1)，所以整体复杂度约为 O(n!)。`
+    }));
+  
+    return steps;
+  }
+  
+  function attackedSet(queens) {
+    const set = {};
+    queens.forEach(([r, c]) => {
+      for (let i = 0; i < N; i++) set[r + ',' + i] = true;
+      for (let i = 0; i < N; i++) set[i + ',' + c] = true;
+      for (let k = -N; k <= N; k++) {
+        const r1 = r + k, c1 = c + k;
+        if (r1 >= 0 && r1 < N && c1 >= 0 && c1 < N) set[r1 + ',' + c1] = true;
+        const r2 = r + k, c2 = c - k;
+        if (r2 >= 0 && r2 < N && c2 >= 0 && c2 < N) set[r2 + ',' + c2] = true;
+      }
+    });
+    return set;
+  }
+  
+  function boardView(step) {
+    const queens = [];
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) if (step.board[r][c]) queens.push([r, c]);
+    }
+    const attacked = attackedSet(queens);
+    const conflictKeys = {};
+    step.conflict.forEach(([r, c]) => { conflictKeys[r + ',' + c] = true; });
+  
+    const grid = Demo.el('div', 'grid');
+    grid.style.gridTemplateColumns = 'repeat(' + N + ', 46px)';
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        const cell = Demo.el('div', 'grid-cell', step.board[r][c] ? '♛' : '');
+        const isAttempt = step.attempt && step.attempt[0] === r && step.attempt[1] === c;
+        if (conflictKeys[r + ',' + c]) {
+          cell.classList.add('is-bad');
+        } else if (isAttempt && step.phase === 'conflict') {
+          cell.classList.add('is-bad');
+        } else if (step.board[r][c]) {
+          cell.classList.add(isAttempt ? 'is-active' : 'is-ok');
+        } else if (isAttempt) {
+          cell.classList.add('is-active');
+        } else if (attacked[r + ',' + c]) {
+          cell.classList.add('is-dim');
+        }
+        cell.style.fontSize = '20px';
+        grid.appendChild(cell);
+      }
+    }
+    return grid;
+  }
+  
+  function markerRow(label, arr, activeIdx, tone) {
+    const row = Demo.el('div', 'row');
+    const tag = Demo.el('div', 'ptr ' + tone, label);
+    tag.style.minWidth = '58px';
+    row.appendChild(tag);
+    arr.forEach((v, i) => {
+      const cell = Demo.el('div', 'cell cell--sm', v ? 'T' : '·');
+      if (v) cell.classList.add('is-ok');
+      else cell.classList.add('cell--dim');
+      if (activeIdx === i) {
+        cell.classList.remove('is-ok');
+        cell.classList.add('is-active');
+      }
+      row.appendChild(cell);
+    });
+    return row;
+  }
+  
+  Demo.create({
+    title: '105. N 皇后 II — 按行放置 + 列/对角线标记',
+    info: `输入：n = ${N}。每行放一个皇后，用 cols、diag1（row−col+n−1）、diag2（row+col）三个标记数组做 O(1) 冲突检查。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本步尝试 / 刚放下的格子' },
+      { color: 'var(--demo-ok)', label: '已放下的皇后' },
+      { color: 'var(--demo-danger)', label: '冲突的格子' },
+      { color: 'var(--demo-muted)', label: '被已有皇后攻击的格子' }
+    ],
+    stageHeight: 420,
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const top = Demo.el('div', 'row');
+      top.appendChild(boardView(step));
+  
+      const side = Demo.el('div', 'col');
+      const statePanel = Demo.el('div', 'panel');
+      statePanel.appendChild(Demo.el('div', 'panel__title', '冲突标记数组（T = true）'));
+      const hi = step.conflictIdx || {};
+      statePanel.appendChild(markerRow('cols', step.cols, hi.cols == null ? null : hi.cols, 'ptr--violet'));
+      statePanel.appendChild(markerRow('diag1', step.diag1, hi.diag1 == null ? null : hi.diag1, 'ptr--info'));
+      statePanel.appendChild(markerRow('diag2', step.diag2, hi.diag2 == null ? null : hi.diag2, 'ptr--pink'));
+      side.appendChild(statePanel);
+      side.appendChild(Demo.el('span', 'tag tag--ok', '已找到解法数 count = ' + step.count));
+      top.appendChild(side);
+      ctx.stage.appendChild(top);
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.style.textAlign = 'center';
+      panel.appendChild(Demo.el('div', null,
+        '<span class="tag">正在处理第 ' + (step.phase === 'done' ? N + '（已结束）' : (step.attempt ? step.attempt[0] : 0)) + ' 行</span>' +
+        ' &nbsp; <span class="tag tag--info">d1 = row − col + n − 1 = ' + (step.attempt ? step.attempt[0] - step.attempt[1] + N - 1 : '—') + '</span>' +
+        ' &nbsp; <span class="tag tag--info">d2 = row + col = ' + (step.attempt ? step.attempt[0] + step.attempt[1] : '—') + '</span>'));
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

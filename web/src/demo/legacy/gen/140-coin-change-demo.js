@@ -1,0 +1,247 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/140-coin-change-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const COINS = [1, 2, 5];
+  const AMOUNT = 11;
+  const INF = Infinity;
+  
+  /* 真实跑一遍「完全背包」一维 DP：
+     dp[i] = 凑出金额 i 所需的最少硬币数，对每个金额枚举每种硬币作为「最后一枚」。
+     不可达状态用 ∞ 表示；每一步记录尝试的硬币、来源 dp[i-coin]、候选值与是否刷新。 */
+  function buildSteps() {
+    const steps = [];
+    const dp = new Array(AMOUNT + 1).fill(INF);
+  
+    function snap(extra) {
+      steps.push(Object.assign({
+        dp: dp.slice(),
+        i: 0,
+        coin: null,
+        prevIdx: -1,
+        prevVal: null,
+        candidate: null,
+        bestBefore: null,
+        improved: false,
+        skipReason: '',
+        done: false,
+        picked: null,
+        note: ''
+      }, extra));
+    }
+  
+    snap({
+      i: -1,
+      note: '初始化：dp[i] 表示凑出金额 i 所需的最少硬币数。dp[1..' + AMOUNT +
+        '] 先全部写成 ∞（一个不可能达到的大数，表示「暂时凑不出」），只有 dp[0] 待会儿是确定的。'
+    });
+  
+    dp[0] = 0;
+    snap({
+      i: 0,
+      note: '边界 dp[0] = 0：凑出 0 元一枚硬币都不用。它是唯一已知可达的状态，后面所有金额都从它推出来。'
+    });
+  
+    for (let i = 1; i <= AMOUNT; i++) {
+      for (let c = 0; c < COINS.length; c++) {
+        const coin = COINS[c];
+  
+        if (i < coin) {
+          snap({
+            i: i, coin: coin, skipReason: 'coin>i',
+            note: '金额 i = ' + i + '：若最后一枚用面额 ' + coin + '，剩余金额是 ' + (i - coin) +
+              ' < 0，根本不存在这种方案，跳过这枚硬币。'
+          });
+          continue;
+        }
+  
+        const prevIdx = i - coin;
+        if (dp[prevIdx] === INF) {
+          snap({
+            i: i, coin: coin, prevIdx: prevIdx, prevVal: null, skipReason: 'unreachable',
+            note: '金额 i = ' + i + '，最后一枚用面额 ' + coin + '：那前面必须先凑出 ' + prevIdx + '，但 dp[' + prevIdx +
+              '] 还是 ∞，说明 ' + prevIdx + ' 元拼不出来，这条路走不通，跳过。'
+          });
+          continue;
+        }
+  
+        const prevVal = dp[prevIdx];
+        const bestBefore = dp[i];
+        const candidate = prevVal + 1;
+        const improved = candidate < bestBefore;
+        if (improved) dp[i] = candidate;
+  
+        snap({
+          i: i, coin: coin, prevIdx: prevIdx, prevVal: prevVal,
+          candidate: candidate,
+          bestBefore: bestBefore === INF ? null : bestBefore,
+          improved: improved,
+          note: '金额 i = ' + i + '，最后一枚用面额 ' + coin + '：先凑出 ' + prevIdx + ' 需要 ' + prevVal +
+            ' 枚（dp[' + prevIdx + '] = ' + prevVal + '），再加这一枚共 ' + candidate + ' 枚。与当前 dp[' + i + '] = ' +
+            (bestBefore === INF ? '∞' : bestBefore) + ' 比较：' +
+            (improved
+              ? candidate + ' 更小，于是把 dp[' + i + '] 刷新为 ' + candidate + '。'
+              : candidate + ' 没有更小，保留原来的值，因为题目要的是最少硬币数。')
+        });
+      }
+    }
+  
+    // 从 dp 数组回溯出一组具体硬币组合
+    const picked = [];
+    if (dp[AMOUNT] !== INF) {
+      let rest = AMOUNT;
+      while (rest > 0) {
+        let done = false;
+        for (let c = 0; c < COINS.length; c++) {
+          const coin = COINS[c];
+          if (rest >= coin && dp[rest - coin] !== INF && dp[rest - coin] + 1 === dp[rest]) {
+            picked.push(coin);
+            rest -= coin;
+            done = true;
+            break;
+          }
+        }
+        if (!done) break;
+      }
+      picked.sort(function (a, b) { return b - a; });
+    }
+  
+    steps.push({
+      dp: dp.slice(),
+      i: AMOUNT,
+      coin: null,
+      prevIdx: -1,
+      prevVal: null,
+      candidate: null,
+      bestBefore: null,
+      improved: false,
+      skipReason: '',
+      done: true,
+      picked: picked,
+      note: '全部金额都推完了，答案是 dp[' + AMOUNT + '] = ' + dp[AMOUNT] + '。沿 dp 从后往前回溯：' +
+        '每一步都能找到一个硬币 c 使得 dp[i-c] + 1 = dp[i]，把这些 c 收集起来就是一组最优解 —— ' +
+        picked.join(' + ') + ' = ' + AMOUNT + '，共 ' + picked.length + ' 枚。'
+    });
+  
+    return steps;
+  }
+  
+  function dpColumn(step, k) {
+    const col = Demo.el('div', 'col');
+    const value = step.dp[k];
+    const cell = Demo.el('div', 'cell cell--sm');
+  
+    if (value === INF) iconEmpty(cell);
+    else cell.innerHTML = Demo.esc(value);
+    cell.style.minWidth = '38px';
+  
+    let label = String(k);
+    let ptrClass = 'ptr ptr--dim';
+  
+    if (step.done) {
+      if (k === AMOUNT) {
+        cell.classList.add(value === INF ? 'is-bad' : 'is-ok');
+        label = '答案';
+        ptrClass = 'ptr ptr--ok';
+      }
+    } else if (k === step.i) {
+      cell.classList.add(step.improved ? 'is-ok' : 'is-active');
+      label = 'i';
+      ptrClass = step.improved ? 'ptr ptr--ok' : 'ptr';
+    } else if (k === step.prevIdx) {
+      cell.classList.add('is-info');
+      label = 'i-c';
+      ptrClass = 'ptr ptr--info';
+    } else if (value !== INF) {
+      cell.classList.add('is-ok');
+    }
+  
+    col.appendChild(cell);
+    col.appendChild(Demo.el('div', ptrClass, Demo.esc(label)));
+    return col;
+  }
+  
+  function iconEmpty(cell) {
+    cell.classList.add('cell--empty');
+    cell.innerHTML = '∞';
+  }
+  
+  Demo.create({
+    title: '140. 零钱兑换 — 完全背包：dp[i] = min(dp[i-coin] + 1)',
+    info: '输入：coins = [' + COINS.join(', ') + ']，amount = ' + AMOUNT + '（示例 1，预期输出 3，方案 5 + 5 + 1）。dp[i] 为凑出 i 元的最少硬币数。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 400,
+    legend: [
+      { color: 'var(--demo-accent)', label: '正在计算的金额 i' },
+      { color: 'var(--demo-info)', label: '来源 dp[i-coin]' },
+      { color: 'var(--demo-ok)', label: '已算出 / 数值被刷新' },
+      { color: 'var(--demo-muted)', label: '∞ 表示暂时凑不出' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const dpPanel = Demo.el('div', 'panel');
+      dpPanel.style.width = '100%';
+      dpPanel.appendChild(Demo.el('div', 'panel__title', 'dp 数组（下标是金额，格子里的数字是最少硬币数，∞ 表示凑不出）'));
+      const row = Demo.el('div', 'row');
+      for (let k = 0; k <= AMOUNT; k++) row.appendChild(dpColumn(step, k));
+      dpPanel.appendChild(row);
+  
+      const coinRow = Demo.el('div', 'row');
+      coinRow.style.marginTop = '8px';
+      coinRow.appendChild(Demo.el('span', 'tag', '硬币面额：'));
+      COINS.forEach(function (coin) {
+        const cls = (!step.done && step.coin === coin) ? 'tag tag--ok' : 'tag tag--info';
+        coinRow.appendChild(Demo.el('span', cls, Demo.esc(coin) + (step.coin === coin && !step.done ? ' ← 本轮尝试' : '')));
+      });
+      dpPanel.appendChild(coinRow);
+      ctx.stage.appendChild(dpPanel);
+  
+      const check = Demo.el('div', 'panel');
+      check.style.width = '100%';
+      check.style.textAlign = 'center';
+  
+      if (step.done) {
+        check.innerHTML = '最少硬币数 dp[' + AMOUNT + '] = <strong>' + step.dp[AMOUNT] + '</strong>' +
+          ' &nbsp;<span class="tag tag--ok">' + step.picked.join(' + ') + ' = ' + AMOUNT + '，共 ' + step.picked.length + ' 枚</span>';
+      } else if (step.skipReason === 'coin>i') {
+        check.innerHTML = '尝试面额 <code>' + step.coin + '</code> 作为最后一枚：' + step.coin + ' &gt; 金额 ' + step.i +
+          ' &nbsp;<span class="tag tag--bad">剩余金额为负，跳过</span>';
+      } else if (step.skipReason === 'unreachable') {
+        check.innerHTML = '尝试面额 <code>' + step.coin + '</code>：需要先凑出 <code>' + step.prevIdx +
+          '</code> 元，但 dp[' + step.prevIdx + '] = <code>∞</code>' +
+          ' &nbsp;<span class="tag tag--bad">前置金额不可达，跳过</span>';
+      } else if (step.coin != null) {
+        const eq = Demo.el('div', 'row');
+        eq.appendChild(Demo.el('div', 'cell cell--sm', Demo.esc(step.prevVal)));
+        eq.appendChild(Demo.el('div', 'arrow', '+'));
+        eq.appendChild(Demo.el('div', 'cell cell--sm', '1'));
+        eq.appendChild(Demo.el('div', 'arrow', '='));
+        const res = Demo.el('div', 'cell cell--sm', Demo.esc(step.candidate));
+        res.classList.add(step.improved ? 'is-ok' : 'is-warn');
+        eq.appendChild(res);
+        eq.appendChild(Demo.el('div', 'arrow', 'vs'));
+        const old = Demo.el('div', 'cell cell--sm', step.bestBefore == null ? '∞' : Demo.esc(step.bestBefore));
+        old.classList.add('is-active');
+        eq.appendChild(old);
+        check.appendChild(eq);
+  
+        const hint = Demo.el('div', 'row');
+        hint.style.marginTop = '6px';
+        hint.innerHTML = 'dp[' + step.prevIdx + '] + 1 = ' + step.candidate + '，与原 dp[' + step.i + '] = ' +
+          (step.bestBefore == null ? '∞' : step.bestBefore) + ' &nbsp;' +
+          (step.improved
+            ? '<span class="tag tag--ok">更小，刷新 dp[' + step.i + '] = ' + step.candidate + '</span>'
+            : '<span class="tag tag--warn">没有更小，保持不变</span>');
+        check.appendChild(hint);
+      } else {
+        check.innerHTML = '初始化阶段：dp[0] = <code>0</code> 是唯一的已知状态，其余金额先记作 <code>∞</code>。';
+      }
+      ctx.stage.appendChild(check);
+    }
+  });
+  return Demo.__config
+}

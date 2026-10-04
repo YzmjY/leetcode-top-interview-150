@@ -1,0 +1,151 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/89-number-of-islands-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const GRID = [
+    ['1', '1', '0', '0', '0'],
+    ['1', '1', '0', '0', '0'],
+    ['0', '0', '1', '0', '0'],
+    ['0', '0', '0', '1', '1']
+  ];
+  const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  const ISLAND_CLASS = ['is-info', 'is-violet', 'is-pink'];
+  
+  function buildSteps() {
+    const R = GRID.length;
+    const C = GRID[0].length;
+    const mark = GRID.map(row => row.map(() => 0));
+    const stack = [];
+    const steps = [];
+    let count = 0;
+  
+    function snap(note, extra) {
+      const step = {
+        mark: mark.map(row => row.slice()),
+        stack: stack.map(p => p.slice()),
+        count: count,
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    snap('初始状态：4×5 网格，1 是陆地、0 是水域。外层用行优先顺序扫描，遇到「还没被标记过的陆地」就说明发现了一座新岛屿。');
+  
+    for (let i = 0; i < R; i++) {
+      for (let j = 0; j < C; j++) {
+        if (GRID[i][j] !== '1' || mark[i][j] !== 0) continue;
+  
+        count += 1;
+        mark[i][j] = count;
+        stack.push([i, j]);
+        snap('扫描到 (' + i + ',' + j + ') 是尚未标记的陆地：岛屿数量 +1（第 ' + count + ' 个岛屿），把它压入栈作为 DFS 起点。已被标记的陆地会被外层扫描跳过。', { active: [i, j] });
+  
+        while (stack.length > 0) {
+          const cur = stack.pop();
+          snap('弹出栈顶 (' + cur[0] + ',' + cur[1] + ')：它在入栈时已被标记为岛屿 ' + count + '（相当于原地把 1 改成 0，充当 visited），现在检查它的上下左右四个邻居。', { active: cur });
+  
+          for (const d of DIRS) {
+            const nr = cur[0] + d[0];
+            const nc = cur[1] + d[1];
+            if (nr < 0 || nr >= R || nc < 0 || nc >= C) continue;
+            if (GRID[nr][nc] !== '1' || mark[nr][nc] !== 0) continue;
+  
+            mark[nr][nc] = count;
+            stack.push([nr, nc]);
+            snap('邻居 (' + nr + ',' + nc + ') 也是陆地且尚未标记 → 归入岛屿 ' + count + ' 并压栈，稍后继续向外扩散。', { active: cur, added: [nr, nc] });
+          }
+        }
+  
+        snap('栈已空：与 (' + i + ',' + j + ') 相连的整片陆地都标记为岛屿 ' + count + ' 了，回到外层扫描继续找下一座岛。', {});
+      }
+    }
+  
+    snap('扫描完成，岛屿数量 = ' + count + '。每个格子最多入栈一次，时间 O(m×n)；最坏情况（全是陆地）栈的深度为 O(m×n)。', { done: true });
+    return steps;
+  }
+  
+  Demo.create({
+    title: '89. 岛屿数量 — DFS 逐岛标记',
+    info: 'grid = 4×5，示例 2 的输出应为 3。用栈模拟 DFS，把每座岛的连通陆地一次性标记掉。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 300,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前处理的格子' },
+      { color: 'var(--demo-info)', label: '岛屿 1' },
+      { color: 'var(--demo-violet)', label: '岛屿 2' },
+      { color: 'var(--demo-pink)', label: '岛屿 3' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const gridPanel = Demo.el('div', 'panel');
+      gridPanel.style.width = '100%';
+      gridPanel.appendChild(Demo.el('div', 'panel__title', '网格（1 = 陆地，0 = 水域）'));
+  
+      const grid = Demo.el('div', 'grid');
+      grid.style.gridTemplateColumns = 'repeat(' + GRID[0].length + ', 46px)';
+      grid.style.justifyContent = 'center';
+  
+      const active = step.active;
+      const added = step.added;
+      for (let r = 0; r < GRID.length; r++) {
+        for (let c = 0; c < GRID[r].length; c++) {
+          const cell = Demo.el('div', 'cell cell--sm', Demo.esc(GRID[r][c]));
+          if (GRID[r][c] === '0') {
+            cell.classList.add('cell--empty');
+          } else if (step.mark[r][c] > 0) {
+            cell.classList.add(ISLAND_CLASS[(step.mark[r][c] - 1) % ISLAND_CLASS.length]);
+          }
+          const isActive = active && active[0] === r && active[1] === c;
+          const isAdded = added && added[0] === r && added[1] === c;
+          if (isActive || isAdded) cell.classList.add('is-active');
+          grid.appendChild(cell);
+        }
+      }
+      gridPanel.appendChild(grid);
+      ctx.stage.appendChild(gridPanel);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-end';
+  
+      const stackPanel = Demo.el('div', 'panel');
+      stackPanel.appendChild(Demo.el('div', 'panel__title', 'DFS 栈（栈顶在下方）'));
+      const stackBox = Demo.el('div', 'stack');
+      if (step.stack.length === 0) {
+        stackBox.appendChild(Demo.el('div', 'stack__item', '（空）'));
+      } else {
+        step.stack.forEach((p, k) => {
+          const item = Demo.el('div', 'stack__item', '(' + p[0] + ',' + p[1] + ')');
+          if (k === step.stack.length - 1) item.classList.add('is-active');
+          stackBox.appendChild(item);
+        });
+      }
+      stackPanel.appendChild(stackBox);
+  
+      let markedCells = 0;
+      for (let r = 0; r < step.mark.length; r++) {
+        for (let c = 0; c < step.mark[r].length; c++) {
+          if (step.mark[r][c] > 0) markedCells += 1;
+        }
+      }
+  
+      const statusPanel = Demo.el('div', 'panel');
+      statusPanel.appendChild(Demo.el('div', 'panel__title', '状态'));
+      statusPanel.appendChild(Demo.el('div', null, '岛屿数量：<strong>' + step.count + '</strong>'));
+      statusPanel.appendChild(Demo.el('div', null, '已标记陆地格：' + markedCells));
+      statusPanel.appendChild(Demo.el('div', null, step.done
+        ? '<span class="tag tag--ok">扫描结束</span>'
+        : '<span class="tag tag--info">栈中待扩散：' + step.stack.length + ' 格</span>'));
+  
+      row.appendChild(stackPanel);
+      row.appendChild(statusPanel);
+      ctx.stage.appendChild(row);
+    }
+  });
+  return Demo.__config
+}

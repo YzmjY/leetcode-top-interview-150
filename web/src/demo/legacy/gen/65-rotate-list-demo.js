@@ -1,0 +1,173 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/65-rotate-list-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const VALS = [1, 2, 3, 4, 5];
+  const K = 2;
+  
+  function buildSteps() {
+    // 真实链表：1 → 2 → 3 → 4 → 5 → nil，next 存节点对象
+    const nodes = VALS.map(function (v, i) { return { id: i, val: v, next: null }; });
+    for (let i = 0; i < nodes.length - 1; i++) nodes[i].next = nodes[i + 1];
+  
+    const steps = [];
+    let order = nodes.map(function (node) { return node.id; });
+    let n = 1;
+    let k = null;
+    let tail = nodes[0];
+    let newTail = null;
+    let newHead = null;
+    let ring = false;
+  
+    function push(note, extra) {
+      const step = {
+        order: order.slice(), n: n, k: k, ring: ring,
+        tail: tail ? tail.id : null,
+        newTail: newTail ? newTail.id : null,
+        newHead: newHead ? newHead.id : null,
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(function (key) { step[key] = extra[key]; });
+      steps.push(step);
+    }
+  
+    push('初始化：head 指向节点 1。向右旋转 k = ' + K + ' 位，等价于「把倒数第 k 个节点变成新头」。n 和 k 的关系决定了断点在哪，所以第一步先求链表长度。');
+  
+    while (tail.next !== null) {
+      tail = tail.next;
+      n += 1;
+      push('统计长度：tail 顺着 next 前进到节点 ' + tail.val + '，当前计数 n = ' + n + '。');
+    }
+    push('tail 已经走到链表末尾（tail.Next = nil），长度 n = ' + n + '，tail 停在节点 ' + tail.val + '。');
+  
+    k = K % n;
+    push('先取模消掉整圈：k = ' + K + ' % n = ' + K + ' % ' + n + ' = ' + k +
+      '。因为向右旋转 n 次等于没转，而本题 k 可以大到 2×10^9，取模后真正要移动的步数一定小于 n。');
+  
+    if (k === 0) {
+      push('k = 0，等于不旋转，直接返回 head 即可。', { done: true });
+      return steps;
+    }
+  
+    tail.next = nodes[0];
+    ring = true;
+    push('把尾节点 ' + tail.val + ' 的 Next 指向头节点 ' + nodes[0].val + '，链表暂时变成一个环。成环是为了能顺着 next 从任意位置继续走，从而一趟定位断点。');
+  
+    newTail = nodes[0];
+    for (let i = 1; i <= n - k - 1; i++) {
+      newTail = newTail.next;
+      push('找新尾节点：从 head 出发走第 ' + i + ' 步（共需 n - k - 1 = ' + (n - k - 1) + ' 步），当前落在节点 ' + newTail.val +
+        '。倒数第 k 个节点是倒数第 k + 1 个节点的后继，所以新尾节点要从 head 数第 n - k 个。');
+    }
+  
+    newHead = newTail.next;
+    push('newTail 停在节点 ' + newTail.val + '，它的后继节点 ' + newHead.val + ' 就是旋转后的新头节点（原链表的倒数第 k = ' + k + ' 个节点）。');
+  
+    newTail.next = null;
+    ring = false;
+    order = [];
+    let p = newHead;
+    while (p !== null) { order.push(p.id); p = p.next; }
+    push('断开环：newTail.Next = nil。链表变成 ' + order.map(function (id) { return nodes[id].val; }).join(' → ') +
+      '，正好是把每个节点向右移动 k = ' + k + ' 位的结果。全程只遍历了两趟（求长度、找断点），时间 O(n)，空间 O(1)。', { done: true });
+  
+    return steps;
+  }
+  
+  function arrowCol(label) {
+    const col = Demo.el('div', 'col');
+    col.appendChild(Demo.el('div', 'arrow', label || '→'));
+    col.appendChild(Demo.el('div', 'ptr ptr--dim', '&nbsp;'));
+    return col;
+  }
+  
+  function listRow(step, allOk) {
+    const row = Demo.el('div', 'row');
+    step.order.forEach(function (id) {
+      const col = Demo.el('div', 'col');
+      const node = Demo.el('div', 'll-node', Demo.esc(String(VALS[id])));
+      const labels = [];
+  
+      if (allOk) {
+        node.classList.add('is-ok');
+      } else if (id === step.newHead) {
+        node.classList.add('is-ok');
+      } else if (id === step.newTail) {
+        node.classList.add('is-active');
+      }
+      if (id === step.newHead) labels.push('newHead');
+      else if (id === step.newTail) labels.push('newTail');
+      else if (id === step.tail) labels.push('tail');
+  
+      col.appendChild(node);
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : '&nbsp;');
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (labels.indexOf('newTail') >= 0) ptr.classList.add('ptr--bad');
+      else if (labels.indexOf('newHead') >= 0) ptr.classList.add('ptr--ok');
+      col.appendChild(ptr);
+      row.appendChild(col);
+      row.appendChild(arrowCol());
+    });
+  
+    const nilCol = Demo.el('div', 'col');
+    const nilNode = Demo.el('div', 'll-node', 'nil');
+    nilNode.style.borderStyle = 'dashed';
+    nilNode.style.color = 'var(--demo-muted)';
+    nilCol.appendChild(nilNode);
+    nilCol.appendChild(Demo.el('div', 'ptr ptr--dim', '&nbsp;'));
+    row.appendChild(nilCol);
+    return row;
+  }
+  
+  Demo.create({
+    title: '65. 旋转链表 — 首尾相接成环，在正确位置断开',
+    info: '输入：head = [1, 2, 3, 4, 5]，k = 2。向右旋转 2 位后应为 [4, 5, 1, 2, 3]；关键是先求长度取模，再在环上找新尾节点断开。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 340,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'newTail 新尾节点（断点）' },
+      { color: 'var(--demo-ok)', label: 'newHead 新头节点' },
+      { color: 'var(--demo-muted)', label: 'tail 原尾节点' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const listPanel = Demo.el('div', 'panel');
+      listPanel.style.width = '100%';
+      listPanel.appendChild(Demo.el('div', 'panel__title',
+        '链表（当前显示顺序）' + (step.ring ? '，此刻还在环上' : '')));
+      listPanel.appendChild(listRow(step, step.done));
+      ctx.stage.appendChild(listPanel);
+  
+      if (step.ring) {
+        const ringRow = Demo.el('div', 'row');
+        ringRow.appendChild(Demo.el('div', 'arrow', '⟲'));
+        ringRow.appendChild(Demo.el('span', 'tag tag--info',
+          '环已形成：尾节点 → 头节点（' + VALS[step.tail] + ' → ' + VALS[step.order[0]] + '）'));
+        ctx.stage.appendChild(ringRow);
+      }
+  
+      const status = Demo.el('div', 'row');
+      status.appendChild(Demo.el('span', 'tag tag--info', '链表长度 n = ' + step.n));
+      status.appendChild(Demo.el('span', 'tag',
+        '取模后 k = ' + (step.k === null ? '待计算' : step.k)));
+      if (step.tail !== null) status.appendChild(Demo.el('span', 'tag tag--violet', 'tail → 节点 ' + VALS[step.tail]));
+      if (step.newTail !== null) status.appendChild(Demo.el('span', 'tag tag--bad', 'newTail → 节点 ' + VALS[step.newTail]));
+      if (step.newHead !== null) status.appendChild(Demo.el('span', 'tag tag--ok', 'newHead → 节点 ' + VALS[step.newHead]));
+      if (step.done) status.appendChild(Demo.el('span', 'tag tag--ok', '结果 ' + step.order.map(function (id) { return VALS[id]; }).join(' → ')));
+      ctx.stage.appendChild(status);
+  
+      const hint = Demo.el('div', 'panel');
+      hint.style.width = '100%';
+      hint.style.textAlign = 'center';
+      hint.innerHTML = step.ring && !step.done
+        ? '环上找断点：从 head 数 <strong>n - k</strong> 个节点，它就是新尾节点；<strong>newTail.Next</strong> 就是新头节点。'
+        : '思路：求长度 n → k = k % n → 尾接首成环 → 从 head 走 n - k - 1 步到新尾节点 → 断开环返回新头节点。';
+      ctx.stage.appendChild(hint);
+    }
+  });
+  return Demo.__config
+}

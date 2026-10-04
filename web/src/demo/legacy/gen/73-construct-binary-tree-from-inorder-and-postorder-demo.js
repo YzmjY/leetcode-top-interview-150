@@ -1,0 +1,296 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/73-construct-binary-tree-from-inorder-and-postorder-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const IN = [9, 3, 15, 20, 7];
+  const POST = [9, 15, 7, 20, 3];
+  const IDX_MAP = {};
+  IN.forEach(function (v, i) { IDX_MAP[v] = i; });
+  
+  function buildSteps() {
+    const steps = [];
+    const nodes = [];
+    const stack = [];
+    let postIdx = POST.length - 1;
+  
+    function snap(extra) {
+      const step = {
+        tree: nodes.map(function (n) { return Object.assign({}, n); }),
+        stack: stack.map(function (f) { return Object.assign({}, f); }),
+        postIdx: postIdx
+      };
+      Object.keys(extra).forEach(function (k) { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    snap({
+      phase: 'init', inL: null, inR: null, postL: null, postR: null,
+      note: '初始状态：inorder = [' + IN.join(', ') + ']，postorder = [' + POST.join(', ') +
+        ']。后序的结构是「左子树 | 右子树 | 根」，所以根在最后面。指针 postIdx 从后往前扫，先建立「值 → 中序下标」的哈希表用于 O(1) 定位根。'
+    });
+  
+    function build(inL, inR) {
+      if (inL > inR) {
+        snap({
+          phase: 'null', inL: inL, inR: inR, postL: null, postR: null,
+          note: '中序区间为空（inL=' + inL + ' > inR=' + inR + '），这棵子树没有节点，命中递归出口返回 null。注意此时 postIdx 不动，因为空子树在后序里也不占位置。'
+        });
+        return null;
+      }
+  
+      const rootVal = POST[postIdx];
+      const rootIdx = IDX_MAP[rootVal];
+      const size = inR - inL + 1;
+      const leftSize = rootIdx - inL;
+      const postL = postIdx - size + 1;
+      const postR = postIdx;
+      postIdx -= 1;
+  
+      const parent = stack.length ? stack[stack.length - 1] : null;
+      const side = parent ? (rootIdx > IDX_MAP[parent.val] ? 'R' : 'L') : null;
+  
+      nodes.push({ val: rootVal, inIdx: rootIdx, depth: stack.length, parentVal: parent ? parent.val : null, side: side });
+      stack.push({ val: rootVal, inL: inL, inR: inR });
+  
+      snap({
+        phase: 'pick', inL: inL, inR: inR, postL: postL, postR: postR,
+        rootVal: rootVal, rootIdx: rootIdx, lookup: rootVal, newVal: rootVal,
+        note: '当前子树在后序中占的区间是 postorder[' + postL + '..' + postR + ']，根排在最后：root = postorder[' + postR + '] = ' + rootVal +
+          '。到哈希表里查到它位于 inorder[' + rootIdx + ']，于是中序被切成左子树 [' + inL + '..' + (rootIdx - 1) + '] 和右子树 [' + (rootIdx + 1) + '..' + inR + ']，postIdx 左移一位。'
+      });
+  
+      snap({
+        phase: 'split', inL: inL, inR: inR, postL: postL, postR: postR,
+        rootVal: rootVal, rootIdx: rootIdx, lookup: rootVal, newVal: rootVal, leftSize: leftSize,
+        note: '左子树有 leftSize = ' + rootIdx + ' - ' + inL + ' = ' + leftSize + ' 个节点，右子树有 ' + (size - leftSize - 1) +
+          ' 个。因为 postorder 从后往前是「根 → 右子树的根 → 左子树的根」，所以必须**先递归构造右子树、再构造左子树**，这样 postIdx 才能对上下一个正确的根。'
+      });
+  
+      build(rootIdx + 1, inR);
+      build(inL, rootIdx - 1);
+  
+      stack.pop();
+      return rootVal;
+    }
+  
+    build(0, IN.length - 1);
+  
+    const tree = toTree(nodes);
+    snap({
+      phase: 'done', inL: null, inR: null, postL: null, postR: null,
+      note: 'postIdx 已经扫到 -1，所有区间处理完毕，构造出的树层序输出为 [' + levelOrder(tree).map(function (v) {
+        return v === null ? 'null' : v;
+      }).join(',') + ']，与前序+中序构造的结果一致。时间 O(n)，空间 O(n)。'
+    });
+  
+    return steps;
+  }
+  
+  function toTree(nodes) {
+    const byVal = {};
+    nodes.forEach(function (n) { byVal[n.val] = { val: n.val, left: null, right: null }; });
+    let root = null;
+    nodes.forEach(function (n) {
+      if (n.parentVal === null) { root = byVal[n.val]; return; }
+      if (n.side === 'L') byVal[n.parentVal].left = byVal[n.val];
+      else byVal[n.parentVal].right = byVal[n.val];
+    });
+    return root;
+  }
+  
+  function levelOrder(root) {
+    const out = [];
+    const queue = [root];
+    while (queue.length) {
+      const node = queue.shift();
+      out.push(node ? node.val : null);
+      if (node) { queue.push(node.left); queue.push(node.right); }
+    }
+    while (out.length && out[out.length - 1] === null) out.pop();
+    return out;
+  }
+  
+  function arrayRow(values, range, rootIdx) {
+    const row = Demo.el('div', 'row');
+    const inRange = range[0] !== null;
+    values.forEach(function (v, i) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(v));
+      const active = rootIdx !== null && i === rootIdx;
+      const inside = inRange && i >= range[0] && i <= range[1];
+      if (active) cell.classList.add('is-active');
+      else if (inside) cell.classList.add('is-info');
+      else if (inRange) cell.classList.add('cell--dim');
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (i === range[0]) labels.push('inL');
+      if (i === range[1] && range[1] !== range[0]) labels.push('inR');
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : String(i));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else ptr.classList.add('ptr--violet');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  function postRow(step) {
+    const row = Demo.el('div', 'row');
+    const inRange = step.postL !== null;
+    POST.forEach(function (v, i) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(v));
+      const inside = inRange && i >= step.postL && i <= step.postR;
+      if (i === step.postIdx) cell.classList.add('is-active');
+      else if (inside) cell.classList.add('is-info');
+      else if (step.postIdx >= 0 && i > step.postIdx) cell.classList.add('cell--dim');
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (i === step.postIdx) labels.push('postIdx');
+      if (i === step.postL) labels.push('postL');
+      if (i === step.postR && step.postR !== step.postL) labels.push('postR');
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : String(i));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (labels.indexOf('postIdx') >= 0) ptr.classList.add('ptr--violet');
+      else ptr.classList.add('ptr--ok');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  function treeSvg(step) {
+    const W = 640;
+    const pos = {};
+    let maxDepth = 0;
+    step.tree.forEach(function (n) { if (n.depth > maxDepth) maxDepth = n.depth; });
+    const H = 150 + maxDepth * 92;
+    step.tree.forEach(function (n) {
+      pos[n.val] = { x: 70 + (W - 140) * (n.inIdx + 0.5) / IN.length, y: 55 + n.depth * 92 };
+    });
+  
+    let out = '';
+    step.tree.forEach(function (n) {
+      if (n.parentVal === null) return;
+      const a = pos[n.parentVal];
+      const b = pos[n.val];
+      const fresh = step.newVal === n.val;
+      out += '<line x1="' + a.x + '" y1="' + (a.y + 26) + '" x2="' + b.x + '" y2="' + (b.y - 26) +
+        '" style="stroke:' + (fresh ? 'var(--demo-accent)' : 'var(--demo-ok)') + ';stroke-width:' + (fresh ? 3.5 : 2.5) + '"/>';
+      out += '<text x="' + ((a.x + b.x) / 2 + (n.side === 'L' ? -9 : 9)) + '" y="' + ((a.y + b.y) / 2) +
+        '" text-anchor="middle" style="fill:' + (n.side === 'L' ? 'var(--demo-accent)' : 'var(--demo-pink)') +
+        ';font:700 11px sans-serif">' + n.side + '</text>';
+    });
+  
+    step.tree.forEach(function (n) {
+      const p = pos[n.val];
+      const fresh = step.newVal === n.val;
+      const fill = fresh ? 'var(--demo-accent)' : 'var(--demo-ok)';
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="24" style="fill:' + fill + ';stroke:' + fill + ';stroke-width:2.5"/>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 7) + '" text-anchor="middle" style="fill:var(--demo-card);font:700 18px sans-serif">' + n.val + '</text>';
+      if (fresh) {
+        out += '<text x="' + (p.x + 33) + '" y="' + (p.y + 5) + '" text-anchor="start" style="fill:var(--demo-warn);font:700 12px sans-serif">新建</text>';
+      }
+    });
+  
+    IN.forEach(function (_, i) {
+      const x = 70 + (W - 140) * (i + 0.5) / IN.length;
+      out += '<text x="' + x + '" y="' + (H - 14) + '" text-anchor="middle" style="fill:var(--demo-muted);font:600 11px sans-serif">inorder[' + i + ']</text>';
+    });
+  
+    return '<div style="width:100%"><svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+  }
+  
+  Demo.create({
+    title: '73. 中序 + 后序构造二叉树 — 后序定根，先右后左',
+    info: '示例 1：inorder = [9,3,15,20,7]，postorder = [9,15,7,20,3]，输出 [3,9,20,null,null,15,7]。后序的最后一个元素是根，postIdx 从后往前扫，因此必须先构造右子树再构造左子树。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 620,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本次新建的根节点' },
+      { color: 'var(--demo-ok)', label: '已挂好的节点 / 边' },
+      { color: 'var(--demo-info)', label: '当前子树在数组中的区间' },
+      { color: 'var(--demo-violet)', label: '指针 postIdx / inL（区间左边界）' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const arrRow = Demo.el('div', 'row');
+      arrRow.style.width = '100%';
+      arrRow.style.alignItems = 'flex-start';
+  
+      const postPanel = Demo.el('div', 'panel');
+      postPanel.appendChild(Demo.el('div', 'panel__title', '后序 postorder（左 | 右 | 根）'));
+      postPanel.appendChild(postRow(step));
+      arrRow.appendChild(postPanel);
+  
+      const inPanel = Demo.el('div', 'panel');
+      inPanel.appendChild(Demo.el('div', 'panel__title', '中序 inorder（左 | 根 | 右）'));
+      inPanel.appendChild(arrayRow(IN, [step.inL, step.inR], step.phase === 'null' ? null : step.rootIdx, 'in'));
+      arrRow.appendChild(inPanel);
+      ctx.stage.appendChild(arrRow);
+  
+      const treePanel = Demo.el('div', 'panel');
+      treePanel.style.width = '100%';
+      treePanel.appendChild(Demo.el('div', 'panel__title', '正在构造的二叉树（横坐标由中序下标决定）'));
+      if (step.tree.length) {
+        const wrap = Demo.el('div');
+        wrap.style.width = '100%';
+        wrap.innerHTML = treeSvg(step);
+        treePanel.appendChild(wrap);
+      } else {
+        treePanel.appendChild(Demo.el('div', null, '（还没有创建任何节点）'));
+      }
+      ctx.stage.appendChild(treePanel);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-start';
+  
+      const mapPanel = Demo.el('div', 'panel');
+      mapPanel.appendChild(Demo.el('div', 'panel__title', '哈希表 值 → 中序下标'));
+      let html = '<table class="map-table"><tr><th>值</th><th>inorder 下标</th></tr>';
+      IN.forEach(function (v) {
+        html += '<tr' + (step.lookup === v ? ' class="is-active"' : '') + '><td>' + v + '</td><td>' + IDX_MAP[v] + '</td></tr>';
+      });
+      html += '</table>';
+      mapPanel.appendChild(Demo.el('div', null, html));
+  
+      const stackPanel = Demo.el('div', 'panel');
+      stackPanel.appendChild(Demo.el('div', 'panel__title', '递归调用栈 build(inL, inR)'));
+      const box = Demo.el('div', 'stack');
+      if (!step.stack.length) {
+        box.appendChild(Demo.el('div', 'stack__item', '（空）'));
+      } else {
+        step.stack.forEach(function (f, k) {
+          const item = Demo.el('div', 'stack__item', '建 ' + f.val + '：in[' + f.inL + '..' + f.inR + ']');
+          if (k === step.stack.length - 1) item.classList.add('is-active');
+          box.appendChild(item);
+        });
+      }
+      stackPanel.appendChild(box);
+  
+      row.appendChild(mapPanel);
+      row.appendChild(stackPanel);
+      ctx.stage.appendChild(row);
+  
+      const result = Demo.el('div', 'panel',
+        step.phase === 'done'
+          ? '构造完成，层序输出 <code>[' + levelOrder(toTree(step.tree)).map(function (v) { return v === null ? 'null' : v; }).join(',') + ']</code> &nbsp;<span class="tag tag--ok">完成</span>'
+          : (step.phase === 'init' ? '还没开始：postIdx 指向 postorder 的最后一个元素'
+            : 'postIdx = <strong>' + step.postIdx + '</strong>' +
+              (step.rootVal != null ? '，当前根 = ' + step.rootVal : '') +
+              (step.leftSize != null ? '（左子树 ' + step.leftSize + ' 个节点）' : '') +
+              '，已创建 ' + step.tree.length + ' 个节点'));
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

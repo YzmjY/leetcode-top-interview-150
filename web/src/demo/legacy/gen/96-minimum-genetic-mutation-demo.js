@@ -1,0 +1,239 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/96-minimum-genetic-mutation-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const START = 'AACCGGTT';
+  const END = 'AAACGGTA';
+  const BANK = ['AACCGGTA', 'AACCGCTA', 'AAACGGTA'];
+  const BASES = ['A', 'C', 'G', 'T'];
+  const LEN = START.length;
+  
+  function buildSteps() {
+    const bankSet = new Set(BANK);
+    const steps = [];
+    const dist = {};
+    const parent = {};
+    dist[START] = 0;
+    parent[START] = null;
+    const visited = new Set([START]);
+    const queue = [START];
+    const processed = new Set();
+    let answer = -1;
+  
+    function snap(note, extra) {
+      const step = {
+        queue: queue.slice(),
+        visited: Array.from(visited),
+        processed: Array.from(processed),
+        dist: Object.keys(dist).map(k => ({ gene: k, d: dist[k] })),
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    snap('初始：start = "' + START + '"，end = "' + END + '"，bank = ' + JSON.stringify(BANK) + '。' +
+      '把 bank 放进哈希集合——一次变化只能把某个位置换成 A/C/G/T，而且结果必须落在集合里，否则这次变化不合法。从 start 开始 BFS。',
+      { cur: START, index: -1, d: 0 });
+  
+    if (!bankSet.has(END)) {
+      snap('end 不在基因库中，任何合法变化都到不了它 → 直接返回 -1。', { cur: START, index: -1, done: true, answer: -1 });
+      return steps;
+    }
+  
+    while (queue.length > 0) {
+      const cur = queue.shift();
+      processed.add(cur);
+  
+      if (cur === END) {
+        answer = dist[cur];
+        const path = [];
+        let p = cur;
+        while (p != null) { path.unshift(p); p = parent[p]; }
+        snap('出队 "' + END + '" 正好就是目标 end → 返回最少变化次数 ' + answer + '。最短路径：' + path.join(' → ') + '。',
+          { cur: cur, index: -1, d: answer, done: true, answer: answer, path: path });
+        break;
+      }
+  
+      snap('出队 "' + cur + '"（距离 ' + dist[cur] + '）：它有 ' + LEN + ' 个位置，每个位置都尝试换成另外 3 种碱基，' +
+        '逐个检查结果是否在基因库里、是否已经访问过。',
+        { cur: cur, index: -1, d: dist[cur] });
+  
+      for (let j = 0; j < LEN; j++) {
+        const cands = [];
+        for (let b = 0; b < BASES.length; b++) {
+          const g = BASES[b];
+          if (g === cur[j]) continue;
+          const next = cur.slice(0, j) + g + cur.slice(j + 1);
+          const inBank = bankSet.has(next);
+          const seen = visited.has(next);
+          const enqueued = inBank && !seen;
+          if (enqueued) {
+            visited.add(next);
+            dist[next] = dist[cur] + 1;
+            parent[next] = cur;
+            queue.push(next);
+          }
+          cands.push({ g: g, next: next, inBank: inBank, seen: seen, enqueued: enqueued });
+        }
+  
+        const fresh = cands.filter(c => c.enqueued);
+        let note = '把第 ' + (j + 1) + ' 位（下标 ' + j + '，当前是 "' + cur[j] + '"）换成 ' +
+          cands.map(c => '"' + c.g + '"').join('、') + '，得到 ' + cands.map(c => c.next).join('、') + '：';
+        if (fresh.length) {
+          note += fresh.map(c => '"' + c.next + '"').join('、') + ' 在基因库中且没访问过 → 入队，距离变为 ' + (dist[cur] + 1) + '。';
+        } else {
+          note += '这些结果要么不在基因库里，要么已经入队/处理过，所以没有新基因入队——BFS 保证每个基因只处理一次。';
+        }
+        snap(note, { cur: cur, index: j, d: dist[cur], cands: cands });
+      }
+    }
+  
+    if (answer < 0) {
+      snap('队列已空仍然没有到达 end → 返回 -1。', { cur: START, index: -1, done: true, answer: -1 });
+    }
+    return steps;
+  }
+  
+  function geneRow(step, opts) {
+    const o = opts || {};
+    const row = Demo.el('div', 'row');
+    for (let i = 0; i < LEN; i++) {
+      const cell = Demo.el('div', 'cell', Demo.esc(step.cur[i]));
+      if (o.activeIndex === i) cell.classList.add('is-active');
+      else if (o.markEnd && step.cur[i] === END[i]) cell.classList.add('is-ok');
+      row.appendChild(cell);
+    }
+    return row;
+  }
+  
+  function candidateColumn(cand, curChar) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell cell--sm', Demo.esc(cand.g));
+    col.appendChild(cell);
+    col.appendChild(Demo.el('div', 'ptr', '↓'));
+    const gene = Demo.el('div', 'ptr', cand.next);
+    gene.style.fontSize = '10px';
+    if (cand.enqueued) gene.classList.add('ptr--ok');
+    else if (!cand.inBank) gene.classList.add('ptr--bad');
+    else gene.classList.add('ptr--warn');
+    col.appendChild(gene);
+  
+    if (cand.g === curChar) {
+      cell.classList.add('cell--dim');
+      col.appendChild(Demo.el('div', 'tag tag--warn', '原字符，跳过'));
+    } else if (cand.enqueued) {
+      cell.classList.add('is-ok');
+      col.appendChild(Demo.el('div', 'tag tag--ok', '入队'));
+    } else if (!cand.inBank) {
+      cell.classList.add('is-bad');
+      col.appendChild(Demo.el('div', 'tag tag--bad', '不在基因库'));
+    } else {
+      cell.classList.add('is-warn');
+      col.appendChild(Demo.el('div', 'tag tag--warn', '已访问'));
+    }
+    return col;
+  }
+  
+  Demo.create({
+    title: '96. 最小基因变化 — 逐位枚举 + BFS 最短路',
+    info: 'start = "' + START + '"，end = "' + END + '"，bank = ' + JSON.stringify(BANK) + '，每条基因长 8，正确输出为 2。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 480,
+    legend: [
+      { color: 'var(--demo-accent)', label: '正在替换的位置' },
+      { color: 'var(--demo-ok)', label: '该位置已与 end 相同 / 新基因入队' },
+      { color: 'var(--demo-danger)', label: '变化结果不在基因库' },
+      { color: 'var(--demo-warn)', label: '结果已访问过' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const genePanel = Demo.el('div', 'panel');
+      genePanel.style.width = '100%';
+      genePanel.appendChild(Demo.el('div', 'panel__title',
+        step.index < 0 ? '当前基因（绿色表示该位与 end 相同）' : '当前基因：正在尝试替换下标 ' + step.index));
+      const geneWrap = Demo.el('div', 'row');
+      geneWrap.appendChild(geneRow(step, { activeIndex: step.index, markEnd: true }));
+      geneWrap.appendChild(Demo.el('div', 'ptr', '距离 ' + (step.d == null ? 0 : step.d)));
+      genePanel.appendChild(geneWrap);
+      ctx.stage.appendChild(genePanel);
+  
+      if (step.cands) {
+        const candPanel = Demo.el('div', 'panel');
+        candPanel.style.width = '100%';
+        candPanel.appendChild(Demo.el('div', 'panel__title',
+          '把下标 ' + step.index + ' 的 "' + step.cur[step.index] + '" 换成其它碱基（每个候选下面写着变化后的整条基因）'));
+        const row = Demo.el('div', 'row');
+        step.cands.forEach(c => row.appendChild(candidateColumn(c, step.cur[step.index])));
+        candPanel.appendChild(row);
+        ctx.stage.appendChild(candPanel);
+      }
+  
+      if (step.path) {
+        const pathPanel = Demo.el('div', 'panel');
+        pathPanel.style.width = '100%';
+        pathPanel.appendChild(Demo.el('div', 'panel__title', '最短变化路径'));
+        const row = Demo.el('div', 'row');
+        step.path.forEach((g, k) => {
+          if (k > 0) row.appendChild(Demo.el('div', 'arrow', '→'));
+          const cell = Demo.el('div', 'cell', Demo.esc(g));
+          cell.classList.add(k === step.path.length - 1 ? 'is-ok' : 'is-active');
+          row.appendChild(cell);
+        });
+        pathPanel.appendChild(row);
+        ctx.stage.appendChild(pathPanel);
+      }
+  
+      const bottom = Demo.el('div', 'row');
+      bottom.style.width = '100%';
+      bottom.style.alignItems = 'flex-start';
+  
+      const bankPanel = Demo.el('div', 'panel');
+      bankPanel.style.flex = '1';
+      bankPanel.appendChild(Demo.el('div', 'panel__title', '基因库 bank 中每个基因的状态'));
+      BANK.forEach(g => {
+        const row = Demo.el('div', 'row');
+        row.style.justifyContent = 'flex-start';
+        const gene = Demo.el('div', 'ptr', g);
+        gene.style.textAlign = 'left';
+        row.appendChild(gene);
+        if (step.processed.indexOf(g) >= 0) {
+          row.appendChild(Demo.el('span', 'tag tag--info', '已出队'));
+        } else if (step.queue.indexOf(g) >= 0) {
+          const d = step.dist.filter(x => x.gene === g)[0];
+          row.appendChild(Demo.el('span', 'tag tag--ok', '在队列 d=' + (d ? d.d : '?')));
+        } else {
+          row.appendChild(Demo.el('span', 'tag', '未访问'));
+        }
+        bankPanel.appendChild(row);
+      });
+  
+      const queuePanel = Demo.el('div', 'panel');
+      queuePanel.style.flex = '1';
+      queuePanel.appendChild(Demo.el('div', 'panel__title', 'BFS 队列'));
+      const queueRow = Demo.el('div', 'row');
+      queueRow.style.justifyContent = 'flex-start';
+      if (step.queue.length === 0) {
+        queueRow.appendChild(Demo.el('span', 'tag tag--ok', '队列已空'));
+      } else {
+        step.queue.forEach(g => {
+          const d = step.dist.filter(x => x.gene === g)[0];
+          queueRow.appendChild(Demo.el('span', 'tag', g + ' (d=' + (d ? d.d : '?') + ')'));
+        });
+      }
+      queuePanel.appendChild(queueRow);
+      queuePanel.appendChild(Demo.el('div', null, step.done
+        ? '<span class="tag tag--ok">返回 ' + step.answer + '</span>'
+        : '<span class="tag tag--info">继续按层扩展</span>'));
+  
+      bottom.appendChild(bankPanel);
+      bottom.appendChild(queuePanel);
+      ctx.stage.appendChild(bottom);
+    }
+  });
+  return Demo.__config
+}

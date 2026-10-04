@@ -1,0 +1,227 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/108-convert-sorted-array-to-binary-search-tree-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [-10, -3, 0, 5, 9];
+  let FULL_DEPTH = {};
+  
+  function buildSteps() {
+    const steps = [];
+    const created = [];
+    const edges = [];
+    const frames = [];
+  
+    function snap(extra) {
+      const s = {
+        created: created.map(c => ({ idx: c.idx, val: c.val, depth: c.depth })),
+        edges: edges.map(e => ({ from: e.from, to: e.to })),
+        frames: frames.map(f => ({ l: f.l, r: f.r, mid: f.mid })),
+        phase: 'init', l: null, r: null, mid: null, cur: null, link: null, note: ''
+      };
+      const e = extra || {};
+      Object.keys(e).forEach(k => { s[k] = e[k]; });
+      steps.push(s);
+      return s;
+    }
+  
+    snap({ note: 'nums 已经升序排列。要建出高度平衡的 BST，只要每次取区间的中点当根：左半段递归成左子树、右半段递归成右子树，两边的元素个数最多差 1，树高自然平衡。' });
+  
+    function build(l, r, depth, parentIdx, side) {
+      frames.push({ l: l, r: r, mid: null });
+  
+      if (l > r) {
+        snap({
+          phase: 'empty', l: l, r: r,
+          note: '调用 build(' + l + ', ' + r + ')：l > r，区间里没有元素，返回 null' +
+            (parentIdx == null ? '。' : '，于是 ' + NUMS[parentIdx] + ' 的' + (side === 'L' ? '左' : '右') + '孩子为空。')
+        });
+        frames.pop();
+        return null;
+      }
+  
+      const mid = l + Math.floor((r - l) / 2);
+      frames[frames.length - 1].mid = mid;
+      created.push({ idx: mid, val: NUMS[mid], depth: depth });
+      snap({
+        phase: 'pick', l: l, r: r, mid: mid, cur: mid,
+        note: '调用 build(' + l + ', ' + r + ')：中点 mid = ' + mid + '，取 nums[' + mid + '] = ' + NUMS[mid] +
+          ' 作为这一段区间的根。左半区间 [' + l + ', ' + (mid - 1) + ']，右半区间 [' + (mid + 1) + ', ' + r + ']。'
+      });
+  
+      const left = build(l, mid - 1, depth + 1, mid, 'L');
+      if (left) {
+        edges.push({ from: mid, to: left.idx });
+        snap({
+          phase: 'link', l: l, r: r, mid: mid, cur: mid, link: left.idx,
+          note: '左子树构建完成，返回的根是 ' + NUMS[left.idx] + '，把整棵左子树挂到 ' + NUMS[mid] + ' 的左边。'
+        });
+      }
+  
+      const right = build(mid + 1, r, depth + 1, mid, 'R');
+      if (right) {
+        edges.push({ from: mid, to: right.idx });
+        snap({
+          phase: 'link', l: l, r: r, mid: mid, cur: mid, link: right.idx,
+          note: '右子树构建完成，返回的根是 ' + NUMS[right.idx] + '，把整棵右子树挂到 ' + NUMS[mid] + ' 的右边。'
+        });
+      }
+  
+      snap({
+        phase: 'finish', l: l, r: r, mid: mid, cur: mid,
+        note: '区间 [' + l + ', ' + r + '] 的子树已完成，根是 ' + NUMS[mid] + '，向上层返回。'
+      });
+      frames.pop();
+      return { idx: mid };
+    }
+  
+    build(0, NUMS.length - 1, 0, null, null);
+  
+    snap({
+      phase: 'done',
+      note: '构建结束。中序遍历这棵树得到 ' + NUMS.join(', ') + '，与原数组一致；任意节点左右子树高度差不超过 1，满足高度平衡。'
+    });
+  
+    FULL_DEPTH = {};
+    created.forEach(c => { FULL_DEPTH[c.idx] = c.depth; });
+    return steps;
+  }
+  
+  const COL_STEP = 92;
+  const PAD_X = 52;
+  const ROW_STEP = 80;
+  const PAD_Y = 44;
+  
+  function treeSvg(step) {
+    const W = PAD_X * 2 + (NUMS.length - 1) * COL_STEP;
+    const H = PAD_Y * 2 + 2 * ROW_STEP + 10;
+    const px = idx => PAD_X + idx * COL_STEP;
+    const py = d => PAD_Y + d * ROW_STEP;
+  
+    const built = {};
+    step.created.forEach(c => { built[c.idx] = true; });
+  
+    let out = '';
+    step.edges.forEach(eg => {
+      const isCur = step.link === eg.to;
+      out += '<line x1="' + px(eg.from) + '" y1="' + (py(FULL_DEPTH[eg.from]) + 24) +
+        '" x2="' + px(eg.to) + '" y2="' + (py(FULL_DEPTH[eg.to]) - 24) +
+        '" style="stroke:' + (isCur ? 'var(--demo-accent)' : 'var(--demo-ok)') +
+        ';stroke-width:' + (isCur ? 3.5 : 2) + '"/>';
+    });
+  
+    NUMS.forEach((val, idx) => {
+      if (!built[idx]) {
+        out += '<circle cx="' + px(idx) + '" cy="' + py(FULL_DEPTH[idx]) + '" r="23" ' +
+          'style="fill:none;stroke:var(--demo-border);stroke-width:2;stroke-dasharray:5 4"/>';
+        out += '<text x="' + px(idx) + '" y="' + (py(FULL_DEPTH[idx]) + 6) +
+          '" text-anchor="middle" style="fill:var(--demo-muted);font:600 16px sans-serif">?</text>';
+        return;
+      }
+      const isCur = step.cur === idx;
+      out += '<circle cx="' + px(idx) + '" cy="' + py(FULL_DEPTH[idx]) + '" r="23" style="fill:' +
+        (isCur ? 'var(--demo-accent)' : 'var(--demo-ok-soft)') + ';stroke:' +
+        (isCur ? 'var(--demo-accent)' : 'var(--demo-ok)') + ';stroke-width:2.5"/>';
+      out += '<text x="' + px(idx) + '" y="' + (py(FULL_DEPTH[idx]) + 6) +
+        '" text-anchor="middle" style="fill:' + (isCur ? 'var(--demo-card)' : 'var(--demo-ok)') +
+        ';font:600 16px sans-serif">' + val + '</text>';
+    });
+  
+    return '<div style="width:100%;max-width:520px;margin:0 auto">' +
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">' +
+      out + '</svg></div>';
+  }
+  
+  function arrayRow(step) {
+    const built = {};
+    step.created.forEach(c => { built[c.idx] = true; });
+  
+    const row = Demo.el('div', 'row');
+    NUMS.forEach((val, k) => {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(val));
+  
+      if (step.mid === k && step.phase !== 'init' && step.phase !== 'done') {
+        cell.classList.add('is-active');
+      } else if (step.l != null && k >= step.l && k <= step.r) {
+        cell.classList.add('is-warn');
+      } else if (built[k]) {
+        cell.classList.add('is-ok');
+      }
+  
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (step.l === k) labels.push('l');
+      if (step.r === k) labels.push('r');
+      if (step.mid === k) labels.push('mid');
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : String(k));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  Demo.create({
+    title: '108. 将有序数组转换为二叉搜索树 — 取中点分治',
+    info: 'nums = [-10, -3, 0, 5, 9]（升序）。每次取区间中点作为根，左半区间递归成左子树，右半区间递归成右子树。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 520,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前中点 / 刚挂上的边' },
+      { color: 'var(--demo-warn)', label: '当前递归区间 [l, r]' },
+      { color: 'var(--demo-ok)', label: '已确定并入树的节点' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const arrPanel = Demo.el('div', 'panel');
+      arrPanel.style.width = '100%';
+      arrPanel.appendChild(Demo.el('div', 'panel__title', 'nums（下标 0 ~ ' + (NUMS.length - 1) + '）'));
+      arrPanel.appendChild(arrayRow(step));
+      ctx.stage.appendChild(arrPanel);
+  
+      const treeWrap = Demo.el('div');
+      treeWrap.style.width = '100%';
+      treeWrap.innerHTML = treeSvg(step);
+      ctx.stage.appendChild(treeWrap);
+  
+      const row = Demo.el('div', 'row');
+      row.style.alignItems = 'flex-start';
+      row.style.width = '100%';
+  
+      const callPanel = Demo.el('div', 'panel');
+      callPanel.appendChild(Demo.el('div', 'panel__title', '当前调用'));
+      const callText = step.phase === 'init'
+        ? '尚未开始，准备调用 build(0, ' + (NUMS.length - 1) + ')'
+        : (step.phase === 'done'
+          ? '递归全部返回'
+          : 'build(' + step.l + ', ' + step.r + ')' +
+            (step.mid == null ? ' → 空区间，返回 null' : ' → mid = ' + step.mid + '，值 ' + NUMS[step.mid]));
+      callPanel.appendChild(Demo.el('div', null, Demo.esc(callText)));
+      row.appendChild(callPanel);
+  
+      const stackPanel = Demo.el('div', 'panel');
+      stackPanel.appendChild(Demo.el('div', 'panel__title', '递归调用栈'));
+      const stack = Demo.el('div', 'stack');
+      if (step.frames.length === 0) {
+        stack.appendChild(Demo.el('div', 'stack__item', '（空）'));
+      } else {
+        step.frames.forEach((f, k) => {
+          const item = Demo.el('div', 'stack__item',
+            'build(' + f.l + ', ' + f.r + ')' + (f.mid == null ? '' : ' mid=' + f.mid));
+          if (k === step.frames.length - 1) item.classList.add('is-active');
+          stack.appendChild(item);
+        });
+      }
+      stackPanel.appendChild(stack);
+      row.appendChild(stackPanel);
+  
+      ctx.stage.appendChild(row);
+    }
+  });
+  return Demo.__config
+}

@@ -1,0 +1,251 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/78-binary-tree-maximum-path-sum-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const TREE = [-10, 9, 20, null, null, 15, 7];
+  const EXPECTED = 42;
+  
+  const NODE_PAINT = {
+    default: ['var(--demo-subtle)', 'var(--demo-border)', 'var(--demo-text)'],
+    accent:  ['var(--demo-accent-soft)', 'var(--demo-accent)', 'var(--demo-accent-strong)'],
+    ok:      ['var(--demo-ok-soft)', 'var(--demo-ok)', 'var(--demo-ok)'],
+    warn:    ['var(--demo-warn-soft)', 'var(--demo-warn)', 'var(--demo-warn)'],
+    violet:  ['var(--demo-violet-soft)', 'var(--demo-violet)', 'var(--demo-violet)']
+  };
+  
+  function buildTree(arr) {
+    if (!arr.length || arr[0] == null) return null;
+    let seq = 0;
+    const root = { id: seq++, val: arr[0], left: null, right: null };
+    const queue = [root];
+    let i = 1;
+    while (i < arr.length && queue.length) {
+      const node = queue.shift();
+      const lv = arr[i++];
+      if (lv != null) { node.left = { id: seq++, val: lv, left: null, right: null }; queue.push(node.left); }
+      if (i < arr.length) {
+        const rv = arr[i++];
+        if (rv != null) { node.right = { id: seq++, val: rv, left: null, right: null }; queue.push(node.right); }
+      }
+    }
+    return root;
+  }
+  
+  function snapTree(node) {
+    if (!node) return null;
+    return { id: node.id, val: node.val, left: snapTree(node.left), right: snapTree(node.right) };
+  }
+  
+  function findById(node, id) {
+    if (!node || id == null) return null;
+    if (node.id === id) return node;
+    return findById(node.left, id) || findById(node.right, id);
+  }
+  
+  function treeSVG(root, paintOf, badgeOf) {
+    if (!root) return '<div class="panel" style="width:100%;text-align:center">（空树）</div>';
+    const pos = {};
+    let count = 0, maxDepth = 0;
+    (function walk(node, depth) {
+      if (!node) return;
+      walk(node.left, depth + 1);
+      pos[node.id] = { x: count++, y: depth };
+      if (depth > maxDepth) maxDepth = depth;
+      walk(node.right, depth + 1);
+    })(root, 0);
+  
+    const gapX = 66, gapY = 78, padX = 36, padY = 32, r = 21;
+    const W = count * gapX + padX * 2;
+    const H = (maxDepth + 1) * gapY + padY * 2;
+    const cx = id => padX + pos[id].x * gapX + gapX / 2;
+    const cy = id => padY + pos[id].y * gapY + gapY / 2;
+  
+    let edges = '';
+    (function drawEdges(node) {
+      if (!node) return;
+      [node.left, node.right].forEach(child => {
+        if (!child) return;
+        const dx = pos[child.id].x - pos[node.id].x;
+        const dy = pos[child.id].y - pos[node.id].y;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        edges += '<line x1="' + (cx(node.id) + dx / len * r).toFixed(1) + '" y1="' + (cy(node.id) + dy / len * r).toFixed(1) +
+          '" x2="' + (cx(child.id) - dx / len * r).toFixed(1) + '" y2="' + (cy(child.id) - dy / len * r).toFixed(1) +
+          '" style="stroke:var(--demo-border);stroke-width:2"/>';
+        drawEdges(child);
+      });
+    })(root);
+  
+    let nodes = '';
+    (function drawNodes(node) {
+      if (!node) return;
+      let info = paintOf ? paintOf(node) : null;
+      if (typeof info === 'string') info = { state: info };
+      info = info || {};
+      const paint = NODE_PAINT[info.state] || NODE_PAINT.default;
+      if (info.ring) {
+        nodes += '<circle cx="' + cx(node.id) + '" cy="' + cy(node.id) + '" r="' + (r + 6) + '" style="fill:none;stroke:' + info.ring + ';stroke-width:3"/>';
+      }
+      nodes += '<circle cx="' + cx(node.id) + '" cy="' + cy(node.id) + '" r="' + r + '" style="fill:' + paint[0] + ';stroke:' + paint[1] + ';stroke-width:2.5"/>';
+      nodes += '<text x="' + cx(node.id) + '" y="' + (cy(node.id) + 6) + '" text-anchor="middle" style="fill:' + paint[2] + ';font:600 16px sans-serif">' + Demo.esc(node.val) + '</text>';
+      const badge = badgeOf ? badgeOf(node) : null;
+      if (badge) {
+        nodes += '<text x="' + cx(node.id) + '" y="' + (cy(node.id) + r + 17) + '" text-anchor="middle" style="fill:var(--demo-muted);font:600 12px sans-serif">' + Demo.esc(badge) + '</text>';
+      }
+      drawNodes(node.left);
+      drawNodes(node.right);
+    })(root);
+  
+    return '<div style="width:100%"><svg viewBox="0 0 ' + W + ' ' + (H + 20) + '" style="width:100%;height:auto;display:block;max-height:430px">' + edges + nodes + '</svg></div>';
+  }
+  
+  function buildSteps() {
+    const root = buildTree(TREE);
+    const steps = [];
+    const gains = {};
+    const down = {};
+    let maxSum = -Infinity;
+    let bestPath = null;
+  
+    function snap(note, extra) {
+      const step = {
+        tree: snapTree(root),
+        note: note,
+        gains: Object.assign({}, gains),
+        maxSum: maxSum,
+        bestPath: bestPath ? bestPath.slice() : null
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    snap('初始状态：maxSum = -∞（Go 代码里用 -1<<31 表示最小整数）。要求路径至少含一个节点，因此不能初始化为 0 —— 否则整棵树全为负数时会错误地返回 0。后序遍历从根节点 ' + root.val + ' 开始。', { active: root.id, phase: 'enter' });
+  
+    function dfs(node) {
+      if (!node) return 0;
+  
+      snap('进入节点 ' + node.val + '：后序遍历，必须先把左右子树的贡献算出来，才能判断经过它的路径能有多长。', { active: node.id, phase: 'enter' });
+  
+      const rawL = dfs(node.left);
+      const rawR = dfs(node.right);
+      const leftGain = Math.max(0, rawL);
+      const rightGain = Math.max(0, rawR);
+      const curPath = node.val + leftGain + rightGain;
+  
+      const leftDown = (node.left && rawL > 0) ? down[node.left.id] : [];
+      const rightDown = (node.right && rawR > 0) ? down[node.right.id] : [];
+      const beat = curPath > maxSum;
+      let note = '节点 ' + node.val + '：左子树返回 ' + rawL + ' → 贡献取 max(0, ' + rawL + ') = ' + leftGain +
+        '；右子树返回 ' + rawR + ' → 贡献取 max(0, ' + rawR + ') = ' + rightGain +
+        '。贡献为负时宁可不接这条分支，所以和 0 取较大值。';
+      if (beat) {
+        maxSum = curPath;
+        bestPath = leftDown.concat([node.id]).concat(rightDown);
+        note += ' 经过它的路径和 = ' + node.val + ' + ' + leftGain + ' + ' + rightGain + ' = ' + curPath +
+          '，大于当前 maxSum，刷新答案为 ' + curPath + '，并记下这条路径。';
+      } else {
+        note += ' 经过它的路径和 = ' + node.val + ' + ' + leftGain + ' + ' + rightGain + ' = ' + curPath +
+          '，没有超过 maxSum = ' + maxSum + '，答案不变。';
+      }
+      const gain = node.val + Math.max(leftGain, rightGain);
+      gains[node.id] = gain;
+      down[node.id] = [node.id].concat(leftGain >= rightGain ? leftDown : rightDown);
+      note += ' 但向上返回时路径不能分叉，只能选一边，所以返回以它为端点的最大贡献值 = ' + node.val + ' + max(' + leftGain + ', ' + rightGain + ') = ' + gain + '。';
+  
+      snap(note, { active: node.id, phase: 'compute', leftGain: leftGain, rightGain: rightGain, curPath: curPath, gain: gain, beat: beat });
+  
+      return gain;
+    }
+  
+    dfs(root);
+  
+    const pathVals = bestPath.map(id => findById(root, id).val);
+    snap('后序遍历结束，maxSum = ' + maxSum + '，最优路径是 ' + pathVals.join(' → ') + '（和为 ' + maxSum + '），与示例输出一致。每个节点只访问一次：时间 O(n)，空间 O(h)。', { active: null, phase: 'done', done: true });
+  
+    return steps;
+  }
+  
+  Demo.create({
+    title: '78. 二叉树中的最大路径和 — 后序遍历 + 最大贡献值',
+    info: 'root = [-10,9,20,null,null,15,7]，答案应为 ' + EXPECTED + '（最优路径 15 → 20 → 7）。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 470,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前节点' },
+      { color: 'var(--demo-violet)', label: '已算出贡献值的节点' },
+      { color: 'var(--demo-ok)', label: '当前最优路径' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = treeSVG(step.tree, node => {
+        const onBest = step.bestPath && step.bestPath.indexOf(node.id) >= 0;
+        if (step.active === node.id) return { state: 'accent', ring: 'var(--demo-accent)' };
+        if (onBest) return 'ok';
+        if (step.gains[node.id] != null) return 'violet';
+        return 'default';
+      }, node => step.gains[node.id] != null ? 'gain ' + step.gains[node.id] : null);
+      ctx.stage.appendChild(wrap);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-start';
+      row.style.gap = '12px';
+  
+      const ansPanel = Demo.el('div', 'panel');
+      ansPanel.appendChild(Demo.el('div', 'panel__title', '全局答案 maxSum'));
+      ansPanel.appendChild(Demo.el('div', null,
+        'maxSum = <strong>' + (step.maxSum === -Infinity ? '−∞' : step.maxSum) + '</strong><br>' +
+        (step.done
+          ? '<span class="tag tag--ok">返回 ' + step.maxSum + '</span>'
+          : '<span class="tag tag--info">后序遍历中</span>')));
+  
+      const calcPanel = Demo.el('div', 'panel');
+      calcPanel.style.flex = '1';
+      calcPanel.appendChild(Demo.el('div', 'panel__title', '贡献值计算'));
+      const activeNode = findById(step.tree, step.active);
+      if (step.phase === 'compute') {
+        calcPanel.appendChild(Demo.el('div', null,
+          '节点 <strong>' + activeNode.val + '</strong>：左贡献 ' + step.leftGain + '，右贡献 ' + step.rightGain + '<br>' +
+          '经过它的路径和 = ' + activeNode.val + ' + ' + step.leftGain + ' + ' + step.rightGain + ' = <strong>' + step.curPath + '</strong>' +
+          (step.beat ? '（刷新答案）' : '（未超过答案）') + '<br>' +
+          '向上返回的贡献值 = ' + activeNode.val + ' + max(' + step.leftGain + ', ' + step.rightGain + ') = <strong>' + step.gain + '</strong><br>' +
+          '<span class="tag tag--violet">路径不能分叉，返回时只能选一边</span>'));
+      } else if (step.phase === 'enter') {
+        calcPanel.appendChild(Demo.el('div', null, '等待左右子树的返回值……<br><span class="tag tag--warn">后序：先子后父</span>'));
+      } else {
+        calcPanel.appendChild(Demo.el('div', null, '最优路径：<strong>' + step.bestPath.map(id => findById(step.tree, id).val).join(' → ') + '</strong><br>' +
+          '<span class="tag tag--ok">路径和 ' + step.maxSum + '</span>'));
+      }
+  
+      row.appendChild(ansPanel);
+      row.appendChild(calcPanel);
+      ctx.stage.appendChild(row);
+  
+      const pathPanel = Demo.el('div', 'panel');
+      pathPanel.style.width = '100%';
+      pathPanel.appendChild(Demo.el('div', 'panel__title', '当前最优路径'));
+      const pathRow = Demo.el('div', 'row');
+      pathRow.style.justifyContent = 'flex-start';
+      if (!step.bestPath || step.bestPath.length === 0) {
+        pathRow.appendChild(Demo.el('div', 'cell cell--empty', '尚未找到'));
+      } else {
+        step.bestPath.forEach((id, k) => {
+          if (k) pathRow.appendChild(Demo.el('div', 'arrow', '→'));
+          const cell = Demo.el('div', 'cell', Demo.esc(findById(step.tree, id).val));
+          cell.classList.add('is-ok');
+          pathRow.appendChild(cell);
+        });
+        pathRow.appendChild(Demo.el('div', 'arrow', '='));
+        pathRow.appendChild(Demo.el('div', 'cell', Demo.esc(step.maxSum)));
+      }
+      pathPanel.appendChild(pathRow);
+      ctx.stage.appendChild(pathPanel);
+    }
+  });
+  return Demo.__config
+}

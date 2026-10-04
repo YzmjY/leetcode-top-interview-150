@@ -1,0 +1,223 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/62-reverse-nodes-in-k-group-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const VALS = [1, 2, 3, 4, 5];
+  const K = 2;
+  
+  function buildSteps() {
+    const nodes = VALS.map((v, k) => ({ val: v, idx: k, next: null }));
+    for (let k = 0; k + 1 < nodes.length; k++) nodes[k].next = nodes[k + 1];
+    const dummy = { val: null, idx: -1, dummy: true, next: nodes[0] };
+  
+    const order = () => {
+      const arr = [];
+      let cur = dummy;
+      let guard = 0;
+      while (cur && guard < 20) { arr.push(cur.idx); cur = cur.next; guard += 1; }
+      return arr;
+    };
+    const valsOf = arr => arr.map(idx => (idx < 0 ? 'dummy' : VALS[idx]));
+  
+    const steps = [];
+    let pre = dummy;
+    let head = dummy.next;
+    let groupNo = 0;
+    let processed = 0;
+    let guard = 0;
+  
+    steps.push({
+      order: order(), pre: -1, cur: null, move: null, tail: null, members: [], groupNo: 0,
+      processed: 0, phase: 'init', done: false,
+      note: '初始化：dummy 指向头节点，pre 从 dummy 出发（它永远是「已经处理好的部分」的尾巴）。链表为 [' + VALS.join(', ') +
+        ']，k = ' + K + '，即每 ' + K + ' 个节点分一组翻转。'
+    });
+  
+    while (head != null && guard < 50) {
+      guard += 1;
+      groupNo += 1;
+  
+      let tail = pre;
+      let enough = true;
+      for (let t = 0; t < K; t++) {
+        tail = tail.next;
+        if (tail == null) { enough = false; break; }
+      }
+  
+      const members = [];
+      let probe = pre.next;
+      while (probe && members.length < K) { members.push(probe.idx); probe = probe.next; }
+  
+      if (!enough) {
+        steps.push({
+          order: order(), pre: pre.idx, cur: null, move: null, tail: null, members: members, groupNo: groupNo,
+          processed: processed, phase: 'stop', done: true,
+          note: '第 ' + groupNo + ' 组：从 pre 往后只数出 ' + members.length + ' 个节点（值为 ' +
+            valsOf(members).join('、') + '），不足 k = ' + K + ' 个，无法翻转。题目要求剩余节点保持原有顺序，所以直接返回 dummy.Next，算法结束。'
+        });
+        break;
+      }
+  
+      const nextGroup = tail.next;
+      steps.push({
+        order: order(), pre: pre.idx, cur: pre.next.idx, move: null, tail: tail.idx, members: members,
+        groupNo: groupNo, processed: processed, phase: 'check', done: false,
+        note: '第 ' + groupNo + ' 组：从 pre 往后数满 k = ' + K + ' 个节点（' + valsOf(members).join(' → ') +
+          '），说明这一组需要翻转。先记下下一组的起点 nextGroup = ' +
+          (nextGroup ? '节点 ' + nextGroup.val : 'nil') + '，翻转后再把它接回来。'
+      });
+  
+      const cur = pre.next;
+      for (let t = 0; t < K - 1; t++) {
+        const move = cur.next;
+        cur.next = move.next;
+        move.next = pre.next;
+        pre.next = move;
+        steps.push({
+          order: order(), pre: pre.idx, cur: cur.idx, move: move.idx, tail: tail.idx, members: members,
+          groupNo: groupNo, processed: processed, phase: 'insert', done: false,
+          note: '第 ' + groupNo + ' 组头插第 ' + (t + 1) + ' 次（共 ' + (K - 1) + ' 次）：把 cur.Next 处的节点 ' + move.val +
+            ' 摘下来，插到 pre 之后，链表变成 [' + valsOf(order()).join(', ') + ']。cur 不动，它始终是已翻转部分的尾巴。'
+        });
+      }
+  
+      pre = cur;
+      head = nextGroup;
+      pre.next = head;
+      processed += 1;
+  
+      steps.push({
+        order: order(), pre: pre.idx, cur: cur.idx, move: null, tail: cur.idx, members: members,
+        groupNo: groupNo, processed: processed, phase: 'groupdone', done: false,
+        note: '第 ' + groupNo + ' 组翻转完成：' + valsOf(members).join(' → ') + ' 变成 ' +
+          valsOf(members.slice().reverse()).join(' → ') + '，整条链表为 [' + valsOf(order()).join(', ') +
+          ']。pre 移动到这一组原来的第一个节点（值为 ' + cur.val + '），它是下一组的前驱。'
+      });
+    }
+  
+    steps.push({
+      order: order(), pre: pre.idx, cur: null, move: null, tail: null, members: [], groupNo: groupNo,
+      processed: processed, phase: 'done', done: true,
+      note: '全部处理完毕，返回 dummy.Next = [' + valsOf(order()).slice(1).join(', ') + ']。每个节点只被访问常数次，时间 O(n)；除了几个指针没有额外分配，空间 O(1)。'
+    });
+  
+    return steps;
+  }
+  
+  function applyTone(node, tone) {
+    const tones = {
+      accent: ['var(--demo-accent-soft)', 'var(--demo-accent)'],
+      violet: ['var(--demo-violet-soft)', 'var(--demo-violet)'],
+      pink: ['var(--demo-pink-soft)', 'var(--demo-pink)'],
+      info: ['var(--demo-info-soft)', 'var(--demo-info)'],
+      warn: ['var(--demo-warn-soft)', 'var(--demo-warn)'],
+      ok: ['var(--demo-ok-soft)', 'var(--demo-ok)']
+    };
+    const pair = tones[tone];
+    if (!pair) return;
+    node.style.background = pair[0];
+    node.style.borderColor = pair[1];
+  }
+  
+  function col(item) {
+    const box = Demo.el('div', 'col');
+    const label = Demo.el('div', 'ptr', Demo.esc(item.label));
+    label.classList.add('ptr--dim');
+    label.style.minWidth = '46px';
+    box.appendChild(label);
+  
+    const node = Demo.el('div', 'll-node');
+    node.style.width = '48px';
+    node.style.flex = 'none';
+    if (item.dummy) {
+      node.style.borderStyle = 'dashed';
+      node.style.fontSize = '11px';
+    }
+    node.innerHTML = Demo.esc(item.text);
+    applyTone(node, item.tone);
+    box.appendChild(node);
+  
+    const ptr = Demo.el('div', 'ptr', Demo.esc(item.ptr || ''));
+    ptr.style.minWidth = '46px';
+    if (!item.ptr) ptr.classList.add('ptr--dim');
+    if (item.ptrCls) ptr.classList.add(item.ptrCls);
+    box.appendChild(ptr);
+    return box;
+  }
+  
+  Demo.create({
+    title: '62. K 个一组翻转链表 — 先数够 k 个，再头插翻转',
+    info: '输入：head = [' + VALS.join(', ') + ']，k = ' + K + '。每轮先用 tail 试探性地往后数 k 个：数不够就原样收尾；数够了就对 pre 后面的 k 个节点做 k-1 次头插翻转，然后把 pre 移到这组的尾巴。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 300,
+    legend: [
+      { color: 'var(--demo-violet)', label: 'pre：已处理部分的尾巴' },
+      { color: 'var(--demo-info)', label: '当前分组（待翻转）' },
+      { color: 'var(--demo-pink)', label: 'move：本步被插入的节点' },
+      { color: 'var(--demo-warn)', label: '不足 k 个，保持原序' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.appendChild(Demo.el('div', 'panel__title', '当前链表（从左到右就是 next 的顺序，按原下标标注节点身份）'));
+      const row = Demo.el('div', 'row');
+      step.order.forEach((idx, k) => {
+        if (k > 0) {
+          const arrow = Demo.el('div', 'arrow', '→');
+          arrow.style.width = '22px';
+          arrow.style.textAlign = 'center';
+          row.appendChild(arrow);
+        }
+        let tone = '';
+        if (step.members.indexOf(idx) >= 0) tone = step.phase === 'stop' ? 'warn' : 'info';
+        if (idx === step.pre) tone = 'violet';
+        if (idx === step.cur) tone = 'accent';
+        if (idx === step.move) tone = 'pink';
+  
+        const ptrLabels = [];
+        if (idx === step.pre) ptrLabels.push('pre');
+        if (idx === step.cur) ptrLabels.push('cur');
+        if (idx === step.move) ptrLabels.push('move');
+        else if (idx === step.tail && step.phase === 'check') ptrLabels.push('tail');
+        let ptrCls = '';
+        if (idx === step.pre) ptrCls = 'ptr--violet';
+        else if (idx === step.move) ptrCls = 'ptr--pink';
+        else if (idx === step.tail && step.phase === 'check') ptrCls = 'ptr--info';
+  
+        row.appendChild(col({
+          label: idx < 0 ? 'dummy' : '原 #' + idx,
+          text: idx < 0 ? 'dummy' : VALS[idx],
+          dummy: idx < 0,
+          tone: tone,
+          ptr: ptrLabels.join(' '),
+          ptrCls: ptrCls
+        }));
+      });
+      panel.appendChild(row);
+      ctx.stage.appendChild(panel);
+  
+      const info = Demo.el('div', 'panel');
+      info.style.width = '100%';
+      info.style.textAlign = 'center';
+      let statusTag;
+      if (step.phase === 'stop') statusTag = '<span class="tag tag--warn">剩余不足 ' + K + ' 个，保持原序</span>';
+      else if (step.phase === 'done') statusTag = '<span class="tag tag--ok">全部完成</span>';
+      else if (step.phase === 'groupdone') statusTag = '<span class="tag tag--ok">第 ' + step.groupNo + ' 组已翻转</span>';
+      else if (step.phase === 'check') statusTag = '<span class="tag tag--info">第 ' + step.groupNo + ' 组够 ' + K + ' 个，开始翻转</span>';
+      else if (step.phase === 'insert') statusTag = '<span class="tag tag--warn">第 ' + step.groupNo + ' 组翻转中</span>';
+      else statusTag = '<span class="tag">准备开始</span>';
+  
+      info.innerHTML = 'k = ' + K + '　｜　已翻转分组：' + step.processed + ' 组' +
+        '　｜　当前组：' + (step.groupNo <= 0 ? '—' : '第 ' + step.groupNo + ' 组' +
+          (step.members.length ? '［' + step.members.map(x => VALS[x]).join(', ') + '］' : '')) +
+        '　' + statusTag;
+      ctx.stage.appendChild(info);
+    }
+  });
+  return Demo.__config
+}

@@ -1,0 +1,216 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/28-container-with-most-water-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const HEIGHTS = [1, 8, 6, 2, 5, 4, 8, 3, 7];
+  
+  function buildSteps() {
+    const steps = [];
+    const n = HEIGHTS.length;
+    let left = 0;
+    let right = n - 1;
+    let maxArea = 0;
+    let bestL = -1;
+    let bestR = -1;
+  
+    function snap(phase, note) {
+      return {
+        left: left,
+        right: right,
+        phase: phase,
+        area: null,
+        w: 0,
+        h: 0,
+        maxArea: maxArea,
+        bestL: bestL,
+        bestR: bestR,
+        isNewMax: false,
+        note: note
+      };
+    }
+  
+    steps.push(snap('init',
+      '初始状态：left=0、right=' + (n - 1) + ' 指向最外侧的两条线，此时宽度最大。容器能装多少水由「宽度」和「较短的线」共同决定：容量 = (right-left) × min(height[left], height[right])。'));
+  
+    while (left < right) {
+      const w = right - left;
+      const h = Math.min(HEIGHTS[left], HEIGHTS[right]);
+      const area = w * h;
+      const isNewMax = area > maxArea;
+      if (isNewMax) {
+        maxArea = area;
+        bestL = left;
+        bestR = right;
+      }
+      steps.push({
+        left: left,
+        right: right,
+        phase: 'measure',
+        area: area,
+        w: w,
+        h: h,
+        maxArea: maxArea,
+        bestL: bestL,
+        bestR: bestR,
+        isNewMax: isNewMax,
+        note: '当前一对线：height[' + left + ']=' + HEIGHTS[left] + '，height[' + right + ']=' + HEIGHTS[right] + '。宽度 = ' + right + ' - ' + left + ' = ' + w
+          + '，容器高度由短板决定 = min(' + HEIGHTS[left] + ', ' + HEIGHTS[right] + ') = ' + h
+          + '，容量 = ' + w + ' × ' + h + ' = ' + area
+          + (isNewMax ? '，刷新了目前的最大值 ' + maxArea + '。' : '，没有超过目前的最大值 ' + maxArea + '。')
+      });
+  
+      if (HEIGHTS[left] < HEIGHTS[right]) {
+        steps.push({
+          left: left,
+          right: right,
+          phase: 'move-left',
+          area: null,
+          w: w,
+          h: h,
+          maxArea: maxArea,
+          bestL: bestL,
+          bestR: bestR,
+          isNewMax: false,
+          note: '移动较短的线：height[' + left + ']=' + HEIGHTS[left] + ' < height[' + right + ']=' + HEIGHTS[right] + '，短板在左边。若保留这根短板、改为移动右边的长板，短板不变而宽度一定变小，容量只会更小甚至不变，所以这一侧的线可以淘汰，left → ' + (left + 1) + '。'
+        });
+        left++;
+      } else {
+        steps.push({
+          left: left,
+          right: right,
+          phase: 'move-right',
+          area: null,
+          w: w,
+          h: h,
+          maxArea: maxArea,
+          bestL: bestL,
+          bestR: bestR,
+          isNewMax: false,
+          note: '移动较短的线：height[' + left + ']=' + HEIGHTS[left] + ' ≥ height[' + right + ']=' + HEIGHTS[right] + '，短板在右边（两者相等时也任选一边淘汰）。保留短板、移动长板只会让宽度变小，所以 right → ' + (right - 1) + '。'
+        });
+        right--;
+      }
+    }
+  
+    steps.push(snap('done',
+      'left 与 right 相遇，所有可能的组合都已枚举（每轮至少淘汰一根线）→ 最大容量 = ' + maxArea + '，来自 height[' + bestL + ']=' + HEIGHTS[bestL] + ' 与 height[' + bestR + ']=' + HEIGHTS[bestR] + '。'));
+  
+    return steps;
+  }
+  
+  function render(step, idx, ctx) {
+    ctx.stage.innerHTML = '';
+  
+    const n = HEIGHTS.length;
+    const maxH = Math.max.apply(null, HEIGHTS);
+    const cw = 44;
+    const padL = 24;
+    const padR = 24;
+    const base = 168;
+    const top = 26;
+    const scale = (base - top) / maxH;
+    const W = padL + n * cw + padR;
+    const H = 236;
+  
+    function xc(k) { return padL + k * cw + cw / 2; }
+  
+    let waterL = -1;
+    let waterR = -1;
+    let waterH = 0;
+    if (step.phase === 'measure') {
+      waterL = step.left;
+      waterR = step.right;
+      waterH = step.h;
+    } else if (step.phase === 'done' && step.bestL >= 0) {
+      waterL = step.bestL;
+      waterR = step.bestR;
+      waterH = Math.min(HEIGHTS[waterL], HEIGHTS[waterR]);
+    }
+  
+    const parts = [];
+    parts.push('<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:560px;height:auto;display:block" role="img">');
+    parts.push('<line x1="' + (padL - 12) + '" y1="' + base + '" x2="' + (W - padR + 12) + '" y2="' + base + '" style="stroke:var(--demo-border);stroke-width:1.5"/>');
+  
+    if (waterL >= 0) {
+      const wx1 = xc(waterL);
+      const wx2 = xc(waterR);
+      const wy = base - waterH * scale;
+      parts.push('<rect x="' + wx1 + '" y="' + wy + '" width="' + (wx2 - wx1) + '" height="' + (base - wy) + '" style="fill:var(--demo-accent);opacity:0.18"/>');
+      parts.push('<line x1="' + wx1 + '" y1="' + wy + '" x2="' + wx2 + '" y2="' + wy + '" style="stroke:var(--demo-accent);stroke-width:1.5;stroke-dasharray:4 3"/>');
+    }
+  
+    for (let k = 0; k < n; k++) {
+      const h = HEIGHTS[k];
+      const y = base - h * scale;
+      const isL = k === step.left;
+      const isR = k === step.right;
+      const isBest = step.phase === 'done' && (k === step.bestL || k === step.bestR);
+  
+      let fill = 'var(--demo-subtle)';
+      let stroke = 'var(--demo-border)';
+      if (isBest) {
+        fill = 'var(--demo-ok-soft)';
+        stroke = 'var(--demo-ok)';
+      } else if (isL) {
+        fill = 'var(--demo-accent-soft)';
+        stroke = 'var(--demo-accent)';
+      } else if (isR) {
+        fill = 'var(--demo-info-soft)';
+        stroke = 'var(--demo-info)';
+      }
+  
+      parts.push('<rect x="' + (xc(k) - 12) + '" y="' + y + '" width="24" height="' + Math.max(2, base - y) + '" rx="3" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2"/>');
+      parts.push('<text x="' + xc(k) + '" y="' + (y - 6) + '" text-anchor="middle" style="fill:var(--demo-muted);font-size:11px;font-family:var(--demo-mono)">' + h + '</text>');
+      parts.push('<text x="' + xc(k) + '" y="' + (base + 15) + '" text-anchor="middle" style="fill:var(--demo-muted);font-size:10px">' + k + '</text>');
+      if (step.phase !== 'done') {
+        if (isL) parts.push('<text x="' + xc(k) + '" y="' + (base + 31) + '" text-anchor="middle" style="fill:var(--demo-accent);font-size:11px;font-weight:700;font-family:var(--demo-mono)">left</text>');
+        if (isR) parts.push('<text x="' + xc(k) + '" y="' + (base + 31) + '" text-anchor="middle" style="fill:var(--demo-info);font-size:11px;font-weight:700;font-family:var(--demo-mono)">right</text>');
+      }
+    }
+  
+    if (waterL >= 0) {
+      const wx1 = xc(waterL);
+      const wx2 = xc(waterR);
+      parts.push('<line x1="' + wx1 + '" y1="218" x2="' + wx2 + '" y2="218" style="stroke:var(--demo-muted);stroke-width:1"/>');
+      parts.push('<line x1="' + wx1 + '" y1="213" x2="' + wx1 + '" y2="223" style="stroke:var(--demo-muted);stroke-width:1"/>');
+      parts.push('<line x1="' + wx2 + '" y1="213" x2="' + wx2 + '" y2="223" style="stroke:var(--demo-muted);stroke-width:1"/>');
+      parts.push('<text x="' + ((wx1 + wx2) / 2) + '" y="210" text-anchor="middle" style="fill:var(--demo-muted);font-size:11px;font-family:var(--demo-mono)">宽度 ' + (waterR - waterL) + ' × 高 ' + waterH + '</text>');
+    }
+    parts.push('</svg>');
+  
+    const chart = Demo.el('div', 'col');
+    chart.style.width = '100%';
+    chart.innerHTML = parts.join('');
+    ctx.stage.appendChild(chart);
+  
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.style.textAlign = 'center';
+    let html = '当前最大容量：<code>' + step.maxArea + '</code>';
+    if (step.area != null) {
+      html += ' &nbsp; 本轮容量：<code>' + step.w + ' × ' + step.h + ' = ' + step.area + '</code> '
+        + (step.isNewMax ? '<span class="tag tag--ok">刷新最大值</span>' : '<span class="tag tag--warn">未超过最大值</span>');
+    }
+    if (step.phase === 'done') html += ' &nbsp;<span class="tag tag--ok">答案 ' + step.maxArea + '</span>';
+    panel.innerHTML = html;
+    ctx.stage.appendChild(panel);
+  }
+  
+  Demo.create({
+    title: '28. 盛最多水的容器 — 对撞双指针 + 贪心淘汰短板',
+    info: '输入：height = [1, 8, 6, 2, 5, 4, 8, 3, 7]。蓝色区域是当前两条线与 x 轴围成的容器，容量 = 宽度 × min(两边高度)。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'left 所在的线（当前短板时被淘汰）' },
+      { color: 'var(--demo-info)', label: 'right 所在的线' },
+      { color: 'var(--demo-accent-soft)', label: '当前容器水量' },
+      { color: 'var(--demo-ok)', label: '取得最大容量的那对线' }
+    ],
+    render: render,
+    stageHeight: 300
+  });
+  return Demo.__config
+}

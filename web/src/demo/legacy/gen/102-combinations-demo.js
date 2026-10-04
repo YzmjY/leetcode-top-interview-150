@@ -1,0 +1,165 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/102-combinations-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const N = 4;
+  const K = 2;
+  
+  function buildSteps() {
+    const steps = [];
+    const path = [];
+    const results = [];
+  
+    function snap(extra) {
+      return {
+        path: path.slice(),
+        results: results.slice(),
+        start: extra.start == null ? null : extra.start,
+        max: extra.max == null ? null : extra.max,
+        chosen: extra.chosen == null ? null : extra.chosen,
+        phase: extra.phase,
+        note: extra.note
+      };
+    }
+  
+    steps.push(snap({
+      phase: 'init',
+      note: `初始化：n = ${N}，k = ${K}，path 为空。组合不关心顺序，所以每层只从 start 及之后的数字里选，保证组合内数字严格递增，从根源上避免出现 [1,2] 和 [2,1] 这种重复。`
+    }));
+  
+    function backtrack(start) {
+      if (path.length === K) {
+        results.push(path.slice());
+        steps.push(snap({
+          phase: 'collect',
+          note: `path 长度达到 k = ${K}，说明已经选够 ${K} 个数，得到组合 [${path.join(', ')}]，加入结果集后返回上一层。`
+        }));
+        return;
+      }
+  
+      const max = N - (K - path.length) + 1;
+      steps.push(snap({
+        start, max, phase: 'enter',
+        note: `进入新的一层：还需要选 ${K - path.length} 个数，候选区间是 [${start}, ${N}]。为了给后面的位置留够数字，本层 i 最多只能取到 ${max} —— 一旦 i > ${max}，后面剩下的数字凑不满 k 个，因此这些分支被剪枝直接跳过。`
+      }));
+  
+      for (let i = start; i <= max; i++) {
+        path.push(i);
+        steps.push(snap({
+          start, max, chosen: i, phase: 'choose',
+          note: `本层选择 i = ${i} 放入 path，得到 [${path.join(', ')}]；下一层从 start = ${i + 1} 开始，因为组合内数字必须递增，只能选比 ${i} 大的数。`
+        }));
+  
+        backtrack(i + 1);
+  
+        path.pop();
+        steps.push(snap({
+          start, max, chosen: i, phase: 'undo',
+          note: `撤销选择 i = ${i}，path 退回 [${path.join(', ')}]，for 循环继续尝试下一个更大的数字；如果本层候选已经试完，就继续向上层回溯。`
+        }));
+      }
+    }
+  
+    backtrack(1);
+  
+    steps.push(snap({
+      phase: 'done',
+      note: `所有分支都走完了，共得到 ${results.length} 个组合：[${results.map(r => '[' + r.join(',') + ']').join(', ')}]。组合内数字递增保证了不重复，每层起点的推进保证了不遗漏。`
+    }));
+  
+    return steps;
+  }
+  
+  function numbersRow(step) {
+    const row = Demo.el('div', 'row');
+    for (let j = 1; j <= N; j++) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(j));
+      const inPath = step.path.indexOf(j) >= 0;
+      if (step.phase === 'undo' && step.chosen === j) {
+        cell.classList.add('is-warn');
+      } else if (inPath) {
+        cell.classList.add('is-ok');
+      } else if (step.max != null && j > step.max) {
+        cell.classList.add('cell--dim');
+      } else if (step.start != null && j < step.start) {
+        cell.classList.add('cell--dim');
+      } else if (step.start != null && j === step.start) {
+        cell.classList.add('is-active');
+      }
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (step.start === j) labels.push('start');
+      if (step.max === j) labels.push('上界');
+      const ptr = Demo.el('div', 'ptr', labels.join(' '));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (step.max === j && step.start !== j) ptr.classList.add('ptr--warn');
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+    }
+    return row;
+  }
+  
+  function pathRow(step) {
+    const row = Demo.el('div', 'row');
+    for (let i = 0; i < K; i++) {
+      const value = step.path[i];
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell cell--lg', value == null ? '?' : Demo.esc(value));
+      if (value == null) cell.classList.add('cell--empty');
+      else if (step.phase === 'choose' && i === step.path.length - 1) cell.classList.add('is-active');
+      else cell.classList.add('is-ok');
+      col.appendChild(cell);
+      col.appendChild(Demo.el('div', 'ptr ptr--dim', '第' + i + '个数'));
+      row.appendChild(col);
+    }
+    return row;
+  }
+  
+  Demo.create({
+    title: '102. 组合 — start 控制起点 + 上界剪枝',
+    info: `输入：n = ${N}，k = ${K}。从范围 [1, n] 中选 k 个数，数字递增即天然去重。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'start：本层可选的最小数字' },
+      { color: 'var(--demo-warn)', label: '刚被撤销的选择' },
+      { color: 'var(--demo-ok)', label: '当前 path 中的数字' },
+      { color: 'var(--demo-muted)', label: '被剪枝 / 已扫描过的数字' }
+    ],
+    stageHeight: 300,
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      ctx.stage.appendChild(Demo.el('div', 'panel__title', '候选数字 1 ~ ' + N + '（本层区间 [start, 上界]）'));
+      ctx.stage.appendChild(numbersRow(step));
+  
+      const pathPanel = Demo.el('div', 'col');
+      pathPanel.appendChild(Demo.el('div', 'panel__title', 'path 路径（长度不能超过 k = ' + K + '）'));
+      pathPanel.appendChild(pathRow(step));
+      ctx.stage.appendChild(pathPanel);
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.style.textAlign = 'center';
+      const bound = step.max == null
+        ? '本层不是循环层（叶子收集或已结束）'
+        : `本层 start = ${step.start}，上界 = n − (k − len(path)) + 1 = ${N} − (${K} − ${step.path.length}) + 1 = ${step.max}`;
+      panel.appendChild(Demo.el('div', 'tag', Demo.esc(bound)));
+      const resRow = Demo.el('div', 'row');
+      resRow.style.marginTop = '6px';
+      if (!step.results.length) {
+        resRow.appendChild(Demo.el('span', 'ptr ptr--dim', '（还没有收集到组合）'));
+      } else {
+        step.results.forEach(r => resRow.appendChild(Demo.el('span', 'tag tag--ok', '[' + r.join(', ') + ']')));
+      }
+      panel.appendChild(resRow);
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

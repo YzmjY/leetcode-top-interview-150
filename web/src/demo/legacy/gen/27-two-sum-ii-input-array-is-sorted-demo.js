@@ -1,0 +1,121 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/27-two-sum-ii-input-array-is-sorted-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMBERS = [2, 7, 11, 15];
+  const TARGET = 9;
+  
+  function buildSteps() {
+    const steps = [];
+    const n = NUMBERS.length;
+    let left = 0;
+    let right = n - 1;
+    let found = null;
+  
+    function snap(phase, sum, note) {
+      return {
+        left: left,
+        right: right,
+        phase: phase,
+        sum: sum,
+        found: found,
+        note: note
+      };
+    }
+  
+    steps.push(snap('init', null,
+      '初始状态：数组非递减有序，left=0 指向最小值 ' + NUMBERS[0] + '，right=' + (n - 1) + ' 指向最大值 ' + NUMBERS[n - 1] + '，target=' + TARGET + '。'));
+  
+    while (left < right) {
+      const sum = NUMBERS[left] + NUMBERS[right];
+      steps.push(snap('sum', sum,
+        '计算两端之和：numbers[' + left + '] + numbers[' + right + '] = ' + NUMBERS[left] + ' + ' + NUMBERS[right] + ' = ' + sum + '，与 target=' + TARGET + ' 比较。'));
+  
+      if (sum === TARGET) {
+        found = { l: left, r: right };
+        steps.push(snap('found', sum,
+          '和正好等于 target！返回题目要求的 1-based 下标 [' + (left + 1) + ', ' + (right + 1) + ']。（题目保证答案唯一，不必继续找）'));
+        break;
+      } else if (sum < TARGET) {
+        steps.push(snap('move-left', sum,
+          'sum=' + sum + ' < target=' + TARGET + '：因为数组非递减，numbers[right] 已经是能与 numbers[left] 配对的当前最大值，换成更小的 right 只会让和更小；所以 numbers[left] 不可能参与答案，left 从 ' + left + ' 右移到 ' + (left + 1) + '，去寻找更大的数。'));
+        left++;
+      } else {
+        steps.push(snap('move-right', sum,
+          'sum=' + sum + ' > target=' + TARGET + '：因为数组非递减，numbers[left] 已经是能与 numbers[right] 配对的当前最小值，换成更大的 left 只会让和更大；所以 numbers[right] 不可能参与答案，right 从 ' + right + ' 左移到 ' + (right - 1) + '，去寻找更小的数。'));
+        right--;
+      }
+    }
+  
+    steps.push(snap('done', null, found
+      ? '已经找到唯一答案 [' + (found.l + 1) + ', ' + (found.r + 1) + '] → 结束。整个过程中每个元素最多被访问一次。'
+      : 'left 与 right 相遇，搜索区间为空 → 结束。'));
+  
+    return steps;
+  }
+  
+  function render(step, idx, ctx) {
+    ctx.stage.innerHTML = '';
+  
+    const row = Demo.el('div', 'row');
+    for (let k = 0; k < NUMBERS.length; k++) {
+      const col = Demo.el('div', 'col');
+      col.appendChild(Demo.el('div', 'ptr ptr--dim', '#' + (k + 1)));
+  
+      const cell = Demo.el('div', 'cell cell--lg', Demo.esc(NUMBERS[k]));
+      const isFound = step.found && (k === step.found.l || k === step.found.r);
+      const inWindow = k >= step.left && k <= step.right;
+      if (isFound) cell.classList.add('is-ok');
+      else if (k === step.left) cell.classList.add('is-active');
+      else if (k === step.right) cell.classList.add('is-info');
+      else if (!inWindow) cell.classList.add('cell--dim');
+      col.appendChild(cell);
+  
+      const hasL = k === step.left;
+      const hasR = k === step.right;
+      const labels = [];
+      if (hasL) labels.push('left');
+      if (hasR) labels.push('right');
+      const ptr = Demo.el('div', 'ptr', labels.join(' '));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (!hasL && hasR) ptr.classList.add('ptr--info');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    }
+    ctx.stage.appendChild(row);
+  
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.style.textAlign = 'center';
+    let html = '';
+    if (step.sum != null) {
+      html += '当前和：<code>numbers[' + step.left + '] + numbers[' + step.right + '] = '
+        + NUMBERS[step.left] + ' + ' + NUMBERS[step.right] + ' = ' + step.sum + '</code> vs target=' + TARGET + ' ';
+      if (step.sum === TARGET) html += '<span class="tag tag--ok">相等</span>';
+      else if (step.sum < TARGET) html += '<span class="tag tag--warn">偏小，left++</span>';
+      else html += '<span class="tag tag--warn">偏大，right--</span>';
+    } else {
+      html += '搜索区间：下标 ' + step.left + ' 到 ' + step.right + '（灰色格子已被排除）';
+    }
+    if (step.found) html += ' &nbsp;<span class="tag tag--ok">答案 [' + (step.found.l + 1) + ', ' + (step.found.r + 1) + ']</span>';
+    panel.innerHTML = html;
+    ctx.stage.appendChild(panel);
+  }
+  
+  Demo.create({
+    title: '27. 两数之和 II — 有序数组上的对撞双指针',
+    info: '输入：numbers = [2, 7, 11, 15]（非递减），target = 9。下标从 1 开始计数，灰色格子表示已被排除的位置。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'left 指针（指向较小端）' },
+      { color: 'var(--demo-info)', label: 'right 指针（指向较大端）' },
+      { color: 'var(--demo-ok)', label: '找到的两个数' },
+      { color: 'var(--demo-muted)', label: '已被排除的元素' }
+    ],
+    render: render
+  });
+  return Demo.__config
+}

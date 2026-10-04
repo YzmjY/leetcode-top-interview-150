@@ -1,0 +1,351 @@
+/* ==========================================================================
+   迁移演示的舞台样式（重新设计版）
+   只保留可视化元件样式，外壳由 React DemoShell 接管。
+   所有选择器 scoped 在 .demo-legacy-stage 下，避免与站点样式冲突。
+   色彩令牌对接站点主题（暖纸 / 深墨 + 琥珀主色）。
+   ========================================================================== */
+
+:root {
+  --demo-text: hsl(230 25% 13%);
+  --demo-muted: hsl(230 9% 44%);
+  --demo-border: hsl(42 14% 85%);
+  --demo-subtle: hsl(44 22% 94%);
+  --demo-card: hsl(0 0% 100%);
+
+  --demo-accent: hsl(28 92% 45%);
+  --demo-accent-soft: hsl(34 90% 92%);
+  --demo-accent-strong: hsl(24 90% 38%);
+
+  --demo-ok: hsl(158 64% 34%);
+  --demo-ok-soft: hsl(152 55% 91%);
+  --demo-warn: hsl(36 92% 40%);
+  --demo-warn-soft: hsl(42 95% 91%);
+  --demo-danger: hsl(350 72% 48%);
+  --demo-danger-soft: hsl(350 70% 94%);
+  --demo-info: hsl(190 80% 36%);
+  --demo-info-soft: hsl(190 70% 92%);
+  --demo-violet: hsl(262 60% 50%);
+  --demo-violet-soft: hsl(262 60% 94%);
+  --demo-pink: hsl(330 65% 48%);
+  --demo-pink-soft: hsl(330 65% 94%);
+
+  --demo-radius: 10px;
+  --demo-radius-sm: 8px;
+  --demo-font: inherit;
+  --demo-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+}
+
+.dark {
+  --demo-text: hsl(44 25% 92%);
+  --demo-muted: hsl(230 10% 62%);
+  --demo-border: hsl(232 12% 24%);
+  --demo-subtle: hsl(232 14% 16.5%);
+  --demo-card: hsl(232 20% 11.5%);
+
+  --demo-accent: hsl(32 95% 55%);
+  --demo-accent-soft: hsl(30 55% 19%);
+  --demo-accent-strong: hsl(34 95% 62%);
+
+  --demo-ok: hsl(158 60% 46%);
+  --demo-ok-soft: hsl(160 45% 16%);
+  --demo-warn: hsl(40 95% 55%);
+  --demo-warn-soft: hsl(40 55% 17%);
+  --demo-danger: hsl(350 75% 60%);
+  --demo-danger-soft: hsl(350 45% 18%);
+  --demo-info: hsl(190 75% 50%);
+  --demo-info-soft: hsl(195 55% 16%);
+  --demo-violet: hsl(262 70% 68%);
+  --demo-violet-soft: hsl(262 45% 20%);
+  --demo-pink: hsl(330 70% 62%);
+  --demo-pink-soft: hsl(330 45% 19%);
+}
+
+/* ---------- 舞台容器 ---------- */
+
+.demo-legacy-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--demo-text);
+}
+
+.demo-legacy-stage code {
+  font-family: var(--demo-mono);
+  font-size: 0.85em;
+  background: var(--demo-accent-soft);
+  color: var(--demo-accent-strong);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+/* ---------- 通用可视化元件 ---------- */
+
+.demo-legacy-stage .row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.demo-legacy-stage .col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.demo-legacy-stage .cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  height: 42px;
+  padding: 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--demo-mono);
+  color: var(--demo-text);
+  background: var(--demo-card);
+  border: 1.5px solid var(--demo-border);
+  border-radius: var(--demo-radius-sm);
+  box-shadow: 0 1px 2px hsl(230 25% 13% / 0.05);
+  transition: background 0.2s, border-color 0.2s, transform 0.15s, color 0.2s,
+    box-shadow 0.2s;
+}
+
+.dark .demo-legacy-stage .cell {
+  box-shadow: none;
+}
+
+.demo-legacy-stage .cell--sm { min-width: 30px; height: 30px; font-size: 12px; }
+.demo-legacy-stage .cell--lg { min-width: 54px; height: 54px; font-size: 19px; }
+.demo-legacy-stage .cell--empty {
+  background: transparent;
+  border-style: dashed;
+  color: var(--demo-muted);
+  box-shadow: none;
+}
+.demo-legacy-stage .cell--dim { opacity: 0.32; }
+
+/* 语义高亮 */
+.demo-legacy-stage .cell.is-active {
+  background: var(--demo-accent-soft);
+  border-color: var(--demo-accent);
+  color: var(--demo-accent-strong);
+  transform: translateY(-3px);
+  box-shadow: 0 4px 10px hsl(28 92% 45% / 0.25);
+}
+.demo-legacy-stage .cell.is-ok {
+  background: var(--demo-ok-soft);
+  border-color: var(--demo-ok);
+  color: var(--demo-ok);
+}
+.demo-legacy-stage .cell.is-bad {
+  background: var(--demo-danger-soft);
+  border-color: var(--demo-danger);
+  color: var(--demo-danger);
+}
+.demo-legacy-stage .cell.is-warn {
+  background: var(--demo-warn-soft);
+  border-color: var(--demo-warn);
+  color: var(--demo-warn);
+}
+.demo-legacy-stage .cell.is-info {
+  background: var(--demo-info-soft);
+  border-color: var(--demo-info);
+  color: var(--demo-info);
+}
+.demo-legacy-stage .cell.is-violet {
+  background: var(--demo-violet-soft);
+  border-color: var(--demo-violet);
+  color: var(--demo-violet);
+}
+.demo-legacy-stage .cell.is-pink {
+  background: var(--demo-pink-soft);
+  border-color: var(--demo-pink);
+  color: var(--demo-pink);
+}
+
+.demo-legacy-stage .ptr {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--demo-mono);
+  text-align: center;
+  min-width: 42px;
+  color: var(--demo-accent);
+  transition: opacity 0.2s;
+}
+.demo-legacy-stage .ptr--dim { opacity: 0.22; }
+.demo-legacy-stage .ptr--ok { color: var(--demo-ok); }
+.demo-legacy-stage .ptr--warn { color: var(--demo-warn); }
+.demo-legacy-stage .ptr--bad { color: var(--demo-danger); }
+.demo-legacy-stage .ptr--violet { color: var(--demo-violet); }
+.demo-legacy-stage .ptr--pink { color: var(--demo-pink); }
+.demo-legacy-stage .ptr--info { color: var(--demo-info); }
+
+.demo-legacy-stage .panel {
+  background: var(--demo-subtle);
+  border: 1px solid var(--demo-border);
+  border-radius: var(--demo-radius-sm);
+  padding: 10px 14px;
+  font-size: 13px;
+}
+
+.demo-legacy-stage .panel__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--demo-muted);
+  margin-bottom: 6px;
+}
+
+.demo-legacy-stage .tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 2px 10px;
+  background: var(--demo-accent-soft);
+  color: var(--demo-accent-strong);
+}
+.demo-legacy-stage .tag--ok { background: var(--demo-ok-soft); color: var(--demo-ok); }
+.demo-legacy-stage .tag--bad { background: var(--demo-danger-soft); color: var(--demo-danger); }
+.demo-legacy-stage .tag--warn { background: var(--demo-warn-soft); color: var(--demo-warn); }
+.demo-legacy-stage .tag--info { background: var(--demo-info-soft); color: var(--demo-info); }
+.demo-legacy-stage .tag--violet { background: var(--demo-violet-soft); color: var(--demo-violet); }
+
+.demo-legacy-stage .arrow {
+  font-size: 18px;
+  color: var(--demo-muted);
+  user-select: none;
+}
+
+.demo-legacy-stage .bar {
+  position: relative;
+  height: 26px;
+  background: var(--demo-subtle);
+  border: 1px solid var(--demo-border);
+  border-radius: 6px;
+  overflow: hidden;
+  min-width: 24px;
+}
+.demo-legacy-stage .bar__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--demo-accent);
+  opacity: 0.8;
+  transition: width 0.25s ease;
+}
+.demo-legacy-stage .bar__label {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--demo-mono);
+}
+
+.demo-legacy-stage .grid {
+  display: grid;
+  gap: 6px;
+  justify-content: center;
+}
+.demo-legacy-stage .grid-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--demo-mono);
+  background: var(--demo-card);
+  border: 1.5px solid var(--demo-border);
+  border-radius: 6px;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.demo-legacy-stage .grid-cell.is-active { background: var(--demo-accent-soft); border-color: var(--demo-accent); color: var(--demo-accent-strong); }
+.demo-legacy-stage .grid-cell.is-ok { background: var(--demo-ok-soft); border-color: var(--demo-ok); color: var(--demo-ok); }
+.demo-legacy-stage .grid-cell.is-bad { background: var(--demo-danger-soft); border-color: var(--demo-danger); color: var(--demo-danger); }
+.demo-legacy-stage .grid-cell.is-warn { background: var(--demo-warn-soft); border-color: var(--demo-warn); color: var(--demo-warn); }
+.demo-legacy-stage .grid-cell.is-info { background: var(--demo-info-soft); border-color: var(--demo-info); color: var(--demo-info); }
+.demo-legacy-stage .grid-cell.is-violet { background: var(--demo-violet-soft); border-color: var(--demo-violet); color: var(--demo-violet); }
+.demo-legacy-stage .grid-cell.is-pink { background: var(--demo-pink-soft); border-color: var(--demo-pink); color: var(--demo-pink); }
+.demo-legacy-stage .grid-cell.is-dim { opacity: 0.32; }
+
+.demo-legacy-stage .ll-node {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  font-family: var(--demo-mono);
+  font-weight: 600;
+  background: var(--demo-card);
+  border: 1.5px solid var(--demo-border);
+  border-radius: var(--demo-radius-sm);
+}
+.demo-legacy-stage .ll-node.is-active { background: var(--demo-accent-soft); border-color: var(--demo-accent); }
+.demo-legacy-stage .ll-node.is-ok { background: var(--demo-ok-soft); border-color: var(--demo-ok); }
+
+.demo-legacy-stage .stack {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 4px;
+  justify-content: flex-start;
+  align-items: stretch;
+  min-width: 64px;
+  min-height: 44px;
+  padding: 6px;
+  border: 2px dashed var(--demo-border);
+  border-bottom: 3px solid var(--demo-border);
+  border-radius: var(--demo-radius-sm);
+}
+.demo-legacy-stage .stack__item {
+  padding: 5px 10px;
+  text-align: center;
+  font-family: var(--demo-mono);
+  font-weight: 600;
+  background: var(--demo-card);
+  border: 1px solid var(--demo-border);
+  border-radius: 6px;
+}
+.demo-legacy-stage .stack__item.is-active {
+  background: var(--demo-accent-soft);
+  border-color: var(--demo-accent);
+  color: var(--demo-accent-strong);
+}
+
+.demo-legacy-stage table.map-table {
+  border-collapse: collapse;
+  font-size: 13px;
+  font-family: var(--demo-mono);
+  width: auto;
+}
+.demo-legacy-stage table.map-table th,
+.demo-legacy-stage table.map-table td {
+  border: 1px solid var(--demo-border);
+  padding: 4px 10px;
+  text-align: center;
+}
+.demo-legacy-stage table.map-table th {
+  background: var(--demo-subtle);
+  font-weight: 600;
+}
+.demo-legacy-stage table.map-table tr.is-active td {
+  background: var(--demo-accent-soft);
+}
+
+@media (max-width: 640px) {
+  .demo-legacy-stage .cell { min-width: 34px; height: 34px; font-size: 13px; }
+}

@@ -1,0 +1,208 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/145-longest-palindromic-substring-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const S = 'babad';
+  const N = S.length;
+  
+  function buildSteps() {
+    const n = N;
+    const dp = [];
+    for (let i = 0; i < n; i++) dp.push(new Array(n).fill(null));
+    const steps = [];
+    let bestLen = 0;
+    let bestStart = 0;
+  
+    function snap() {
+      return dp.map(function (row) { return row.slice(); });
+    }
+  
+    steps.push({
+      phase: 'init', i: -1, j: -1, len: 0, dp: snap(),
+      src: null, ok: null, bestStart: bestStart, bestLen: bestLen,
+      note: 'dp[i][j] 表示子串 s[i..j] 是不是回文。表先全部留空。' +
+        '转移要查更短的内部子串 dp[i+1][j-1]，所以按「子串长度」从小到大枚举：先定长度 len，再滑动起点 i。'
+    });
+  
+    for (let len = 1; len <= n; len++) {
+      for (let i = 0; i + len - 1 < n; i++) {
+        const j = i + len - 1;
+        const src = len > 2 ? [i + 1, j - 1] : null;
+        let ok;
+        let note;
+  
+        if (S[i] !== S[j]) {
+          ok = false;
+          note = len === 1
+            ? '单个字符 s[' + i + '] = \'' + S[i] + '\' 一定是回文。'
+            : '检查 s[' + i + '..' + j + '] = "' + S.slice(i, j + 1) + '"：两端 s[' + i + '] = \'' + S[i] +
+              '\' 与 s[' + j + '] = \'' + S[j] + '\' 不相等，两端都对不上，内部再怎么回文也没用，dp[' + i + '][' + j + '] = false。';
+        } else if (len <= 2) {
+          ok = true;
+          note = '检查 s[' + i + '..' + j + '] = "' + S.slice(i, j + 1) + '"：两端 s[' + i + '] 和 s[' + j +
+            '] 都是 \'' + S[i] + '\'，且长度 ' + len + ' ≤ 2，中间没有或只有一个字符，直接判定 dp[' + i + '][' + j + '] = true。' +
+            '（len = 2 时中间为空，len = 1 时就是字符本身，都不需要查表。）';
+        } else {
+          ok = dp[i + 1][j - 1] === true;
+          note = '检查 s[' + i + '..' + j + '] = "' + S.slice(i, j + 1) + '"：两端 s[' + i + '] = \'' + S[i] +
+            '\' 与 s[' + j + '] = \'' + S[j] + '\' 相同，于是问题缩小为「内部 s[' + (i + 1) + '..' + (j - 1) +
+            '] 是不是回文」。查表 dp[' + (i + 1) + '][' + (j - 1) + '] = ' + (ok ? 'true' : 'false') +
+            '，所以 dp[' + i + '][' + j + '] = ' + (ok ? 'true（整个 s[' + i + '..' + j + '] 是回文）' : 'false（内部不是回文）') + '。' +
+            '这个更短的区间在枚举 len = ' + (len - 2) + ' 时就已经算好了，因此可以按长度递增地填表。';
+        }
+        dp[i][j] = ok;
+  
+        let updated = false;
+        if (ok && len > bestLen) {
+          bestLen = len;
+          bestStart = i;
+          updated = true;
+        }
+        if (updated) {
+          note += ' 当前最长回文被刷新为 "' + S.slice(bestStart, bestStart + bestLen) + '"（长度 ' + bestLen + '）。';
+        } else if (ok) {
+          note += ' 它虽然是回文，但长度 ' + len + ' 没有超过已有的最长 ' + bestLen + '，答案不变。';
+        }
+  
+        steps.push({
+          phase: 'calc', i: i, j: j, len: len, dp: snap(),
+          src: src, ok: ok, bestStart: bestStart, bestLen: bestLen, updated: updated,
+          note: note
+        });
+      }
+    }
+  
+    steps.push({
+      phase: 'done', i: bestStart, j: bestStart + bestLen - 1, len: bestLen, dp: snap(),
+      src: null, ok: true, bestStart: bestStart, bestLen: bestLen,
+      note: '整张表填完，表中值为 true 的区间就是所有回文子串；其中最长的是 "' +
+        S.slice(bestStart, bestStart + bestLen) + '"（s[' + bestStart + '..' + (bestStart + bestLen - 1) +
+        ']，长度 ' + bestLen + '）。题目说明 "aba" 也是正确答案，两者长度相同，本实现保留最先遇到的那个。' +
+        '复杂度：区间状态共 O(n²) 个，每个 O(1) 转移，时间 O(n²)、空间 O(n²)；' +
+        '若改用中心扩展法则只需 O(1) 额外空间。'
+    });
+  
+    return steps;
+  }
+  
+  function charClass(step, k) {
+    if (step.phase === 'done') {
+      return k >= step.bestStart && k < step.bestStart + step.bestLen ? 'is-ok' : 'cell--dim';
+    }
+    if (step.i === k || step.j === k) return 'is-active';
+    if (k > step.i && k < step.j) return 'is-info';
+    return '';
+  }
+  
+  function stringRow(step) {
+    const row = Demo.el('div', 'row');
+    for (let k = 0; k < N; k++) {
+      const item = Demo.el('div', 'col');
+      item.appendChild(Demo.el('div', 'cell' + (charClass(step, k) ? ' ' + charClass(step, k) : ''), Demo.esc(S[k])));
+      const labels = [];
+      if (step.phase !== 'done') {
+        if (step.i === k) labels.push('i');
+        if (step.j === k && step.j !== step.i) labels.push('j');
+      }
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : String(k));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (labels.indexOf('i') >= 0) ptr.classList.add('ptr--violet');
+      else ptr.classList.add('ptr--info');
+      item.appendChild(ptr);
+      row.appendChild(item);
+    }
+    return row;
+  }
+  
+  function tableCell(text, cls, width) {
+    const cell = Demo.el('div', 'grid-cell' + (cls ? ' ' + cls : ''), Demo.esc(text));
+    cell.style.minWidth = width + 'px';
+    cell.style.height = '30px';
+    cell.style.fontSize = '12px';
+    return cell;
+  }
+  
+  function tableView(step) {
+    const grid = Demo.el('div', 'grid');
+    grid.style.gridTemplateColumns = 'repeat(' + (N + 1) + ', 42px)';
+    grid.appendChild(tableCell('i＼j', 'is-dim'));
+    for (let j = 0; j < N; j++) {
+      const head = tableCell(S[j], '');
+      head.style.color = 'var(--demo-muted)';
+      grid.appendChild(head);
+    }
+    for (let i = 0; i < N; i++) {
+      const head = tableCell(S[i], '');
+      head.style.color = 'var(--demo-muted)';
+      grid.appendChild(head);
+      for (let j = 0; j < N; j++) {
+        const v = step.dp[i][j];
+        const isCur = step.phase === 'calc' && i === step.i && j === step.j;
+        const isSrc = step.phase === 'calc' && step.src && step.src[0] === i && step.src[1] === j;
+        let cls = '';
+        if (v === true) cls = 'is-ok';
+        else if (v === false) cls = '';
+        else cls = 'is-dim';
+        if (isSrc) cls = 'is-violet';
+        if (isCur) cls = 'is-active';
+        const cell = tableCell(v === true ? 'T' : (v === false ? 'F' : '·'), cls);
+        if (v === false && !isCur && !isSrc) cell.style.opacity = '0.75';
+        grid.appendChild(cell);
+      }
+    }
+    return grid;
+  }
+  
+  Demo.create({
+    title: '145. 最长回文子串 — 区间 DP 填表',
+    info: '输入：s = "babad"（示例 1）。转移：dp[i][j] = (s[i] == s[j]) && (j - i < 2 || dp[i+1][j-1])，按子串长度从小到大枚举，记录最长的 true 区间。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 420,
+    legend: [
+      { color: 'var(--demo-accent)', label: '正在判定的区间 s[i..j]' },
+      { color: 'var(--demo-violet)', label: '内部子串 dp[i+1][j-1]（转移来源）' },
+      { color: 'var(--demo-ok)', label: '是回文（T）/ 最终答案' },
+      { color: 'var(--demo-muted)', label: '坐标表头' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const strPanel = Demo.el('div', 'panel');
+      strPanel.style.width = '100%';
+      strPanel.style.textAlign = 'center';
+      strPanel.appendChild(Demo.el('div', 'panel__title',
+        step.phase === 'done'
+          ? '字符串 s（绿色为最长回文子串 "' + S.slice(step.bestStart, step.bestStart + step.bestLen) + '"）'
+          : '字符串 s（蓝框＝区间两端 i 与 j，青＝区间内部）'));
+      strPanel.appendChild(stringRow(step));
+      ctx.stage.appendChild(strPanel);
+  
+      const tblPanel = Demo.el('div', 'panel');
+      tblPanel.style.width = '100%';
+      tblPanel.style.textAlign = 'center';
+      tblPanel.appendChild(Demo.el('div', 'panel__title',
+        'dp 表：行为 i、列为 j，T 表示 s[i..j] 是回文（只填 j ≥ i 的上三角）'));
+      tblPanel.appendChild(tableView(step));
+      ctx.stage.appendChild(tblPanel);
+  
+      const info = Demo.el('div', 'panel');
+      info.style.width = '100%';
+      info.style.textAlign = 'center';
+      if (step.phase === 'init') {
+        info.innerHTML = '表先全部留空 &nbsp;<span class="tag">枚举顺序：长度 1 → 长度 2 → … → 长度 ' + N + '</span>';
+      } else {
+        info.innerHTML =
+          '最长回文 = <strong>"' + S.slice(step.bestStart, step.bestStart + step.bestLen) + '"</strong>' +
+          '（s[' + step.bestStart + '..' + (step.bestStart + step.bestLen - 1) + ']，长度 ' + step.bestLen + '）' +
+          (step.phase === 'done'
+            ? ' &nbsp;<span class="tag tag--ok">答案</span><span class="tag tag--info">时间 O(n²) · 空间 O(n²)</span>'
+            : ' &nbsp;<span class="tag">当前最优</span>');
+      }
+      ctx.stage.appendChild(info);
+    }
+  });
+  return Demo.__config
+}

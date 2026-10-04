@@ -1,0 +1,176 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/143-minimum-path-sum-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const GRID = [[1, 3, 1], [1, 5, 1], [4, 2, 1]];
+  const ROWS = GRID.length;
+  const COLS = GRID[0].length;
+  
+  function buildSteps() {
+    const m = ROWS, n = COLS;
+    const dp = [];
+    for (let i = 0; i < m; i++) {
+      dp.push(new Array(n).fill(null));
+    }
+    const steps = [];
+  
+    function snap() {
+      return dp.map(function (row) { return row.slice(); });
+    }
+  
+    steps.push({
+      phase: 'init', i: -1, j: -1, dp: snap(),
+      srcUp: null, srcLeft: null, chosen: null, path: null,
+      note: 'dp 是一张和 grid 同样大小的表，dp[i][j] 表示「从左上角 (0,0) 走到 (i,j)」的最小路径和，' +
+        '所有格子先留空。因为机器人只会向下或向右走，每个格子只能从上方或左方进来。'
+    });
+  
+    for (let i = 0; i < m; i++) {
+      for (let j = 0; j < n; j++) {
+        const srcUp = i > 0 ? [i - 1, j] : null;
+        const srcLeft = j > 0 ? [i, j - 1] : null;
+        let chosen = null;
+        let note;
+  
+        if (i === 0 && j === 0) {
+          dp[i][j] = GRID[i][j];
+          note = '起点没有来路，dp[0][0] = grid[0][0] = ' + GRID[i][j] + '，它是后面所有递推的地基。';
+        } else if (i === 0) {
+          dp[i][j] = dp[i][j - 1] + GRID[i][j];
+          chosen = 'left';
+          note = '第一行没有上方格子，只能从左边走过来：dp[0][' + j + '] = dp[0][' + (j - 1) + '] + grid[0][' + j +
+            '] = ' + dp[i][j - 1] + ' + ' + GRID[i][j] + ' = ' + dp[i][j] + '。';
+        } else if (j === 0) {
+          dp[i][j] = dp[i - 1][j] + GRID[i][j];
+          chosen = 'up';
+          note = '第一列没有左方格子，只能从上边走下来：dp[' + i + '][0] = dp[' + (i - 1) + '][0] + grid[' + i +
+            '][0] = ' + dp[i - 1][j] + ' + ' + GRID[i][j] + ' = ' + dp[i][j] + '。';
+        } else {
+          const up = dp[i - 1][j];
+          const left = dp[i][j - 1];
+          dp[i][j] = Math.min(up, left) + GRID[i][j];
+          chosen = up <= left ? 'up' : 'left';
+          note = 'dp[' + i + '][' + j + '] 有两个候选来路：上方 dp[' + (i - 1) + '][' + j + '] = ' + up +
+            '，左方 dp[' + i + '][' + (j - 1) + '] = ' + left + '。两条路都必然经过本格，所以只需取较优的那条，' +
+            (chosen === 'up' ? '本例取上方 ' + up : '本例取左方 ' + left) +
+            '（相等时取上方），再加上本格权重 grid[' + i + '][' + j + '] = ' + GRID[i][j] +
+            '，得 dp[' + i + '][' + j + '] = ' + dp[i][j] + '。';
+        }
+  
+        steps.push({
+          phase: 'calc', i: i, j: j, dp: snap(),
+          srcUp: srcUp, srcLeft: srcLeft, chosen: chosen, path: null,
+          note: note
+        });
+      }
+    }
+  
+    const path = [[m - 1, n - 1]];
+    let ci = m - 1, cj = n - 1;
+    while (ci > 0 || cj > 0) {
+      if (ci === 0) cj -= 1;
+      else if (cj === 0) ci -= 1;
+      else if (dp[ci - 1][cj] <= dp[ci][cj - 1]) ci -= 1;
+      else cj -= 1;
+      path.push([ci, cj]);
+    }
+    path.reverse();
+    const pathVals = path.map(function (p) { return GRID[p[0]][p[1]]; });
+  
+    steps.push({
+      phase: 'done', i: m - 1, j: n - 1, dp: snap(),
+      srcUp: null, srcLeft: null, chosen: null, path: path, pathVals: pathVals,
+      note: '整张表填完，答案就是右下角的 dp[' + (m - 1) + '][' + (n - 1) + '] = ' + dp[m - 1][n - 1] + '。' +
+        '从终点往回看：每一步都走向 dp 值较小的那个前驱，得到路径 ' + pathVals.join(' → ') +
+        '，和为 ' + dp[m - 1][n - 1] + '，正是题目示例给出的那条路径。' +
+        '每个格子只算一次，时间 O(m·n)；用一维数组滚动还能把空间降到 O(n)。'
+    });
+  
+    return steps;
+  }
+  
+  function cellClass(step, i, j) {
+    if (step.phase === 'done') {
+      if (step.path.some(function (p) { return p[0] === i && p[1] === j; })) return 'is-ok';
+      return step.dp[i][j] == null ? 'is-dim' : '';
+    }
+    if (i === step.i && j === step.j) return 'is-active';
+    if (step.phase === 'calc') {
+      const chosen = step.chosen === 'up' ? step.srcUp : (step.chosen === 'left' ? step.srcLeft : null);
+      const other = step.chosen === 'up' ? step.srcLeft : (step.chosen === 'left' ? step.srcUp : null);
+      if (chosen && chosen[0] === i && chosen[1] === j) return 'is-violet';
+      if (other && other[0] === i && other[1] === j) return 'is-info';
+    }
+    if (step.dp[i][j] == null) return 'is-dim';
+    return '';
+  }
+  
+  function gridView(step) {
+    const grid = Demo.el('div', 'grid');
+    grid.style.gridTemplateColumns = 'repeat(' + COLS + ', 78px)';
+    for (let i = 0; i < ROWS; i++) {
+      for (let j = 0; j < COLS; j++) {
+        const cls = cellClass(step, i, j);
+        const v = step.dp[i][j];
+        const cell = Demo.el('div', 'grid-cell' + (cls ? ' ' + cls : ''),
+          '<span style="font-size:11px;opacity:.7">grid=' + GRID[i][j] + '</span>' +
+          '<span style="font-size:17px">' + (v == null ? '·' : v) + '</span>');
+        cell.style.flexDirection = 'column';
+        cell.style.minWidth = '78px';
+        cell.style.height = '54px';
+        grid.appendChild(cell);
+      }
+    }
+    return grid;
+  }
+  
+  Demo.create({
+    title: '143. 最小路径和 — 二维 DP 表逐格填写',
+    info: '输入：grid = [[1,3,1],[1,5,1],[4,2,1]]（示例 1）。转移：dp[i][j] = grid[i][j] + min(dp[i-1][j], dp[i][j-1])，答案为 dp[m-1][n-1]。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 340,
+    legend: [
+      { color: 'var(--demo-accent)', label: '正在计算的格子' },
+      { color: 'var(--demo-violet)', label: '被选中的转移来源（较小者）' },
+      { color: 'var(--demo-info)', label: '被放弃的候选（较大者）' },
+      { color: 'var(--demo-ok)', label: '最终最优路径' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.style.textAlign = 'center';
+      panel.appendChild(Demo.el('div', 'panel__title', 'dp 表（小字为 grid 原始权重，大字为最小路径和）'));
+      panel.appendChild(gridView(step));
+      ctx.stage.appendChild(panel);
+  
+      const info = Demo.el('div', 'panel');
+      info.style.width = '100%';
+      info.style.textAlign = 'center';
+      if (step.phase === 'calc') {
+        let html = 'dp[' + step.i + '][' + step.j + '] = ' + GRID[step.i][step.j] + ' + min(';
+        html += '上方 ' + (step.srcUp ? step.dp[step.i - 1][step.j] : '—') + ', 左方 ' +
+          (step.srcLeft ? step.dp[step.i][step.j - 1] : '—') + ')';
+        html += ' = <strong>' + step.dp[step.i][step.j] + '</strong>';
+        if (step.chosen) {
+          html += ' &nbsp;<span class="tag tag--violet">来源：' + (step.chosen === 'up' ? '上方' : '左方') + '（较小者）</span>';
+        } else {
+          html += ' &nbsp;<span class="tag">起点，没有来路</span>';
+        }
+        info.innerHTML = html;
+      } else if (step.phase === 'init') {
+        info.innerHTML = 'dp 表先全部留空 &nbsp;<span class="tag">先填第一行与第一列，再填内部</span>';
+      } else {
+        info.innerHTML = '最小路径和 = <strong>' + step.dp[ROWS - 1][COLS - 1] + '</strong>' +
+          ' &nbsp;<span class="tag tag--ok">路径 ' + step.pathVals.join(' → ') + '</span>' +
+          ' &nbsp;<span class="tag tag--info">时间 O(m·n) · 空间 O(n)（一维滚动）</span>';
+      }
+      ctx.stage.appendChild(info);
+    }
+  });
+  return Demo.__config
+}

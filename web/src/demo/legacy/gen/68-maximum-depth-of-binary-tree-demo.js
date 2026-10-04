@@ -1,0 +1,251 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/68-maximum-depth-of-binary-tree-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const LEVELS = [3, 9, 20, null, null, 15, 7];
+  
+  const SLOTS = [];
+  const SLOT_BY_ID = {};
+  const NODES = {};
+  const ROOT = (function build() {
+    function rec(i, id, depth) {
+      if (i >= LEVELS.length) return null;
+      const slot = { id: id, i: i, depth: depth, val: LEVELS[i] };
+      SLOTS.push(slot);
+      SLOT_BY_ID[id] = slot;
+      if (LEVELS[i] === null) return null;
+      const node = { id: id, val: LEVELS[i], left: null, right: null };
+      NODES[id] = node;
+      node.left = rec(2 * i + 1, id + 'L', depth + 1);
+      node.right = rec(2 * i + 2, id + 'R', depth + 1);
+      return node;
+    }
+    return rec(0, 'R', 0);
+  })();
+  
+  function labelOf(id) {
+    const node = NODES[id];
+    if (node) return '节点 ' + node.val;
+    const parent = NODES[id.slice(0, -1)];
+    const side = id.charAt(id.length - 1) === 'L' ? '左' : '右';
+    return '节点 ' + parent.val + ' 的' + side + '孩子（null）';
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const depth = {};
+    const stack = [];
+  
+    function snap(extra) {
+      const step = {
+        cur: extra.cur,
+        phase: extra.phase,
+        note: extra.note,
+        depth: Object.assign({}, depth),
+        stack: stack.slice()
+      };
+      Object.keys(extra).forEach(function (k) { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    snap({
+      cur: null, phase: 'init',
+      note: '初始状态：采用自底向上的后序遍历。想求整棵树的最大深度，就要先知道左右子树各自的最大深度，再由 max(左, 右) + 1 得到当前节点的深度。递归出口是空节点——它的深度是 0。'
+    });
+  
+    function dfs(id) {
+      const node = NODES[id];
+      if (!node) {
+        snap({
+          cur: id, phase: 'null', ret: 0,
+          note: labelOf(id) + '，命中递归终止条件：空节点的深度定义为 0，直接返回 0，不再往下递归。'
+        });
+        return 0;
+      }
+  
+      stack.push(id);
+      snap({
+        cur: id, phase: 'enter',
+        note: '进入 dfs(' + node.val + ')：还不知道自己的深度，先把问题拆给左子树，递归求左子树的最大深度。'
+      });
+  
+      const leftDepth = dfs(id + 'L');
+      snap({
+        cur: id, phase: 'leftDone', leftRet: leftDepth,
+        note: '节点 ' + node.val + ' 的左子树返回深度 ' + leftDepth + '。一个节点的深度取决于左右子树中更高的那棵，所以还要把右子树也递归算出来。'
+      });
+  
+      const rightDepth = dfs(id + 'R');
+      const total = Math.max(leftDepth, rightDepth) + 1;
+      depth[id] = total;
+      stack.pop();
+      snap({
+        cur: id, phase: 'return', leftRet: leftDepth, rightRet: rightDepth, ret: total,
+        note: '节点 ' + node.val + ' 的左、右子树深度分别是 ' + leftDepth + ' 和 ' + rightDepth +
+          '，取较大者 ' + Math.max(leftDepth, rightDepth) + ' 再加 1（算上自己这一层），得到 ' + total +
+          '，向上返回给父节点。'
+      });
+      return total;
+    }
+  
+    const answer = dfs('R');
+    snap({
+      cur: null, phase: 'done', ret: answer,
+      note: '根节点返回 ' + answer + '，二叉树的最大深度 = ' + answer + '。每个节点只被访问一次，时间 O(n)；递归栈的深度等于树高 h，空间 O(h)。'
+    });
+  
+    return steps;
+  }
+  
+  function treeSvg(step) {
+    const W = 680;
+    const pos = {};
+    SLOTS.forEach(function (s) {
+      const span = Math.pow(2, s.depth);
+      const idxInLevel = s.i - (span - 1);
+      pos[s.id] = {
+        x: 60 + (W - 120) * (idxInLevel + 0.5) / span,
+        y: 45 + s.depth * 95
+      };
+    });
+  
+    let out = '';
+  
+    SLOTS.forEach(function (s) {
+      if (s.val === null) return;
+      [s.id + 'L', s.id + 'R'].forEach(function (childId) {
+        const child = SLOT_BY_ID[childId];
+        if (!child) return;
+        const a = pos[s.id];
+        const b = pos[childId];
+        const isNull = child.val === null;
+        const active = step.cur === childId || step.cur === s.id;
+        const done = !isNull && step.depth[childId] !== undefined;
+        const color = isNull ? 'var(--demo-border)'
+          : done ? 'var(--demo-ok)'
+            : active ? 'var(--demo-accent)' : 'var(--demo-border)';
+        out += '<line x1="' + a.x + '" y1="' + (a.y + 26) + '" x2="' + b.x + '" y2="' + (b.y - 26) + '" style="stroke:' + color +
+          ';stroke-width:' + (active ? 3 : 2) + (isNull ? ';stroke-dasharray:5 5' : '') + '"/>';
+      });
+    });
+  
+    SLOTS.forEach(function (s) {
+      const p = pos[s.id];
+      const isCur = step.cur === s.id;
+      const onStack = step.stack.indexOf(s.id) >= 0;
+      const done = step.depth[s.id] !== undefined;
+  
+      if (s.val === null) {
+        out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="17" style="fill:none;stroke:' +
+          (isCur ? 'var(--demo-warn)' : 'var(--demo-border)') + ';stroke-width:' + (isCur ? 3 : 1.5) + ';stroke-dasharray:4 4"/>';
+        out += '<text x="' + p.x + '" y="' + (p.y + 4) + '" text-anchor="middle" style="fill:' +
+          (isCur ? 'var(--demo-warn)' : 'var(--demo-muted)') + ';font:600 11px sans-serif">null</text>';
+        return;
+      }
+  
+      const fill = isCur ? 'var(--demo-accent)'
+        : done ? 'var(--demo-ok)'
+          : onStack ? 'var(--demo-violet)' : 'var(--demo-subtle)';
+      const text = (isCur || done || onStack) ? 'var(--demo-card)' : 'var(--demo-text)';
+      const stroke = isCur ? 'var(--demo-accent)'
+        : done ? 'var(--demo-ok)'
+          : onStack ? 'var(--demo-violet)' : 'var(--demo-border)';
+  
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="24" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2.5"/>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 7) + '" text-anchor="middle" style="fill:' + text +
+        ';font:700 18px sans-serif">' + s.val + '</text>';
+      if (done) {
+        out += '<text x="' + p.x + '" y="' + (p.y - 32) + '" text-anchor="middle" style="fill:var(--demo-ok);font:700 12px sans-serif">h=' +
+          step.depth[s.id] + '</text>';
+      }
+      if (onStack) {
+        out += '<text x="' + (p.x + 32) + '" y="' + (p.y + 4) + '" text-anchor="start" style="fill:var(--demo-violet);font:600 11px sans-serif">栈中</text>';
+      }
+    });
+  
+    return '<div style="width:100%"><svg viewBox="0 0 ' + W + ' 300" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+  }
+  
+  function stackPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.appendChild(Demo.el('div', 'panel__title', '递归调用栈（顶部 = 当前节点）'));
+    const box = Demo.el('div', 'stack');
+    if (!step.stack.length) {
+      box.appendChild(Demo.el('div', 'stack__item', '（空）'));
+    } else {
+      step.stack.forEach(function (id, k) {
+        const item = Demo.el('div', 'stack__item', 'dfs(' + NODES[id].val + ')');
+        if (k === step.stack.length - 1) item.classList.add('is-active');
+        box.appendChild(item);
+      });
+    }
+    panel.appendChild(box);
+    return panel;
+  }
+  
+  function depthPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.appendChild(Demo.el('div', 'panel__title', '各节点已求出的深度'));
+    const table = Demo.el('div', null, (function () {
+      let html = '<table class="map-table"><tr><th>节点</th><th>返回深度</th></tr>';
+      const ordered = SLOTS.filter(function (s) { return s.val !== null; });
+      ordered.forEach(function (s) {
+        const d = step.depth[s.id];
+        const isCur = step.cur === s.id;
+        html += '<tr' + (isCur ? ' class="is-active"' : '') + '><td>' + s.val + '</td><td>' +
+          (d === undefined ? '待计算' : d) + '</td></tr>';
+      });
+      html += '</table>';
+      return html;
+    })());
+    panel.appendChild(table);
+    return panel;
+  }
+  
+  Demo.create({
+    title: '68. 二叉树的最大深度 — 后序递归，自底向上汇总',
+    info: '示例：root = [3,9,20,null,null,15,7]（层序表示），输出 3。核心式子：depth(节点) = max(depth(左), depth(右)) + 1，空节点 depth = 0。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 460,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前访问 / 正在返回的节点' },
+      { color: 'var(--demo-violet)', label: '还在递归栈中（子树未算完）' },
+      { color: 'var(--demo-ok)', label: '已算出深度 h' },
+      { color: 'var(--demo-warn)', label: '正在处理的 null 出口' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const treePanel = Demo.el('div', 'panel');
+      treePanel.style.width = '100%';
+      treePanel.appendChild(Demo.el('div', 'panel__title', '二叉树 root = [3,9,20,null,null,15,7]'));
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = treeSvg(step);
+      treePanel.appendChild(wrap);
+      ctx.stage.appendChild(treePanel);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-start';
+      row.appendChild(stackPanel(step));
+      row.appendChild(depthPanel(step));
+      ctx.stage.appendChild(row);
+  
+      const result = Demo.el('div', 'panel',
+        step.phase === 'done'
+          ? 'dfs(root) 返回 <strong>' + step.ret + '</strong> &nbsp;<span class="tag tag--ok">最大深度 = ' + step.ret + '</span>'
+          : (step.phase === 'null'
+            ? '空节点返回 <strong>0</strong>（递归出口）'
+            : '当前节点：' + (step.cur && NODES[step.cur] ? NODES[step.cur].val : '—') +
+              '，栈深 ' + step.stack.length));
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

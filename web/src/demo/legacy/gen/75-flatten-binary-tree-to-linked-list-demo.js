@@ -1,0 +1,228 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/75-flatten-binary-tree-to-linked-list-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const TREE = [1, 2, 5, 3, 4, null, 6];
+  const PREORDER = [1, 2, 3, 4, 5, 6];
+  
+  const NODE_PAINT = {
+    default: ['var(--demo-subtle)', 'var(--demo-border)', 'var(--demo-text)'],
+    accent:  ['var(--demo-accent-soft)', 'var(--demo-accent)', 'var(--demo-accent-strong)'],
+    ok:      ['var(--demo-ok-soft)', 'var(--demo-ok)', 'var(--demo-ok)'],
+    warn:    ['var(--demo-warn-soft)', 'var(--demo-warn)', 'var(--demo-warn)'],
+    violet:  ['var(--demo-violet-soft)', 'var(--demo-violet)', 'var(--demo-violet)'],
+    info:    ['var(--demo-info-soft)', 'var(--demo-info)', 'var(--demo-info)']
+  };
+  
+  function buildTree(arr) {
+    if (!arr.length || arr[0] == null) return null;
+    let seq = 0;
+    const root = { id: seq++, val: arr[0], left: null, right: null };
+    const queue = [root];
+    let i = 1;
+    while (i < arr.length && queue.length) {
+      const node = queue.shift();
+      const lv = arr[i++];
+      if (lv != null) { node.left = { id: seq++, val: lv, left: null, right: null }; queue.push(node.left); }
+      if (i < arr.length) {
+        const rv = arr[i++];
+        if (rv != null) { node.right = { id: seq++, val: rv, left: null, right: null }; queue.push(node.right); }
+      }
+    }
+    return root;
+  }
+  
+  function snapTree(node) {
+    if (!node) return null;
+    return { id: node.id, val: node.val, left: snapTree(node.left), right: snapTree(node.right) };
+  }
+  
+  function findById(node, id) {
+    if (!node || id == null) return null;
+    if (node.id === id) return node;
+    return findById(node.left, id) || findById(node.right, id);
+  }
+  
+  function chainIds(root) {
+    const out = [];
+    for (let node = root; node; node = node.right) out.push(node.id);
+    return out;
+  }
+  
+  function treeSVG(root, paintOf, badgeOf) {
+    if (!root) return '<div class="panel" style="width:100%;text-align:center">（空树）</div>';
+    const pos = {};
+    let count = 0, maxDepth = 0;
+    (function walk(node, depth) {
+      if (!node) return;
+      walk(node.left, depth + 1);
+      pos[node.id] = { x: count++, y: depth };
+      if (depth > maxDepth) maxDepth = depth;
+      walk(node.right, depth + 1);
+    })(root, 0);
+  
+    const gapX = 66, gapY = 78, padX = 36, padY = 32, r = 21;
+    const W = count * gapX + padX * 2;
+    const H = (maxDepth + 1) * gapY + padY * 2;
+    const cx = id => padX + pos[id].x * gapX + gapX / 2;
+    const cy = id => padY + pos[id].y * gapY + gapY / 2;
+  
+    let edges = '';
+    (function drawEdges(node) {
+      if (!node) return;
+      [node.left, node.right].forEach(child => {
+        if (!child) return;
+        const dx = pos[child.id].x - pos[node.id].x;
+        const dy = pos[child.id].y - pos[node.id].y;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        edges += '<line x1="' + (cx(node.id) + dx / len * r).toFixed(1) + '" y1="' + (cy(node.id) + dy / len * r).toFixed(1) +
+          '" x2="' + (cx(child.id) - dx / len * r).toFixed(1) + '" y2="' + (cy(child.id) - dy / len * r).toFixed(1) +
+          '" style="stroke:var(--demo-border);stroke-width:2"/>';
+        drawEdges(child);
+      });
+    })(root);
+  
+    let nodes = '';
+    (function drawNodes(node) {
+      if (!node) return;
+      let info = paintOf ? paintOf(node) : null;
+      if (typeof info === 'string') info = { state: info };
+      info = info || {};
+      const paint = NODE_PAINT[info.state] || NODE_PAINT.default;
+      if (info.ring) {
+        nodes += '<circle cx="' + cx(node.id) + '" cy="' + cy(node.id) + '" r="' + (r + 6) + '" style="fill:none;stroke:' + info.ring + ';stroke-width:3"/>';
+      }
+      nodes += '<circle cx="' + cx(node.id) + '" cy="' + cy(node.id) + '" r="' + r + '" style="fill:' + paint[0] + ';stroke:' + paint[1] + ';stroke-width:2.5"/>';
+      nodes += '<text x="' + cx(node.id) + '" y="' + (cy(node.id) + 6) + '" text-anchor="middle" style="fill:' + paint[2] + ';font:600 16px sans-serif">' + Demo.esc(node.val) + '</text>';
+      const badge = badgeOf ? badgeOf(node) : null;
+      if (badge) {
+        nodes += '<text x="' + cx(node.id) + '" y="' + (cy(node.id) + r + 17) + '" text-anchor="middle" style="fill:var(--demo-muted);font:600 12px sans-serif">' + Demo.esc(badge) + '</text>';
+      }
+      drawNodes(node.left);
+      drawNodes(node.right);
+    })(root);
+  
+    return '<div style="width:100%"><svg viewBox="0 0 ' + W + ' ' + (H + 20) + '" style="width:100%;height:auto;display:block;max-height:430px">' + edges + nodes + '</svg></div>';
+  }
+  
+  function buildSteps() {
+    const root = buildTree(TREE);
+    const steps = [];
+    const fixed = [];
+  
+    function snap(note, extra) {
+      const step = { tree: snapTree(root), note: note, fixed: fixed.slice() };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    snap('初始状态：目标是把这棵树按先序顺序 ' + PREORDER.join(' → ') + ' 就地展开成只保留 right 指针的单链表。cur 从根节点出发。', { cur: root.id });
+  
+    let cur = root;
+    while (cur) {
+      if (cur.left) {
+        let pred = cur.left;
+        while (pred.right) pred = pred.right;
+        const rightVal = cur.right ? cur.right.val : null;
+  
+        snap('cur = ' + cur.val + ' 有左子树。第一步先找左子树的最右节点（先序前驱）：从 ' + cur.left.val + ' 出发一路向右走，停在 ' + pred.val + '。', { cur: cur.id, pred: pred.id });
+  
+        pred.right = cur.right;
+        snap('把 ' + cur.val + ' 的原右子树' + (rightVal == null ? '（空）' : '（根为 ' + rightVal + '）') +
+          '整串挂到前驱 ' + pred.val + ' 的 right 上。先序序列里右子树本来就紧跟在整棵左子树之后，所以接在左子树最右节点后面仍然保持先序。', { cur: cur.id, pred: pred.id });
+  
+        cur.right = cur.left;
+        cur.left = null;
+        snap('再把左子树「旋转」到右边：cur.right = ' + cur.val + ' 的左子树，cur.left = null。此时 ' + cur.val + ' 的右链已按先序排列。', { cur: cur.id });
+      } else {
+        snap('cur = ' + cur.val + ' 没有左子树，无需操作，它本身已满足「左指针为空」。', { cur: cur.id });
+      }
+  
+      fixed.push(cur.id);
+      cur = cur.right;
+      snap(cur ? 'cur 沿 right 前进到 ' + cur.val + '，进入下一轮。' : 'cur = null，循环结束：所有节点都已处理过一遍。', { cur: cur ? cur.id : null });
+    }
+  
+    const chain = chainIds(root).map(id => findById(root, id).val);
+    snap('展开完成：沿 right 指针从头读出 [' + chain.join(', ') + ']，与先序遍历序列完全一致，且每个节点的 left 都是 null。时间 O(n)，原地 O(1) 额外空间。', { finished: true });
+    return steps;
+  }
+  
+  Demo.create({
+    title: '75. 二叉树展开为链表 — 左子树最右节点充当「前驱」',
+    info: 'root = [1,2,5,3,4,null,6]，先序遍历为 1 → 2 → 3 → 4 → 5 → 6（null 表示空节点）。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 460,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前 cur 节点' },
+      { color: 'var(--demo-warn)', label: '左子树最右节点（前驱）' },
+      { color: 'var(--demo-ok)', label: '已并入右链的节点' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = treeSVG(step.tree, node => {
+        if (step.finished) return 'ok';
+        if (step.cur === node.id) return { state: 'accent', ring: 'var(--demo-accent)' };
+        if (step.pred === node.id) return { state: 'warn', ring: 'var(--demo-warn)' };
+        if (step.fixed.indexOf(node.id) >= 0) return 'ok';
+        return 'default';
+      });
+      ctx.stage.appendChild(wrap);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-start';
+      row.style.gap = '12px';
+  
+      const varPanel = Demo.el('div', 'panel');
+      varPanel.appendChild(Demo.el('div', 'panel__title', '指针'));
+      const curNode = findById(step.tree, step.cur);
+      const predNode = findById(step.tree, step.pred);
+      varPanel.appendChild(Demo.el('div', null,
+        'cur = <strong>' + (curNode ? curNode.val : 'null') + '</strong><br>' +
+        'pred = <strong>' + (predNode ? predNode.val : '—') + '</strong>'));
+  
+      const chainPanel = Demo.el('div', 'panel');
+      chainPanel.style.flex = '1';
+      chainPanel.appendChild(Demo.el('div', 'panel__title', '当前右链（从根沿 right 指针读出）'));
+      const chainRow = Demo.el('div', 'row');
+      chainRow.style.justifyContent = 'flex-start';
+      chainIds(step.tree).forEach((id, k) => {
+        if (k) chainRow.appendChild(Demo.el('div', 'arrow', '→'));
+        const node = findById(step.tree, id);
+        const cell = Demo.el('div', 'll-node', Demo.esc(node.val));
+        if (step.fixed.indexOf(id) >= 0) cell.classList.add('is-ok');
+        if (step.cur === id) cell.classList.add('is-active');
+        chainRow.appendChild(cell);
+      });
+      chainPanel.appendChild(chainRow);
+      chainPanel.appendChild(Demo.el('div', null,
+        step.finished
+          ? '<span class="tag tag--ok">与先序序列一致</span>'
+          : '<span class="tag tag--warn">仍在展开中</span>'));
+  
+      row.appendChild(varPanel);
+      row.appendChild(chainPanel);
+      ctx.stage.appendChild(row);
+  
+      const target = Demo.el('div', 'panel');
+      target.style.width = '100%';
+      target.appendChild(Demo.el('div', 'panel__title', '目标先序序列'));
+      const targetRow = Demo.el('div', 'row');
+      targetRow.style.justifyContent = 'flex-start';
+      PREORDER.forEach((value, k) => {
+        if (k) targetRow.appendChild(Demo.el('div', 'arrow', '→'));
+        targetRow.appendChild(Demo.el('div', 'cell cell--sm', Demo.esc(value)));
+      });
+      target.appendChild(targetRow);
+      ctx.stage.appendChild(target);
+    }
+  });
+  return Demo.__config
+}

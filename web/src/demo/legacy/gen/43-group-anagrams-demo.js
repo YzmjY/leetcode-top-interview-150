@@ -1,0 +1,183 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/43-group-anagrams-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const STRS = ['eat', 'tea', 'tan', 'ate', 'nat', 'bat'];
+  
+  function buildSteps() {
+    const steps = [];
+    const groups = {};
+    const keyOrder = [];
+  
+    function copyGroups() {
+      const out = {};
+      keyOrder.forEach(function (key) { out[key] = groups[key].slice(); });
+      return out;
+    }
+  
+    function snap(extra) {
+      const step = { groups: copyGroups(), note: extra.note };
+      Object.keys(extra).forEach(function (key) {
+        if (key !== 'note') step[key] = extra[key];
+      });
+      steps.push(step);
+    }
+  
+    snap({
+      phase: 'init', i: -1, word: '', key: '', isNew: false,
+      note: `哈希表 groups 为空，键是「单词排序后的标准形式」，值是同一组的原始单词列表。字母异位词的核心性质是：把它们各自的字符按字母表排序后，得到的是同一个字符串，例如 "eat"、"tea"、"ate" 排序后都是 "aet"。所以排序结果可以直接当作分组的身份证。`
+    });
+  
+    STRS.forEach(function (word, i) {
+      const key = word.split('').sort().join('');
+      const isNew = !Object.prototype.hasOwnProperty.call(groups, key);
+  
+      snap({
+        phase: 'key', i: i, word: word, key: key, isNew: isNew,
+        note: `处理第 ${i} 个单词 "${word}"：把它的字符排序，得到 key = "${key}"。` +
+          (isNew
+            ? `哈希表里还没有这个 key，说明它开了一个新的分组。`
+            : `哈希表里已经有 key "${key}"，说明 "${word}" 和前一组单词是字母异位词，应当并入同一组。`)
+      });
+  
+      if (isNew) {
+        groups[key] = [];
+        keyOrder.push(key);
+      }
+      groups[key].push(word);
+  
+      snap({
+        phase: 'insert', i: i, word: word, key: key, isNew: isNew,
+        note: `把原始单词 "${word}"（而不是排序后的形式）追加到 groups["${key}"] 中，现在这一组是 ["${groups[key].join('", "')}"]。时间复杂度 O(n·k·log k)：n 个单词，每个排序花 k·log k，其中 k 是单词最大长度。`
+      });
+    });
+  
+    const result = keyOrder.map(function (key) { return groups[key].slice(); });
+  
+    snap({
+      phase: 'done', i: STRS.length, word: '', key: '', isNew: false, result: result,
+      note: `6 个单词全部处理完毕，得到 ${keyOrder.length} 个分组：${result.map(function (g) { return '[' + g.join(', ') + ']'; }).join('，')}。返回结果中分组的顺序无关紧要，题目允许任意顺序。空间复杂度 O(n·k)，即所有字符串占用的总字符数。`
+    });
+  
+    return steps;
+  }
+  
+  function inputPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', '输入数组 strs（当前处理的是高亮单词）'));
+    const row = Demo.el('div', 'row');
+    STRS.forEach(function (word, i) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(word));
+      if (i === step.i && step.phase !== 'done') cell.classList.add('is-active');
+      else if (i < step.i || step.phase === 'done') cell.classList.add('is-ok');
+      col.appendChild(cell);
+      const ptr = Demo.el('div', 'ptr', String(i));
+      if (i !== step.i) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  function sortPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', '规范化：把单词的字符排序，得到分组用的 key'));
+  
+    if (step.phase === 'init' || step.phase === 'done') {
+      const row = Demo.el('div', 'row');
+      row.appendChild(Demo.el('span', 'tag tag--info', step.phase === 'init' ? '等待第一个单词' : '全部单词已处理完'));
+      panel.appendChild(row);
+      return panel;
+    }
+  
+    const row = Demo.el('div', 'row');
+    step.word.split('').forEach(function (ch) {
+      row.appendChild(Demo.el('div', 'cell cell--sm', Demo.esc(ch)));
+    });
+    row.appendChild(Demo.el('div', 'arrow', '→ 排序 →'));
+    step.key.split('').forEach(function (ch) {
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(ch));
+      cell.classList.add('is-active');
+      row.appendChild(cell);
+    });
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  function groupsPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', '哈希表 groups：排序后的 key → 分组内容'));
+    let html = '<table class="map-table"><tr><th>key</th><th>分组内容</th></tr>';
+    const keys = Object.keys(step.groups);
+    if (keys.length === 0) {
+      html += '<tr><td colspan="2">（空）</td></tr>';
+    } else {
+      keys.forEach(function (key) {
+        const active = (step.phase === 'key' || step.phase === 'insert') && key === step.key;
+        html += '<tr' + (active ? ' class="is-active"' : '') + '>' +
+          '<td>' + Demo.esc(key) + '</td>' +
+          '<td>' + Demo.esc(step.groups[key].join(', ')) + '</td></tr>';
+      });
+    }
+    html += '</table>';
+    panel.appendChild(Demo.el('div', null, html));
+    return panel;
+  }
+  
+  Demo.create({
+    title: '43. 字母异位词分组 — 排序后的字符串当哈希键',
+    info: `输入：strs = [${STRS.map(function (w) { return '"' + w + '"'; }).join(', ')}]（示例 1）。对每个单词排序得到 key，把原始单词挂到对应分组上。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 420,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前单词 / 排序得到的 key' },
+      { color: 'var(--demo-ok)', label: '已归组的单词' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      ctx.stage.appendChild(inputPanel(step));
+      ctx.stage.appendChild(sortPanel(step));
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-start';
+      row.appendChild(groupsPanel(step));
+  
+      const summary = Demo.el('div', 'panel');
+      summary.style.minWidth = '180px';
+      summary.appendChild(Demo.el('div', 'panel__title', '当前进度'));
+      const tagRow = Demo.el('div', 'col');
+      tagRow.appendChild(Demo.el('span', 'tag tag--info', '已归组 ' + (step.i < 0 ? 0 : Math.min(step.i + 1, STRS.length)) + ' / ' + STRS.length));
+      tagRow.appendChild(Demo.el('span', 'tag tag--violet', '分组数 ' + Object.keys(step.groups).length));
+      summary.appendChild(tagRow);
+      row.appendChild(summary);
+  
+      ctx.stage.appendChild(row);
+  
+      const state = Demo.el('div', 'panel');
+      state.style.width = '100%';
+      state.style.textAlign = 'center';
+      if (step.phase === 'init') {
+        state.innerHTML = '准备从第一个单词开始建表 &nbsp;<span class="tag tag--warn">哈希表为空</span>';
+      } else if (step.phase === 'key') {
+        state.innerHTML = `"${Demo.esc(step.word)}" 排序后是 "${Demo.esc(step.key)}" &nbsp;` +
+          (step.isNew ? '<span class="tag tag--violet">新分组</span>' : '<span class="tag tag--ok">并入已有分组</span>');
+      } else if (step.phase === 'insert') {
+        state.innerHTML = `groups["${Demo.esc(step.key)}"] 加入 "${Demo.esc(step.word)}" 后共 ${step.groups[step.key].length} 个成员`;
+      } else {
+        state.innerHTML = `全部归组完成，共 ${Object.keys(step.groups).length} 组 &nbsp;<span class="tag tag--ok">返回分组结果</span>`;
+      }
+      ctx.stage.appendChild(state);
+    }
+  });
+  return Demo.__config
+}

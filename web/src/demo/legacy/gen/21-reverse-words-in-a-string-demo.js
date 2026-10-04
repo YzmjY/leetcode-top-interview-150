@@ -1,0 +1,181 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/21-reverse-words-in-a-string-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const S = 'a good   example';
+  
+  function buildSteps() {
+    const chars = S.split('');
+    const n = chars.length;
+    const steps = [];
+    const words = [];
+    const ranges = [];
+    let start = -1;
+  
+    steps.push({
+      i: -1, start: -1, words: [], ranges: [], phase: 'init', done: false,
+      note: `初始化：s = "${S}"（示例 3，含 3 个连续空格）。第一步先用双指针切分出所有单词——遇到非空格标记单词起点，遇到空格就把 [start, i) 之间的子串作为一个单词收下；连续空格会被自动忽略。`
+    });
+  
+    for (let i = 0; i < n; i++) {
+      const ch = chars[i];
+      if (ch !== ' ') {
+        if (start === -1) start = i;
+        steps.push({
+          i: i, start: start, words: words.slice(), ranges: ranges.map(function (r) { return r.slice(); }),
+          phase: 'scan', done: false,
+          note: `s[${i}] = '${ch}' 是字母：当前单词还没结束（起点 ${start}），先把指针右移继续读。`
+        });
+      } else {
+        if (start !== -1) {
+          const word = S.slice(start, i);
+          words.push(word);
+          ranges.push([start, i]);
+          steps.push({
+            i: i, start: -1, words: words.slice(), ranges: ranges.map(function (r) { return r.slice(); }),
+            phase: 'split', justWord: word, done: false,
+            note: `s[${i}] 是空格，且前面有一个正在读取的单词：把 s[${start}..${i - 1}] 切出来得到 "${word}"，收进单词数组，words 变为 [${words.map(function (w) { return '"' + w + '"'; }).join(', ')}]。`
+          });
+          start = -1;
+        } else {
+          steps.push({
+            i: i, start: -1, words: words.slice(), ranges: ranges.map(function (r) { return r.slice(); }),
+            phase: 'skip', done: false,
+            note: `s[${i}] 又是空格，而当前并没有正在读取的单词——这是单词之间的多余空格，直接忽略，不产生空单词。`
+          });
+        }
+      }
+    }
+  
+    if (start !== -1) {
+      const word = S.slice(start, n);
+      words.push(word);
+      ranges.push([start, n]);
+      steps.push({
+        i: n, start: -1, words: words.slice(), ranges: ranges.map(function (r) { return r.slice(); }),
+        phase: 'split', justWord: word, done: false,
+        note: `字符串读完了，末尾还留着从下标 ${start} 开始的单词：把它切成 "${word}" 收进数组。至此单词切分全部完成，words = [${words.map(function (w) { return '"' + w + '"'; }).join(', ')}]。`
+      });
+    }
+  
+    const m = words.length;
+    for (let i = 0; i < Math.floor(m / 2); i++) {
+      const j = m - 1 - i;
+      const tmp = words[i];
+      words[i] = words[j];
+      words[j] = tmp;
+      steps.push({
+        i: n, start: -1, words: words.slice(), ranges: ranges.map(function (r) { return r.slice(); }),
+        phase: 'reverse', swapL: i, swapR: j, done: false,
+        note: `双指针反转单词数组：交换 words[${i}] 与 words[${j}]，也就是把 "${tmp}" 和 "${words[i]}" 互换位置，words 变为 [${words.map(function (w) { return '"' + w + '"'; }).join(', ')}]。`
+      });
+    }
+  
+    const result = words.join(' ');
+    steps.push({
+      i: n, start: -1, words: words.slice(), ranges: ranges.map(function (r) { return r.slice(); }),
+      phase: 'done', done: true, result: result,
+      note: `单词顺序已反转，最后用单个空格把 words 连接起来，多余空格不会再出现：结果 = "${result}"。`
+    });
+  
+    return steps;
+  }
+  
+  function sourceRow(step) {
+    const row = Demo.el('div', 'row');
+    S.split('').forEach(function (ch, idx) {
+      const col = Demo.el('div', 'col');
+      const isSpace = ch === ' ';
+      const cell = Demo.el('div', 'cell' + (isSpace ? ' cell--empty' : ''),
+        isSpace ? '&nbsp;' : Demo.esc(ch));
+  
+      const inRange = step.ranges.some(function (r) { return idx >= r[0] && idx < r[1]; });
+      const inProgress = step.start >= 0 && idx >= step.start && idx <= step.i;
+  
+      if (inProgress) cell.classList.add('is-active');
+      else if (inRange) cell.classList.add('is-ok');
+      else if (step.done) cell.classList.add('cell--dim');
+      else if (idx === step.i) cell.classList.add('is-warn');
+      else if (idx > step.i) cell.classList.add('cell--dim');
+      else cell.classList.add('is-warn');
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (!step.done && idx === step.i) labels.push('i');
+      if (!step.done && idx === step.start) labels.push('start');
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : String(idx));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (labels.indexOf('start') >= 0) ptr.classList.add('ptr--ok');
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  Demo.create({
+    title: '21. 反转字符串中的单词 — 切分，再双指针反转单词数组',
+    info: `输入：s = "${S}"（示例 3），预期输出 "example good a"。连续空格必须被忽略，单词间只保留一个空格。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 360,
+    legend: [
+      { color: 'var(--demo-accent)', label: '正在读取的单词' },
+      { color: 'var(--demo-ok)', label: '已切分出的单词' },
+      { color: 'var(--demo-warn)', label: '被忽略的空格' },
+      { color: 'var(--demo-violet)', label: '正在交换的单词对' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const srcPanel = Demo.el('div', 'panel');
+      srcPanel.style.width = '100%';
+      srcPanel.appendChild(Demo.el('div', 'panel__title',
+        step.phase === 'init' ? '原字符串（尚未开始扫描）' :
+          step.phase === 'done' ? '原字符串（切分与反转均已完成）' : '原字符串，从前往后扫描切分单词'));
+      srcPanel.appendChild(sourceRow(step));
+      ctx.stage.appendChild(srcPanel);
+  
+      const wordsPanel = Demo.el('div', 'panel');
+      wordsPanel.style.width = '100%';
+      wordsPanel.appendChild(Demo.el('div', 'panel__title',
+        step.phase === 'reverse' ? '单词数组 words（双指针交换中）' :
+          step.phase === 'done' ? '单词数组 words（顺序已反转）' : '已切分出的单词数组 words'));
+      const wordsRow = Demo.el('div', 'row');
+      if (!step.words.length) {
+        wordsRow.appendChild(Demo.el('span', 'tag', '（空）'));
+      } else {
+        step.words.forEach(function (w, idx) {
+          const cell = Demo.el('div', 'cell', Demo.esc(w));
+          if (step.phase === 'reverse' && (idx === step.swapL || idx === step.swapR)) cell.classList.add('is-violet');
+          else if (step.phase === 'done') cell.classList.add('is-ok');
+          else cell.classList.add('is-ok');
+          wordsRow.appendChild(cell);
+        });
+      }
+      wordsPanel.appendChild(wordsRow);
+      ctx.stage.appendChild(wordsPanel);
+  
+      const result = Demo.el('div', 'panel');
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      if (step.done) {
+        const row = Demo.el('div', 'row');
+        step.result.split('').forEach(function (ch) {
+          const isSpace = ch === ' ';
+          row.appendChild(Demo.el('div', 'cell cell--sm' + (isSpace ? ' cell--empty' : ' is-ok'),
+            isSpace ? '&nbsp;' : Demo.esc(ch)));
+        });
+        result.appendChild(Demo.el('div', 'panel__title', '用单个空格连接后的结果'));
+        result.appendChild(row);
+      } else {
+        result.innerHTML = `当前单词数：<strong>${step.words.length}</strong>` +
+          (step.phase === 'init' ? ' &nbsp;|&nbsp; 等待开始扫描' : '');
+      }
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

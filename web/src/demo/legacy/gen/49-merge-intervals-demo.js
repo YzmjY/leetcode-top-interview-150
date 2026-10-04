@@ -1,0 +1,196 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/49-merge-intervals-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const INPUT = [[8, 10], [1, 3], [15, 18], [2, 6]];
+  
+  function buildSteps() {
+    const n = INPUT.length;
+    const arr = INPUT.map(function (iv) { return [iv[0], iv[1]]; });
+    let merged = [];
+    const steps = [];
+  
+    function snap(o) {
+      steps.push({
+        arr: arr.map(function (iv) { return [iv[0], iv[1]]; }),
+        merged: merged.map(function (iv) { return [iv[0], iv[1]]; }),
+        phase: o.phase,
+        cur: o.cur == null ? -1 : o.cur,
+        last: o.last == null ? -1 : o.last,
+        key: o.key == null ? -1 : o.key,
+        note: o.note
+      });
+    }
+  
+    snap({
+      phase: 'init',
+      note: '初始状态：区间按题目给定的顺序排列，起点并不单调。合并算法的第一步必须先按起点升序排序，否则「相邻的区间才可能重叠」这个前提不成立。'
+    });
+  
+    for (let k = 1; k < n; k++) {
+      const key = arr[k];
+      snap({
+        phase: 'sort-pick', key: k,
+        note: '插入排序：取出下标 ' + k + ' 的区间 [' + key[0] + ', ' + key[1] + '] 作为待插入的 key，在它左边已经排好序的区间里从右往左找位置。'
+      });
+      let j = k - 1;
+      while (j >= 0 && arr[j][0] > key[0]) {
+        const moved = arr[j];
+        arr[j + 1] = arr[j];
+        snap({
+          phase: 'sort-move', key: k, cur: j,
+          note: '比较起点：key 的起点 ' + key[0] + ' < 区间 [' + moved[0] + ', ' + moved[1] + '] 的起点 ' + moved[0] + '，说明 ' + moved[0] + ' 应该排在 key 后面，把它整体后移一位腾出空位。'
+        });
+        j -= 1;
+      }
+      arr[j + 1] = key;
+      snap({
+        phase: 'sort-put', key: j + 1,
+        note: '位置确定：把 [' + key[0] + ', ' + key[1] + '] 放到下标 ' + (j + 1) + '，它左边所有区间的起点都 ≤ ' + key[0] + '，插入后前 ' + (k + 1) + ' 个区间仍然有序。'
+      });
+    }
+  
+    snap({
+      phase: 'sorted',
+      note: '排序完成，区间已按起点升序排列：' + arr.map(function (iv) { return '[' + iv[0] + ',' + iv[1] + ']'; }).join('、')
+        + '。这一步耗时 O(n log n)，是整道题的主要开销；后面的合并只需线性扫描一次。'
+    });
+  
+    merged = [arr[0]];
+    snap({
+      phase: 'merge-init', last: 0,
+      note: '结果列表先放入排序后的第一个区间 [' + arr[0][0] + ', ' + arr[0][1] + ']。之后每个区间只和「结果列表的最后一个区间」比较，因为列表始终有序且互不重叠。'
+    });
+  
+    for (let i = 1; i < n; i++) {
+      const last = merged[merged.length - 1];
+      const curr = arr[i];
+      const overlap = curr[0] <= last[1];
+      snap({
+        phase: 'compare', cur: i, last: merged.length - 1,
+        note: '拿 [' + curr[0] + ', ' + curr[1] + '] 的起点 ' + curr[0] + ' 与结果列表末尾区间 [' + last[0] + ', ' + last[1] + '] 的终点 ' + last[1] + ' 比较：'
+          + (overlap ? curr[0] + ' ≤ ' + last[1] + '，两者有交集。' : curr[0] + ' > ' + last[1] + '，两者之间有空隙，不可能重叠。')
+      });
+  
+      if (overlap) {
+        const oldEnd = last[1];
+        if (curr[1] > last[1]) last[1] = curr[1];
+        snap({
+          phase: 'merge', cur: i, last: merged.length - 1,
+          note: '重叠 → 合并：末尾区间的终点从 ' + oldEnd + ' 更新为 max(' + oldEnd + ', ' + curr[1] + ') = ' + last[1] + '。'
+            + (curr[1] > oldEnd ? '新区间伸得更远，所以终点被拉长。' : '新区间完全被包含，终点不变。')
+            + ' 起点不动（排序保证它已经是最小的）。'
+        });
+      } else {
+        merged.push([curr[0], curr[1]]);
+        snap({
+          phase: 'add', cur: i, last: merged.length - 1,
+          note: '不重叠 → 追加：把 [' + curr[0] + ', ' + curr[1] + '] 作为新的结果区间放进列表。此后它成为新的「末尾区间」，供下一个区间比较。'
+        });
+      }
+    }
+  
+    snap({
+      phase: 'done',
+      note: '所有区间处理完毕，结果 = ' + merged.map(function (iv) { return '[' + iv[0] + ',' + iv[1] + ']'; }).join('、')
+        + '。它恰好覆盖全部输入区间且互不重叠。总复杂度 O(n log n)，其中排序 O(n log n)、合并 O(n)。'
+    });
+  
+    return steps;
+  }
+  
+  function render(step, idx, ctx) {
+    ctx.stage.innerHTML = '';
+  
+    const xMin = 0, xMax = 20, X0 = 44, X1 = 756;
+    function xs(v) { return X0 + v * (X1 - X0) / (xMax - xMin); }
+  
+    const n = step.arr.length;
+    const H = 334;
+    const p = [];
+    p.push('<svg viewBox="0 0 800 ' + H + '" style="width:100%;max-width:800px;height:auto;display:block" role="img">');
+  
+    p.push('<text x="8" y="16" style="fill:var(--demo-muted);font-size:12px;font-weight:700">'
+      + (step.phase.indexOf('sort-') === 0 || step.phase === 'init' ? '当前数组（排序进行中）' : '排序后的区间（按起点升序）') + '</text>');
+  
+    for (let k = 0; k < n; k++) {
+      const iv = step.arr[k];
+      const y = 26 + k * 30;
+      let fill = 'var(--demo-subtle)';
+      let stroke = 'var(--demo-border)';
+      if (k === step.key) { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; }
+      else if (k === step.cur && step.phase === 'compare') { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; }
+      else if (k === step.cur && step.phase === 'sort-move') { fill = 'var(--demo-warn-soft)'; stroke = 'var(--demo-warn)'; }
+      else if ((step.phase === 'merge' || step.phase === 'add') && k === step.cur) { fill = 'var(--demo-violet-soft)'; stroke = 'var(--demo-violet)'; }
+  
+      p.push('<rect x="' + xs(iv[0]) + '" y="' + y + '" width="' + Math.max(10, xs(iv[1]) - xs(iv[0])) + '" height="20" rx="5" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2"/>');
+      p.push('<text x="' + ((xs(iv[0]) + xs(iv[1])) / 2) + '" y="' + (y + 14) + '" text-anchor="middle" style="fill:var(--demo-text);font-size:11px;font-weight:700;font-family:var(--demo-mono)">[' + iv[0] + ',' + iv[1] + ']</text>');
+      p.push('<text x="20" y="' + (y + 14) + '" text-anchor="middle" style="fill:var(--demo-muted);font-size:10px;font-family:var(--demo-mono)">' + k + '</text>');
+      if (step.phase.indexOf('sort') === 0 && k === step.key) {
+        p.push('<text x="' + xs(iv[0]) + '" y="' + (y - 4) + '" text-anchor="middle" style="fill:var(--demo-accent);font-size:10px;font-weight:700">key</text>');
+      }
+    }
+  
+    const axisY = 26 + n * 30 + 12;
+    p.push('<line x1="' + (X0 - 10) + '" y1="' + axisY + '" x2="' + (X1 + 10) + '" y2="' + axisY + '" style="stroke:var(--demo-border);stroke-width:1.5"/>');
+    for (let v = xMin; v <= xMax; v++) {
+      p.push('<line x1="' + xs(v) + '" y1="' + axisY + '" x2="' + xs(v) + '" y2="' + (axisY + 4) + '" style="stroke:var(--demo-border);stroke-width:1"/>');
+      if (v % 2 === 0) {
+        p.push('<text x="' + xs(v) + '" y="' + (axisY + 16) + '" text-anchor="middle" style="fill:var(--demo-muted);font-size:9px;font-family:var(--demo-mono)">' + v + '</text>');
+      }
+    }
+  
+    p.push('<text x="8" y="' + (axisY + 34) + '" style="fill:var(--demo-muted);font-size:12px;font-weight:700">合并结果 merged</text>');
+  
+    const baseY = axisY + 42;
+    if (step.merged.length === 0) {
+      p.push('<text x="' + (X0 + 10) + '" y="' + (baseY + 16) + '" style="fill:var(--demo-muted);font-size:12px">（还没有区间进入结果列表）</text>');
+    }
+    step.merged.forEach(function (iv, k) {
+      const y = baseY + k * 28;
+      let fill = 'var(--demo-ok-soft)';
+      let stroke = 'var(--demo-ok)';
+      if (k === step.last && (step.phase === 'compare' || step.phase === 'merge')) {
+        fill = 'var(--demo-warn-soft)'; stroke = 'var(--demo-warn)';
+      }
+      p.push('<rect x="' + xs(iv[0]) + '" y="' + y + '" width="' + Math.max(10, xs(iv[1]) - xs(iv[0])) + '" height="20" rx="5" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2"/>');
+      p.push('<text x="' + ((xs(iv[0]) + xs(iv[1])) / 2) + '" y="' + (y + 14) + '" text-anchor="middle" style="fill:var(--demo-text);font-size:11px;font-weight:700;font-family:var(--demo-mono)">[' + iv[0] + ',' + iv[1] + ']</text>');
+    });
+  
+    p.push('<text x="8" y="' + (H - 6) + '" style="fill:var(--demo-muted);font-size:10px">横轴为 x（区间端点取值），每个区间画成一条横条</text>');
+    p.push('</svg>');
+  
+    const chart = Demo.el('div', 'col');
+    chart.style.width = '100%';
+    chart.innerHTML = p.join('');
+    ctx.stage.appendChild(chart);
+  
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.style.textAlign = 'center';
+    panel.innerHTML = '结果：'
+      + (step.merged.length
+        ? '<code>[' + step.merged.map(function (iv) { return '[' + iv[0] + ',' + iv[1] + ']'; }).join(', ') + ']</code>'
+        : '<span class="tag tag--warn">未生成</span>')
+      + (step.phase === 'done' ? ' &nbsp;<span class="tag tag--ok">答案 ' + step.merged.length + ' 个区间</span>' : '');
+    ctx.stage.appendChild(panel);
+  }
+  
+  Demo.create({
+    title: '49. 合并区间 — 先按起点排序，再线性合并',
+    info: '输入：intervals = [[8,10], [1,3], [15,18], [2,6]]（示例 1 的四个区间打乱顺序，用来展示排序这一步）。排序后合并，结果与示例一致：[[1,6], [8,10], [15,18]]。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 430,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前处理 / 待插入的区间' },
+      { color: 'var(--demo-warn)', label: '结果列表的末尾区间（比较对象）' },
+      { color: 'var(--demo-ok)', label: '已确定的合并结果' },
+      { color: 'var(--demo-violet)', label: '刚并入结果或新增的区间' }
+    ],
+    render: render
+  });
+  return Demo.__config
+}

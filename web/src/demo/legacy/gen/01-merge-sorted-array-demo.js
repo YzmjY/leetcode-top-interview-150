@@ -1,0 +1,127 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/01-merge-sorted-array-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS1 = [1, 2, 3, 0, 0, 0];
+  const M = 3;
+  const NUMS2 = [2, 5, 6];
+  const N = 3;
+  
+  function buildSteps() {
+    const nums1 = NUMS1.slice();
+    const nums2 = NUMS2.slice();
+    let p1 = M - 1, p2 = N - 1, tail = M + N - 1;
+    const steps = [];
+  
+    steps.push({
+      nums1: nums1.slice(), nums2: nums2.slice(), p1, p2, tail,
+      moved: null,
+      note: '三指针初始化：p1 指向 nums1 有效末尾，p2 指向 nums2 末尾，tail 指向待填充的最后一个空位。'
+    });
+  
+    while (p1 >= 0 && p2 >= 0) {
+      if (nums1[p1] > nums2[p2]) {
+        const value = nums1[p1];
+        nums1[tail] = value;
+        steps.push({
+          nums1: nums1.slice(), nums2: nums2.slice(), p1, p2, tail,
+          moved: tail, value, from: 'nums1',
+          note: `比较 nums1[${p1}]=${value} 与 nums2[${p2}]=${nums2[p2]}，较大者 ${value} 从 nums1 放到末尾 nums1[${tail}]，p1 左移。`
+        });
+        p1--;
+      } else {
+        const value = nums2[p2];
+        nums1[tail] = value;
+        steps.push({
+          nums1: nums1.slice(), nums2: nums2.slice(), p1, p2, tail,
+          moved: tail, value, from: 'nums2',
+          note: `比较 nums1[${p1}]=${nums1[p1]} 与 nums2[${p2}]=${value}，较大者 ${value} 从 nums2 放到末尾 nums1[${tail}]，p2 左移。`
+        });
+        p2--;
+      }
+      tail--;
+    }
+  
+    while (p2 >= 0) {
+      const value = nums2[p2];
+      nums1[tail] = value;
+      steps.push({
+        nums1: nums1.slice(), nums2: nums2.slice(), p1, p2, tail,
+        moved: tail, value, from: 'nums2',
+        note: `nums1 的有效部分已取完，把 nums2 剩余的 ${value} 依次填入 nums1[${tail}]。`
+      });
+      p2--;
+      tail--;
+    }
+  
+    steps.push({
+      nums1: nums1.slice(), nums2: nums2.slice(), p1, p2, tail,
+      moved: null, done: true,
+      note: '两个指针都已越界，合并完成。若 nums1 仍有剩余元素，它们本就在正确位置，无需移动。'
+    });
+  
+    return steps;
+  }
+  
+  function arrayRow(nums, activeIdx, ptrs, filledFrom) {
+    const row = Demo.el('div', 'row');
+    nums.forEach((value, i) => {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(value));
+      if (activeIdx === i) cell.classList.add('is-active');
+      if (filledFrom != null && i >= filledFrom) cell.classList.add('is-ok');
+      if (ptrs.tail === i) cell.classList.add('is-violet');
+      col.appendChild(cell);
+      const labels = [];
+      if (ptrs.p1 === i) labels.push('p1');
+      if (ptrs.p2 === i) labels.push('p2');
+      if (ptrs.tail === i) labels.push('tail');
+      const ptr = Demo.el('div', 'ptr', labels.join(' '));
+      if (ptrs.tail === i && !labels.includes('p1') && !labels.includes('p2')) ptr.classList.add('ptr--violet');
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  Demo.create({
+    title: '1. 合并两个有序数组 — 逆向双指针',
+    info: 'nums1 = [1,2,3,0,0,0]（前 m=3 个有效），nums2 = [2,5,6]（n=3），结果就地写回 nums1。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前比较元素' },
+      { color: 'var(--demo-violet)', label: 'tail 待填充位置' },
+      { color: 'var(--demo-ok)', label: '已就位元素' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const label1 = Demo.el('div', 'panel__title', `nums1（有效长度 m=${M}）`);
+      const row1 = arrayRow(step.nums1, step.from === 'nums1' ? step.p1 : -1, { p1: step.p1, p2: -1, tail: step.tail }, step.done ? 0 : (step.moved == null ? null : step.tail + 1));
+      const block1 = Demo.el('div', 'col');
+      block1.appendChild(label1);
+      block1.appendChild(row1);
+  
+      const label2 = Demo.el('div', 'panel__title', `nums2（长度 n=${N}）`);
+      const row2 = arrayRow(step.nums2, step.from === 'nums2' ? step.p2 : -1, { p1: -1, p2: step.p2, tail: -1 }, null);
+      const block2 = Demo.el('div', 'col');
+      block2.appendChild(label2);
+      block2.appendChild(row2);
+  
+      ctx.stage.appendChild(block1);
+      ctx.stage.appendChild(block2);
+  
+      const result = Demo.el('div', 'panel',
+        `nums1 当前内容：<code>[${step.nums1.join(', ')}]</code>` +
+        (step.done ? ' &nbsp;<span class="tag tag--ok">已完成</span>' : ''));
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

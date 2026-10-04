@@ -1,0 +1,224 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/148-best-time-to-buy-and-sell-stock-iii-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const PRICES = [3, 3, 5, 0, 0, 3, 1, 4];
+  const NEG = -Infinity;
+  
+  function fmt(v) {
+    return v <= -1e9 ? '-∞' : String(v);
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const history = [];
+    const n = PRICES.length;
+  
+    let buy1 = NEG, sell1 = 0, buy2 = NEG, sell2 = 0;
+  
+    history.push({ day: '初始', price: '—', buy1: buy1, sell1: sell1, buy2: buy2, sell2: sell2 });
+  
+    steps.push({
+      day: -1, price: null, state: { buy1: buy1, sell1: sell1, buy2: buy2, sell2: sell2 },
+      prev: null, updates: [], rows: history.map(r => Object.assign({}, r)), done: false,
+      note: '四个状态初始化：buy1 = buy2 = -∞（还没买过股票，不可能持有），sell1 = sell2 = 0（一次都不交易利润为 0）。此后每天按 buy1 → sell1 → buy2 → sell2 的顺序用同一天的最新值更新。'
+    });
+  
+    for (let i = 0; i < n; i++) {
+      const p = PRICES[i];
+      const prev = { buy1: buy1, sell1: sell1, buy2: buy2, sell2: sell2 };
+  
+      const candBuy1 = -p;
+      buy1 = Math.max(buy1, candBuy1);
+      const candSell1 = buy1 + p;
+      sell1 = Math.max(sell1, candSell1);
+      const candBuy2 = sell1 - p;
+      buy2 = Math.max(buy2, candBuy2);
+      const candSell2 = buy2 + p;
+      sell2 = Math.max(sell2, candSell2);
+  
+      const updates = [
+        {
+          label: 'buy1', val: buy1, old: prev.buy1, alt: candBuy1,
+          src: `保持旧值 ${fmt(prev.buy1)}，或在第 ${i} 天首次买入（现金变为 -${p}）`
+        },
+        {
+          label: 'sell1', val: sell1, old: prev.sell1, alt: candSell1,
+          src: `保持旧值 ${fmt(prev.sell1)}，或用「今日已更新的 buy1 = ${fmt(buy1)}」卖出：${fmt(buy1)} + ${p} = ${candSell1}`
+        },
+        {
+          label: 'buy2', val: buy2, old: prev.buy2, alt: candBuy2,
+          src: `保持旧值 ${fmt(prev.buy2)}，或用「今日已更新的 sell1 = ${fmt(sell1)}」做第二次买入：${fmt(sell1)} - ${p} = ${candBuy2}`
+        },
+        {
+          label: 'sell2', val: sell2, old: prev.sell2, alt: candSell2,
+          src: `保持旧值 ${fmt(prev.sell2)}，或用「今日已更新的 buy2 = ${fmt(buy2)}」卖出：${fmt(buy2)} + ${p} = ${candSell2}`
+        }
+      ];
+  
+      history.push({ day: i, price: p, buy1: buy1, sell1: sell1, buy2: buy2, sell2: sell2 });
+  
+      steps.push({
+        day: i, price: p,
+        state: { buy1: buy1, sell1: sell1, buy2: buy2, sell2: sell2 },
+        prev: prev, updates: updates,
+        rows: history.map(r => Object.assign({}, r)),
+        done: false,
+        note: `第 ${i} 天价格 = ${p}：buy1 = max(${fmt(prev.buy1)}, -${p}) = ${fmt(buy1)}；sell1 = max(${fmt(prev.sell1)}, ${fmt(buy1)}+${p}) = ${fmt(sell1)}；buy2 = max(${fmt(prev.buy2)}, ${fmt(sell1)}-${p}) = ${fmt(buy2)}；sell2 = max(${fmt(prev.sell2)}, ${fmt(buy2)}+${p}) = ${fmt(sell2)}。`
+      });
+    }
+  
+    history.push({ day: '答案', price: '—', buy1: buy1, sell1: sell1, buy2: buy2, sell2: sell2 });
+  
+    steps.push({
+      day: n, price: null,
+      state: { buy1: buy1, sell1: sell1, buy2: buy2, sell2: sell2 },
+      prev: null, updates: [],
+      rows: history.map(r => Object.assign({}, r)),
+      done: true,
+      note: `扫描结束，最大利润 = sell2 = ${sell2}。对应题目示例的两笔交易：第 4 天（价格 0）买入、第 6 天（价格 3）卖出赚 3；第 7 天（价格 1）买入、第 8 天（价格 4）卖出赚 3，合计 6。全程只维护 4 个变量，时间 O(n)、空间 O(1)。`
+    });
+  
+    return steps;
+  }
+  
+  function priceRow(step) {
+    const row = Demo.el('div', 'row');
+    for (let i = 0; i < PRICES.length; i++) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(PRICES[i]));
+      if (step.day === i) cell.classList.add('is-active');
+      else if (!step.done && step.day >= 0 && i > step.day) cell.classList.add('is-dim');
+      col.appendChild(cell);
+      const ptr = Demo.el('div', 'ptr', 'd' + i);
+      if (step.day === i) ptr.classList.add('ptr--ok');
+      else ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    }
+    return row;
+  }
+  
+  function stateGrid(step) {
+    const grid = Demo.el('div', 'grid');
+    grid.style.gridTemplateColumns = 'repeat(6, 60px)';
+  
+    function cell(text, cls) {
+      const c = Demo.el('div', 'grid-cell', Demo.esc(text));
+      c.style.height = '26px';
+      c.style.fontSize = '12px';
+      if (cls) c.classList.add(cls);
+      return c;
+    }
+  
+    ['天次', '价格', 'buy1', 'sell1', 'buy2', 'sell2'].forEach(function (h) {
+      const c = cell(h, null);
+      c.style.color = 'var(--demo-muted)';
+      c.style.fontSize = '11px';
+      grid.appendChild(c);
+    });
+  
+    const rows = step.rows;
+    for (let r = 0; r < rows.length; r++) {
+      const cur = rows[r];
+      const above = r > 0 ? rows[r - 1] : null;
+      const isLast = r === rows.length - 1;
+      const isCurrentDay = step.day >= 0 && !step.done && cur.day === step.day;
+      const isAnswerRow = step.done && isLast;
+  
+      grid.appendChild(cell(String(cur.day), isAnswerRow ? 'is-ok' : (isCurrentDay ? 'is-active' : null)));
+      grid.appendChild(cell(String(cur.price), isAnswerRow ? 'is-ok' : (isCurrentDay ? 'is-active' : null)));
+  
+      ['buy1', 'sell1', 'buy2', 'sell2'].forEach(function (key) {
+        const changed = above && above[key] !== cur[key];
+        let cls = null;
+        if (isAnswerRow) cls = 'is-ok';
+        else if (isCurrentDay && changed) cls = 'is-ok';
+        else if (isCurrentDay) cls = 'is-active';
+        else if (changed) cls = 'is-info';
+        grid.appendChild(cell(fmt(cur[key]), cls));
+      });
+    }
+    return grid;
+  }
+  
+  function updatePanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+  
+    if (step.done) {
+      panel.appendChild(Demo.el('div', 'panel__title', '扫描结束'));
+      panel.appendChild(Demo.el('div', null,
+        `所有 ${PRICES.length} 天的四个状态都已按 buy1 → sell1 → buy2 → sell2 的顺序更新完毕。每一步后面的状态都使用同一天刚更新的值，所以允许「同一天先卖出第一笔、再买入第二笔」。答案 = sell2 = ${fmt(step.state.sell2)}。`));
+      return panel;
+    }
+  
+    if (!step.updates.length) {
+      panel.appendChild(Demo.el('div', 'panel__title', '初始状态'));
+      panel.appendChild(Demo.el('div', null, '四个状态已就位，等待开始逐天扫描价格序列。'));
+      return panel;
+    }
+  
+    panel.appendChild(Demo.el('div', 'panel__title',
+      `第 ${step.day} 天（价格 ${step.price}）的状态转移，按顺序用今日最新值`));
+    step.updates.forEach(function (u) {
+      const line = Demo.el('div', 'row');
+      line.style.justifyContent = 'flex-start';
+      line.appendChild(Demo.el('span', 'tag', Demo.esc(u.label)));
+      line.appendChild(Demo.el('span', null,
+        `<code>max(${Demo.esc(fmt(u.old))}, ${Demo.esc(fmt(u.alt))}) = ${Demo.esc(fmt(u.val))}</code>`));
+      line.appendChild(Demo.el('span', 'tag tag--ok', Demo.esc(fmt(u.val))));
+      const why = Demo.el('span', null, Demo.esc(u.src));
+      why.style.fontSize = '12px';
+      why.style.color = 'var(--demo-muted)';
+      line.appendChild(why);
+      panel.appendChild(line);
+    });
+    return panel;
+  }
+  
+  Demo.create({
+    title: '148. 买卖股票的最佳时机 III — 四状态机 DP',
+    info: `输入：prices = [${PRICES.join(', ')}]（示例 1，最多 2 笔交易，输出应为 6）。状态含义：buy1 / sell1 是第 1 笔买入 / 卖出后的最大利润，buy2 / sell2 是第 2 笔买入 / 卖出后的最大利润。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 380,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前天的状态' },
+      { color: 'var(--demo-ok)', label: '本步被刷新的值 / 答案' },
+      { color: 'var(--demo-info)', label: '已经填过的历史值' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const pricePanel = Demo.el('div', 'panel');
+      pricePanel.style.width = '100%';
+      pricePanel.appendChild(Demo.el('div', 'panel__title', '价格序列（d0…d7）'));
+      pricePanel.appendChild(priceRow(step));
+      ctx.stage.appendChild(pricePanel);
+  
+      ctx.stage.appendChild(updatePanel(step));
+  
+      const tablePanel = Demo.el('div', 'panel');
+      tablePanel.style.width = '100%';
+      tablePanel.appendChild(Demo.el('div', 'panel__title',
+        '状态表（逐天向下填充：每行是该天结束后的四个状态值）'));
+      tablePanel.appendChild(stateGrid(step));
+      ctx.stage.appendChild(tablePanel);
+  
+      const result = Demo.el('div', 'panel');
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      result.innerHTML =
+        `buy1 = <strong>${Demo.esc(fmt(step.state.buy1))}</strong> ｜ ` +
+        `sell1 = <strong>${Demo.esc(fmt(step.state.sell1))}</strong> ｜ ` +
+        `buy2 = <strong>${Demo.esc(fmt(step.state.buy2))}</strong> ｜ ` +
+        `sell2 = <strong>${Demo.esc(fmt(step.state.sell2))}</strong>` +
+        (step.done ? ' &nbsp;<span class="tag tag--ok">最大利润 ' + fmt(step.state.sell2) + '</span>' : '');
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

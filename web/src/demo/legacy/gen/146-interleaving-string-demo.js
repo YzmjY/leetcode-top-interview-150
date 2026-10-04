@@ -1,0 +1,201 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/146-interleaving-string-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const S1 = 'aabcc';
+  const S2 = 'dbbca';
+  const S3 = 'aadbbcbcac';
+  const M = S1.length;
+  const N = S2.length;
+  
+  function buildSteps() {
+    const m = M, n = N;
+    const dp = [];
+    for (let i = 0; i <= m; i++) dp.push(new Array(n + 1).fill(null));
+    const steps = [];
+  
+    function snap() {
+      return dp.map(function (row) { return row.slice(); });
+    }
+  
+    steps.push({
+      phase: 'init', i: 0, j: 0, k: -1, dp: snap(),
+      srcA: null, srcB: null, branchA: null, branchB: null,
+      note: '先做长度检查：len(s1) + len(s2) = ' + m + ' + ' + n + ' = ' + (m + n) + '，而 len(s3) = ' + S3.length +
+        '，两者相等才能继续（否则 s3 里多出或少掉的字符无法解释）。' +
+        'dp[i][j] 表示「s1 的前 i 个字符与 s2 的前 j 个字符，能否交错拼出 s3 的前 i+j 个字符」。表先全部留空。'
+    });
+  
+    for (let i = 0; i <= m; i++) {
+      for (let j = 0; j <= n; j++) {
+        const k = i + j - 1;
+        const srcA = i > 0 ? [i - 1, j] : null;
+        const srcB = j > 0 ? [i, j - 1] : null;
+        let branchA = null;
+        let branchB = null;
+        let note;
+  
+        if (i === 0 && j === 0) {
+          dp[i][j] = true;
+          note = 'dp[0][0] = true：两个空串可以交错拼出空串，这是整张表的原点。';
+        } else if (i === 0) {
+          branchB = dp[0][j - 1] === true && S2[j - 1] === S3[j - 1];
+          dp[i][j] = branchB;
+          note = '第一行：s1 一个字符也没用，s3 的前 ' + j + ' 个字符只能全部来自 s2。' +
+            '比较 s2[' + (j - 1) + '] = \'' + S2[j - 1] + '\' 与 s3[' + (j - 1) + '] = \'' + S3[j - 1] + '\'：' +
+            (branchB ? '相等，且前缀 dp[0][' + (j - 1) + '] = true，所以 dp[0][' + j + '] = true。'
+              : '不相等（或前缀本身已经不可行），所以 dp[0][' + j + '] = false，这一格之后的第一行都不可行。');
+        } else if (j === 0) {
+          branchA = dp[i - 1][0] === true && S1[i - 1] === S3[i - 1];
+          dp[i][j] = branchA;
+          note = '第一列：s2 一个字符也没用，s3 的前 ' + i + ' 个字符只能全部来自 s1。' +
+            '比较 s1[' + (i - 1) + '] = \'' + S1[i - 1] + '\' 与 s3[' + (i - 1) + '] = \'' + S3[i - 1] + '\'：' +
+            (branchA ? '相等，且前缀 dp[' + (i - 1) + '][0] = true，所以 dp[' + i + '][0] = true。'
+              : '不相等（或前缀本身已经不可行），所以 dp[' + i + '][0] = false，这一列之后的格子也都不行。');
+        } else {
+          branchA = dp[i - 1][j] === true && S1[i - 1] === S3[k];
+          branchB = dp[i][j - 1] === true && S2[j - 1] === S3[k];
+          dp[i][j] = branchA || branchB;
+          note = 'dp[' + i + '][' + j + '] 对应 s3 的第 ' + k + ' 个字符 \'' + S3[k] + '\'（下标 i+j-1 = ' + i + '+' + j + '-1）。' +
+            '两条路选一条走：①这个字符来自 s1 → 需要 s1[' + (i - 1) + '] = \'' + S1[i - 1] + '\' 与 \'' + S3[k] +
+            '\' 相等，并且去掉它之后的前缀仍然可行，即 dp[' + (i - 1) + '][' + j + '] = ' + dp[i - 1][j] +
+            '，本分支为 ' + branchA + '；' +
+            '②这个字符来自 s2 → 需要 s2[' + (j - 1) + '] = \'' + S2[j - 1] + '\' 与 \'' + S3[k] + '\' 相等，且 dp[' + i +
+            '][' + (j - 1) + '] = ' + dp[i][j - 1] + '，本分支为 ' + branchB + '。' +
+            '两条分支是「或」的关系——只要有一条走得通，这个前缀就能拼出来，所以 dp[' + i + '][' + j + '] = ' + dp[i][j] + '。';
+        }
+  
+        steps.push({
+          phase: 'calc', i: i, j: j, k: k, dp: snap(),
+          srcA: srcA, srcB: srcB, branchA: branchA, branchB: branchB,
+          note: note
+        });
+      }
+    }
+  
+    steps.push({
+      phase: 'done', i: m, j: n, k: -1, dp: snap(),
+      srcA: null, srcB: null, branchA: null, branchB: null,
+      note: '右上角是整张表的目标：dp[' + m + '][' + n + '] = ' + dp[m][n] +
+        '，说明 s3 = "' + S3 + '" 确实由 s1 = "' + S1 + '" 和 s2 = "' + S2 + '" 交错而成（示例 1 的答案）。' +
+        '如果换成长度相同但字符对不上的 s3 = "aadbbbaccc"，同一份代码会在右下角得到 false（示例 2）。' +
+        '复杂度：状态共 (m+1)·(n+1) 个，每个 O(1) 转移，时间 O(m·n)；用一维滚动数组可把空间压到 O(n)。'
+    });
+  
+    return steps;
+  }
+  
+  function strRow(label, str, hi, cls) {
+    const row = Demo.el('div', 'row');
+    row.appendChild(Demo.el('span', 'tag', Demo.esc(label)));
+    for (let c = 0; c < str.length; c++) {
+      const mark = c === hi && hi >= 0 ? cls : '';
+      row.appendChild(Demo.el('div', 'cell cell--sm' + (mark ? ' ' + mark : ''), Demo.esc(str[c])));
+    }
+    return row;
+  }
+  
+  function gcell(text, cls) {
+    const cell = Demo.el('div', 'grid-cell' + (cls ? ' ' + cls : ''), Demo.esc(text));
+    cell.style.minWidth = '40px';
+    cell.style.height = '32px';
+    cell.style.fontSize = '12px';
+    return cell;
+  }
+  
+  function tableView(step) {
+    const grid = Demo.el('div', 'grid');
+    grid.style.gridTemplateColumns = 'repeat(' + (N + 2) + ', 44px)';
+  
+    const corner = gcell('s1＼s2', 'is-dim');
+    grid.appendChild(corner);
+    for (let j = 0; j <= N; j++) {
+      const head = gcell(j === 0 ? 'ε' : S2[j - 1], '');
+      head.style.color = 'var(--demo-muted)';
+      grid.appendChild(head);
+    }
+  
+    for (let i = 0; i <= M; i++) {
+      const head = gcell(i === 0 ? 'ε' : S1[i - 1], '');
+      head.style.color = 'var(--demo-muted)';
+      grid.appendChild(head);
+      for (let j = 0; j <= N; j++) {
+        const v = step.dp[i][j];
+        const isCur = i === step.i && j === step.j;
+        const isA = step.srcA && step.srcA[0] === i && step.srcA[1] === j;
+        const isB = step.srcB && step.srcB[0] === i && step.srcB[1] === j;
+        let cls = v === true ? 'is-ok' : '';
+        if (v == null) cls = 'is-dim';
+        if (isA) cls = 'is-violet';
+        if (isB) cls = 'is-info';
+        if (isCur) cls = 'is-active';
+        const cell = gcell(v === true ? 'T' : (v === false ? 'F' : '·'), cls);
+        if (v === false && !isCur && !isA && !isB) cell.style.opacity = '0.7';
+        grid.appendChild(cell);
+      }
+    }
+    return grid;
+  }
+  
+  Demo.create({
+    title: '146. 交错字符串 — 双序列二维 DP',
+    info: '输入：s1 = "aabcc"，s2 = "dbbca"，s3 = "aadbbcbcac"（示例 1）。转移：dp[i][j] = (dp[i-1][j] && s1[i-1]==s3[i+j-1]) || (dp[i][j-1] && s2[j-1]==s3[i+j-1])。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 420,
+    legend: [
+      { color: 'var(--demo-accent)', label: '正在计算 dp[i][j]' },
+      { color: 'var(--demo-violet)', label: '来源①：dp[i-1][j]（这一位取自 s1）' },
+      { color: 'var(--demo-info)', label: '来源②：dp[i][j-1]（这一位取自 s2）' },
+      { color: 'var(--demo-ok)', label: 'true，前缀可以交错拼出' },
+      { color: 'var(--demo-warn)', label: '本步在 s3 中对应的字符' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const strPanel = Demo.el('div', 'panel');
+      strPanel.style.width = '100%';
+      strPanel.style.textAlign = 'center';
+      strPanel.appendChild(Demo.el('div', 'panel__title', '三个字符串（高亮＝本步正在使用的字符）'));
+      strPanel.appendChild(strRow('s1', S1, step.i - 1, 'is-active'));
+      strPanel.appendChild(strRow('s2', S2, step.j - 1, 'is-active'));
+      strPanel.appendChild(strRow('s3', S3, step.k, 'is-warn'));
+      ctx.stage.appendChild(strPanel);
+  
+      const tblPanel = Demo.el('div', 'panel');
+      tblPanel.style.width = '100%';
+      tblPanel.style.textAlign = 'center';
+      tblPanel.appendChild(Demo.el('div', 'panel__title',
+        'dp 表：行 = s1 的前 i 个字符，列 = s2 的前 j 个字符，格子里的 T/F 表示能否拼出 s3 的前 i+j 个字符'));
+      tblPanel.appendChild(tableView(step));
+      ctx.stage.appendChild(tblPanel);
+  
+      const info = Demo.el('div', 'panel');
+      info.style.width = '100%';
+      info.style.textAlign = 'center';
+      if (step.phase === 'init') {
+        info.innerHTML = '长度检查：' + M + ' + ' + N + ' = ' + (M + N) + ' = len(s3) = ' + S3.length +
+          ' &nbsp;<span class="tag tag--ok">通过，可以开始填表</span>';
+      } else if (step.phase === 'done') {
+        info.innerHTML = 's3 是否由 s1、s2 交错而成：<strong>' + step.dp[M][N] + '</strong>' +
+          ' &nbsp;<span class="tag tag--ok">dp[' + M + '][' + N + ']</span>' +
+          ' &nbsp;<span class="tag tag--info">时间 O(m·n) · 空间 O(n)（一维滚动）</span>';
+      } else {
+        let html = 'dp[' + step.i + '][' + step.j + ']';
+        if (step.i + step.j === 0) {
+          html += ' = <strong>true</strong> &nbsp;<span class="tag">原点：两个空串</span>';
+        } else {
+          html += ' = <span class="tag tag--violet">取自 s1：' + (step.branchA == null ? '—' : step.branchA) + '</span>' +
+            ' <span class="tag tag--info">取自 s2：' + (step.branchB == null ? '—' : step.branchB) + '</span>' +
+            ' → <strong>' + step.dp[step.i][step.j] + '</strong>';
+          if (step.k >= 0) html += ' &nbsp;<span class="tag tag--warn">对应 s3[' + step.k + '] = \'' + S3[step.k] + '\'</span>';
+        }
+        info.innerHTML = html;
+      }
+      ctx.stage.appendChild(info);
+    }
+  });
+  return Demo.__config
+}

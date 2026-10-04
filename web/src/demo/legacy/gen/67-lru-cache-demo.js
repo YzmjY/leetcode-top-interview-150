@@ -1,0 +1,271 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/67-lru-cache-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const CAPACITY = 2;
+  const OPS = [
+    { type: 'put', key: 1, val: 1 },
+    { type: 'put', key: 2, val: 2 },
+    { type: 'get', key: 1 },
+    { type: 'put', key: 3, val: 3 },
+    { type: 'get', key: 2 },
+    { type: 'put', key: 4, val: 4 },
+    { type: 'get', key: 1 },
+    { type: 'get', key: 3 },
+    { type: 'get', key: 4 }
+  ];
+  
+  function buildSteps() {
+    // 真实的「哈希表 + 双向链表」：head / tail 是两个哨兵节点，head 侧为 MRU，tail 侧为 LRU
+    const head = { key: null, val: null, prev: null, next: null };
+    const tail = { key: null, val: null, prev: null, next: null };
+    head.next = tail;
+    tail.prev = head;
+    const map = {};
+  
+    const steps = [];
+  
+    function listEntries() {
+      const out = [];
+      let p = head.next;
+      while (p !== tail) { out.push({ key: p.key, val: p.val }); p = p.next; }
+      return out;
+    }
+  
+    function mapEntries() {
+      return Object.keys(map).map(Number).sort(function (a, b) { return a - b; }).map(function (k) {
+        return { key: k, val: map[k].val };
+      });
+    }
+  
+    function push(op, stage, note, extra) {
+      const step = {
+        list: listEntries(),
+        entries: mapEntries(),
+        op: op,
+        stage: stage,
+        result: null,
+        activeKey: null,
+        evicted: null,
+        size: Object.keys(map).length,
+        done: false,
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(function (k) { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    function removeNode(node) {
+      node.prev.next = node.next;
+      node.next.prev = node.prev;
+    }
+  
+    function addToHead(node) {
+      node.prev = head;
+      node.next = head.next;
+      head.next.prev = node;
+      head.next = node;
+    }
+  
+    function moveToHead(node) {
+      removeNode(node);
+      addToHead(node);
+    }
+  
+    function removeTail() {
+      const node = tail.prev;
+      removeNode(node);
+      return node;
+    }
+  
+    push('—', 'init', '初始化 capacity = ' + CAPACITY +
+      '。双向链表用 head / tail 两个哨兵占位（不存数据），head 侧是最近使用（MRU），tail 侧是最久未使用（LRU）；哈希表把 key 映射到链表节点。哨兵让「删除头节点」和「删除尾节点」都不必判空。');
+  
+    OPS.forEach(function (op) {
+      if (op.type === 'put') {
+        const existing = map[op.key];
+        if (existing) {
+          existing.val = op.val;
+          moveToHead(existing);
+          push('put(' + op.key + ', ' + op.val + ')', 'put-update',
+            'put(' + op.key + ', ' + op.val + ')：哈希表命中，说明 key 已存在 → 更新 value，并把它移到链表头部标记为最近使用。容量不变，不会触发逐出。',
+            { activeKey: op.key });
+          return;
+        }
+  
+        const node = { key: op.key, val: op.val, prev: null, next: null };
+        map[op.key] = node;
+        addToHead(node);
+        push('put(' + op.key + ', ' + op.val + ')', 'put-new',
+          'put(' + op.key + ', ' + op.val + ')：哈希表未命中 → 新建节点，登记进哈希表，并插入链表头部（addToHead）。此时缓存大小 = ' + Object.keys(map).length + '。',
+          { activeKey: op.key });
+  
+        if (Object.keys(map).length > CAPACITY) {
+          const victim = removeTail();
+          delete map[victim.key];
+          push('put(' + op.key + ', ' + op.val + ')', 'evict',
+            '插入后大小 ' + (Object.keys(map).length + 1) + ' > capacity = ' + CAPACITY +
+            ' → 必须逐出。tail 前一个节点就是最久未使用的 key = ' + victim.key +
+            '：从链表尾部摘掉（removeTail），再从哈希表里删掉它。这样哈希表和链表保持一致。',
+            { evicted: victim.key });
+        }
+        return;
+      }
+  
+      const node = map[op.key];
+      if (node) {
+        removeNode(node);
+        push('get(' + op.key + ')', 'get-hit',
+          'get(' + op.key + ')：哈希表命中。先把节点从链表原位置摘下来（removeNode 只改前后两个指针，O(1)），为移到头部做准备。',
+          { activeKey: op.key });
+        addToHead(node);
+        push('get(' + op.key + ')', 'get-hit',
+          '再把节点插到 head 之后（addToHead），它就是最新的「最近使用」。返回 value = ' + node.val +
+          '。注意被读过的 key 绝不会成为下一个被逐出的人。',
+          { activeKey: op.key, result: node.val });
+      } else {
+        push('get(' + op.key + ')', 'get-miss',
+          'get(' + op.key + ')：哈希表里没有这个 key，直接返回 -1。未命中不影响任何节点的使用顺序，链表和哈希表都不动。',
+          { result: -1 });
+      }
+    });
+  
+    const finalList = listEntries().map(function (e) { return e.key + '=' + e.val; }).join(', ');
+    push('—', 'done',
+      '样例的 9 个操作全部执行完毕。最终缓存内容（从最近使用到最久未使用）：' + finalList +
+      '，与题目输出 [null, null, null, 1, null, -1, null, -1, 3, 4] 完全一致。get / put 都只做常数次指针改写和一次哈希查找，平均时间 O(1)，空间 O(capacity)。',
+      { done: true });
+  
+    return steps;
+  }
+  
+  function arrowCol() {
+    const col = Demo.el('div', 'col');
+    col.appendChild(Demo.el('div', 'arrow', '⇄'));
+    col.appendChild(Demo.el('div', 'ptr ptr--dim', '&nbsp;'));
+    return col;
+  }
+  
+  function sentinelCol(text, ptrText) {
+    const col = Demo.el('div', 'col');
+    const node = Demo.el('div', 'll-node', text);
+    node.style.borderStyle = 'dashed';
+    node.style.color = 'var(--demo-muted)';
+    node.style.fontSize = '12px';
+    col.appendChild(node);
+    const ptr = Demo.el('div', 'ptr', ptrText);
+    col.appendChild(ptr);
+    return col;
+  }
+  
+  function chainRow(step) {
+    const row = Demo.el('div', 'row');
+    row.appendChild(sentinelCol('head', 'MRU 侧'));
+    row.appendChild(arrowCol());
+    step.list.forEach(function (entry) {
+      const col = Demo.el('div', 'col');
+      const node = Demo.el('div', 'll-node', Demo.esc(entry.key + ':' + entry.val));
+      const labels = [];
+      if (entry.key === step.activeKey) {
+        node.classList.add('is-active');
+        labels.push(step.stage === 'evict' ? '刚插入' : '操作中');
+      } else if (step.list.length && entry.key === step.list[0].key) {
+        labels.push('最近使用');
+      }
+      col.appendChild(node);
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : '&nbsp;');
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (labels.indexOf('操作中') < 0 && labels.indexOf('刚插入') < 0) ptr.classList.add('ptr--ok');
+      col.appendChild(ptr);
+      row.appendChild(col);
+      row.appendChild(arrowCol());
+    });
+    row.appendChild(sentinelCol('tail', 'LRU 侧'));
+    return row;
+  }
+  
+  function hashTable(step) {
+    let html = '<table class="map-table"><tr><th>key</th><th>value</th></tr>';
+    if (step.entries.length === 0) {
+      html += '<tr><td colspan="2">（空）</td></tr>';
+    } else {
+      step.entries.forEach(function (e) {
+        html += '<tr' + (e.key === step.activeKey ? ' class="is-active"' : '') + '><td>' + e.key + '</td><td>' + e.val + '</td></tr>';
+      });
+    }
+    html += '</table>';
+    return html;
+  }
+  
+  Demo.create({
+    title: '67. LRU 缓存 — 哈希表 + 双向链表，get / put 均摊 O(1)',
+    info: 'capacity = 2，依次执行 put(1,1)、put(2,2)、get(1)、put(3,3)、get(2)、put(4,4)、get(1)、get(3)、get(4)。链表头部是最近使用，尾部是最久未使用。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 420,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本次操作命中的节点' },
+      { color: 'var(--demo-ok)', label: '链表头 = 最近使用（MRU）' },
+      { color: 'var(--demo-danger)', label: '被逐出的最久未使用节点（LRU）' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const listPanel = Demo.el('div', 'panel');
+      listPanel.style.width = '100%';
+      listPanel.appendChild(Demo.el('div', 'panel__title', '双向链表（head 哨兵 ⇄ … ⇄ tail 哨兵），从左到右：最近使用 → 最久未使用'));
+      listPanel.appendChild(chainRow(step));
+      ctx.stage.appendChild(listPanel);
+  
+      const bottom = Demo.el('div', 'row');
+      bottom.style.width = '100%';
+      bottom.style.alignItems = 'flex-start';
+  
+      const hashPanel = Demo.el('div', 'panel');
+      hashPanel.appendChild(Demo.el('div', 'panel__title', '哈希表 key → 链表节点'));
+      hashPanel.appendChild(Demo.el('div', null, hashTable(step)));
+      bottom.appendChild(hashPanel);
+  
+      const statusPanel = Demo.el('div', 'panel');
+      statusPanel.appendChild(Demo.el('div', 'panel__title', '本次操作'));
+      const statusRow = Demo.el('div', 'row');
+      statusRow.appendChild(Demo.el('span', 'tag' + (step.done ? ' tag--ok' : ''), step.op === '—' ? '（无操作）' : step.op));
+      statusRow.appendChild(Demo.el('span', 'tag tag--info', '缓存大小 ' + step.size + ' / ' + CAPACITY));
+      if (step.result !== null) {
+        statusRow.appendChild(Demo.el('span', 'tag ' + (step.result === -1 ? 'tag--bad' : 'tag--ok'), '返回 ' + step.result));
+      } else if (step.op !== '—') {
+        statusRow.appendChild(Demo.el('span', 'tag tag--violet', '返回 null（put 无返回值）'));
+      }
+      statusPanel.appendChild(statusRow);
+      bottom.appendChild(statusPanel);
+  
+      ctx.stage.appendChild(bottom);
+  
+      if (step.evicted !== null) {
+        const evictPanel = Demo.el('div', 'panel');
+        evictPanel.style.width = '100%';
+        evictPanel.appendChild(Demo.el('div', 'panel__title', '刚刚被逐出的节点（容量已满，只能牺牲最久未使用的）'));
+        const row = Demo.el('div', 'row');
+        const node = Demo.el('div', 'll-node', Demo.esc(String(step.evicted)));
+        node.style.borderColor = 'var(--demo-danger)';
+        node.style.background = 'var(--demo-danger-soft)';
+        node.style.color = 'var(--demo-danger)';
+        node.style.textDecoration = 'line-through';
+        row.appendChild(node);
+        row.appendChild(Demo.el('span', 'tag tag--bad', 'removeTail() + delete cache[key]'));
+        evictPanel.appendChild(row);
+        ctx.stage.appendChild(evictPanel);
+      } else {
+        const hint = Demo.el('div', 'panel');
+        hint.style.width = '100%';
+        hint.style.textAlign = 'center';
+        hint.innerHTML = 'get 命中 / put 已存在 → <strong>moveToHead</strong>（removeNode + addToHead）；' +
+          'put 新键 → <strong>addToHead</strong>；超过 capacity → <strong>removeTail</strong> 并同步删除哈希表条目。';
+        ctx.stage.appendChild(hint);
+      }
+    }
+  });
+  return Demo.__config
+}

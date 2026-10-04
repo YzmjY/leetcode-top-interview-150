@@ -1,0 +1,140 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/17-roman-to-integer-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const S = 'MCMXCIV';
+  const VALUES = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+  
+  function buildSteps() {
+    const chars = S.split('');
+    const n = chars.length;
+    const signs = new Array(n).fill('');
+    const steps = [];
+    let result = 0;
+  
+    steps.push({
+      i: -1, result: 0, signs: signs.slice(), curVal: null, nextVal: null,
+      delta: 0, op: '', done: false,
+      note: `初始化：s = "${S}"，result = 0。从左到右逐个处理字符，每次把当前字符的数值和它右边相邻字符的数值比较一次，决定这一位是加还是减。`
+    });
+  
+    for (let i = 0; i < n; i++) {
+      const curVal = VALUES[chars[i]];
+      const nextVal = i < n - 1 ? VALUES[chars[i + 1]] : 0;
+      const isSub = curVal < nextVal;
+      const delta = isSub ? -curVal : curVal;
+      result += delta;
+      signs[i] = isSub ? '-' : '+';
+  
+      let note;
+      if (i === n - 1) {
+        note = `s[${i}] = '${chars[i]}'（${curVal}）已是最后一个字符，没有右邻居，按加法处理：result += ${curVal}，result = ${result}。`;
+      } else if (isSub) {
+        note = `比较 s[${i}] = '${chars[i]}'（${curVal}）与 s[${i + 1}] = '${chars[i + 1]}'（${nextVal}）：${curVal} < ${nextVal}，触发减法特例（如 IV、IX），所以这一位要减去：result += (-${curVal})，result = ${result}。`;
+      } else {
+        note = `比较 s[${i}] = '${chars[i]}'（${curVal}）与 s[${i + 1}] = '${chars[i + 1]}'（${nextVal}）：${curVal} ≥ ${nextVal}，不构成减法特例，正常累加：result += ${curVal}，result = ${result}。`;
+      }
+  
+      steps.push({
+        i: i, result: result, signs: signs.slice(), curVal: curVal, nextVal: nextVal,
+        delta: delta, op: isSub ? '-' : '+', done: false, note: note
+      });
+    }
+  
+    steps.push({
+      i: n, result: result, signs: signs.slice(), curVal: null, nextVal: null,
+      delta: 0, op: '', done: true,
+      note: `字符串扫描完毕，只遍历了一次，没有使用额外与 n 相关的空间。最终整数结果 result = ${result}，与示例输出一致。`
+    });
+  
+    return steps;
+  }
+  
+  function charColumn(ch, idx, step) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell cell--lg', Demo.esc(ch));
+  
+    const processed = idx < step.i || step.done;
+    const current = idx === step.i;
+    const neighbour = !step.done && step.i >= 0 && (idx === step.i + 1);
+  
+    if (current) cell.classList.add('is-active');
+    else if (processed) cell.classList.add(step.signs[idx] === '-' ? 'is-warn' : 'is-ok');
+    else if (neighbour) cell.classList.add('is-info');
+    col.appendChild(cell);
+  
+    const value = VALUES[ch];
+    const valuePtr = Demo.el('div', 'ptr', String(value));
+    if (current) valuePtr.classList.add('ptr--info');
+    else if (neighbour) valuePtr.classList.add('ptr--info');
+    else valuePtr.classList.add('ptr--dim');
+    col.appendChild(valuePtr);
+  
+    const op = Demo.el('div', 'ptr');
+    if (idx <= step.i || step.done) {
+      op.textContent = step.signs[idx] === '-' ? '−' + value : '+' + value;
+      op.classList.add(step.signs[idx] === '-' ? 'ptr--warn' : 'ptr--ok');
+    } else {
+      op.textContent = '待定';
+      op.classList.add('ptr--dim');
+    }
+    col.appendChild(op);
+  
+    return col;
+  }
+  
+  Demo.create({
+    title: '17. 罗马数字转整数 — 相邻比较，小值在左则做减法',
+    info: `输入：s = "${S}"（示例 5）。I=1、V=5、X=10、L=50、C=100、D=500、M=1000。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 300,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前处理的字符' },
+      { color: 'var(--demo-info)', label: '右边的比较对象' },
+      { color: 'var(--demo-ok)', label: '已累加（加法位）' },
+      { color: 'var(--demo-warn)', label: '已减去（减法位）' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.appendChild(Demo.el('div', 'panel__title',
+        step.done ? '扫描结束：每一位的处理方式都已确定' : '从左到右扫描罗马数字（方块内是字符，下面依次是权值与该位运算）'));
+  
+      const row = Demo.el('div', 'row');
+      S.split('').forEach(function (ch, idx) {
+        row.appendChild(charColumn(ch, idx, step));
+      });
+      panel.appendChild(row);
+      ctx.stage.appendChild(panel);
+  
+      const expr = Demo.el('div', 'panel');
+      expr.style.width = '100%';
+      expr.style.textAlign = 'center';
+      if (step.done) {
+        expr.innerHTML = '每一位的加减号：' +
+          S.split('').map(function (ch, idx) {
+            return Demo.esc(step.signs[idx]) + VALUES[ch];
+          }).join(' &nbsp; ') +
+          ' &nbsp;=&nbsp; <strong>' + step.result + '</strong>' +
+          ' &nbsp;<span class="tag tag--ok">完成</span>';
+      } else if (step.i < 0) {
+        expr.innerHTML = '尚未开始比较：result 初始为 <strong>0</strong>';
+      } else {
+        const ch = S[step.i];
+        const nextCh = step.i + 1 < S.length ? S[step.i + 1] : null;
+        const cmp = nextCh === null
+          ? `s[${step.i}] = '${ch}' 是末尾字符`
+          : `${step.curVal} ${step.curVal < step.nextVal ? '&lt;' : '≥'} ${step.nextVal}`;
+        expr.innerHTML = `当前判定：${Demo.esc(cmp)} → 这一位 ${step.op === '-' ? '减去' : '加上'} ${step.curVal}` +
+          ` &nbsp;|&nbsp; result = <strong>${step.result}</strong>`;
+      }
+      ctx.stage.appendChild(expr);
+    }
+  });
+  return Demo.__config
+}

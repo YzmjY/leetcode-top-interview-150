@@ -1,0 +1,191 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/31-longest-substring-without-repeating-characters-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const S = 'abcabcbb';
+  const CHARS = S.split('');
+  const DISTINCT = Array.from(new Set(CHARS)).sort();
+  
+  function buildSteps() {
+    const steps = [];
+    const charIndex = {};
+    let left = 0, maxLen = 0, bestL = 0;
+  
+    steps.push({
+      left: 0, right: -1, charIndex: {}, curLen: 0, maxLen: 0, bestL: 0,
+      phase: 'init', ch: '', dupAt: -1, prevLeft: 0, jumpTo: -1, prevMax: 0, improved: false,
+      note: `初始化：left = 0，right = -1（空窗口）。charIndex 是一张「字符 → 它最后出现的位置」的哈希表，现在为空；maxLen = 0。整个算法维持一条不变量：窗口 s[left..right] 内没有任何重复字符。`
+    });
+  
+    for (let right = 0; right < CHARS.length; right++) {
+      const ch = CHARS[right];
+      const seen = Object.prototype.hasOwnProperty.call(charIndex, ch) ? charIndex[ch] : -1;
+      const duplicated = seen >= left;
+      const prevLeft = left;
+      const jumpTo = duplicated ? seen + 1 : left;
+  
+      steps.push({
+        left: prevLeft, right: right, charIndex: Object.assign({}, charIndex),
+        curLen: right - prevLeft + 1, maxLen: maxLen, bestL: bestL,
+        phase: 'probe', ch: ch, dupAt: duplicated ? seen : -1, prevLeft: prevLeft,
+        jumpTo: jumpTo, prevMax: maxLen, improved: false,
+        note: `右指针来到 ${right}，读入字符 "${ch}"。查 charIndex：` +
+          (duplicated
+            ? `它上次出现在索引 ${seen}，而这个位置 ≥ left = ${prevLeft}，也就是说它此刻就在窗口里——出现重复，窗口不再合法。于是把左边界跳到 ${seen} + 1 = ${jumpTo}，即跳过上一次出现的那个 "${ch}"，窗口变成 s[${jumpTo}..${right}]，重新恢复无重复。之所以能直接跳而不是一格一格挪，是因为窗口本来就没有重复字符，要消掉这次的重复只需要干掉上一次那个 "${ch}"。`
+            : (seen < 0
+              ? `charIndex 里没有它的记录，说明它还是第一次出现，不构成重复，left 保持 ${prevLeft}。`
+              : `它上次出现在索引 ${seen}，但 ${seen} < left = ${prevLeft}，已经落在窗口之外了，不构成重复，left 保持 ${prevLeft}。`))
+      });
+  
+      if (duplicated) left = seen + 1;
+      charIndex[ch] = right;
+      const curLen = right - left + 1;
+      const prevMax = maxLen;
+      const improved = curLen > maxLen;
+      if (improved) {
+        maxLen = curLen;
+        bestL = left;
+      }
+  
+      steps.push({
+        left: left, right: right, charIndex: Object.assign({}, charIndex),
+        curLen: curLen, maxLen: maxLen, bestL: bestL,
+        phase: 'update', ch: ch, dupAt: -1, prevLeft: left, jumpTo: -1,
+        prevMax: prevMax, improved: improved,
+        note: `更新哈希表：charIndex["${ch}"] = ${right}（记成它最后出现的位置，供以后比较）。此时窗口是 s[${left}..${right}] = "${CHARS.slice(left, right + 1).join('')}"，长度 = ${right} − ${left} + 1 = ${curLen}。和历史最长比较：` +
+          (improved
+            ? `${curLen} > ${prevMax}，刷新 maxLen = ${curLen}，最长子串的起点暂记为 ${left}。`
+            : `${curLen} ≤ ${prevMax}，答案不变。`)
+      });
+    }
+  
+    const answer = maxLen > 0 ? S.slice(bestL, bestL + maxLen) : '';
+  
+    steps.push({
+      left: CHARS.length, right: CHARS.length - 1, charIndex: Object.assign({}, charIndex),
+      curLen: 0, maxLen: maxLen, bestL: bestL,
+      phase: 'done', ch: '', dupAt: -1, prevLeft: 0, jumpTo: -1, prevMax: maxLen, improved: false,
+      note: maxLen > 0
+        ? `right 已经越过字符串末尾，扫描结束。全程记录的最大长度是 maxLen = ${maxLen}，对应子串 s[${bestL}..${bestL + maxLen - 1}] = "${answer}"。正确性：right 每前进一步，要么窗口直接变长，要么 left 跳到重复字符上次出现的下一个位置，窗口内始终保持无重复；而每个下标最多被 left 扫过一次，所以总时间是 O(n)。`
+        : `字符串为空，最长无重复子串长度为 0。`
+    });
+  
+    return steps;
+  }
+  
+  function arrayRow(step) {
+    const row = Demo.el('div', 'row');
+    const done = step.phase === 'done';
+  
+    CHARS.forEach(function (ch, idx) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(ch));
+  
+      if (done) {
+        if (step.maxLen > 0 && idx >= step.bestL && idx <= step.bestL + step.maxLen - 1) cell.classList.add('is-ok');
+        else cell.classList.add('cell--dim');
+      } else if (idx === step.right) {
+        cell.classList.add(step.dupAt >= 0 ? 'is-bad' : 'is-active');
+      } else if (idx === step.dupAt) {
+        cell.classList.add('is-warn');
+      } else if (idx >= step.left && idx <= step.right) {
+        cell.classList.add('is-info');
+      }
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (!done) {
+        if (idx === step.left) labels.push('left');
+        if (idx === step.right) labels.push('right');
+        if (idx === step.dupAt) labels.push('重复');
+      }
+      const ptr = Demo.el('div', 'ptr', labels.length ? Demo.esc(labels.join(' ')) : String(idx));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (labels.indexOf('重复') >= 0) ptr.classList.add('ptr--warn');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+  
+    return row;
+  }
+  
+  function indexTable(step) {
+    const done = step.phase === 'done';
+    const winL = done ? step.bestL : step.left;
+    const winR = done ? step.bestL + step.maxLen - 1 : step.right;
+    const colTitle = done ? '在答案中' : '相对窗口';
+    const rows = DISTINCT.map(function (ch) {
+      const seen = Object.prototype.hasOwnProperty.call(step.charIndex, ch) ? step.charIndex[ch] : null;
+      const inWindow = seen !== null && seen >= winL && seen <= winR;
+      return `<tr class="${!done && ch === step.ch ? 'is-active' : ''}">` +
+        `<td>${Demo.esc(ch)}</td>` +
+        `<td>${seen === null ? '—' : seen}</td>` +
+        `<td>${seen === null ? '未出现' : (inWindow ? (done ? '是' : '在窗口内') : (done ? '否' : '在窗口外'))}</td>` +
+        `</tr>`;
+    }).join('');
+    return Demo.el('table', 'map-table',
+      `<tr><th>字符</th><th>最后出现位置</th><th>${colTitle}</th></tr>${rows}`);
+  }
+  
+  Demo.create({
+    title: '31. 无重复字符的最长子串 — 窗口左界跳到重复字符的下一位',
+    info: `输入：s = "${S}"（示例 1，输出 3，对应子串 "abc"）。charIndex 记录每个字符最后出现的位置，窗口 s[left..right] 始终保持无重复。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 360,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'right 刚读入的字符' },
+      { color: 'var(--demo-info)', label: '当前无重复窗口 s[left..right]' },
+      { color: 'var(--demo-warn)', label: '重复字符上次出现的位置' },
+      { color: 'var(--demo-danger)', label: '检测到重复' },
+      { color: 'var(--demo-ok)', label: '最长子串（最终答案）' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const arrayPanel = Demo.el('div', 'panel');
+      arrayPanel.style.width = '100%';
+      arrayPanel.appendChild(Demo.el('div', 'panel__title',
+        step.phase === 'done' ? '字符串 s（扫描结束）' : `字符串 s（正在读入 s[${step.right}]）`));
+      arrayPanel.appendChild(arrayRow(step));
+      ctx.stage.appendChild(arrayPanel);
+  
+      const mid = Demo.el('div', 'row');
+      const tablePanel = Demo.el('div', 'panel');
+      tablePanel.appendChild(Demo.el('div', 'panel__title', '哈希表 charIndex：字符 → 最后出现位置'));
+      tablePanel.appendChild(indexTable(step));
+      mid.appendChild(tablePanel);
+  
+      const infoPanel = Demo.el('div', 'panel');
+      infoPanel.appendChild(Demo.el('div', 'panel__title', '窗口状态'));
+      const infoRow = Demo.el('div', 'row');
+      infoRow.appendChild(Demo.el('span', 'tag tag--info',
+        step.right >= step.left && step.phase !== 'done'
+          ? '窗口 = "' + CHARS.slice(step.left, step.right + 1).join('') + '"'
+          : '窗口 = ""'));
+      infoPanel.appendChild(infoRow);
+      const tagRow2 = Demo.el('div', 'row');
+      tagRow2.style.marginTop = '6px';
+      tagRow2.appendChild(Demo.el('span', 'tag tag--violet', Demo.esc('maxLen = ' + step.maxLen)));
+      if (step.phase === 'probe' && step.dupAt >= 0) {
+        tagRow2.appendChild(Demo.el('span', 'tag tag--bad',
+          Demo.esc('left：' + step.prevLeft + ' → ' + step.jumpTo)));
+      }
+      infoPanel.appendChild(tagRow2);
+      mid.appendChild(infoPanel);
+      ctx.stage.appendChild(mid);
+  
+      const result = Demo.el('div', 'panel',
+        `left = <strong>${step.phase === 'done' ? '—' : step.left}</strong> ｜ right = <strong>${step.phase === 'init' ? '−1' : step.right}</strong> ｜ 当前窗口长度 = <strong>${step.right >= step.left ? step.right - step.left + 1 : 0}</strong> ｜ maxLen = <strong>${step.maxLen}</strong>` +
+        (step.phase === 'done'
+          ? ` &nbsp;<span class="tag tag--ok">答案 = ${step.maxLen}${step.maxLen > 0 ? '（"' + S.slice(step.bestL, step.bestL + step.maxLen) + '"）' : ''}</span>`
+          : ''));
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

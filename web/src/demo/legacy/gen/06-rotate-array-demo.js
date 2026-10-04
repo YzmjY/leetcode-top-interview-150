@@ -1,0 +1,111 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/06-rotate-array-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [1, 2, 3, 4, 5, 6, 7];
+  const K = 3;
+  
+  function buildSteps() {
+    const nums = NUMS.slice();
+    const n = nums.length;
+    const k = K % n;
+    const steps = [];
+  
+    steps.push({
+      nums: nums.slice(), phase: 0, i: null, j: null, l: null, r: null, k,
+      note: `初始化：k = ${K} % n = ${K} % ${n} = ${k}。向右轮转 ${k} 位等价于「三次翻转」：① 翻转整个数组；② 翻转前 ${k} 个；③ 翻转后 ${n - k} 个。`
+    });
+  
+    function reverse(l, r, phase, label) {
+      let i = l;
+      let j = r;
+      while (i < j) {
+        const left = nums[i];
+        const right = nums[j];
+        nums[i] = right;
+        nums[j] = left;
+        steps.push({
+          nums: nums.slice(), phase, i, j, l, r, k,
+          note: `${label}，区间 [${l}, ${r}]：交换 nums[${i}] = ${left} 与 nums[${j}] = ${right}，得到 ${right} … ${left}。交换后 i 右移、j 左移，继续向中间收拢。`
+        });
+        i++;
+        j--;
+      }
+    }
+  
+    if (k !== 0) {
+      reverse(0, n - 1, 1, `① 翻转整个数组 [0, ${n - 1}]`);
+      reverse(0, k - 1, 2, `② 翻转前 ${k} 个`);
+      reverse(k, n - 1, 3, `③ 翻转后 ${n - k} 个`);
+    }
+  
+    steps.push({
+      nums: nums.slice(), phase: 4, i: null, j: null, l: null, r: null, k, done: true,
+      note: `三次翻转完成，结果 [${nums.join(', ')}]，恰好是原数组向右轮转 ${k} 位。为什么对：整体翻转让末尾 ${k} 个元素来到最前面（但顺序反了），再翻转前 ${k} 个把它们正回来；后 ${n - k} 个同理。全程只用交换，额外空间 O(1)。`
+    });
+  
+    return steps;
+  }
+  
+  const PHASES = ['初始状态', '① 整体翻转', '② 翻转前 k 个', '③ 翻转后 n-k 个', '完成'];
+  
+  Demo.create({
+    title: `6. 轮转数组 — 三次翻转（k = ${K}）`,
+    info: `nums = [${NUMS.join(', ')}]，k = ${K}，要求原地把数组向右轮转 k 位。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本次交换的两个位置' },
+      { color: 'var(--demo-warn)', label: '当前正在翻转的区间' },
+      { color: 'var(--demo-ok)', label: '已就位的元素' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const k = step.k;
+      const n = NUMS.length;
+  
+      const phaseRow = Demo.el('div', 'row');
+      for (let p = 1; p <= 3; p++) {
+        const tag = Demo.el('div', 'tag', PHASES[p]);
+        if (step.phase === p) tag.classList.add('tag--warn');
+        else if (step.phase > p || step.phase === 4) tag.classList.add('tag--ok');
+        phaseRow.appendChild(tag);
+      }
+      ctx.stage.appendChild(phaseRow);
+  
+      const row = Demo.el('div', 'row');
+      step.nums.forEach((value, idx) => {
+        const col = Demo.el('div', 'col');
+        let cls = 'cell';
+        if (step.i === idx || step.j === idx) cls += ' is-active';
+        else if (step.l != null && idx >= step.l && idx <= step.r) cls += ' is-warn';
+        else if (step.phase === 4) cls += ' is-ok';
+        else if (step.phase >= 3 && idx < k) cls += ' is-ok';
+        col.appendChild(Demo.el('div', cls, Demo.esc(value)));
+  
+        const labels = [];
+        if (step.i === idx) labels.push('i');
+        if (step.j === idx) labels.push('j');
+        const ptr = Demo.el('div', 'ptr', labels.join(' '));
+        if (!labels.length) ptr.classList.add('ptr--dim');
+        col.appendChild(ptr);
+  
+        row.appendChild(col);
+      });
+      ctx.stage.appendChild(row);
+  
+      const panel = Demo.el('div', 'panel');
+      let swapInfo = '本步尚未发生交换';
+      if (step.i != null) swapInfo = `交换 nums[${step.i}] ↔ nums[${step.j}]`;
+      panel.innerHTML =
+        '<span class="tag">当前阶段</span> ' + PHASES[step.phase] +
+        '&nbsp;&nbsp;<span class="tag tag--info">' + swapInfo + '</span>' +
+        '<div style="margin-top:6px">nums = [ ' + Demo.esc(step.nums.join(', ')) + ' ]</div>';
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

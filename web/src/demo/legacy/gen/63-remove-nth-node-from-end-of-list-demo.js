@@ -1,0 +1,179 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/63-remove-nth-node-from-end-of-list-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const VALUES = [1, 2, 3, 4, 5];
+  const N = 2;
+  // 链表节点 id：0 是 dummy 哨兵，1..5 对应 VALUES，用来做可视化查找
+  const NODE_VALS = [null].concat(VALUES);
+  
+  function valText(id) {
+    return id === 0 ? 'dummy' : String(NODE_VALS[id]);
+  }
+  
+  function buildSteps() {
+    // 真实链表：dummy → 1 → 2 → 3 → 4 → 5 → nil，next 存的是节点 id
+    const nodes = [{ id: 0, val: null, next: 1 }];
+    VALUES.forEach(function (v, i) {
+      nodes.push({ id: i + 1, val: v, next: i + 1 < VALUES.length ? i + 2 : null });
+    });
+  
+    const steps = [];
+    let fast = 0;
+    let slow = 0;
+    let removed = null;
+  
+    function chain() {
+      const out = [];
+      let p = 0;
+      while (p !== null) { out.push(p); p = nodes[p].next; }
+      return out;
+    }
+  
+    function name(id) {
+      return id === null ? 'nil（越界）' : (id === 0 ? 'dummy' : '节点 ' + nodes[id].val);
+    }
+  
+    function push(note, extra) {
+      const step = { chain: chain(), fast: fast, slow: slow, removed: removed, note: note };
+      if (extra) Object.keys(extra).forEach(function (k) { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    push('初始化：新建 dummy 哨兵，dummy.Next = head；fast 与 slow 都从 dummy 出发。dummy 的作用是让「删除头节点」和「删除中间节点」共用同一套代码，不必单独讨论 n = 链表长度的情况。');
+  
+    for (let i = 1; i <= N + 1; i++) {
+      fast = nodes[fast].next;
+      push('第一趟：fast 独自先走 n + 1 = ' + (N + 1) + ' 步，现在走完第 ' + i + ' 步，落在 ' + name(fast) +
+        '。slow 仍停在 dummy 不动——这一步只是把 fast 与 slow 的间距拉开并固定为 ' + (N + 1) + ' 个节点。');
+    }
+  
+    while (fast !== null) {
+      fast = nodes[fast].next;
+      slow = nodes[slow].next;
+      push('第二趟：fast 与 slow 同步前进，fast → ' + name(fast) + '，slow → ' + name(slow) +
+        '。两者间距始终是 ' + (N + 1) + '，所以 fast 一旦越界，slow 必然停在倒数第 ' + (N + 1) + ' 个节点，也就是待删节点的前驱。');
+    }
+  
+    const victim = nodes[slow].next;
+    nodes[slow].next = nodes[victim].next;
+    removed = victim;
+    push('fast 已经越界（nil），间距「用尽」。此时 slow 停在 ' + name(slow) + '，正是待删节点 ' + name(victim) +
+      ' 的前驱。执行 slow.Next = slow.Next.Next，让 ' + name(slow) + ' 直接指向 ' + name(nodes[slow].next) + '，' + name(victim) + ' 被摘除。', { phase: 'remove' });
+  
+    const result = chain().slice(1).map(function (id) { return nodes[id].val; });
+    push('删除完成，全程只扫描了一次链表（fast 走完全程，slow 最多同步走完）。返回 dummy.Next，得到 [' + result.join(', ') +
+      ']。空间上只多了 dummy、fast、slow 三个指针，所以是 O(1)。', { done: true });
+  
+    return steps;
+  }
+  
+  function nodeCol(id, step, forcedClass) {
+    const col = Demo.el('div', 'col');
+    const node = Demo.el('div', 'll-node', Demo.esc(valText(id)));
+    const labels = [];
+    if (id === step.fast) labels.push('fast');
+    if (id === step.slow) labels.push('slow');
+  
+    if (forcedClass) node.classList.add(forcedClass);
+    else if (labels.indexOf('fast') >= 0) node.classList.add('is-active');
+    else if (labels.indexOf('slow') >= 0) node.classList.add('is-ok');
+    if (id === 0) node.style.borderStyle = 'dashed';
+  
+    col.appendChild(node);
+  
+    const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : '&nbsp;');
+    if (!labels.length) ptr.classList.add('ptr--dim');
+    else if (labels.indexOf('slow') >= 0 && labels.indexOf('fast') < 0) ptr.classList.add('ptr--ok');
+    col.appendChild(ptr);
+    return col;
+  }
+  
+  function arrowCol() {
+    const col = Demo.el('div', 'col');
+    col.appendChild(Demo.el('div', 'arrow', '→'));
+    col.appendChild(Demo.el('div', 'ptr ptr--dim', '&nbsp;'));
+    return col;
+  }
+  
+  function listRow(chain, step) {
+    const row = Demo.el('div', 'row');
+    chain.forEach(function (id) {
+      row.appendChild(nodeCol(id, step));
+      row.appendChild(arrowCol());
+    });
+    const nilCol = Demo.el('div', 'col');
+    const nilNode = Demo.el('div', 'll-node', 'nil');
+    nilNode.style.borderStyle = 'dashed';
+    nilNode.style.color = 'var(--demo-muted)';
+    nilCol.appendChild(nilNode);
+    nilCol.appendChild(Demo.el('div', 'ptr ptr--dim', '&nbsp;'));
+    row.appendChild(nilCol);
+    return row;
+  }
+  
+  Demo.create({
+    title: '63. 删除链表的倒数第 N 个结点 — dummy + 快慢双指针，一趟扫描',
+    info: '输入：head = [1, 2, 3, 4, 5]，n = 2（要删除倒数第 2 个结点 4）。fast 先走 n + 1 步把间距定好，之后 fast 与 slow 同步前进。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 300,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'fast 快指针' },
+      { color: 'var(--demo-ok)', label: 'slow 慢指针' },
+      { color: 'var(--demo-danger)', label: '被摘除的结点' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const listPanel = Demo.el('div', 'panel');
+      listPanel.style.width = '100%';
+      listPanel.appendChild(Demo.el('div', 'panel__title',
+        '链表 dummy → head → … → nil（结点下方的标签表示哪个指针正指向它）'));
+      listPanel.appendChild(listRow(step.chain, step));
+      ctx.stage.appendChild(listPanel);
+  
+      const status = Demo.el('div', 'row');
+      status.appendChild(Demo.el('span', 'tag', 'fast → ' + (step.fast === null ? 'nil' : valText(step.fast))));
+      status.appendChild(Demo.el('span', 'tag tag--ok', 'slow → ' + valText(step.slow)));
+      status.appendChild(Demo.el('span', 'tag tag--info', '间距 = n + 1 = ' + (N + 1)));
+      if (step.removed !== null) status.appendChild(Demo.el('span', 'tag tag--bad', '已摘除结点 ' + valText(step.removed)));
+      ctx.stage.appendChild(status);
+  
+      if (step.removed !== null) {
+        const panel = Demo.el('div', 'panel');
+        panel.style.width = '100%';
+        panel.appendChild(Demo.el('div', 'panel__title', '被摘除的结点（已经不在链表上，slow.Next 直接跳过了它）'));
+        const row = Demo.el('div', 'row');
+        const node = Demo.el('div', 'll-node', Demo.esc(valText(step.removed)));
+        node.style.borderColor = 'var(--demo-danger)';
+        node.style.background = 'var(--demo-danger-soft)';
+        node.style.color = 'var(--demo-danger)';
+        node.style.textDecoration = 'line-through';
+        row.appendChild(node);
+        row.appendChild(Demo.el('span', 'tag tag--bad', 'slow.Next = slow.Next.Next'));
+        panel.appendChild(row);
+        ctx.stage.appendChild(panel);
+      } else {
+        const hint = Demo.el('div', 'panel');
+        hint.style.width = '100%';
+        hint.style.textAlign = 'center';
+        hint.innerHTML = '目标：让 slow 停在倒数第 n + 1 个结点上。' +
+          '当前 fast 与 slow 之间隔了 <strong>' + (N + 1) + '</strong> 个结点，' +
+          '所以 fast 走完整个链表越界时，slow 正好到位。';
+        ctx.stage.appendChild(hint);
+      }
+  
+      if (step.done) {
+        const panel = Demo.el('div', 'panel');
+        panel.style.width = '100%';
+        panel.appendChild(Demo.el('div', 'panel__title', '结果链表'));
+        panel.appendChild(listRow(step.chain, { fast: null, slow: null }));
+        ctx.stage.appendChild(panel);
+      }
+    }
+  });
+  return Demo.__config
+}

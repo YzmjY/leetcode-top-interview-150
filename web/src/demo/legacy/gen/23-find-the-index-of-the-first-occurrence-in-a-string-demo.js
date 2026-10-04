@@ -1,0 +1,208 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/23-find-the-index-of-the-first-occurrence-in-a-string-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const HAYSTACK = 'leetcode';
+  const NEEDLE = 'leeto';
+  
+  function buildSteps() {
+    const hay = HAYSTACK.split('');
+    const pat = NEEDLE.split('');
+    const n = hay.length;
+    const m = pat.length;
+    const next = new Array(m).fill(0);
+    const steps = [];
+  
+    steps.push({
+      phase: 'init', next: next.slice(), i: -1, j: 0, base: null, matchedLen: 0, done: false,
+      note: `初始化：haystack = "${HAYSTACK}"，needle = "${NEEDLE}"（示例 2）。KMP 分两步：先对 needle 求 next 数组（每个前缀的最长相等前后缀长度），再用它做不回溯文本指针的匹配。`
+    });
+  
+    let j = 0;
+    for (let i = 1; i < m; i++) {
+      while (j > 0 && pat[i] !== pat[j]) {
+        const before = j;
+        j = next[j - 1];
+        steps.push({
+          phase: 'next-fallback', next: next.slice(), i: i, j: j, nextIdx: i, base: null,
+          matchedLen: before, done: false,
+          note: `构建 next 时，needle[${i}] = '${pat[i]}' 与 needle[${before}] = '${pat[before]}' 不相等：不能直接延长，回退 j = next[${before - 1}] = ${j}，再拿新的 needle[${j}] 比较。`
+        });
+      }
+      const eq = pat[i] === pat[j];
+      if (eq) j++;
+      next[i] = j;
+      steps.push({
+        phase: 'next', next: next.slice(), i: i, j: j, nextIdx: i, base: null,
+        matchedLen: j, equal: eq, compared: eq ? pat[j - 1] : pat[0], done: false,
+        note: eq
+          ? `needle[${i}] = '${pat[i]}' 与 needle[${j - 1}] = '${pat[j - 1]}' 相等，最长相等前后缀可以延长，next[${i}] = ${j}。`
+          : `needle[${i}] = '${pat[i]}' 与 needle[0] = '${pat[0]}' 不相等，且 j 已经是 0 无法再回退，所以 next[${i}] = 0。`
+      });
+    }
+  
+    j = 0;
+    let lastBase = 0;
+    let lastMatched = 0;
+  
+    for (let i = 0; i < n; i++) {
+      const base = i - j;
+      lastBase = base;
+      lastMatched = j;
+  
+      steps.push({
+        phase: 'cmp', next: next.slice(), i: i, j: j, base: base, matchedLen: j, done: false,
+        note: `比较 haystack[${i}] = '${hay[i]}' 与 needle[${j}] = '${pat[j]}'：此时 needle 开头对齐到 haystack 的下标 ${base}，前面已经有 ${j} 个字符匹配成功。`
+      });
+  
+      const prevJ = j;
+      while (j > 0 && hay[i] !== pat[j]) {
+        j = next[j - 1];
+        steps.push({
+          phase: 'fallback', next: next.slice(), i: i, j: j, base: i - j, matchedLen: j, done: false,
+          note: `haystack[${i}] = '${hay[i]}' 与 needle[${prevJ}] = '${pat[prevJ]}' 不相等。KMP 不把文本指针 i 往回退，而是把模式指针回退到 next[${prevJ - 1}] = ${j}，也就是让已匹配的前 ${j} 个字符重新对齐，再从 needle[${j}] 继续比较。`
+        });
+      }
+  
+      if (hay[i] === pat[j]) {
+        j++;
+        steps.push({
+          phase: 'match', next: next.slice(), i: i, j: j, base: i - j + 1, matchedLen: j, done: false,
+          note: `相等！needle 的匹配长度 j 增加到 ${j}${j === m ? '，等于 needle 长度 ' + m + '，说明整段模式都匹配上了' : '，继续往后比较'}。`
+        });
+      } else {
+        steps.push({
+          phase: 'miss', next: next.slice(), i: i, j: j, base: i, matchedLen: 0, done: false,
+          note: `haystack[${i}] = '${hay[i]}' 连 needle[0] = '${pat[0]}' 也不相等，且 j 已经是 0，无法再回退。所以 j 保持 0，文本指针 i 直接右移一位。`
+        });
+      }
+  
+      if (j === m) {
+        steps.push({
+          phase: 'found', next: next.slice(), i: i, j: j, base: i - m + 1, matchedLen: m, done: true,
+          result: i - m + 1,
+          note: `j 达到 ${m}，在 haystack 下标 ${i - m + 1} 处找到第一个完整匹配，返回 ${i - m + 1}。`
+        });
+        return steps;
+      }
+    }
+  
+    steps.push({
+      phase: 'nomatch', next: next.slice(), i: n, j: j, base: lastBase, matchedLen: 0, done: true,
+      result: -1,
+      note: `haystack 扫描到末尾（i = ${n}）仍未凑齐整个 needle，说明 needle 不是 haystack 的子串，返回 -1。整个过程文本指针 i 只往前走，没有回溯，所以时间 O(m + n)。`
+    });
+  
+    return steps;
+  }
+  
+  Demo.create({
+    title: '23. 第一个匹配项的下标 — KMP：next 数组 + 不回退文本指针',
+    info: `输入：haystack = "${HAYSTACK}"，needle = "${NEEDLE}"（示例 2），预期输出 -1。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 420,
+    legend: [
+      { color: 'var(--demo-accent)', label: '正在比较的位置' },
+      { color: 'var(--demo-ok)', label: '已匹配的前缀' },
+      { color: 'var(--demo-danger)', label: '本次比较失败' },
+      { color: 'var(--demo-info)', label: 'needle 当前对齐' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const aligning = step.base != null && step.i < HAYSTACK.length;
+  
+      const hayRow = Demo.el('div', 'col');
+      hayRow.style.width = '100%';
+      hayRow.appendChild(Demo.el('div', 'panel__title', 'haystack（文本串，指针 i 只前进不回退）'));
+      const hayChars = Demo.el('div', 'row');
+      HAYSTACK.split('').forEach(function (ch, idx) {
+        const col = Demo.el('div', 'col');
+        const cell = Demo.el('div', 'cell', Demo.esc(ch));
+        if (!aligning) {
+          cell.classList.add('cell--dim');
+        } else if (idx === step.i) {
+          cell.classList.add(step.phase === 'found' ? 'is-ok' : step.phase === 'match' ? 'is-ok' : step.phase === 'miss' || step.phase === 'fallback' ? 'is-bad' : 'is-active');
+        } else if (idx >= step.base && idx < step.base + step.matchedLen) {
+          cell.classList.add('is-ok');
+        } else if (idx > step.i) {
+          cell.classList.add('cell--dim');
+        }
+        col.appendChild(cell);
+  
+        const ptr = Demo.el('div', 'ptr', idx === step.i && aligning ? 'i' : String(idx));
+        if (!(idx === step.i && aligning)) ptr.classList.add('ptr--dim');
+        col.appendChild(ptr);
+        hayChars.appendChild(col);
+      });
+      hayRow.appendChild(hayChars);
+      ctx.stage.appendChild(hayRow);
+  
+      const needleRow = Demo.el('div', 'col');
+      needleRow.style.width = '100%';
+      needleRow.appendChild(Demo.el('div', 'panel__title', 'needle（模式串，按当前对齐位置覆盖在 haystack 上）'));
+      const needleChars = Demo.el('div', 'row');
+      HAYSTACK.split('').forEach(function (ch, idx) {
+        const ni = aligning ? idx - step.base : -1;
+        const inside = ni >= 0 && ni < NEEDLE.length;
+        const col = Demo.el('div', 'col');
+        const cell = Demo.el('div', 'cell' + (inside ? '' : ' cell--empty'), inside ? Demo.esc(NEEDLE[ni]) : '&nbsp;');
+        if (inside) {
+          if (ni < step.matchedLen && !(idx === step.i)) cell.classList.add('is-ok');
+          else if (idx === step.i) {
+            cell.classList.add(step.phase === 'miss' || step.phase === 'fallback' ? 'is-bad' : 'is-active');
+          } else cell.classList.add('is-info');
+        } else {
+          cell.classList.add('cell--dim');
+        }
+        col.appendChild(cell);
+  
+        const showJ = inside && ni === step.j && idx === step.i;
+        const ptr = Demo.el('div', 'ptr', showJ ? 'j' : '&nbsp;');
+        if (!showJ) ptr.classList.add('ptr--dim');
+        col.appendChild(ptr);
+        needleChars.appendChild(col);
+      });
+      needleRow.appendChild(needleChars);
+      ctx.stage.appendChild(needleRow);
+  
+      const nextPanel = Demo.el('div', 'panel');
+      nextPanel.style.width = '100%';
+      nextPanel.appendChild(Demo.el('div', 'panel__title', 'next 数组（needle 各前缀的最长相等前后缀长度）'));
+      const nextRow = Demo.el('div', 'row');
+      NEEDLE.split('').forEach(function (ch, idx) {
+        const col = Demo.el('div', 'col');
+        const cell = Demo.el('div', 'cell cell--sm', String(step.next[idx]));
+        if (step.nextIdx === idx) cell.classList.add('is-active');
+        else if (idx < NEEDLE.length && step.next[idx] > 0) cell.classList.add('is-ok');
+        col.appendChild(cell);
+        const ptr = Demo.el('div', 'ptr', ch);
+        ptr.classList.add('ptr--dim');
+        col.appendChild(ptr);
+        nextRow.appendChild(col);
+      });
+      nextPanel.appendChild(nextRow);
+      ctx.stage.appendChild(nextPanel);
+  
+      const result = Demo.el('div', 'panel');
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      if (step.done) {
+        result.innerHTML = step.result === -1
+          ? `匹配失败：needle "${NEEDLE}" 不是 haystack "${HAYSTACK}" 的子串 &nbsp;<span class="tag tag--bad">返回 -1</span>`
+          : `找到第一个匹配项，起始下标 = <span class="tag tag--ok">${step.result}</span>`;
+      } else if (step.phase === 'init') {
+        result.innerHTML = '点「下一步」开始构建 next 数组';
+      } else if (step.phase === 'next' || step.phase === 'next-fallback') {
+        result.innerHTML = `阶段 1 · 构建 next 数组：正在处理 next[${step.nextIdx}]，j = <strong>${step.j}</strong>`;
+      } else {
+        result.innerHTML = `阶段 2 · 匹配：i = <strong>${step.i}</strong>，j = <strong>${step.j}</strong>，needle 对齐在 haystack 下标 ${step.base}`;
+      }
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

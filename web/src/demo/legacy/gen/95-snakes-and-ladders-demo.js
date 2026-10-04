@@ -1,0 +1,206 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/95-snakes-and-ladders-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const N = 6;
+  const TARGET = N * N;
+  const BOARD = [
+    [-1, -1, -1, -1, -1, -1],
+    [-1, -1, -1, -1, -1, -1],
+    [-1, -1, -1, -1, -1, -1],
+    [-1, 35, -1, -1, 13, -1],
+    [-1, -1, -1, -1, -1, -1],
+    [-1, 15, -1, -1, -1, -1]
+  ];
+  const ID_AT = [];
+  const JUMP = {};
+  for (let r = 0; r < N; r++) {
+    const line = [];
+    const rowIdx = N - 1 - r;
+    for (let c = 0; c < N; c++) {
+      const id = rowIdx * N + (rowIdx % 2 === 0 ? c + 1 : N - c);
+      line.push(id);
+      JUMP[id] = BOARD[r][c];
+    }
+    ID_AT.push(line);
+  }
+  
+  function jumpOf(id) {
+    return JUMP[id] == null ? -1 : JUMP[id];
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const visited = new Set([1]);
+    const queue = [{ id: 1, dist: 0 }];
+    let answer = -1;
+  
+    function snap(note, extra) {
+      const step = {
+        visited: Array.from(visited).sort((a, b) => a - b),
+        queue: queue.map(q => ({ id: q.id, dist: q.dist })),
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    snap('初始状态：玩家站在方格 1（已用 0 次掷骰）。棋盘从最后一行开始由左向右编号，逐行蛇形交替。' +
+      '棋盘上的标记：2 → 15、14 → 35 是梯子（向上），17 → 13 是蛇（向下）。BFS 按「掷骰次数」一层层向外扩展，第一次碰到 36 时的层数就是最少次数。',
+      { level: 0, cur: 1 });
+  
+    while (queue.length > 0) {
+      const cur = queue.shift();
+  
+      if (cur.id === TARGET) {
+        answer = cur.dist;
+        snap('出队的方格 ' + TARGET + ' 就是终点！它的距离是 ' + answer + '，说明掷 ' + answer + ' 次骰子就能到达 → 返回 ' + answer + '。若队列清空仍没到 36，则返回 -1。',
+          { cur: cur.id, done: true, level: cur.dist, answer: answer });
+        break;
+      }
+  
+      const rolls = [];
+      for (let k = 1; k <= 6; k++) {
+        const next = cur.id + k;
+        if (next > TARGET) break;
+        const jt = jumpOf(next);
+        const landed = jt === -1 ? next : jt;
+        const isNew = !visited.has(landed);
+        if (isNew) {
+          visited.add(landed);
+          queue.push({ id: landed, dist: cur.dist + 1 });
+        }
+        rolls.push({ k: k, next: next, landed: landed, jumped: landed !== next, isNew: isNew });
+      }
+  
+      const jumped = rolls.filter(r => r.jumped);
+      const fresh = rolls.filter(r => r.isNew);
+      let note = '出队方格 ' + cur.id + '（距离 ' + cur.dist + '，即已经掷了 ' + cur.dist + ' 次）：依次枚举骰子点数 1~6，' +
+        '得到 curr+k = ' + rolls.map(r => r.next).join('、') + '。';
+      if (jumped.length) {
+        note += jumped.map(r => ' 其中方格 ' + r.next + ' 上有' + (r.landed > r.next ? '梯子' : '蛇') + '，必须直接跳到 ' + r.landed + '；').join('');
+      }
+      note += fresh.length
+        ? ' 落点 ' + fresh.map(r => r.landed).join('、') + ' 此前没访问过，按 BFS 入队（距离 ' + (cur.dist + 1) + '）。'
+        : ' 这些落点此前都访问过，没有新方格入队（BFS 每个方格只入队一次）。';
+  
+      snap(note, { cur: cur.id, level: cur.dist, rolls: rolls });
+    }
+  
+    if (answer < 0) {
+      snap('队列已空且从未到达 ' + TARGET + '，说明无法到达终点 → 返回 -1。', { done: true, level: -1, answer: -1 });
+    }
+    return steps;
+  }
+  
+  function boardCell(step, id) {
+    const cell = Demo.el('div', 'grid-cell');
+    const jt = jumpOf(id);
+    let inner = '<span style="display:block;text-align:center;line-height:1.15">' + id;
+    if (jt !== -1) {
+      const up = jt > id;
+      inner += '<br><span style="font-size:10px;color:' + (up ? 'var(--demo-ok)' : 'var(--demo-danger)') + '">' +
+        (up ? '↑' : '↓') + jt + '</span>';
+    }
+    inner += '</span>';
+    cell.innerHTML = inner;
+  
+    const roll = step.rolls ? step.rolls.filter(r => r.next === id)[0] : null;
+    if (step.done && id === TARGET) cell.classList.add('is-ok');
+    else if (step.cur === id) cell.classList.add('is-active');
+    else if (roll) cell.classList.add(roll.jumped ? 'is-warn' : 'is-info');
+    else if (step.visited.indexOf(id) >= 0) cell.classList.add('is-ok');
+    return cell;
+  }
+  
+  function rollColumn(roll) {
+    const col = Demo.el('div', 'col');
+    col.appendChild(Demo.el('div', 'cell cell--sm', String(roll.k)));
+    col.appendChild(Demo.el('div', 'ptr', '→' + roll.next));
+    const land = Demo.el('div', 'cell cell--sm', String(roll.landed));
+    land.classList.add(roll.isNew ? 'is-info' : 'is-ok');
+    col.appendChild(land);
+    if (roll.jumped) {
+      col.appendChild(Demo.el('div', 'tag ' + (roll.landed > roll.next ? 'tag--ok' : 'tag--bad'),
+        roll.landed > roll.next ? '梯子↑' : '蛇↓'));
+    } else {
+      col.appendChild(Demo.el('div', 'tag ' + (roll.isNew ? 'tag--info' : 'tag--warn'),
+        roll.isNew ? '入队' : '已访问'));
+    }
+    return col;
+  }
+  
+  Demo.create({
+    title: '95. 蛇梯棋 — 编号映射 + BFS 分层扩展',
+    info: 'board 为示例 1（6×6），目标方格 36。梯子 2→15、14→35，蛇 17→13；每一步枚举骰子 1~6 点。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 520,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前出队的方格' },
+      { color: 'var(--demo-info)', label: '本格骰子新落点（入队）' },
+      { color: 'var(--demo-warn)', label: '踩到蛇/梯子' },
+      { color: 'var(--demo-ok)', label: '已访问 / 终点' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const boardPanel = Demo.el('div', 'panel');
+      boardPanel.style.width = '100%';
+      boardPanel.appendChild(Demo.el('div', 'panel__title', '棋盘（蛇形编号；格子内小字是蛇/梯子去向）'));
+      const grid = Demo.el('div', 'grid');
+      grid.style.gridTemplateColumns = 'repeat(' + N + ', 52px)';
+      for (let r = 0; r < N; r++) {
+        for (let c = 0; c < N; c++) {
+          grid.appendChild(boardCell(step, ID_AT[r][c]));
+        }
+      }
+      boardPanel.appendChild(grid);
+      ctx.stage.appendChild(boardPanel);
+  
+      if (step.rolls) {
+        const rollPanel = Demo.el('div', 'panel');
+        rollPanel.style.width = '100%';
+        rollPanel.appendChild(Demo.el('div', 'panel__title', '方格 ' + step.cur + ' 的掷骰结果（骰子点数 → curr+k → 实际落点）'));
+        const row = Demo.el('div', 'row');
+        step.rolls.forEach(r => row.appendChild(rollColumn(r)));
+        rollPanel.appendChild(row);
+        ctx.stage.appendChild(rollPanel);
+      }
+  
+      const bottom = Demo.el('div', 'row');
+      bottom.style.width = '100%';
+      bottom.style.alignItems = 'flex-start';
+  
+      const queuePanel = Demo.el('div', 'panel');
+      queuePanel.style.flex = '1';
+      queuePanel.appendChild(Demo.el('div', 'panel__title', 'BFS 队列（方格 距离）'));
+      const queueRow = Demo.el('div', 'row');
+      queueRow.style.justifyContent = 'flex-start';
+      if (step.queue.length === 0) {
+        queueRow.appendChild(Demo.el('span', 'tag tag--ok', '队列已空'));
+      } else {
+        step.queue.forEach(q => {
+          queueRow.appendChild(Demo.el('span', 'tag' + (q.dist === step.level + 1 ? ' tag--info' : ''), q.id + ' (d=' + q.dist + ')'));
+        });
+      }
+      queuePanel.appendChild(queueRow);
+  
+      const statusPanel = Demo.el('div', 'panel');
+      statusPanel.appendChild(Demo.el('div', 'panel__title', '状态'));
+      statusPanel.appendChild(Demo.el('div', null, '已掷骰次数：<strong>' + (step.level < 0 ? '-' : step.level) + '</strong>'));
+      statusPanel.appendChild(Demo.el('div', null, '已访问方格：' + step.visited.length + ' / ' + TARGET));
+      statusPanel.appendChild(Demo.el('div', null, '队列中待处理：' + step.queue.length + ' 个'));
+      statusPanel.appendChild(Demo.el('div', null, step.done
+        ? '<span class="tag tag--ok">到达终点，返回 ' + step.answer + '</span>'
+        : '<span class="tag tag--info">继续按层扩展</span>'));
+  
+      bottom.appendChild(queuePanel);
+      bottom.appendChild(statusPanel);
+      ctx.stage.appendChild(bottom);
+    }
+  });
+  return Demo.__config
+}

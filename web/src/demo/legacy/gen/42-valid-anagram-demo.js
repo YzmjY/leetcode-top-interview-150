@@ -1,0 +1,173 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/42-valid-anagram-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const S = 'anagram';
+  const T = 'nagaram';
+  
+  function buildSteps() {
+    const steps = [];
+    const cnt = {};
+    const letters = Array.from(new Set((S + T).split(''))).sort();
+    letters.forEach(function (ch) { cnt[ch] = 0; });
+  
+    function snap(extra) {
+      const copy = {};
+      letters.forEach(function (ch) { copy[ch] = cnt[ch]; });
+      const step = { cnt: copy, note: extra.note };
+      Object.keys(extra).forEach(function (key) {
+        if (key !== 'note') step[key] = extra[key];
+      });
+      steps.push(step);
+    }
+  
+    snap({
+      phase: 'init', i: -1, plus: '', minus: '', ok: null,
+      note: `先比较长度：s 有 ${S.length} 个字符，t 有 ${T.length} 个字符，${S.length} == ${T.length}，长度这一关通过（长度不等直接返回 false）。然后开一个 26 位的计数数组：s 里出现的字母加 1，t 里出现的字母减 1，最后只要所有位都回到 0，两个字符串的字符频次就完全相同。`
+    });
+  
+    for (let i = 0; i < S.length; i++) {
+      const plus = S[i];
+      const minus = T[i];
+      cnt[plus] += 1;
+      cnt[minus] -= 1;
+      snap({
+        phase: 'pair', i: i, plus: plus, minus: minus, ok: null,
+        note: `第 ${i} 位：s[${i}] = "${plus}" 让 cnt['${plus}'] 加 1，t[${i}] = "${minus}" 让 cnt['${minus}'] 减 1。` +
+          (plus === minus
+            ? `这一步加、减的是同一个字母，差值没有变化。`
+            : `两个字母不同，差值${cnt[plus] === 0 && cnt[minus] === 0 ? '恰好互相抵消' : '暂时留在表里，等后续的字符来抵消'}。`) +
+          ` 目前的差值：${letters.map(function (ch) { return ch + ':' + cnt[ch]; }).join('，')}。`
+      });
+    }
+  
+    const nonzero = letters.filter(function (ch) { return cnt[ch] !== 0; });
+  
+    snap({
+      phase: 'verify', i: S.length, plus: '', minus: '', ok: nonzero.length === 0,
+      note: `两个字符串都扫完了，进入最后的检查循环：逐位查看计数数组是否全为 0。` +
+        (nonzero.length === 0
+          ? `本例中每个字母的加减次数都完全相等，数组全为 0。`
+          : `发现有 ${nonzero.length} 个字母没被抵消：${nonzero.map(function (ch) { return ch + '=' + cnt[ch]; }).join('，')}。`)
+    });
+  
+    snap({
+      phase: 'done', i: S.length, plus: '', minus: '', ok: nonzero.length === 0,
+      note: nonzero.length === 0
+        ? `所有计数归零，说明 s 与 t 每个字符的出现次数完全相同，返回 true。这个做法只遍历两个字符串各一遍、再扫一遍 26 个格子，时间 O(n)、空间 O(1)。对比之下排序法要 O(n log n)，而进阶的 Unicode 版本只需把数组换成 map[rune]int，思路不变。`
+        : `存在非零计数，说明两个字符串的字符组成不同，返回 false。`
+    });
+  
+    return steps;
+  }
+  
+  function stringRow(title, chars, activeIdx, doneCount, isPlus) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', title));
+    const row = Demo.el('div', 'row');
+    chars.split('').forEach(function (ch, idx) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(ch));
+      if (idx === activeIdx) cell.classList.add(isPlus ? 'is-active' : 'is-pink');
+      else if (idx < doneCount) cell.classList.add('is-ok');
+      col.appendChild(cell);
+      const ptr = Demo.el('div', 'ptr', String(idx));
+      if (idx !== activeIdx) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  function diffTable(step, letters) {
+    const panel = Demo.el('div', 'panel');
+    panel.appendChild(Demo.el('div', 'panel__title', '差值数组：字母 → s 的频次 − t 的频次'));
+    let html = '<table class="map-table"><tr><th>字母</th><th>差值</th><th>状态</th></tr>';
+    letters.forEach(function (ch) {
+      const v = step.cnt[ch];
+      const active = (step.phase === 'pair' && (ch === step.plus || ch === step.minus));
+      const status = v === 0 ? '已抵消' : (v > 0 ? 's 多出 ' + v + ' 个' : 't 多出 ' + (-v) + ' 个');
+      html += '<tr' + (active ? ' class="is-active"' : '') + '>' +
+        '<td>' + Demo.esc(ch) + '</td>' +
+        '<td>' + (v > 0 ? '+' + v : String(v)) + '</td>' +
+        '<td>' + status + '</td></tr>';
+    });
+    html += '</table>';
+    panel.appendChild(Demo.el('div', null, html));
+    return panel;
+  }
+  
+  function diffBars(step, letters) {
+    const panel = Demo.el('div', 'panel');
+    panel.appendChild(Demo.el('div', 'panel__title', '差值可视化：零高度表示已配平'));
+    const row = Demo.el('div', 'row');
+    const maxAbs = Math.max(1, letters.reduce(function (m, ch) { return Math.max(m, Math.abs(step.cnt[ch])); }, 0));
+    letters.forEach(function (ch) {
+      const col = Demo.el('div', 'col');
+      const bar = Demo.el('div', 'bar');
+      bar.style.width = '34px';
+      const fill = Demo.el('div', 'bar__fill');
+      const v = step.cnt[ch];
+      fill.style.width = (Math.abs(v) / maxAbs * 100) + '%';
+      fill.style.background = v >= 0 ? 'var(--demo-accent)' : 'var(--demo-pink)';
+      bar.appendChild(fill);
+      col.appendChild(bar);
+      const label = Demo.el('div', 'ptr', Demo.esc(ch));
+      if (step.phase === 'pair' && (ch === step.plus || ch === step.minus)) label.classList.add('ptr--ok');
+      else label.classList.add('ptr--dim');
+      col.appendChild(label);
+      row.appendChild(col);
+    });
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  Demo.create({
+    title: '42. 有效的字母异位词 — 一边加一边减，最后看是否归零',
+    info: `输入：s = "${S}"，t = "${T}"（示例 1，输出 true）。长度相同后，s 的字符 +1、t 的字符 −1，最后检查差值是否全为 0。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 420,
+    legend: [
+      { color: 'var(--demo-accent)', label: 's 读入的字母（+1）' },
+      { color: 'var(--demo-pink)', label: 't 读入的字母（−1）' },
+      { color: 'var(--demo-ok)', label: '已处理的位置 / 差值已抵消' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+      const letters = Array.from(new Set((S + T).split(''))).sort();
+  
+      const plusActive = step.phase === 'pair' ? step.i : -1;
+      ctx.stage.appendChild(stringRow(`s = "${S}"`, S, plusActive, step.i < 0 ? 0 : step.i, true));
+      ctx.stage.appendChild(stringRow(`t = "${T}"`, T, plusActive, step.i < 0 ? 0 : step.i, false));
+  
+      const mid = Demo.el('div', 'row');
+      mid.style.width = '100%';
+      mid.style.alignItems = 'flex-start';
+      mid.appendChild(diffTable(step, letters));
+      mid.appendChild(diffBars(step, letters));
+      ctx.stage.appendChild(mid);
+  
+      const state = Demo.el('div', 'panel');
+      state.style.width = '100%';
+      state.style.textAlign = 'center';
+      if (step.phase === 'init') {
+        state.innerHTML = `<span class="tag tag--info">len(s) = ${S.length}</span> &nbsp;= &nbsp;<span class="tag tag--info">len(t) = ${T.length}</span> &nbsp;<span class="tag tag--ok">长度检查通过</span>`;
+      } else if (step.phase === 'pair') {
+        state.innerHTML = `s[${step.i}] = "${Demo.esc(step.plus)}" 计 <strong>+1</strong> &nbsp;｜&nbsp; t[${step.i}] = "${Demo.esc(step.minus)}" 计 <strong>−1</strong> &nbsp;<span class="tag tag--warn">统计中</span>`;
+      } else if (step.phase === 'verify') {
+        state.innerHTML = '计数器全为 0 才算异位词 &nbsp;<span class="tag tag--info">检查差值数组</span>';
+      } else {
+        state.innerHTML = step.ok
+          ? '每个字母的加减次数完全相等 &nbsp;<span class="tag tag--ok">返回 true</span>'
+          : '仍有字母未被抵消 &nbsp;<span class="tag tag--bad">返回 false</span>';
+      }
+      ctx.stage.appendChild(state);
+    }
+  });
+  return Demo.__config
+}

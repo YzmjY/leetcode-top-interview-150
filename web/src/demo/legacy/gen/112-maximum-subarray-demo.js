@@ -1,0 +1,173 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/112-maximum-subarray-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [-2, 1, -3, 4, -1, 2, 1, -5, 4];
+  
+  function buildSteps() {
+    const nums = NUMS;
+    const n = nums.length;
+    const steps = [];
+  
+    let maxEndingHere = nums[0];
+    let maxSoFar = nums[0];
+    let start = 0;
+    let bestL = 0;
+    let bestR = 0;
+  
+    steps.push({
+      i: 0, cur: maxEndingHere, best: maxSoFar, start: start,
+      bestL: bestL, bestR: bestR,
+      extend: null, restart: null, beat: false, done: false,
+      note: `初始化：先只看 nums[0] = ${nums[0]}。以它结尾的子数组只能是它自己，所以 maxEndingHere = ${nums[0]}；全局最大 maxSoFar 也先记为 ${nums[0]}。`
+    });
+  
+    for (let i = 1; i < n; i++) {
+      const prevCur = maxEndingHere;
+      const prevBest = maxSoFar;
+      const extend = prevCur + nums[i];
+      const restart = nums[i];
+  
+      const joined = extend > restart;
+      if (joined) {
+        maxEndingHere = extend;
+      } else {
+        maxEndingHere = restart;
+        start = i;
+      }
+  
+      const beat = maxEndingHere > maxSoFar;
+      if (beat) {
+        maxSoFar = maxEndingHere;
+        bestL = start;
+        bestR = i;
+      }
+  
+      let note = `i = ${i}，nums[${i}] = ${nums[i]}。两种选择：接在旧窗口后面 → ${prevCur} + (${nums[i]}) = ${extend}；从当前元素重新开始 → ${nums[i]}。`;
+      if (joined) {
+        note += `因为 ${extend} > ${restart}，旧窗口对后面的元素还有正的贡献，选择「接上」，窗口拉长为 nums[${start}..${i}]，maxEndingHere = ${maxEndingHere}。`;
+      } else {
+        note += `因为 ${extend} ≤ ${restart}（等价于旧窗口的和 maxEndingHere = ${prevCur} ≤ 0），再背着旧窗口只会让和更小，选择「重新开始」，窗口缩为 nums[${i}..${i}]，maxEndingHere = ${maxEndingHere}。`;
+      }
+      note += beat
+        ? ` 再和历史最大 maxSoFar = ${prevBest} 比较：${maxEndingHere} > ${prevBest}，刷新答案为 ${maxSoFar}，并记下它对应的区间 nums[${bestL}..${bestR}]。`
+        : ` 再和历史最大 maxSoFar = ${prevBest} 比较：${maxEndingHere} ≤ ${prevBest}，答案不变，但这段窗口仍可能继续变长。`;
+  
+      steps.push({
+        i: i, cur: maxEndingHere, best: maxSoFar, start: start,
+        bestL: bestL, bestR: bestR,
+        extend: extend, restart: restart, beat: beat, done: false,
+        note: note
+      });
+    }
+  
+    steps.push({
+      i: n - 1, cur: maxEndingHere, best: maxSoFar, start: start,
+      bestL: bestL, bestR: bestR,
+      extend: null, restart: null, beat: false, done: true,
+      note: `数组扫描完毕。整个过程只维护了 maxEndingHere 和 maxSoFar 两个变量，所以空间复杂度 O(1)。最终答案 = ${maxSoFar}，对应子数组 nums[${bestL}..${bestR}] = [${nums.slice(bestL, bestR + 1).join(', ')}]，其元素和 = ${nums.slice(bestL, bestR + 1).reduce((a, b) => a + b, 0)}。`
+    });
+  
+    return steps;
+  }
+  
+  function numsRow(step) {
+    const row = Demo.el('div', 'row');
+    NUMS.forEach(function (value, idx) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(value));
+      const inWindow = idx >= step.start && idx <= step.i;
+  
+      if (!step.done && idx === step.i) cell.classList.add('is-active');
+      else if (step.done && idx >= step.bestL && idx <= step.bestR) cell.classList.add('is-ok');
+      else if (inWindow) cell.classList.add('is-info');
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (!step.done) {
+        if (idx === step.i) labels.push('i');
+        if (idx === step.start && step.start < step.i) labels.push('start');
+        if (idx === step.bestL && step.bestR > step.bestL) labels.push('L');
+        if (idx === step.bestR && step.bestR > step.bestL) labels.push('R');
+      }
+  
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : String(idx));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (labels.indexOf('i') >= 0) { /* 默认强调色 */ }
+      else if (labels.indexOf('start') >= 0) ptr.classList.add('ptr--info');
+      else ptr.classList.add('ptr--ok');
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  function windowPanel(title, l, r, cellClass, sumText, tagClass) {
+    const panel = Demo.el('div', 'panel');
+    panel.appendChild(Demo.el('div', 'panel__title', Demo.esc(title)));
+    const row = Demo.el('div', 'row');
+    for (let k = l; k <= r; k++) {
+      row.appendChild(Demo.el('div', 'cell cell--sm ' + cellClass, Demo.esc(NUMS[k])));
+    }
+    panel.appendChild(row);
+    const tagRow = Demo.el('div', 'row');
+    tagRow.appendChild(Demo.el('span', 'tag ' + tagClass, Demo.esc(sumText)));
+    panel.appendChild(tagRow);
+    return panel;
+  }
+  
+  Demo.create({
+    title: '112. 最大子数组和 — Kadane 一次扫描，O(1) 空间',
+    info: `输入：nums = [${NUMS.join(', ')}]（示例 1）。关键状态只有「以当前位置结尾的最大和 maxEndingHere」和「历史最大 maxSoFar」。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 320,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前元素 i' },
+      { color: 'var(--demo-info)', label: '以 i 结尾的候选窗口 [start..i]' },
+      { color: 'var(--demo-ok)', label: '历史最优窗口（答案）' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const arrayPanel = Demo.el('div', 'panel');
+      arrayPanel.style.width = '100%';
+      arrayPanel.appendChild(Demo.el('div', 'panel__title',
+        step.done ? '数组 nums（最优区间已确定）' : `数组 nums（正在处理 i = ${step.i}）`));
+      arrayPanel.appendChild(numsRow(step));
+      ctx.stage.appendChild(arrayPanel);
+  
+      if (step.done) {
+        ctx.stage.appendChild(windowPanel(
+          `最终答案窗口 nums[${step.bestL}..${step.bestR}]`,
+          step.bestL, step.bestR, 'is-ok',
+          `子数组和 = ${step.best}`, 'tag--ok'));
+      } else {
+        const row = Demo.el('div', 'row');
+        row.appendChild(windowPanel(
+          `当前候选窗口 nums[${step.start}..${step.i}]`,
+          step.start, step.i, 'is-info',
+          `maxEndingHere = ${step.cur}`, 'tag--info'));
+        row.appendChild(windowPanel(
+          `目前最优窗口 nums[${step.bestL}..${step.bestR}]`,
+          step.bestL, step.bestR, 'is-ok',
+          `maxSoFar = ${step.best}`, 'tag--ok'));
+        ctx.stage.appendChild(row);
+      }
+  
+      const result = Demo.el('div', 'panel',
+        (step.done
+          ? `最后一个窗口 nums[${step.start}..${step.i}] 的和 maxEndingHere = <strong>${step.cur}</strong> ｜ `
+          : `maxEndingHere = <strong>${step.cur}</strong> ｜ `) +
+        `maxSoFar = <strong>${step.best}</strong>` +
+        (step.done ? ` &nbsp;<span class="tag tag--ok">答案 ${step.best}</span>` : ''));
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

@@ -1,0 +1,239 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/118-find-first-and-last-position-of-element-in-sorted-array-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [5, 7, 7, 8, 8, 10];
+  const TARGET = 8;
+  
+  function buildSteps() {
+    const nums = NUMS;
+    const n = nums.length;
+    const steps = [];
+    let checks = 0;
+    let lower = -1;
+    let upperBound = -1;
+  
+    steps.push({
+      phase: 0, left: 0, right: 0, mid: -1, bound: null, val: null, cmp: null,
+      checks: 0, done: false, lower: null, upper: null, result: null,
+      note: `target = ${TARGET}，而数组中有两个 ${TARGET}（下标 3 和 4），所以不能像普通二分那样“撞到就返回”，要分别定位左边界和右边界。做法是做两次 lowerBound：左边界 = 第一个 ≥ ${TARGET} 的位置；右边界 = 第一个 ≥ ${TARGET + 1} 的位置再减 1（也就是最后一个 ≤ ${TARGET} 的位置）。每次 lowerBound 都在左闭右开区间 [left, right) 上二分。`
+    });
+  
+    function runLowerBound(bound, phase, label) {
+      let l = 0;
+      let r = n;
+      steps.push({
+        phase: phase, left: l, right: r, mid: -1, bound: bound, val: null, cmp: null,
+        checks: checks, done: false, lower: lower >= 0 ? lower : null, upper: upperBound >= 0 ? upperBound : null, result: null,
+        note: `开始第 ${phase} 轮二分：${label}，也就是找第一个 ≥ ${bound} 的位置。区间重置为 [left, right) = [0, ${n})。`
+      });
+  
+      while (l < r) {
+        const mid = l + Math.floor((r - l) / 2);
+        const val = nums[mid];
+        checks += 1;
+        if (val < bound) {
+          const oldL = l;
+          l = mid + 1;
+          steps.push({
+            phase: phase, left: l, right: r, mid: mid, bound: bound, val: val, cmp: 'lt',
+            checks: checks, done: false, lower: lower >= 0 ? lower : null, upper: upperBound >= 0 ? upperBound : null, result: null,
+            note: `第 ${checks} 次比较：mid = ${mid}，nums[${mid}] = ${val} < ${bound}。mid 及其左边都达不到「第一个 ≥ ${bound}」，丢掉 [${oldL}, ${mid}]，令 left = mid + 1 = ${l}，区间收缩为 [${l}, ${r})。`
+          });
+        } else {
+          const oldR = r;
+          r = mid;
+          steps.push({
+            phase: phase, left: l, right: r, mid: mid, bound: bound, val: val, cmp: 'ge',
+            checks: checks, done: false, lower: lower >= 0 ? lower : null, upper: upperBound >= 0 ? upperBound : null, result: null,
+            note: `第 ${checks} 次比较：mid = ${mid}，nums[${mid}] = ${val} ≥ ${bound}。mid 满足条件，可能正是「第一个 ≥ ${bound}」的位置，保留 mid、丢掉 [${mid + 1}, ${oldR})，令 right = mid = ${r}，区间收缩为 [${l}, ${r})。`
+          });
+        }
+      }
+      return l;
+    }
+  
+    lower = runLowerBound(TARGET, 1, '找左边界');
+    steps.push({
+      phase: 1, left: lower, right: lower, mid: -1, bound: TARGET, val: null, cmp: 'end',
+      checks: checks, done: false, lower: lower, upper: null, result: null,
+      note: `第一轮结束：left == right == ${lower}，得到左边界 ${lower}。` +
+        (lower < n ? ` 顺手记下 nums[${lower}] = ${nums[lower]}，之后要拿它验证是否真的等于 target。` : ' 它已经等于数组长度，说明所有元素都小于 target。') +
+        ` 接下来做第二轮二分，找第一个 ≥ ${TARGET + 1} 的位置，用来推出右边界。`
+    });
+  
+    upperBound = runLowerBound(TARGET + 1, 2, '找右边界');
+    const upper = upperBound - 1;
+    const ok = lower < n && nums[lower] === TARGET;
+    const result = ok ? [lower, upper] : [-1, -1];
+  
+    steps.push({
+      phase: 3, left: lower, right: upperBound, mid: -1, bound: null, val: null, cmp: null,
+      checks: checks, done: true, lower: lower, upper: upper, result: result,
+      note: `第二轮结束：left == right == ${upperBound}，这是第一个 ≥ ${TARGET + 1} 的位置，所以右边界 = ${upperBound} − 1 = ${upper}。` +
+        (ok
+          ? ` 校验：nums[${lower}] = ${nums[lower]} == target，且 ${lower} ≤ ${upper}，区间有效，返回 [${lower}, ${upper}]，也就是数组里两个 ${TARGET} 所在的位置。`
+          : ` 校验失败：${lower >= n ? `左边界 ${lower} 越界` : `nums[${lower}] = ${nums[lower]} ≠ target`}，说明数组中不存在 ${TARGET}，返回 [−1, −1]。`) +
+        ` 两次 lowerBound 各做 O(log n) 次比较（共 ${checks} 次），只用了常数个变量，时间复杂度 O(log n)，空间复杂度 O(1)。`
+    });
+  
+    return steps;
+  }
+  
+  function arrayRow(step) {
+    const n = NUMS.length;
+    const row = Demo.el('div', 'row');
+  
+    for (let idx = 0; idx <= n; idx++) {
+      const atEnd = idx === n;
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell' + (atEnd ? ' cell--empty' : ''), atEnd ? '' : Demo.esc(NUMS[idx]));
+      const inRange = idx >= step.left && idx < step.right;
+      const isTarget = !atEnd && NUMS[idx] === TARGET;
+  
+      if (step.done) {
+        const inResult = step.result && step.result[0] >= 0 && idx >= step.result[0] && idx <= step.result[1];
+        if (inResult) cell.classList.add('is-ok');
+        else cell.classList.add('is-dim');
+      } else if (idx === step.mid) {
+        cell.classList.add('is-active');
+      } else if (isTarget) {
+        cell.classList.add('is-pink');
+      } else if (!inRange) {
+        cell.classList.add('is-dim');
+      } else {
+        cell.classList.add('is-info');
+      }
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (!step.done) {
+        if (idx === step.left) labels.push('left');
+        if (idx === step.right) labels.push('right');
+        if (idx === step.mid) labels.push('mid');
+      }
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : '#' + idx);
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (labels.indexOf('mid') >= 0) ptr.classList.add('ptr--warn');
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+    }
+  
+    return row;
+  }
+  
+  function resultTable(step) {
+    const t = Demo.el('table', 'map-table');
+  
+    const thead = Demo.el('thead');
+    const hr = Demo.el('tr');
+    ['阶段', '二分的界', '结果'].forEach(function (h) { hr.appendChild(Demo.el('th', null, h)); });
+    thead.appendChild(hr);
+    t.appendChild(thead);
+  
+    const tbody = Demo.el('tbody');
+  
+    const r1 = Demo.el('tr');
+    if (step.phase === 1) r1.classList.add('is-active');
+    r1.appendChild(Demo.el('td', null, '第一轮 lowerBound(' + TARGET + ')'));
+    r1.appendChild(Demo.el('td', null, '第一个 ≥ ' + TARGET));
+    r1.appendChild(Demo.el('td', null, step.lower == null ? '…' : '左边界 = ' + step.lower));
+    tbody.appendChild(r1);
+  
+    const r2 = Demo.el('tr');
+    if (step.phase === 2) r2.classList.add('is-active');
+    r2.appendChild(Demo.el('td', null, '第二轮 lowerBound(' + (TARGET + 1) + ')'));
+    r2.appendChild(Demo.el('td', null, '第一个 ≥ ' + (TARGET + 1)));
+    r2.appendChild(Demo.el('td', null,
+      step.upper == null ? '…' : '右边界 = ' + (step.upper + 1) + ' − 1 = ' + step.upper));
+    tbody.appendChild(r2);
+  
+    const r3 = Demo.el('tr');
+    if (step.phase === 3) r3.classList.add('is-active');
+    r3.appendChild(Demo.el('td', null, '校验并返回'));
+    r3.appendChild(Demo.el('td', null, 'nums[left] == ' + TARGET + ' ?'));
+    r3.appendChild(Demo.el('td', null, step.result ? '[' + step.result.join(', ') + ']' : '…'));
+    tbody.appendChild(r3);
+  
+    t.appendChild(tbody);
+    return t;
+  }
+  
+  Demo.create({
+    title: '118. 查找第一个和最后一个位置 — 两次 lowerBound 夹出区间',
+    info: `输入：nums = [${NUMS.join(', ')}]（非递减，${TARGET} 出现两次），target = ${TARGET}（示例 1）。左边界 = 第一个 ≥ target 的位置，右边界 = 第一个 ≥ target+1 的位置减 1。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 400,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本轮中点 mid' },
+      { color: 'var(--demo-info)', label: '候选区间 [left, right) 内' },
+      { color: 'var(--demo-pink)', label: '值等于 target 的重复元素' },
+      { color: 'var(--demo-ok)', label: '最终答案区间' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const phaseTag = step.phase === 0 ? '准备'
+        : step.phase === 1 ? '第一轮 lowerBound'
+          : step.phase === 2 ? '第二轮 lowerBound'
+            : '校验返回';
+  
+      const arrayPanel = Demo.el('div', 'panel');
+      arrayPanel.style.width = '100%';
+      arrayPanel.appendChild(Demo.el('div', 'panel__title',
+        `数组 nums（${phaseTag}${step.done ? '' : '，候选区间 [' + step.left + ', ' + step.right + ')'}）`));
+      arrayPanel.appendChild(arrayRow(step));
+      ctx.stage.appendChild(arrayPanel);
+  
+      const midPanel = Demo.el('div', 'panel');
+      midPanel.style.width = '100%';
+      midPanel.appendChild(Demo.el('div', 'panel__title', '本步动作'));
+      let midHtml;
+      if (step.mid < 0) {
+        midHtml = step.done
+          ? `两次二分都已结束，最终区间 <code>[${step.result[0]}, ${step.result[1]}]</code>` +
+            (step.result[0] < 0 ? '（未找到 target）' : '')
+          : (step.bound == null
+            ? '还没有开始二分：先做第一轮 lowerBound，找第一个 ≥ ' + TARGET + ' 的位置。'
+            : `还没有取中点：下一轮会取 mid = left + ⌊(right − left) / 2⌋ 与 ${step.bound} 比较。`);
+      } else if (step.cmp === 'lt') {
+        midHtml = `nums[${step.mid}] = <code>${step.val}</code> < ${step.bound} &nbsp;<span class="tag tag--bad">达不到下界 → 往右</span>&nbsp; left = mid + 1`;
+      } else {
+        midHtml = `nums[${step.mid}] = <code>${step.val}</code> ≥ ${step.bound} &nbsp;<span class="tag tag--ok">可能是下界 → 往左</span>&nbsp; right = mid`;
+      }
+      midPanel.appendChild(Demo.el('div', null, midHtml));
+      ctx.stage.appendChild(midPanel);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      const tablePanel = Demo.el('div', 'panel');
+      tablePanel.appendChild(Demo.el('div', 'panel__title', '两轮二分的记分牌'));
+      tablePanel.appendChild(resultTable(step));
+      row.appendChild(tablePanel);
+  
+      const result = Demo.el('div', 'panel');
+      result.appendChild(Demo.el('div', 'panel__title', '当前结论'));
+      result.appendChild(Demo.el('div', null,
+        `已比较 <strong>${step.checks}</strong> 次` +
+        (step.lower == null ? '' : `<br>左边界 = <code>${step.lower}</code>`) +
+        (step.upper == null ? '' : `<br>右边界 = <code>${step.upper}</code>`)));
+      row.appendChild(result);
+      ctx.stage.appendChild(row);
+  
+      if (step.done) {
+        const box = Demo.el('div', 'panel',
+          step.result[0] < 0
+            ? `返回 <code>[−1, −1]</code>：数组中不存在 ${TARGET}。`
+            : `返回 <code>[${step.result[0]}, ${step.result[1]}]</code> &nbsp;<span class="tag tag--ok">第一个位置 ${step.result[0]}，最后一个位置 ${step.result[1]}</span>`);
+        box.style.width = '100%';
+        box.style.textAlign = 'center';
+        ctx.stage.appendChild(box);
+      }
+    }
+  });
+  return Demo.__config
+}

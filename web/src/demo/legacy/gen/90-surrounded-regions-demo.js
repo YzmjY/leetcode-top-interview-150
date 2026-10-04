@@ -1,0 +1,169 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/90-surrounded-regions-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const BOARD = [
+    ['X', 'X', 'X', 'X'],
+    ['X', 'O', 'O', 'X'],
+    ['X', 'X', 'O', 'X'],
+    ['X', 'O', 'X', 'X']
+  ];
+  const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  
+  function buildSteps() {
+    const R = BOARD.length;
+    const C = BOARD[0].length;
+    const board = BOARD.map(row => row.slice());
+    const kept = BOARD.map(row => row.map(() => false));
+    const steps = [];
+    let markedCount = 0;
+  
+    function snap(note, extra) {
+      const step = {
+        board: board.map(row => row.slice()),
+        kept: kept.map(row => row.slice()),
+        marked: markedCount,
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    function dfs(sr, sc) {
+      const stack = [[sr, sc]];
+      board[sr][sc] = '#';
+      kept[sr][sc] = true;
+      markedCount += 1;
+      snap('从边界 (' + sr + ',' + sc + ') 出发：它是 O，一定不会被围绕，临时标记为 #，并压入搜索栈。', { active: [sr, sc] });
+  
+      while (stack.length > 0) {
+        const cur = stack.pop();
+        snap('取出 (' + cur[0] + ',' + cur[1] + ')，沿上下左右找还没有标记过的 O。', { active: cur });
+        for (const d of DIRS) {
+          const nr = cur[0] + d[0];
+          const nc = cur[1] + d[1];
+          if (nr < 0 || nr >= R || nc < 0 || nc >= C) continue;
+          if (board[nr][nc] !== 'O') continue;
+          board[nr][nc] = '#';
+          kept[nr][nc] = true;
+          markedCount += 1;
+          stack.push([nr, nc]);
+          snap('邻居 (' + nr + ',' + nc + ') 仍是 O → 它与边界连通，同样不会被围绕，标记为 # 并压栈继续扩散。', { active: cur, added: [nr, nc] });
+        }
+      }
+  
+      snap('以 (' + sr + ',' + sc + ') 为起点的搜索结束，这一整片与边界连通的 O 都已标成 #。');
+    }
+  
+    snap('初始棋盘：X 是墙，O 是待判定的区域。目标是把「没有与边界连通」的 O 全部改写成 X。直接找内部的 O 很难，所以反过来先保住与边界连通的 O。');
+  
+    for (let i = 0; i < R; i++) {
+      for (const j of [0, C - 1]) {
+        if (board[i][j] === 'O') dfs(i, j);
+      }
+    }
+    snap('左、右两列扫描完毕' + (markedCount > 0 ? '，目前共标记 ' + markedCount + ' 个 #。' : '，两列上都没有 O，没有新的搜索起点。'), { scan: 'lr' });
+  
+    for (let j = 0; j < C; j++) {
+      for (const i of [0, R - 1]) {
+        if (board[i][j] === 'O') dfs(i, j);
+      }
+    }
+    snap('上、下两行扫描完毕，共标记 ' + markedCount + ' 个与边界连通的 O。接下来的 O 都是被 X 完全包围的。', { scan: 'tb' });
+  
+    let flipped = 0;
+    for (let i = 0; i < R; i++) {
+      for (let j = 0; j < C; j++) {
+        if (board[i][j] === 'O') {
+          board[i][j] = 'X';
+          flipped += 1;
+          snap('遍历到 (' + i + ',' + j + ') 仍是 O：它没有被边界搜索标记过，说明被 X 完全包围 → 翻转为 X（捕获）。', { active: [i, j], phase: 'flip' });
+        }
+      }
+    }
+    snap('捕获阶段结束，共翻转 ' + flipped + ' 个 O。', { phase: 'flip' });
+  
+    let restored = 0;
+    for (let i = 0; i < R; i++) {
+      for (let j = 0; j < C; j++) {
+        if (board[i][j] === '#') {
+          board[i][j] = 'O';
+          restored += 1;
+        }
+      }
+    }
+    snap('最后把 ' + restored + ' 个临时标记 # 还原成 O：它们与边界连通，必须保留。', { phase: 'restore' });
+  
+    snap('完成。每个格子最多被访问常数次，时间 O(m×n)，额外空间是搜索栈（最坏 O(m×n)）。', { done: true });
+    return steps;
+  }
+  
+  Demo.create({
+    title: '90. 被围绕的区域 — 边界出发的逆向标记',
+    info: 'board 为 4×4。先从四条边上的 O 出发标 #，再把内部剩余的 O 翻成 X，最后把 # 还原为 O。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 300,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前处理的格子' },
+      { color: 'var(--demo-warn)', label: '待判定的 O' },
+      { color: 'var(--demo-ok)', label: '与边界连通（保留）' },
+      { color: 'var(--demo-danger)', label: '被围绕，翻转为 X' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const gridPanel = Demo.el('div', 'panel');
+      gridPanel.style.width = '100%';
+      gridPanel.appendChild(Demo.el('div', 'panel__title', '棋盘（虚线边框 = 与边界相邻的格子）'));
+  
+      const grid = Demo.el('div', 'grid');
+      grid.style.gridTemplateColumns = 'repeat(' + BOARD[0].length + ', 52px)';
+      grid.style.justifyContent = 'center';
+  
+      const active = step.active;
+      const added = step.added;
+      let retained = 0;
+      let captured = 0;
+  
+      for (let r = 0; r < BOARD.length; r++) {
+        for (let c = 0; c < BOARD[r].length; c++) {
+          const value = step.board[r][c];
+          const cell = Demo.el('div', 'cell', Demo.esc(value === '#' ? '#' : value));
+  
+          if (value === '#') cell.classList.add('is-ok');
+          else if (value === 'O' && step.kept[r][c]) cell.classList.add('is-ok');
+          else if (value === 'O') cell.classList.add('is-warn');
+          else if (BOARD[r][c] === 'O') cell.classList.add('is-bad');
+          else cell.classList.add('cell--dim');
+  
+          if (step.kept[r][c]) retained += 1;
+          if (BOARD[r][c] === 'O' && value === 'X') captured += 1;
+  
+          if (r === 0 || r === BOARD.length - 1 || c === 0 || c === BOARD[r].length - 1) {
+            cell.style.boxShadow = 'inset 0 0 0 2px var(--demo-muted)';
+          }
+          if ((active && active[0] === r && active[1] === c) || (added && added[0] === r && added[1] === c)) {
+            cell.classList.add('is-active');
+          }
+          grid.appendChild(cell);
+        }
+      }
+      gridPanel.appendChild(grid);
+      ctx.stage.appendChild(gridPanel);
+  
+      const statusPanel = Demo.el('div', 'panel');
+      statusPanel.style.width = '100%';
+      statusPanel.appendChild(Demo.el('div', 'panel__title', '状态'));
+      statusPanel.appendChild(Demo.el('div', null,
+        '与边界连通（#）：' + step.marked + ' 个 &nbsp;·&nbsp; 已翻转为 X：' + captured + ' 个'));
+      statusPanel.appendChild(Demo.el('div', null, step.done
+        ? '<span class="tag tag--ok">完成：保留 ' + retained + ' 个 O</span>'
+        : '<span class="tag tag--info">阶段：' + (step.phase === 'flip' ? '翻转内部 O' : step.phase === 'restore' ? '还原临时标记' : '边界搜索') + '</span>'));
+      ctx.stage.appendChild(statusPanel);
+    }
+  });
+  return Demo.__config
+}

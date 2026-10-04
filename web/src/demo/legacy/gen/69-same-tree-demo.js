@@ -1,0 +1,276 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/69-same-tree-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  function makeTree(levels, tag) {
+    const slots = [];
+    const byId = {};
+    const nodes = {};
+    function rec(i, id, depth) {
+      if (i >= levels.length) return null;
+      const slot = { id: id, i: i, depth: depth, val: levels[i], tag: tag };
+      slots.push(slot);
+      byId[id] = slot;
+      if (levels[i] === null) return null;
+      const node = { id: id, val: levels[i], tag: tag, left: null, right: null };
+      nodes[id] = node;
+      node.left = rec(2 * i + 1, id + 'L', depth + 1);
+      node.right = rec(2 * i + 2, id + 'R', depth + 1);
+      return node;
+    }
+    const root = rec(0, 'R', 0);
+    const label = '[' + levels.map(function (v) { return v === null ? 'null' : v; }).join(',') + ']';
+    return { levels: levels, tag: tag, label: label, slots: slots, byId: byId, nodes: nodes, root: root };
+  }
+  
+  const P = makeTree([1, 2, 3], 'p');
+  const Q = makeTree([1, 2, 3], 'q');
+  
+  function childDesc(T, id) {
+    const node = T.nodes[id];
+    return node ? T.tag + '.' + node.val : 'null';
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const stack = [];
+    const visitedP = [];
+    const visitedQ = [];
+  
+    function snap(extra) {
+      const step = {
+        curP: extra.curP, curQ: extra.curQ, phase: extra.phase, note: extra.note,
+        stack: stack.slice(), visitedP: visitedP.slice(), visitedQ: visitedQ.slice()
+      };
+      Object.keys(extra).forEach(function (k) { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    snap({
+      curP: null, curQ: null, phase: 'init',
+      note: '初始状态：p = ' + P.label + '，q = ' + Q.label + '。函数 isSameTree(p, q) 同时从两棵树的根出发，每个位置只比较「结构 + 值」两件事，所以一次同步的递归遍历就够了。'
+    });
+  
+    function walk(pId, qId) {
+      const p = P.nodes[pId];
+      const q = Q.nodes[qId];
+  
+      if (!p && !q) {
+        visitedP.push(pId); visitedQ.push(qId);
+        snap({
+          curP: pId, curQ: qId, phase: 'bothNull', ret: true,
+          note: '递归到 ' + childDesc(P, pId) + ' 与 ' + childDesc(Q, qId) + '：两边都是空节点。空 == 空说明这一分支的结构一致，返回 true。'
+        });
+        return true;
+      }
+  
+      if (!p || !q) {
+        if (p) visitedP.push(pId); else visitedQ.push(qId);
+        snap({
+          curP: pId, curQ: qId, phase: 'oneNull', ret: false,
+          note: '一边是 ' + childDesc(P, pId) + '，另一边是 ' + childDesc(Q, qId) + '：一个为空一个非空，说明结构就不同，不必再看值，直接返回 false。'
+        });
+        return false;
+      }
+  
+      visitedP.push(pId); visitedQ.push(qId);
+  
+      if (p.val !== q.val) {
+        snap({
+          curP: pId, curQ: qId, phase: 'valueDiff', ret: false,
+          note: '结构相同（两边都有节点），但值不同：' + P.tag + ' 是 ' + p.val + '，' + Q.tag + ' 是 ' + q.val + '，返回 false。'
+        });
+        return false;
+      }
+  
+      stack.push({ p: pId, q: qId });
+      snap({
+        curP: pId, curQ: qId, phase: 'equal',
+        note: '比较 ' + P.tag + ' 的 ' + p.val + ' 与 ' + Q.tag + ' 的 ' + q.val + '：值相等。当前节点通过，继续递归比较它们的左孩子。'
+      });
+  
+      const left = walk(pId + 'L', qId + 'L');
+      if (!left) {
+        stack.pop();
+        snap({
+          curP: pId, curQ: qId, phase: 'short', ret: false,
+          note: '左子树比较返回 false。表达式是 isSameTree(left) && isSameTree(right)，&& 具有短路特性：左子树已经不相同，整棵树必然不相同，右子树根本不会被访问。'
+        });
+        return false;
+      }
+  
+      snap({
+        curP: pId, curQ: qId, phase: 'leftDone',
+        note: '节点 ' + p.val + ' 的左子树完全一致。再递归比较右子树。'
+      });
+  
+      const right = walk(pId + 'R', qId + 'R');
+      stack.pop();
+      snap({
+        curP: pId, curQ: qId, phase: 'return', ret: left && right,
+        note: '节点 ' + p.val + ' 的左右子树都返回 ' + (right ? 'true' : 'false') + '，整棵子树结果为 ' + (left && right) + '，向上返回。'
+      });
+      return left && right;
+    }
+  
+    const answer = walk('R', 'R');
+    snap({
+      curP: null, curQ: null, phase: 'done', ret: answer,
+      note: '顶层 isSameTree 返回 ' + answer + '，两棵树' + (answer ? '相同' : '不相同') +
+        '。可见只要发现某对节点结构或值不一致就立即返回，最坏情况才需要访问两棵树的全部节点，时间 O(min(m,n))。'
+    });
+  
+    return steps;
+  }
+  
+  function treeSvg(T, baseX, baseW, step) {
+    const pos = {};
+    T.slots.forEach(function (s) {
+      const span = Math.pow(2, s.depth);
+      const idxInLevel = s.i - (span - 1);
+      pos[s.id] = {
+        x: baseX + baseW * (idxInLevel + 0.5) / span,
+        y: 50 + s.depth * 92
+      };
+    });
+  
+    const curId = T.tag === 'p' ? step.curP : step.curQ;
+    const visited = T.tag === 'p' ? step.visitedP : step.visitedQ;
+    const isLeft = T.tag === 'p';
+    const themeColor = isLeft ? 'var(--demo-accent)' : 'var(--demo-pink)';
+    const soft = isLeft ? 'var(--demo-accent-soft)' : 'var(--demo-pink-soft)';
+  
+    let out = '';
+  
+    T.slots.forEach(function (s) {
+      if (s.val === null) return;
+      [s.id + 'L', s.id + 'R'].forEach(function (childId) {
+        const child = T.byId[childId];
+        if (!child) return;
+        const a = pos[s.id];
+        const b = pos[childId];
+        const touched = visited.indexOf(s.id) >= 0 && visited.indexOf(childId) >= 0;
+        out += '<line x1="' + a.x + '" y1="' + (a.y + 25) + '" x2="' + b.x + '" y2="' + (b.y - 25) +
+          '" style="stroke:' + (child.val === null ? 'var(--demo-border)' : touched ? themeColor : 'var(--demo-border)') +
+          ';stroke-width:' + (touched ? 2.5 : 2) + (child.val === null ? ';stroke-dasharray:5 5' : '') + '"/>';
+      });
+    });
+  
+    T.slots.forEach(function (s) {
+      const p = pos[s.id];
+      const isCur = curId === s.id;
+      const seen = visited.indexOf(s.id) >= 0;
+      if (s.val === null) {
+        out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="15" style="fill:none;stroke:' +
+          (isCur ? themeColor : 'var(--demo-border)') + ';stroke-width:' + (isCur ? 3 : 1.5) + ';stroke-dasharray:4 4"/>';
+        out += '<text x="' + p.x + '" y="' + (p.y + 4) + '" text-anchor="middle" style="fill:' +
+          (isCur ? themeColor : 'var(--demo-muted)') + ';font:600 10px sans-serif">null</text>';
+        return;
+      }
+      const fill = isCur ? themeColor : seen ? 'var(--demo-subtle)' : 'var(--demo-subtle)';
+      const stroke = isCur ? themeColor : seen ? themeColor : 'var(--demo-border)';
+      const text = isCur ? 'var(--demo-card)' : 'var(--demo-text)';
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="23" style="fill:' + fill + ';stroke:' + stroke +
+        ';stroke-width:' + (isCur ? 3 : seen ? 2.5 : 2) + ';opacity:' + (seen || isCur ? 1 : 0.45) + '"/>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 7) + '" text-anchor="middle" style="fill:' + text +
+        ';font:700 17px sans-serif">' + s.val + '</text>';
+    });
+  
+    return out;
+  }
+  
+  function compareSvg(step) {
+    const W = 680, H = 250;
+    const half = W / 2;
+    let out = '';
+    out += '<line x1="' + half + '" y1="24" x2="' + half + '" y2="' + (H - 16) + '" style="stroke:var(--demo-border);stroke-width:1;stroke-dasharray:5 5"/>';
+    out += '<text x="' + (half / 2) + '" y="24" text-anchor="middle" style="fill:var(--demo-accent);font:700 13px sans-serif">' + P.tag + ' = ' + P.label + '</text>';
+    out += '<text x="' + (half * 1.5) + '" y="24" text-anchor="middle" style="fill:var(--demo-pink);font:700 13px sans-serif">' + Q.tag + ' = ' + Q.label + '</text>';
+    out += treeSvg(P, 30, half - 60, step);
+    out += treeSvg(Q, half + 30, half - 60, step);
+    if (step.curP && step.curQ) {
+      out += '<text x="' + half + '" y="' + (H - 6) + '" text-anchor="middle" style="fill:var(--demo-muted);font:600 12px sans-serif">当前比较：' +
+        childDesc(P, step.curP) + ' ⟷ ' + childDesc(Q, step.curQ) + '</text>';
+    }
+    return '<div style="width:100%"><svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+  }
+  
+  Demo.create({
+    title: '69. 相同的树 — 同步递归比较「结构 + 值」',
+    info: '示例 1：p = [1,2,3]，q = [1,2,3]，输出 true。递归同时走两棵树，逐位置比较「结构 + 值」，任一位置不一致就返回 false；若某一步不一致，短路求值会让后面的子树不再被访问。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 470,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'p 树节点 / 当前比较对' },
+      { color: 'var(--demo-pink)', label: 'q 树节点 / 当前比较对' },
+      { color: 'var(--demo-muted)', label: '尚未访问（不一致时会被短路跳过）' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const treePanel = Demo.el('div', 'panel');
+      treePanel.style.width = '100%';
+      treePanel.appendChild(Demo.el('div', 'panel__title', '两棵树并排同步遍历'));
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = compareSvg(step);
+      treePanel.appendChild(wrap);
+      ctx.stage.appendChild(treePanel);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-start';
+  
+      const pairPanel = Demo.el('div', 'panel');
+      pairPanel.appendChild(Demo.el('div', 'panel__title', '当前比较对'));
+      const pairRow = Demo.el('div', 'row');
+      const mkNode = function (text, cls) {
+        const cell = Demo.el('div', 'cell ' + cls, text);
+        return cell;
+      };
+      pairRow.appendChild(mkNode(step.curP ? childDesc(P, step.curP) : '—', 'is-active'));
+      pairRow.appendChild(Demo.el('div', 'arrow', '⟷'));
+      pairRow.appendChild(mkNode(step.curQ ? childDesc(Q, step.curQ) : '—', 'is-pink'));
+      pairPanel.appendChild(pairRow);
+      const verdict = Demo.el('div', 'row');
+      let tagText, tagClass;
+      if (step.phase === 'init') { tagText = '准备开始'; tagClass = 'tag'; }
+      else if (step.phase === 'done') { tagText = step.ret ? '结论：相同' : '结论：不相同'; tagClass = step.ret ? 'tag--ok' : 'tag--bad'; }
+      else if (step.ret === false) { tagText = '返回 false'; tagClass = 'tag--bad'; }
+      else if (step.phase === 'equal') { tagText = '值相等，继续深入'; tagClass = 'tag--ok'; }
+      else { tagText = '继续'; tagClass = 'tag'; }
+      verdict.appendChild(Demo.el('span', tagClass, tagText));
+      pairPanel.appendChild(verdict);
+  
+      const stackPanel = Demo.el('div', 'panel');
+      stackPanel.appendChild(Demo.el('div', 'panel__title', '递归调用栈（顶部 = 当前节点）'));
+      const box = Demo.el('div', 'stack');
+      if (!step.stack.length) {
+        box.appendChild(Demo.el('div', 'stack__item', '（空）'));
+      } else {
+        step.stack.forEach(function (frame, k) {
+          const item = Demo.el('div', 'stack__item', '(' + P.nodes[frame.p].val + ', ' + Q.nodes[frame.q].val + ')');
+          if (k === step.stack.length - 1) item.classList.add('is-active');
+          box.appendChild(item);
+        });
+      }
+      stackPanel.appendChild(box);
+  
+      row.appendChild(pairPanel);
+      row.appendChild(stackPanel);
+      ctx.stage.appendChild(row);
+  
+      const result = Demo.el('div', 'panel',
+        step.phase === 'done'
+          ? 'isSameTree(p, q) = <strong>' + step.ret + '</strong> &nbsp;<span class="tag ' + (step.ret ? 'tag--ok' : 'tag--bad') + '">两棵树' + (step.ret ? '相同' : '不相同') + '</span>'
+          : '访问过的 p 节点：' + step.visitedP.length + ' 个 ｜ 访问过的 q 节点：' + step.visitedQ.length + ' 个');
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

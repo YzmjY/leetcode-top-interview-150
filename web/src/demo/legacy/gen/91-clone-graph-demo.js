@@ -1,0 +1,224 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/91-clone-graph-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const ADJ = [[2, 4], [1, 3], [2, 4], [1, 3]];
+  const NODES = [1, 2, 3, 4];
+  const POS_ORIG = { 1: { x: 110, y: 100 }, 2: { x: 250, y: 100 }, 3: { x: 250, y: 250 }, 4: { x: 110, y: 250 } };
+  const POS_CLONE = { 1: { x: 390, y: 100 }, 2: { x: 530, y: 100 }, 3: { x: 530, y: 250 }, 4: { x: 390, y: 250 } };
+  
+  function buildSteps() {
+    const steps = [];
+    const memo = {};
+    const cloneAdj = {};
+    const callStack = [];
+  
+    function copyAdj() {
+      const out = {};
+      Object.keys(cloneAdj).forEach(k => { out[k] = cloneAdj[k].slice(); });
+      return out;
+    }
+  
+    function snap(note, extra) {
+      const step = {
+        memo: Object.keys(memo).map(Number).sort((a, b) => a - b),
+        cloneAdj: copyAdj(),
+        callStack: callStack.slice(),
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    snap('原图邻接表 [[2,4],[1,3],[2,4],[1,3]]，对应一个环 1—2—3—4—1。因为有环，必须用哈希表记录「原节点 → 克隆节点」，否则递归会无限打转。');
+  
+    function dfs(v) {
+      if (memo[v]) {
+        snap('dfs(' + v + ') 一进来就发现节点 ' + v + ' 已在哈希表中 → 直接返回已有的克隆 ' + v + "'，不重复创建，这正是环不会导致无限递归的原因。", { cur: v, reuse: true });
+        return;
+      }
+  
+      memo[v] = true;
+      cloneAdj[v] = [];
+      callStack.push(v);
+      snap('dfs(' + v + ')：哈希表中还没有 ' + v + ' → 新建克隆节点 ' + v + "'（值同为 " + v + '，邻居列表暂时为空），登记到哈希表。', { cur: v, created: v });
+  
+      for (const nb of ADJ[v - 1]) {
+        if (!memo[nb]) {
+          snap('处理边 ' + v + '—' + nb + '：邻居 ' + nb + ' 尚未克隆，先深入递归 dfs(' + nb + ')。', { cur: v, edge: [v, nb] });
+        }
+        dfs(nb);
+        cloneAdj[v].push(nb);
+        snap('把克隆节点 ' + nb + "' 追加到克隆节点 " + v + "' 的邻居列表，边 " + v + '—' + nb + ' 复制完成。', { cur: v, edge: [v, nb] });
+      }
+  
+      callStack.pop();
+      snap('节点 ' + v + ' 的所有邻居都处理完，dfs(' + v + ') 返回克隆节点 ' + v + "'。", { cur: v, closed: v });
+    }
+  
+    dfs(1);
+  
+    snap('DFS 结束：4 个节点、4 条边全部复制完成。哈希表保证每个原节点只克隆一次，时间 O(N+E)，空间 O(N)。', { done: true });
+    return steps;
+  }
+  
+  function edgeStr(a, b, pos, color, width) {
+    const p = pos[a];
+    const q = pos[b];
+    const dx = q.x - p.x;
+    const dy = q.y - p.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const r = 28;
+    return '<line x1="' + (p.x + dx / len * r).toFixed(1) + '" y1="' + (p.y + dy / len * r).toFixed(1) +
+      '" x2="' + (q.x - dx / len * r).toFixed(1) + '" y2="' + (q.y - dy / len * r).toFixed(1) +
+      '" style="stroke:' + color + ';stroke-width:' + width + '"/>';
+  }
+  
+  function nodeStr(x, y, label, opt) {
+    const o = opt || {};
+    let s = '';
+    if (o.ring) {
+      s += '<circle cx="' + x + '" cy="' + y + '" r="33" style="fill:none;stroke:' + o.ring + ';stroke-width:3"/>';
+    }
+    s += '<circle cx="' + x + '" cy="' + y + '" r="26" style="fill:' + (o.fill || 'var(--demo-subtle)') +
+      ';stroke:' + (o.stroke || 'var(--demo-border)') + ';stroke-width:2.5' + (o.dashed ? ';stroke-dasharray:5 4' : '') + '"/>';
+    s += '<text x="' + x + '" y="' + (y + 6) + '" text-anchor="middle" style="fill:' + (o.text || 'var(--demo-text)') +
+      ';font:600 17px sans-serif">' + label + '</text>';
+    return s;
+  }
+  
+  function graphSvg(step) {
+    const edges = [];
+    for (const u of NODES) {
+      for (const v of ADJ[u - 1]) {
+        const key = Math.min(u, v) + '-' + Math.max(u, v);
+        if (edges.indexOf(key) === -1) edges.push(key);
+      }
+    }
+  
+    let out = '<defs>';
+    const colors = {
+      muted: 'var(--demo-muted)',
+      accent: 'var(--demo-accent)',
+      ok: 'var(--demo-ok)',
+      warn: 'var(--demo-warn)'
+    };
+    Object.keys(colors).forEach(key => {
+      out += '<marker id="cg-' + key + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">' +
+        '<path d="M0,1 L10,5 L0,9 z" style="fill:' + colors[key] + '"/></marker>';
+    });
+    out += '</defs>';
+  
+    out += '<line x1="320" y1="30" x2="320" y2="330" style="stroke:var(--demo-border);stroke-width:1;stroke-dasharray:5 5"/>';
+    out += '<text x="175" y="28" text-anchor="middle" style="fill:var(--demo-muted);font:600 14px sans-serif">原图 Original</text>';
+    out += '<text x="465" y="28" text-anchor="middle" style="fill:var(--demo-muted);font:600 14px sans-serif">克隆图 Clone</text>';
+  
+    edges.forEach(key => {
+      const pair = key.split('-').map(Number);
+      out += edgeStr(pair[0], pair[1], POS_ORIG, 'var(--demo-muted)', 2);
+    });
+  
+    const cloneEdges = [];
+    Object.keys(step.cloneAdj).forEach(u => {
+      step.cloneAdj[u].forEach(v => {
+        const key = Math.min(u, v) + '-' + Math.max(u, v);
+        if (cloneEdges.indexOf(key) === -1) cloneEdges.push(key);
+      });
+    });
+    cloneEdges.forEach(key => {
+      const pair = key.split('-').map(Number);
+      const isCurrent = step.edge && ((step.edge[0] === pair[0] && step.edge[1] === pair[1]) || (step.edge[0] === pair[1] && step.edge[1] === pair[0]));
+      out += edgeStr(pair[0], pair[1], POS_CLONE, isCurrent ? 'var(--demo-accent)' : 'var(--demo-ok)', isCurrent ? 3.5 : 2.5);
+    });
+  
+    NODES.forEach(v => {
+      out += nodeStr(POS_ORIG[v].x, POS_ORIG[v].y, String(v), {
+        fill: 'var(--demo-accent)',
+        stroke: 'var(--demo-accent)',
+        text: 'var(--demo-card)',
+        ring: (step.cur === v && !step.reuse) ? 'var(--demo-warn)' : null
+      });
+    });
+  
+    NODES.forEach(v => {
+      const created = step.cloneAdj[v] !== undefined;
+      if (created) {
+        out += nodeStr(POS_CLONE[v].x, POS_CLONE[v].y, v + "'", {
+          fill: 'var(--demo-ok)',
+          stroke: 'var(--demo-ok)',
+          text: 'var(--demo-card)',
+          ring: step.cur === v ? 'var(--demo-warn)' : null
+        });
+      } else {
+        out += nodeStr(POS_CLONE[v].x, POS_CLONE[v].y, '?', {
+          fill: 'var(--demo-subtle)',
+          stroke: 'var(--demo-border)',
+          text: 'var(--demo-muted)',
+          dashed: true
+        });
+      }
+    });
+  
+    return '<div style="width:100%"><svg viewBox="0 0 640 340" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+  }
+  
+  Demo.create({
+    title: '91. 克隆图 — 哈希表 + DFS 深拷贝',
+    info: 'adjList = [[2,4],[1,3],[2,4],[1,3]]，图中含环。左边是原图，右边是正在构造的克隆图。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 460,
+    legend: [
+      { color: 'var(--demo-accent)', label: '原图节点 / 当前处理的边' },
+      { color: 'var(--demo-ok)', label: '已复制的克隆节点与边' },
+      { color: 'var(--demo-warn)', label: '当前 DFS 节点' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = graphSvg(step);
+      ctx.stage.appendChild(wrap);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-start';
+  
+      const mapPanel = Demo.el('div', 'panel');
+      mapPanel.appendChild(Demo.el('div', 'panel__title', '哈希表 原节点 → 克隆节点'));
+      let table = '<table class="map-table"><tr><th>原节点</th><th>克隆节点</th></tr>';
+      if (step.memo.length === 0) {
+        table += '<tr><td colspan="2">（空）</td></tr>';
+      } else {
+        step.memo.forEach(v => {
+          const isNew = step.created === v;
+          table += '<tr' + (isNew ? ' class="is-active"' : '') + '><td>' + v + '</td><td>' + v + "'</td></tr>";
+        });
+      }
+      table += '</table>';
+      mapPanel.appendChild(Demo.el('div', null, table));
+  
+      const stackPanel = Demo.el('div', 'panel');
+      stackPanel.appendChild(Demo.el('div', 'panel__title', 'DFS 调用栈'));
+      const stackBox = Demo.el('div', 'stack');
+      if (step.callStack.length === 0) {
+        stackBox.appendChild(Demo.el('div', 'stack__item', '（空）'));
+      } else {
+        step.callStack.forEach((v, k) => {
+          const item = Demo.el('div', 'stack__item', 'dfs(' + v + ')');
+          if (k === step.callStack.length - 1) item.classList.add('is-active');
+          stackBox.appendChild(item);
+        });
+      }
+      stackPanel.appendChild(stackBox);
+  
+      row.appendChild(mapPanel);
+      row.appendChild(stackPanel);
+      ctx.stage.appendChild(row);
+    }
+  });
+  return Demo.__config
+}

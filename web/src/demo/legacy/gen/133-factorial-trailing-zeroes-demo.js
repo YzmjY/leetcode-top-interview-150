@@ -1,0 +1,126 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/133-factorial-trailing-zeroes-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const N = 625;
+  
+  function copyPasses(passes) {
+    return passes.map(p => ({ divisor: p.divisor, add: p.add, count: p.count }));
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    let n = N;
+    let count = 0;
+    let divisor = 1;
+    const passes = [];
+  
+    steps.push({
+      n, count, divisor: 1, passes: [],
+      note: `初始状态：n = ${N}，count = 0。尾随零由因子 10 = 2 × 5 产生，而 n! 里因子 2 的个数远多于因子 5，所以问题等价于「数出 ${N}! 里一共有多少个因子 5」。`
+    });
+  
+    while (n >= 5) {
+      const prevN = n;
+      divisor *= 5;
+      const add = Math.floor(prevN / 5);
+      n = Math.floor(prevN / 5);
+      count += add;
+      passes.push({ divisor, add, count });
+      steps.push({
+        n, count, divisor, add, passes: copyPasses(passes),
+        note: `循环条件 n = ${prevN} ≥ 5 成立：这一趟数出「同时能被 ${divisor} 整除」的数，它们各贡献 1 个因子 5。`
+          + `得到 ⌊${prevN} / 5⌋ = ${add} 个，count 累加到 ${count}，n 缩小为 ⌊${prevN} / 5⌋ = ${n}，准备统计下一个 5 的幂。`
+      });
+    }
+  
+    steps.push({
+      n, count, divisor, passes: copyPasses(passes), done: true,
+      note: `循环条件 n = ${n} < 5 不再成立，停止。把各趟结果相加：`
+        + passes.map(p => `${p.add}`).join(' + ') + ` = ${count}，所以 ${N}! 末尾有 ${count} 个零。`
+    });
+  
+    return steps;
+  }
+  
+  Demo.create({
+    title: '133. 阶乘后的零 — 数因子 5 的个数',
+    info: `输入：n = ${N}。不真正去算 ${N}!（会溢出），而是累加 ⌊n/5⌋ + ⌊n/25⌋ + ⌊n/125⌋ + …`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本趟（5 的某个幂）贡献的因子 5' },
+      { color: 'var(--demo-muted)', label: '还未统计到的 5 的幂' },
+      { color: 'var(--demo-ok)', label: '累计结果' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const powers = [5, 25, 125, 625, 3125, 15625, 78125].filter(d => d <= N);
+      const known = {};
+      step.passes.forEach(p => { known[p.divisor] = p; });
+      const maxAdd = Math.max(1, ...step.passes.map(p => p.add));
+  
+      const panel = Demo.el('div', 'panel');
+      panel.appendChild(Demo.el('div', 'panel__title',
+        `每一趟统计「是 5 的 k 次幂的倍数」的个数（条形长度表示贡献大小）`));
+      panel.style.width = '100%';
+  
+      powers.forEach(d => {
+        if (d > N * 5 && known[d] == null) return;
+        const row = Demo.el('div', 'row');
+        row.style.width = '100%';
+        row.style.justifyContent = 'flex-start';
+  
+        const tag = Demo.el('div', 'panel__title', `÷${d}`);
+        tag.style.flex = '0 0 54px';
+        tag.style.marginBottom = '0';
+        tag.style.textAlign = 'right';
+        row.appendChild(tag);
+  
+        const add = known[d] ? known[d].add : 0;
+        const bar = Demo.el('div', 'bar');
+        bar.style.flex = '1 1 auto';
+        bar.style.maxWidth = '320px';
+        const fill = Demo.el('div', 'bar__fill');
+        fill.style.width = known[d] ? Math.max(6, (add / maxAdd) * 100) + '%' : '0%';
+        if (!known[d]) fill.style.background = 'var(--demo-border)';
+        bar.appendChild(fill);
+        if (known[d]) {
+          bar.appendChild(Demo.el('div', 'bar__label', `${add} 个`));
+        }
+        row.appendChild(bar);
+  
+        const total = Demo.el('div', 'ptr', known[d] ? '累计 ' + known[d].count : '待统计');
+        if (!known[d]) total.classList.add('ptr--dim');
+        else total.classList.add('ptr--ok');
+        total.style.flex = '0 0 78px';
+        row.appendChild(total);
+  
+        panel.appendChild(row);
+      });
+      ctx.stage.appendChild(panel);
+  
+      const formula = Demo.el('div', 'panel',
+        `当前 n = <code>${step.n}</code>，count = <code>${step.count}</code>`
+        + (step.done
+          ? ` &nbsp;<span class="tag tag--ok">尾随零个数 = ${step.count}</span>`
+          : ` &nbsp;<span class="tag tag--info">还需判断 n ${step.n} ≥ 5 ?</span>`));
+      formula.style.width = '100%';
+      formula.style.textAlign = 'center';
+      ctx.stage.appendChild(formula);
+  
+      if (step.done) {
+        const why = Demo.el('div', 'panel',
+          `为什么每个 5 的幂都要单独数一次：25 的倍数里面藏着两个 5，125 的倍数里藏着三个 5，`
+          + `⌊n/5⌋ 只能数出其中一层，所以要用 ⌊n/25⌋、⌊n/125⌋ 把它们补上。`
+          + `每趟最多把 n 除以 5，因此循环只跑 ${step.passes.length} 趟，时间复杂度 O(log₅ n)、空间 O(1)。`);
+        why.style.width = '100%';
+        ctx.stage.appendChild(why);
+      }
+    }
+  });
+  return Demo.__config
+}

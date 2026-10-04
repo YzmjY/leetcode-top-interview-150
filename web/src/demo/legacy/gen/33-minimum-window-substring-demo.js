@@ -1,0 +1,265 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/33-minimum-window-substring-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const S = 'ADOBECODEBANC';
+  const T = 'ABC';
+  const CHARS = S.split('');
+  const NEED = (function () {
+    const n = {};
+    for (let i = 0; i < T.length; i++) n[T[i]] = (n[T[i]] || 0) + 1;
+    return n;
+  })();
+  const NEED_CHARS = Object.keys(NEED).sort();
+  const NEED_KINDS = NEED_CHARS.length;
+  const NEED_TEXT = NEED_CHARS.map(function (c) { return c + ' × ' + NEED[c]; }).join('，');
+  
+  function buildSteps() {
+    const s = S;
+    const steps = [];
+    const have = {};
+    let left = 0, matched = 0, minStart = -1, minLen = s.length + 1;
+  
+    steps.push({
+      left: 0, right: -1, have: {}, matched: 0, minLen: minLen, minStart: minStart,
+      phase: 'init', ch: '', removedAt: -1, removed: '', improved: false, curLen: 0,
+      note: `初始化：need = { ${NEED_TEXT} }，共 ${NEED_KINDS} 种字符需要满足。have 记录当前窗口里这些字符的数量（不在 t 里的字符不统计）。matched 表示「数量已经达标」的字符种类数，现在为 0。left = 0，minLen 记成 ${s.length + 1}（哨兵值，代表还没找到可行窗口）。`
+    });
+  
+    for (let right = 0; right < s.length; right++) {
+      const ch = s[right];
+  
+      if (NEED[ch] > 0) {
+        have[ch] = (have[ch] || 0) + 1;
+        const justMatched = have[ch] === NEED[ch];
+        if (justMatched) matched++;
+        steps.push({
+          left: left, right: right, have: Object.assign({}, have), matched: matched,
+          minLen: minLen, minStart: minStart, phase: 'add', ch: ch, removedAt: -1, removed: '',
+          improved: false, curLen: right - left + 1,
+          note: `右指针扩到 ${right}：s[${right}] = "${ch}" 是 t 需要的字符，把它计入窗口，have["${ch}"] = ${have[ch]}（需要 ${NEED[ch]} 个）。` +
+            (justMatched
+              ? `这一种刚好凑够，matched 增加到 ${matched} / ${NEED_KINDS}。`
+              : `还差 ${NEED[ch] - have[ch]} 个，matched 保持 ${matched} / ${NEED_KINDS}。`) +
+            (matched === NEED_KINDS
+              ? ` t 的所有字符都凑齐了，窗口已经是一个可行覆盖，进入内层 while 循环尝试收缩。`
+              : ` 还没凑齐，继续向右扩。`)
+        });
+      } else {
+        steps.push({
+          left: left, right: right, have: Object.assign({}, have), matched: matched,
+          minLen: minLen, minStart: minStart, phase: 'skip', ch: ch, removedAt: -1, removed: '',
+          improved: false, curLen: right - left + 1,
+          note: `右指针扩到 ${right}：s[${right}] = "${ch}" 不在 t 中，对覆盖没有帮助，也不计入 have。窗口里留着它只会让子串更长，所以不做任何处理，继续向右扩。`
+        });
+      }
+  
+      while (matched === NEED_KINDS) {
+        const curLen = right - left + 1;
+        const prevMin = minLen;
+        const improved = curLen < minLen;
+        if (improved) {
+          minLen = curLen;
+          minStart = left;
+        }
+  
+        steps.push({
+          left: left, right: right, have: Object.assign({}, have), matched: matched,
+          minLen: minLen, minStart: minStart, phase: 'found', ch: '', removedAt: -1, removed: '',
+          improved: improved, curLen: curLen,
+          note: `窗口 s[${left}..${right}] = "${s.slice(left, right + 1)}" 已经包含 t 的全部字符，是一个可行解，长度 ${curLen}。和已记录的 minLen 比较：` +
+            (improved
+              ? (prevMin > s.length
+                ? `此前还没有可行解，直接记下 minLen = ${curLen}，起点 minStart = ${left}。`
+                : `${curLen} < ${prevMin}，更短，更新 minLen = ${curLen}，minStart = ${left}。`)
+              : `${curLen} ≥ ${prevMin}，不更优，minLen 保持不变。`) +
+            ` 由于每个字符都是正贡献，只要还覆盖着 t，就可以继续尝试丢掉最左边的字符。`
+        });
+  
+        const removed = s[left];
+        if (NEED[removed] > 0) {
+          if (have[removed] === NEED[removed]) matched--;
+          have[removed]--;
+        }
+        const removedAt = left;
+        left++;
+  
+        steps.push({
+          left: left, right: right, have: Object.assign({}, have), matched: matched,
+          minLen: minLen, minStart: minStart, phase: 'shrink', ch: '', removedAt: removedAt,
+          removed: removed, improved: false, curLen: right - left + 1,
+          note: `收缩左边界：把最左边的 "${removed}"（索引 ${removedAt}）移出窗口，left 右移到 ${left}。` +
+            (NEED[removed] > 0
+              ? `它是 t 需要的字符：移出前 have["${removed}"] = ${have[removed] + 1}，移出后 ${have[removed]}` +
+                (have[removed] < NEED[removed] ? `，已经少于需要的 ${NEED[removed]} 个，matched 降到 ${matched} / ${NEED_KINDS}。` : `，仍然满足 ${NEED[removed]} 个，matched 不变。`)
+              : `它不在 t 中，移出不影响 matched。`) +
+            (matched === NEED_KINDS
+              ? ` 窗口依然覆盖 t 的全部字符，while 循环继续收缩。`
+              : ` 窗口已经不能覆盖 t 了，退出 while 循环，回到外层继续扩右边界。`)
+        });
+      }
+    }
+  
+    const answer = minLen > s.length ? '' : s.slice(minStart, minStart + minLen);
+  
+    const answerHave = {};
+    if (answer) {
+      for (let k = 0; k < answer.length; k++) {
+        const c = answer[k];
+        if (NEED[c] > 0) answerHave[c] = (answerHave[c] || 0) + 1;
+      }
+    }
+  
+    steps.push({
+      left: left, right: s.length - 1, have: answerHave, matched: answer ? NEED_KINDS : 0,
+      minLen: minLen, minStart: minStart,
+      phase: 'done', ch: '', removedAt: -1, removed: '', improved: false, curLen: 0,
+      note: answer
+        ? `right 已经扫到字符串末尾，minLen 不会再有变化。返回 s[${minStart}..${minStart + minLen - 1}] = "${answer}"，长度 ${minLen}。正确性：right 每前进一步都会尝试把 left 收缩到「刚好不覆盖 t」为止，因此每个 left 位置都被检验过，最短的可行窗口一定会被记录下来；left 和 right 都只向右走，各自最多移动 n 步，总时间 O(n)。`
+        : `扫描结束：即使把整个 s 都放进窗口也凑不齐 t 的所有字符，返回空字符串。`
+    });
+  
+    return steps;
+  }
+  
+  function charRow(step) {
+    const row = Demo.el('div', 'row');
+    const done = step.phase === 'done';
+    const inWindow = !done && step.right >= step.left;
+  
+    CHARS.forEach(function (ch, idx) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(ch));
+  
+      if (done) {
+        const inAnswer = step.minStart >= 0 && idx >= step.minStart && idx < step.minStart + step.minLen;
+        cell.classList.add(inAnswer ? 'is-ok' : 'cell--dim');
+      } else if (idx === step.removedAt) {
+        cell.classList.add('is-warn');
+      } else if (idx === step.right && step.phase !== 'found') {
+        cell.classList.add('is-active');
+      } else if (inWindow && idx >= step.left && idx <= step.right) {
+        let run = 0;
+        for (let k = step.left; k <= idx; k++) if (CHARS[k] === ch) run++;
+        if (NEED[ch] > 0 && run <= NEED[ch]) cell.classList.add('is-ok');
+        else if (NEED[ch] > 0) cell.classList.add('is-warn');
+        else cell.classList.add('is-info');
+      }
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (!done) {
+        if (idx === step.left) labels.push('left');
+        if (idx === step.right) labels.push('right');
+      }
+      const ptr = Demo.el('div', 'ptr', labels.length ? Demo.esc(labels.join(' ')) : String(idx));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+  
+    return row;
+  }
+  
+  function countTable(step) {
+    const rows = NEED_CHARS.map(function (c) {
+      const got = step.have[c] || 0;
+      const need = NEED[c];
+      const state = got >= need ? '已满足' : '还缺 ' + (need - got) + ' 个';
+      return `<tr class="${!step.phase || step.phase === 'init' || step.phase === 'done' ? '' : (c === step.ch || c === step.removed ? 'is-active' : '')}">` +
+        `<td>${Demo.esc(c)}</td><td>${need}</td><td>${got}</td><td>${state}</td></tr>`;
+    }).join('');
+    return Demo.el('table', 'map-table',
+      `<tr><th>字符</th><th>need</th><th>have</th><th>状态</th></tr>${rows}`);
+  }
+  
+  Demo.create({
+    title: '33. 最小覆盖子串 — 达标后立刻收缩左边界',
+    info: `输入：s = "${S}"，t = "${T}"（示例 1，输出 "BANC"）。need = { ${NEED_TEXT} }，have 只统计 t 中出现的字符，matched 记录已凑够的字符种类数。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 400,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'right 刚读入的字符' },
+      { color: 'var(--demo-ok)', label: '窗口内已满足数量的 t 字符' },
+      { color: 'var(--demo-warn)', label: '多余的 t 字符 / 刚被移出窗口的字符' },
+      { color: 'var(--demo-info)', label: '窗口中不属于 t 的字符' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const arrayPanel = Demo.el('div', 'panel');
+      arrayPanel.style.width = '100%';
+      arrayPanel.appendChild(Demo.el('div', 'panel__title',
+        step.phase === 'done' ? '字符串 s（扫描结束）' : `字符串 s（窗口 s[${step.left}..${step.right}]）`));
+      arrayPanel.appendChild(charRow(step));
+      ctx.stage.appendChild(arrayPanel);
+  
+      const barPanel = Demo.el('div', 'panel');
+      barPanel.style.width = '100%';
+      barPanel.appendChild(Demo.el('div', 'panel__title', '覆盖进度：matched / need 种类数'));
+      const bar = Demo.el('div', 'bar');
+      bar.style.width = '100%';
+      const fill = Demo.el('div', 'bar__fill');
+      fill.style.width = (step.matched / NEED_KINDS) * 100 + '%';
+      fill.style.background = step.matched === NEED_KINDS ? 'var(--demo-ok)' : 'var(--demo-accent)';
+      bar.appendChild(fill);
+      bar.appendChild(Demo.el('div', 'bar__label', Demo.esc('matched = ' + step.matched + ' ／ ' + NEED_KINDS)));
+      barPanel.appendChild(bar);
+      ctx.stage.appendChild(barPanel);
+  
+      const mid = Demo.el('div', 'row');
+      const tablePanel = Demo.el('div', 'panel');
+      tablePanel.appendChild(Demo.el('div', 'panel__title',
+        step.phase === 'done' ? '答案窗口的 have 与 need 对照' : 'need 与 have 对照'));
+      tablePanel.appendChild(countTable(step));
+      mid.appendChild(tablePanel);
+  
+      const infoPanel = Demo.el('div', 'panel');
+      infoPanel.appendChild(Demo.el('div', 'panel__title', '当前窗口与最优解'));
+      const done = step.phase === 'done';
+      const answerText = step.minLen > S.length ? '' : S.slice(step.minStart, step.minStart + step.minLen);
+      const tagRow = Demo.el('div', 'row');
+      tagRow.appendChild(Demo.el('span', 'tag tag--info',
+        done
+          ? (answerText ? '答案窗口 = "' + answerText + '"' : '没有可行窗口')
+          : (step.right < step.left ? '窗口 = ""' : '窗口 = "' + S.slice(step.left, step.right + 1) + '"')));
+      tagRow.appendChild(Demo.el('span', 'tag',
+        Demo.esc('长度 = ' + (done
+          ? (answerText ? answerText.length : 0)
+          : (step.right < step.left ? 0 : step.right - step.left + 1)))));
+      infoPanel.appendChild(tagRow);
+  
+      const tagRow2 = Demo.el('div', 'row');
+      tagRow2.style.marginTop = '6px';
+      tagRow2.appendChild(Demo.el('span', 'tag tag--violet',
+        Demo.esc('minLen = ' + (step.minLen > S.length ? '∞' : step.minLen))));
+      if (step.minStart >= 0) {
+        tagRow2.appendChild(Demo.el('span', 'tag tag--ok',
+          Demo.esc('最优 "' + S.slice(step.minStart, step.minStart + step.minLen) + '"')));
+      }
+      infoPanel.appendChild(tagRow2);
+  
+      if (step.improved) {
+        const tagRow3 = Demo.el('div', 'row');
+        tagRow3.style.marginTop = '6px';
+        tagRow3.appendChild(Demo.el('span', 'tag tag--ok', Demo.esc('刷新最优解，长度 = ' + step.curLen)));
+        infoPanel.appendChild(tagRow3);
+      }
+      mid.appendChild(infoPanel);
+      ctx.stage.appendChild(mid);
+  
+      const result = Demo.el('div', 'panel',
+        `left = <strong>${step.phase === 'done' ? '—' : step.left}</strong> ｜ right = <strong>${step.phase === 'init' ? '−1' : step.right}</strong> ｜ matched = <strong>${step.matched}</strong> / ${NEED_KINDS} ｜ minLen = <strong>${step.minLen > S.length ? '∞' : step.minLen}</strong>` +
+        (step.phase === 'done'
+          ? ` &nbsp;<span class="tag tag--ok">答案 = "${step.minLen > S.length ? '' : S.slice(step.minStart, step.minStart + step.minLen)}"</span>`
+          : ''));
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

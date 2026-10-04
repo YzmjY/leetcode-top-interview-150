@@ -1,0 +1,278 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/138-house-robber-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [2, 7, 9, 3, 1];
+  
+  /* 真实跑一遍「选 / 不选」一维 DP：
+     dp[i] = 偷前 i+1 间房（下标 0..i）能拿到的最大金额。
+     每一步都记录 dp 快照、当前房屋、两种候选值，以及最终回溯出的偷窃方案。 */
+  function buildSteps() {
+    const nums = NUMS;
+    const n = nums.length;
+    const steps = [];
+    const dp = new Array(n).fill(null);
+  
+    function snap(i, extra) {
+      const base = {
+        dp: dp.slice(),
+        i: i,
+        steal: null,
+        skip: null,
+        choice: null,
+        robbed: null,
+        done: false,
+        note: ''
+      };
+      steps.push(Object.assign(base, extra));
+    }
+  
+    snap(-1, {
+      note: '初始化：开一个长度 ' + n + ' 的数组 dp，dp[i] 表示只考虑下标 0..i 的房屋时能偷到的最大金额。数组全部待定。'
+    });
+  
+    dp[0] = nums[0];
+    snap(0, {
+      note: '只有第 0 号房屋时没有别的选择：dp[0] = nums[0] = ' + nums[0] + '（偷它）。'
+    });
+  
+    dp[1] = Math.max(nums[0], nums[1]);
+    snap(1, {
+      steal: nums[1],
+      skip: nums[0],
+      choice: dp[1] === nums[1] && nums[1] > nums[0] ? 'steal' : 'skip',
+      note: '两间房只能二选一（相邻会报警）：偷 1 号得 ' + nums[1] + '，偷 0 号得 ' + nums[0] +
+        '，谁大要谁。dp[1] = max(nums[0], nums[1]) = ' + dp[1] + '，本步选择「' + (dp[1] === nums[0] ? '不偷 1 号' : '偷 1 号') + '」。'
+    });
+  
+    for (let i = 2; i < n; i++) {
+      const skip = dp[i - 1];
+      const steal = dp[i - 2] + nums[i];
+      const takeIt = steal > skip;
+  
+      snap(i, {
+        steal: steal,
+        skip: skip,
+        choice: null,
+        note: '处理第 ' + i + ' 号房屋（金额 ' + nums[i] + '），先算出两个候选：' +
+          '偷它 → 必须跳过 ' + (i - 1) + ' 号，dp[' + (i - 2) + '] + nums[' + i + '] = ' + dp[i - 2] + ' + ' + nums[i] + ' = ' + steal + '；' +
+          '不偷它 → 答案沿用 dp[' + (i - 1) + '] = ' + skip + '。'
+      });
+  
+      dp[i] = Math.max(steal, skip);
+      snap(i, {
+        steal: steal,
+        skip: skip,
+        choice: takeIt ? 'steal' : 'skip',
+        note: '两者取较大者：' + steal + (takeIt ? ' > ' : ' ≤ ') + skip + '，所以 dp[' + i + '] = ' + dp[i] +
+          '，本步决策为「' + (takeIt ? '偷 ' + i + ' 号' : '不偷 ' + i + ' 号') + '」。'
+      });
+    }
+  
+    // 从 dp 数组回溯出具体偷了哪些房子
+    const robbed = [];
+    let k = n - 1;
+    while (k >= 0) {
+      if (k === 0) {
+        robbed.push(0);
+        break;
+      }
+      if (dp[k] === dp[k - 1]) {
+        k -= 1;            // 金额没涨说明第 k 间没有偷
+      } else {
+        robbed.push(k);
+        k -= 2;            // 偷了第 k 间，跳过 k-1
+      }
+    }
+    robbed.reverse();
+  
+    const sum = robbed.reduce((acc, idx) => acc + nums[idx], 0);
+    const parts = robbed.map(idx => nums[idx]).join(' + ');
+    steps.push({
+      dp: dp.slice(),
+      i: n - 1,
+      steal: null,
+      skip: null,
+      choice: null,
+      robbed: robbed,
+      done: true,
+      note: '扫描结束，答案 = dp[' + (n - 1) + '] = ' + dp[n - 1] + '。沿 dp 回溯（dp[k] 与 dp[k-1] 相等就说明第 k 间没偷）' +
+        '可以还原出一种最优方案：偷 ' + robbed.map(idx => idx + ' 号').join('、') + '，金额 ' + parts + ' = ' + sum + '。'
+    });
+  
+    return steps;
+  }
+  
+  function houseColumn(step, idx) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', '$' + Demo.esc(NUMS[idx]));
+  
+    let label = '房屋 ' + idx;
+    let ptrClass = 'ptr ptr--dim';
+  
+    if (step.done) {
+      if (step.robbed.indexOf(idx) >= 0) {
+        cell.classList.add('is-ok');
+        label = '偷了';
+        ptrClass = 'ptr ptr--ok';
+      } else {
+        cell.classList.add('cell--dim');
+        label = '没偷';
+      }
+    } else if (idx === step.i) {
+      cell.classList.add('is-active');
+      label = '正在决策';
+      ptrClass = 'ptr';
+    } else if (step.i >= 0 && idx === step.i - 1 && step.choice === null && step.steal != null) {
+      cell.classList.add('is-bad');
+      label = '相邻，不能同偷';
+      ptrClass = 'ptr ptr--bad';
+    } else if (idx === step.i - 2 && step.steal != null) {
+      cell.classList.add('is-violet');
+      label = 'dp[i-2] 来源';
+      ptrClass = 'ptr ptr--violet';
+    }
+  
+    col.appendChild(cell);
+    col.appendChild(Demo.el('div', ptrClass, Demo.esc(label)));
+    return col;
+  }
+  
+  function dpColumn(step, idx) {
+    const col = Demo.el('div', 'col');
+    const value = step.dp[idx];
+    const cell = Demo.el('div', 'cell');
+  
+    if (value == null) {
+      cell.classList.add('cell--empty');
+      cell.innerHTML = '?';
+    } else {
+      cell.innerHTML = Demo.esc(value);
+    }
+  
+    let label = 'dp[' + idx + ']';
+    let ptrClass = 'ptr ptr--dim';
+    if (step.done) {
+      if (idx === NUMS.length - 1) {
+        cell.classList.add('is-ok');
+        label = '答案';
+        ptrClass = 'ptr ptr--ok';
+      }
+    } else if (idx === step.i) {
+      cell.classList.add(step.choice === 'steal' ? 'is-warn' : 'is-active');
+      label = step.choice === 'steal' ? '偷它更优' : '第 ' + idx + ' 项';
+      ptrClass = step.choice === 'steal' ? 'ptr ptr--warn' : 'ptr';
+    } else if (step.steal != null && idx === step.i - 2) {
+      cell.classList.add('is-violet');
+      label = '被复用';
+      ptrClass = 'ptr ptr--violet';
+    } else if (step.skip != null && idx === step.i - 1) {
+      cell.classList.add('is-info');
+      label = '被复用';
+      ptrClass = 'ptr ptr--info';
+    }
+  
+    col.appendChild(cell);
+    col.appendChild(Demo.el('div', ptrClass, Demo.esc(label)));
+    return col;
+  }
+  
+  function candidateRow(step) {
+    const box = Demo.el('div', 'col');
+    box.style.width = '100%';
+  
+    const maxV = Math.max(step.steal, step.skip, 1);
+    const items = [
+      { key: 'steal', name: '偷 ' + step.i + ' 号：dp[i-2] + nums[i]', value: step.steal, cls: 'is-warn' },
+      { key: 'skip', name: '不偷 ' + step.i + ' 号：dp[i-1]', value: step.skip, cls: 'is-info' }
+    ];
+  
+    items.forEach(function (item) {
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.flexWrap = 'nowrap';
+  
+      const tag = Demo.el('span', 'tag ' + (step.choice === item.key ? 'tag--ok' : 'tag--' + (item.key === 'steal' ? 'warn' : 'info')),
+        Demo.esc(item.name));
+      tag.style.flex = 'none';
+      row.appendChild(tag);
+  
+      const bar = Demo.el('div', 'bar');
+      bar.style.flex = '1';
+      const fill = Demo.el('div', 'bar__fill');
+      fill.style.width = Math.max(6, (item.value / maxV) * 100) + '%';
+      fill.style.background = item.key === 'steal' ? 'var(--demo-warn)' : 'var(--demo-info)';
+      bar.appendChild(fill);
+      bar.appendChild(Demo.el('div', 'bar__label', Demo.esc(item.value) + (step.choice === item.key ? '（胜出）' : '')));
+      row.appendChild(bar);
+  
+      box.appendChild(row);
+    });
+  
+    return box;
+  }
+  
+  Demo.create({
+    title: '138. 打家劫舍 — 选 / 不选 DP：dp[i] = max(dp[i-1], dp[i-2] + nums[i])',
+    info: '输入：nums = [' + NUMS.join(', ') + ']（示例 2）。dp[i] = 只考虑前 i+1 间房能偷到的最大金额，相邻房屋不能同时偷。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 380,
+    legend: [
+      { color: 'var(--demo-accent)', label: '正在决策的房屋' },
+      { color: 'var(--demo-warn)', label: '候选「偷」：dp[i-2] + nums[i]' },
+      { color: 'var(--demo-info)', label: '候选「不偷」：dp[i-1]' },
+      { color: 'var(--demo-violet)', label: '被复用的 dp[i-2]' },
+      { color: 'var(--demo-ok)', label: '最终偷窃方案 / 答案' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const houses = Demo.el('div', 'panel');
+      houses.style.width = '100%';
+      houses.appendChild(Demo.el('div', 'panel__title', '沿街房屋（金额）'));
+      const hrow = Demo.el('div', 'row');
+      for (let k = 0; k < NUMS.length; k++) hrow.appendChild(houseColumn(step, k));
+      houses.appendChild(hrow);
+      ctx.stage.appendChild(houses);
+  
+      const table = Demo.el('div', 'panel');
+      table.style.width = '100%';
+      table.appendChild(Demo.el('div', 'panel__title', '状态表 dp'));
+      const drow = Demo.el('div', 'row');
+      for (let k = 0; k < NUMS.length; k++) drow.appendChild(dpColumn(step, k));
+      table.appendChild(drow);
+      ctx.stage.appendChild(table);
+  
+      if (step.steal != null && !step.done) {
+        const cmp = Demo.el('div', 'panel');
+        cmp.style.width = '100%';
+        cmp.appendChild(Demo.el('div', 'panel__title',
+          step.choice === null
+            ? '计算两种选择（蓝条是不偷的收益，黄条是偷的收益）'
+            : '两种选择比较结果'));
+        cmp.appendChild(candidateRow(step));
+        ctx.stage.appendChild(cmp);
+      }
+  
+      const result = Demo.el('div', 'panel');
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      if (step.done) {
+        result.innerHTML = '最终答案：dp[' + (NUMS.length - 1) + '] = <strong>' + step.dp[NUMS.length - 1] + '</strong>' +
+          ' &nbsp;<span class="tag tag--ok">偷 ' + step.robbed.map(k => k + ' 号').join('、') + '，合计 ' +
+          step.robbed.map(k => '$' + NUMS[k]).join(' + ') + ' = ' + step.dp[NUMS.length - 1] + '</span>';
+      } else if (step.i >= 1) {
+        result.innerHTML = '当前进度：dp = [<code>' +
+          step.dp.map(v => (v == null ? '?' : v)).join(', ') + '</code>]';
+      } else {
+        result.innerHTML = '当前进度：dp = [<code>' +
+          step.dp.map(v => (v == null ? '?' : v)).join(', ') + '</code>]，先确定最前面的边界。';
+      }
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

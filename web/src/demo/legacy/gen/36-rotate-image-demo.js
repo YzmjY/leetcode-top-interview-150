@@ -1,0 +1,206 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/36-rotate-image-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const MATRIX = [
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9]
+  ];
+  const N = MATRIX.length;
+  
+  function targetMatrix() {
+    const out = [];
+    for (let i = 0; i < N; i++) {
+      const row = [];
+      for (let j = 0; j < N; j++) row.push(0);
+      out.push(row);
+    }
+    for (let i = 0; i < N; i++) {
+      for (let j = 0; j < N; j++) out[j][N - 1 - i] = MATRIX[i][j];
+    }
+    return out;
+  }
+  
+  const TARGET = targetMatrix();
+  
+  function buildSteps() {
+    const m = MATRIX.map(function (row) { return row.slice(); });
+    const steps = [];
+    const done = [];
+  
+    function snapshot(extra) {
+      return Object.assign({
+        matrix: m.map(function (row) { return row.slice(); }),
+        done: done.map(function (p) { return p.slice(); }),
+        a: null, b: null,
+        phase: 'transpose'
+      }, extra);
+    }
+  
+    function markDone(cells) {
+      cells.forEach(function (p) {
+        for (let i = 0; i < done.length; i++) {
+          if (done[i][0] === p[0] && done[i][1] === p[1]) return;
+        }
+        done.push(p.slice());
+      });
+    }
+  
+    steps.push(snapshot({
+      kind: 'init',
+      note: '初始矩阵。原地旋转分两步：先沿主对角线转置（(i,j) ↔ (j,i)），再把每一行水平翻转，两步合起来恰好是 (i,j) → (j, n-1-i)，即顺时针 90°。'
+    }));
+  
+    steps.push(snapshot({
+      kind: 'phase', phase: 'transpose',
+      note: '第一步：转置。只遍历上三角（j > i），把 matrix[i][j] 与对称位置 matrix[j][i] 交换；对角线上元素自己和自己交换，无需处理。'
+    }));
+  
+    for (let i = 0; i < N; i++) {
+      for (let j = i + 1; j < N; j++) {
+        const va = m[i][j], vb = m[j][i];
+        steps.push(snapshot({
+          kind: 'swap-before', phase: 'transpose', a: [i, j], b: [j, i],
+          note: '比较对称位置：(' + i + ',' + j + ') = ' + va + ' 与 (' + j + ',' + i + ') = ' + vb + '，它们不是同一个格子，需要交换。'
+        }));
+        m[i][j] = vb;
+        m[j][i] = va;
+        markDone([[i, j], [j, i]]);
+        steps.push(snapshot({
+          kind: 'swap-after', phase: 'transpose', a: [i, j], b: [j, i],
+          note: '交换完成：(' + i + ',' + j + ') 变成 ' + vb + '，(' + j + ',' + i + ') 变成 ' + va + '。这两个格子的最终值已经确定。'
+        }));
+      }
+    }
+  
+    steps.push(snapshot({
+      kind: 'phase', phase: 'transpose',
+      note: '转置完成，矩阵变为 [' + m.map(function (r) { return '[' + r.join(',') + ']'; }).join(', ') + ']。注意转置只把列变成行，顺序还是反的。'
+    }));
+  
+    steps.push(snapshot({
+      kind: 'phase', phase: 'reverse',
+      note: '第二步：水平翻转。对每一行用左右双指针 j 与 n-1-j 交换，把行首行尾互换，就得到顺时针 90° 的结果。'
+    }));
+  
+    for (let i = 0; i < N; i++) {
+      for (let j = 0; j < Math.floor(N / 2); j++) {
+        const k = N - 1 - j;
+        const va = m[i][j], vb = m[i][k];
+        steps.push(snapshot({
+          kind: 'swap-before', phase: 'reverse', a: [i, j], b: [i, k],
+          note: '第 ' + i + ' 行：比较左端 (' + i + ',' + j + ') = ' + va + ' 与右端 (' + i + ',' + k + ') = ' + vb + '，左右互换。'
+        }));
+        m[i][j] = vb;
+        m[i][k] = va;
+        const rowDone = [];
+        for (let t = 0; t < N; t++) rowDone.push([i, t]);
+        markDone(rowDone);
+        steps.push(snapshot({
+          kind: 'swap-after', phase: 'reverse', a: [i, j], b: [i, k],
+          note: '第 ' + i + ' 行交换完成：(' + i + ',' + j + ') = ' + vb + '，(' + i + ',' + k + ') = ' + va + '，该行处理完毕。'
+        }));
+      }
+    }
+  
+    steps.push(snapshot({
+      kind: 'done', phase: 'done',
+      note: '旋转完成。最终矩阵为 [' + m.map(function (r) { return '[' + r.join(',') + ']'; }).join(', ') +
+        ']，与目标矩阵一致。整个过程只用了常数个临时变量，空间复杂度 O(1)。'
+    }));
+  
+    return steps;
+  }
+  
+  function isDone(step, r, c) {
+    for (let i = 0; i < step.done.length; i++) {
+      if (step.done[i][0] === r && step.done[i][1] === c) return true;
+    }
+    return false;
+  }
+  
+  function matrixGrid(step, big) {
+    const grid = Demo.el('div', 'grid');
+    const size = big ? 52 : 34;
+    grid.style.gridTemplateColumns = 'repeat(' + N + ', ' + size + 'px)';
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        const cell = Demo.el('div', 'grid-cell', Demo.esc(step.matrix[r][c]));
+        cell.style.minWidth = size + 'px';
+        cell.style.height = size + 'px';
+        cell.style.fontSize = big ? '18px' : '13px';
+        if (big) {
+          if (step.a && step.a[0] === r && step.a[1] === c) cell.classList.add('is-active');
+          else if (step.b && step.b[0] === r && step.b[1] === c) cell.classList.add('is-pink');
+          else if (step.kind === 'done' || isDone(step, r, c)) cell.classList.add('is-ok');
+        } else {
+          if (step.kind === 'done') cell.classList.add('is-ok');
+        }
+        grid.appendChild(cell);
+      }
+    }
+    return grid;
+  }
+  
+  Demo.create({
+    title: '36. 旋转图像 — 先转置，再逐行翻转',
+    info: '输入：3×3 矩阵 [[1,2,3],[4,5,6],[7,8,9]]，要求原地顺时针旋转 90°（不许开新矩阵）。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    legend: [
+      { color: 'var(--demo-accent)', label: '交换位置 A' },
+      { color: 'var(--demo-pink)', label: '交换位置 B' },
+      { color: 'var(--demo-ok)', label: '已确定的格子' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div', 'row');
+      wrap.style.alignItems = 'flex-start';
+      wrap.style.gap = '24px';
+  
+      const left = Demo.el('div', 'col');
+      left.appendChild(Demo.el('div', 'panel__title',
+        step.phase === 'reverse' ? '当前矩阵（正在水平翻转）' :
+        step.phase === 'done' ? '当前矩阵（最终结果）' : '当前矩阵（转置中）'));
+      left.appendChild(matrixGrid(step, true));
+      wrap.appendChild(left);
+  
+      const right = Demo.el('div', 'col');
+      right.appendChild(Demo.el('div', 'panel__title', '目标：顺时针旋转 90°'));
+      const ref = Demo.el('div', 'grid');
+      ref.style.gridTemplateColumns = 'repeat(' + N + ', 34px)';
+      for (let r = 0; r < N; r++) {
+        for (let c = 0; c < N; c++) {
+          const cell = Demo.el('div', 'grid-cell', Demo.esc(TARGET[r][c]));
+          cell.style.minWidth = '34px';
+          cell.style.height = '34px';
+          cell.style.fontSize = '13px';
+          cell.classList.add('is-dim');
+          if (step.kind === 'done') {
+            cell.classList.remove('is-dim');
+            cell.classList.add('is-ok');
+          }
+          ref.appendChild(cell);
+        }
+      }
+      right.appendChild(ref);
+      wrap.appendChild(right);
+      ctx.stage.appendChild(wrap);
+  
+      const tags = Demo.el('div', 'row');
+      tags.appendChild(Demo.el('div', 'tag' + (step.phase === 'transpose' ? '' : ' tag--warn'),
+        step.phase === 'transpose' ? '阶段 1：转置' : step.phase === 'reverse' ? '阶段 2：水平翻转' : '完成'));
+      if (step.a) {
+        tags.appendChild(Demo.el('div', 'tag tag--violet', 'A = (' + step.a[0] + ',' + step.a[1] + ')'));
+        tags.appendChild(Demo.el('div', 'tag tag--violet', 'B = (' + step.b[0] + ',' + step.b[1] + ')'));
+      }
+      tags.appendChild(Demo.el('div', 'tag tag--info', '空间复杂度 O(1)：只用了常数个临时变量'));
+      ctx.stage.appendChild(tags);
+    }
+  });
+  return Demo.__config
+}

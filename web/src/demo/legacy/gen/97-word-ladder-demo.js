@@ -1,0 +1,311 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/97-word-ladder-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const BEGIN = 'hit';
+  const END = 'cog';
+  const WORD_LIST = ['hot', 'dot', 'dog', 'lot', 'log', 'cog'];
+  const WORD_SET = new Set(WORD_LIST);
+  const NODES = [BEGIN].concat(WORD_LIST.filter(w => w !== BEGIN));
+  const POS = {
+    hit: { x: 70, y: 180 }, hot: { x: 185, y: 180 },
+    dot: { x: 300, y: 95 }, lot: { x: 300, y: 265 },
+    dog: { x: 420, y: 95 }, log: { x: 420, y: 265 },
+    cog: { x: 535, y: 180 }
+  };
+  
+  function hamming(a, b) {
+    let d = 0;
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d += 1;
+    return d;
+  }
+  const EDGES = [];
+  for (let i = 0; i < NODES.length; i++) {
+    for (let j = i + 1; j < NODES.length; j++) {
+      if (hamming(NODES[i], NODES[j]) === 1) EDGES.push([NODES[i], NODES[j]]);
+    }
+  }
+  
+  function fmt(list) {
+    return list.length ? '【' + list.join(', ') + '】' : '（空）';
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const visitedA = new Set([BEGIN]);
+    const visitedB = new Set([END]);
+    const distA = {}; distA[BEGIN] = 0;
+    const distB = {}; distB[END] = 0;
+    const parentA = {}; parentA[BEGIN] = null;
+    const parentB = {}; parentB[END] = null;
+  
+    function chainTo(word, parent) {
+      const out = [word];
+      while (parent[out[0]] != null) out.unshift(parent[out[0]]);
+      return out;
+    }
+    let frontA = new Set([BEGIN]);
+    let frontB = new Set([END]);
+    let layer = 1;
+    let answer = 0;
+  
+    function snap(note, extra) {
+      const step = {
+        frontA: Array.from(frontA), frontB: Array.from(frontB),
+        visitedA: Array.from(visitedA), visitedB: Array.from(visitedB),
+        distA: Object.keys(distA).reduce((m, k) => { m[k] = distA[k]; return m; }, {}),
+        distB: Object.keys(distB).reduce((m, k) => { m[k] = distB[k]; return m; }, {}),
+        layer: layer,
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    snap('初始：beginWord = "' + BEGIN + '"，endWord = "' + END + '"，wordList = ' + JSON.stringify(WORD_LIST) + '。' +
+      '先把所有词放进哈希集合，然后做双向 BFS：起点侧边界 ' + fmt(Array.from(frontA)) + '，终点侧边界 ' + fmt(Array.from(frontB)) + '。' +
+      '两个方向交替向中间扩展，任意一次变化命中另一侧的边界，就说明两条路接上了。');
+  
+    if (!WORD_SET.has(END)) {
+      snap('endWord "' + END + '" 不在 wordList 中，它不是合法状态 → 直接返回 0。', { done: true, answer: 0 });
+      return steps;
+    }
+  
+    while (frontA.size > 0 && frontB.size > 0) {
+      const expandA = frontA.size <= frontB.size;
+      const expandSet = Array.from(expandA ? frontA : frontB);
+      const otherSet = expandA ? frontB : frontA;
+      const expandVisited = expandA ? visitedA : visitedB;
+      const otherVisited = expandA ? visitedB : visitedA;
+      const expandDist = expandA ? distA : distB;
+  
+      snap('新一轮（层数计数 steps = ' + layer + '）：起点侧边界 ' + fmt(Array.from(frontA)) + '（' + frontA.size + ' 个词），' +
+        '终点侧边界 ' + fmt(Array.from(frontB)) + '（' + frontB.size + ' 个词）。' +
+        (expandA ? '起点侧更小（或两边一样大），本轮扩展起点侧。' : '终点侧更小，本轮扩展终点侧——每次都挑更小的一侧扩展，才能让两边尽快相遇。') +
+        ' 被扩展侧每向外走一层，路径长度就 +1。');
+  
+      const nextSet = new Set();
+      let met = null;
+      let metFrom = null;
+      let metCands = null;
+      let bridged = false;
+  
+      for (let wi = 0; wi < expandSet.length && !bridged; wi++) {
+        const word = expandSet[wi];
+        const cands = [];
+        for (let j = 0; j < word.length && !bridged; j++) {
+          for (let ci = 0; ci < 26; ci++) {
+            const ch = String.fromCharCode(97 + ci);
+            if (ch === word[j]) continue;
+            const next = word.slice(0, j) + ch + word.slice(j + 1);
+            if (!WORD_SET.has(next) && !otherSet.has(next)) continue;
+  
+            if (otherSet.has(next)) {
+              cands.push({ word: word, pos: j, ch: ch, next: next, kind: 'meet' });
+              met = next;
+              metFrom = word;
+              metCands = cands;
+              bridged = true;
+              break;
+            }
+            if (expandVisited.has(next) || otherVisited.has(next)) {
+              cands.push({ word: word, pos: j, ch: ch, next: next, kind: 'seen' });
+              continue;
+            }
+            nextSet.add(next);
+            expandVisited.add(next);
+            expandDist[next] = expandDist[word] + 1;
+            if (expandA) parentA[next] = word; else parentB[next] = word;
+            cands.push({ word: word, pos: j, ch: ch, next: next, kind: 'new' });
+          }
+        }
+  
+        const fresh = cands.filter(c => c.kind === 'new');
+        const seen = cands.filter(c => c.kind === 'seen');
+        const hit = cands.filter(c => c.kind === 'meet');
+        let note = '扩展 ' + (expandA ? '起点侧' : '终点侧') + '的词 "' + word + '"：把 3 个位置分别换成 a~z，共 26×3 种可能，' +
+          '只有当结果既在 wordList 里（或被另一侧探索过）时才有意义。';
+        if (fresh.length) note += ' 新词 ' + fresh.map(c => '"' + c.next + '"').join('、') + ' 加入本侧下一层边界。';
+        if (seen.length) note += ' ' + seen.map(c => '"' + c.next + '"').join('、') + ' 已经访问过，跳过（避免绕圈）。';
+        if (hit.length) note += ' 其中 "' + hit[0].next + '" 已经在另一侧的边界里 → 两侧搜索相遇！';
+        snap(note, { cur: word, cands: cands, expandA: expandA, met: met });
+      }
+  
+      if (met) {
+        answer = layer + 1;
+        const dA = distA[metFrom];
+        const dB = distB[met] == null ? 0 : distB[met];
+        const path = chainTo(metFrom, parentA).concat(chainTo(met, parentB).reverse());
+        snap('相遇发生在 "' + metFrom + '" → "' + met + '" 这条边上："' + metFrom + '" 距 beginWord ' + dA + ' 步，"' + met +
+          '" 距 endWord ' + dB + ' 步。此前两侧累计扩展 ' + (layer - 1) + ' 次，这是第 ' + layer + ' 次扩展（steps = ' + layer +
+          '）并且正好命中另一侧。这条边把两条搜索路径接上，最短转换序列就是 ' + path.join(' → ') + '，长度 ' + answer + ' → 返回 ' + answer + '。',
+          { cur: metFrom, cands: metCands, expandA: expandA, met: met, done: true, answer: answer, path: path });
+        break;
+      }
+  
+      if (expandA) frontA = nextSet;
+      else frontB = nextSet;
+      layer += 1;
+      snap('本轮结束：' + (expandA ? '起点' : '终点') + '侧边界更新为 ' + fmt(Array.from(expandA ? frontA : frontB)) +
+        '，层数计数 steps 变为 ' + layer + '。继续交替扩展。', { expandA: expandA });
+    }
+  
+    if (!answer) {
+      snap('两侧边界中有一侧已经为空，说明从 beginWord 出发能到达的词与 endWord 完全不连通 → 返回 0。', { done: true, answer: 0 });
+    }
+    return steps;
+  }
+  
+  function graphSvg(step) {
+    const inA = w => step.visitedA.indexOf(w) >= 0;
+    const inB = w => step.visitedB.indexOf(w) >= 0;
+    let out = '';
+  
+    EDGES.forEach(pair => {
+      const a = pair[0];
+      const b = pair[1];
+      let color = 'var(--demo-border)';
+      let width = 2;
+      if (step.met && ((a === step.cur && b === step.met) || (b === step.cur && a === step.met))) {
+        color = 'var(--demo-ok)';
+        width = 4;
+      } else if (inA(a) && inA(b)) {
+        color = 'var(--demo-accent)';
+        width = 3;
+      } else if (inB(a) && inB(b)) {
+        color = 'var(--demo-pink)';
+        width = 3;
+      }
+      const p = POS[a];
+      const q = POS[b];
+      out += '<line x1="' + p.x + '" y1="' + p.y + '" x2="' + q.x + '" y2="' + q.y +
+        '" style="stroke:' + color + ';stroke-width:' + width + '"/>';
+    });
+  
+    NODES.forEach(w => {
+      const p = POS[w];
+      let fill = 'var(--demo-subtle)';
+      let text = 'var(--demo-text)';
+      let ring = null;
+      if (step.met === w) { fill = 'var(--demo-ok)'; text = 'var(--demo-card)'; }
+      else if (inA(w)) { fill = 'var(--demo-accent)'; text = 'var(--demo-card)'; }
+      else if (inB(w)) { fill = 'var(--demo-pink)'; text = 'var(--demo-card)'; }
+      if (step.frontA.indexOf(w) >= 0) ring = 'var(--demo-accent)';
+      if (step.frontB.indexOf(w) >= 0) ring = 'var(--demo-pink)';
+      if (step.cur === w) ring = 'var(--demo-warn)';
+      if (ring) {
+        out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="35" style="fill:none;stroke:' + ring + ';stroke-width:3"/>';
+      }
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="30" style="fill:' + fill +
+        ';stroke:var(--demo-border);stroke-width:2"/>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle" style="fill:' + text +
+        ';font:600 14px monospace">' + w + '</text>';
+    });
+  
+    return '<div style="width:100%"><svg viewBox="0 0 610 350" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+  }
+  
+  function candidateColumn(cand) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(cand.next));
+    if (cand.kind === 'meet') cell.classList.add('is-ok');
+    else if (cand.kind === 'new') cell.classList.add('is-info');
+    else cell.classList.add('is-warn');
+    col.appendChild(cell);
+    col.appendChild(Demo.el('div', 'ptr', '第 ' + (cand.pos + 1) + ' 位 ' + cand.word[cand.pos] + '→' + cand.ch));
+    if (cand.kind === 'meet') col.appendChild(Demo.el('div', 'tag tag--ok', '命中另一侧'));
+    else if (cand.kind === 'new') col.appendChild(Demo.el('div', 'tag tag--info', '加入边界'));
+    else col.appendChild(Demo.el('div', 'tag tag--warn', '已访问'));
+    return col;
+  }
+  
+  Demo.create({
+    title: '97. 单词接龙 — 双向 BFS 两边界相遇',
+    info: 'beginWord = "hit"，endWord = "cog"，wordList = ' + JSON.stringify(WORD_LIST) + '；返回最短转换序列的长度（示例 1 为 5）。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 520,
+    legend: [
+      { color: 'var(--demo-accent)', label: '起点侧已扩展的词' },
+      { color: 'var(--demo-pink)', label: '终点侧已扩展的词' },
+      { color: 'var(--demo-warn)', label: '本轮正在扩展的词' },
+      { color: 'var(--demo-ok)', label: '两侧相遇的边' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = graphSvg(step);
+      ctx.stage.appendChild(wrap);
+  
+      if (step.cands) {
+        const candPanel = Demo.el('div', 'panel');
+        candPanel.style.width = '100%';
+        candPanel.appendChild(Demo.el('div', 'panel__title',
+          '扩展 "' + step.cur + '" 时字典中的候选词（都是只改一个字母、且在 wordList 里的词）'));
+        const row = Demo.el('div', 'row');
+        step.cands.forEach(c => row.appendChild(candidateColumn(c)));
+        candPanel.appendChild(row);
+        ctx.stage.appendChild(candPanel);
+      }
+  
+      if (step.path) {
+        const pathPanel = Demo.el('div', 'panel');
+        pathPanel.style.width = '100%';
+        pathPanel.appendChild(Demo.el('div', 'panel__title', '最短转换序列'));
+        const row = Demo.el('div', 'row');
+        step.path.forEach((w, k) => {
+          if (k > 0) row.appendChild(Demo.el('div', 'arrow', '→'));
+          const cell = Demo.el('div', 'cell', Demo.esc(w));
+          cell.classList.add(k === 0 || k === step.path.length - 1 ? 'is-ok' : 'is-active');
+          row.appendChild(cell);
+        });
+        pathPanel.appendChild(row);
+        ctx.stage.appendChild(pathPanel);
+      }
+  
+      const bottom = Demo.el('div', 'row');
+      bottom.style.width = '100%';
+      bottom.style.alignItems = 'flex-start';
+  
+      const panelA = Demo.el('div', 'panel');
+      panelA.style.flex = '1';
+      panelA.appendChild(Demo.el('div', 'panel__title', '起点侧边界（离 beginWord 的层数）'));
+      const rowA = Demo.el('div', 'row');
+      rowA.style.justifyContent = 'flex-start';
+      step.frontA.forEach(w => {
+        rowA.appendChild(Demo.el('span', 'tag', w + ' (d=' + (step.distA[w] == null ? '?' : step.distA[w]) + ')'));
+      });
+      if (!step.frontA.length) rowA.appendChild(Demo.el('span', 'tag tag--ok', '边界为空 → 不连通'));
+      panelA.appendChild(rowA);
+  
+      const panelB = Demo.el('div', 'panel');
+      panelB.style.flex = '1';
+      panelB.appendChild(Demo.el('div', 'panel__title', '终点侧边界（离 endWord 的层数）'));
+      const rowB = Demo.el('div', 'row');
+      rowB.style.justifyContent = 'flex-start';
+      step.frontB.forEach(w => {
+        rowB.appendChild(Demo.el('span', 'tag', w + ' (d=' + (step.distB[w] == null ? '?' : step.distB[w]) + ')'));
+      });
+      if (!step.frontB.length) rowB.appendChild(Demo.el('span', 'tag tag--ok', '边界为空 → 不连通'));
+      panelB.appendChild(rowB);
+  
+      const status = Demo.el('div', 'panel');
+      status.appendChild(Demo.el('div', 'panel__title', '层数计数'));
+      status.appendChild(Demo.el('div', null, 'steps = <strong>' + step.layer + '</strong>（每次扩展 +1，相遇时返回 steps+1）'));
+      status.appendChild(Demo.el('div', null, '已扩展：起点侧 ' + step.visitedA.length + ' 个词 / 终点侧 ' + step.visitedB.length + ' 个词'));
+      status.appendChild(Demo.el('div', null, step.done
+        ? '<span class="tag tag--ok">返回 ' + step.answer + '</span>'
+        : '<span class="tag tag--info">两侧继续向中间扩展</span>'));
+  
+      bottom.appendChild(panelA);
+      bottom.appendChild(panelB);
+      bottom.appendChild(status);
+      ctx.stage.appendChild(bottom);
+    }
+  });
+  return Demo.__config
+}

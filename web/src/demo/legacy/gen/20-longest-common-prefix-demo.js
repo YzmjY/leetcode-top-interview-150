@@ -1,0 +1,155 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/20-longest-common-prefix-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const STRS = ['flower', 'flow', 'flight'];
+  const MAX_LEN = Math.max.apply(null, STRS.map(function (s) { return s.length; }));
+  
+  function buildSteps() {
+    const steps = [];
+    const first = STRS[0];
+    let prefixLen = 0;
+  
+    steps.push({
+      col: -1, row: -1, ok: true, prefixLen: 0, done: false,
+      note: `初始化：以第一个字符串 "${first}" 为基准做纵向扫描——先固定一列，让其余所有字符串在同一列上依次和它比较；一旦发现不等或某个字符串已经结束，就立刻停止。`
+    });
+  
+    let finished = false;
+  
+    for (let col = 0; col < first.length && !finished; col++) {
+      const ch = first[col];
+      for (let row = 1; row < STRS.length; row++) {
+        const other = row < STRS.length ? STRS[row] : '';
+        const exists = col < other.length;
+        const same = exists && other[col] === ch;
+  
+        if (!same) {
+          steps.push({
+            col: col, row: row, ok: false, prefixLen: col, done: true,
+            otherExists: exists, otherChar: exists ? other[col] : null,
+            note: exists
+              ? `比较第 ${col} 列：基准 strs[0][${col}] = '${ch}'，而 strs[${row}][${col}] = '${other[col]}'，两者不等。说明公共前缀到第 ${col} 列为止，最长公共前缀就是前 ${col} 个字符 "${first.slice(0, col)}"。`
+              : `比较第 ${col} 列：strs[0][${col}] = '${ch}'，但 strs[${row}] = "${other}" 已经结束（长度 ${other.length}）。公共前缀不能比最短的字符串还长，所以最长公共前缀是 "${first.slice(0, col)}"。`
+          });
+          finished = true;
+          break;
+        }
+  
+        steps.push({
+          col: col, row: row, ok: true, prefixLen: col, done: false,
+          otherExists: true, otherChar: other[col],
+          note: `比较第 ${col} 列：strs[0][${col}] = '${ch}' 与 strs[${row}][${col}] = '${other[col]}' 相等，这一列暂时通过，继续和下一个字符串比较。`
+        });
+      }
+      if (!finished) prefixLen = col + 1;
+    }
+  
+    steps.push({
+      col: finished ? steps[steps.length - 1].col : first.length - 1,
+      row: -1, ok: true, prefixLen: prefixLen, done: true, finished: true,
+      note: finished
+        ? `扫描终止。答案 = "${first.slice(0, prefixLen)}"，长度 ${prefixLen}。纵向扫描最多比较所有字符串的总字符数，时间复杂度 O(S)。`
+        : `第一个字符串的每一列都被其余字符串匹配，说明 "${first}" 就是所有字符串的公共前缀，答案 = "${first.slice(0, prefixLen)}"。`
+    });
+  
+    return steps;
+  }
+  
+  function cellState(step, row, col) {
+    if (step.done && step.finished) {
+      return col < step.prefixLen ? 'is-ok' : 'cell--dim';
+    }
+    if (col < step.col) return 'is-ok';
+    if (col > step.col) return 'cell--dim';
+    if (row === 0) return 'is-active';
+    if (row === step.row) return step.ok ? 'is-ok' : 'is-bad';
+    if (row < step.row) return 'is-ok';
+    return 'cell--dim';
+  }
+  
+  Demo.create({
+    title: '20. 最长公共前缀 — 纵向逐列扫描',
+    info: `输入：strs = [${STRS.map(function (s) { return '"' + s + '"'; }).join(', ')}]（示例 1），预期输出 "fl"。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 300,
+    legend: [
+      { color: 'var(--demo-accent)', label: '基准字符串当前列' },
+      { color: 'var(--demo-ok)', label: '已确认匹配' },
+      { color: 'var(--demo-danger)', label: '发现不匹配 / 字符串已结束' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const grid = Demo.el('div', 'grid');
+      grid.style.gridTemplateColumns = 'auto repeat(' + MAX_LEN + ', minmax(0, 1fr))';
+      grid.style.width = '100%';
+  
+      grid.appendChild(Demo.el('div', 'ptr ptr--dim', '列'));
+      for (let c = 0; c < MAX_LEN; c++) {
+        const head = Demo.el('div', 'ptr', String(c));
+        if (c === step.col) head.classList.add('ptr--info');
+        else head.classList.add('ptr--dim');
+        grid.appendChild(head);
+      }
+  
+      STRS.forEach(function (word, row) {
+        const label = Demo.el('div', 'ptr', 'strs[' + row + ']');
+        label.classList.add(row === 0 ? 'ptr--info' : 'ptr--dim');
+        grid.appendChild(label);
+        for (let col = 0; col < MAX_LEN; col++) {
+          const exists = col < word.length;
+          const cell = Demo.el('div', 'grid-cell' + (exists ? '' : ' cell--empty'),
+            exists ? Demo.esc(word[col]) : '&nbsp;');
+          cell.classList.add(cellState(step, row, col));
+          grid.appendChild(cell);
+        }
+      });
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.appendChild(Demo.el('div', 'panel__title', '字符串矩阵（行是各字符串，列是字符下标）'));
+      panel.appendChild(grid);
+      ctx.stage.appendChild(panel);
+  
+      const prefix = STRS[0].slice(0, step.prefixLen);
+  
+      const resultRow = Demo.el('div', 'row');
+      resultRow.style.width = '100%';
+  
+      const prefixPanel = Demo.el('div', 'panel');
+      prefixPanel.style.flex = '1';
+      prefixPanel.appendChild(Demo.el('div', 'panel__title', '已确认的公共前缀'));
+      const prefixRow = Demo.el('div', 'row');
+      if (prefix.length) {
+        prefix.split('').forEach(function (ch) {
+          prefixRow.appendChild(Demo.el('div', 'cell cell--sm is-ok', Demo.esc(ch)));
+        });
+      }
+      prefixRow.appendChild(Demo.el('span', 'tag ' + (step.done ? 'tag--ok' : ''), '"' + prefix + '"'));
+      prefixPanel.appendChild(prefixRow);
+      resultRow.appendChild(prefixPanel);
+  
+      const statusPanel = Demo.el('div', 'panel');
+      statusPanel.style.flex = '1';
+      statusPanel.style.textAlign = 'center';
+      statusPanel.appendChild(Demo.el('div', 'panel__title', '当前动作'));
+      if (step.done && step.row === -1) {
+        statusPanel.innerHTML += '<span class="tag tag--ok">扫描结束，前缀长度 ' + step.prefixLen + '</span>';
+      } else if (step.col < 0) {
+        statusPanel.innerHTML += '<span class="tag tag--info">尚未开始</span>';
+      } else if (step.done) {
+        statusPanel.innerHTML += '<span class="tag tag--bad">第 ' + step.col + ' 列中断</span>';
+      } else {
+        statusPanel.innerHTML += '<span class="tag tag--info">比较第 ' + step.col + ' 列 · strs[' + step.row + ']</span>';
+      }
+      resultRow.appendChild(statusPanel);
+  
+      ctx.stage.appendChild(resultRow);
+    }
+  });
+  return Demo.__config
+}

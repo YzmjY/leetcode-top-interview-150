@@ -1,0 +1,217 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/147-edit-distance-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const WORD1 = 'horse';
+  const WORD2 = 'ros';
+  const M = WORD1.length;
+  const N = WORD2.length;
+  
+  function buildSteps() {
+    const dp = Array.from({ length: M + 1 }, () => Array(N + 1).fill(0));
+    const filled = Array.from({ length: M + 1 }, () => Array(N + 1).fill(false));
+    const steps = [];
+  
+    function snap(note, cur, srcs, best, formula, formulaTitle) {
+      steps.push({
+        dp: dp.map(r => r.slice()),
+        filled: filled.map(r => r.slice()),
+        cur: cur,
+        srcs: srcs || [],
+        best: best || [],
+        formula: formula || '',
+        formulaTitle: formulaTitle || '',
+        note: note,
+        done: false
+      });
+    }
+  
+    filled[0][0] = true;
+    snap(
+      '初始化 (m+1)×(n+1) 的 dp 表。dp[i][j] 表示把 word1 的前 i 个字符变成 word2 的前 j 个字符所需的最少操作数；dp[0][0]=0 表示两个空串已经相等。',
+      null, [], [],
+      'dp[0][0] = 0（空串 → 空串）', '初始状态'
+    );
+  
+    for (let i = 1; i <= M; i++) {
+      filled[i][0] = true;
+      dp[i][0] = i;
+      snap(
+        `填边界列：dp[${i}][0] = ${i}。word1 的前 ${i} 个字符要变成空串，只能一个一个删除，共 ${i} 次，所以它只能由上一格 dp[${i - 1}][0] = ${i - 1} 加一次删除得到。`,
+        [i, 0], [[i - 1, 0]], [[i - 1, 0]],
+        `dp[${i}][0] = dp[${i - 1}][0] + 1 = ${i - 1} + 1 = ${i}（删除 word1[${i - 1}]='${WORD1[i - 1]}'）`,
+        '边界：删除 ' + i + ' 个字符'
+      );
+    }
+  
+    for (let j = 1; j <= N; j++) {
+      filled[0][j] = true;
+      dp[0][j] = j;
+      snap(
+        `填边界行：dp[0][${j}] = ${j}。空串要变成 word2 的前 ${j} 个字符，只能一个一个插入，共 ${j} 次，所以它由左一格 dp[0][${j - 1}] = ${j - 1} 加一次插入得到。`,
+        [0, j], [[0, j - 1]], [[0, j - 1]],
+        `dp[0][${j}] = dp[0][${j - 1}] + 1 = ${j - 1} + 1 = ${j}（插入 word2[${j - 1}]='${WORD2[j - 1]}'）`,
+        '边界：插入 ' + j + ' 个字符'
+      );
+    }
+  
+    for (let i = 1; i <= M; i++) {
+      for (let j = 1; j <= N; j++) {
+        const a = WORD1[i - 1];
+        const b = WORD2[j - 1];
+        const up = dp[i - 1][j];
+        const left = dp[i][j - 1];
+        const diag = dp[i - 1][j - 1];
+        filled[i][j] = true;
+  
+        if (a === b) {
+          dp[i][j] = diag;
+          snap(
+            `word1[${i - 1}] = '${a}' 与 word2[${j - 1}] = '${b}' 相同：这个字符不用动，问题缩小为「两个前缀都去掉这个字符」，所以 dp[${i}][${j}] 直接继承左上角 dp[${i - 1}][${j - 1}] = ${diag}。`,
+            [i, j], [[i - 1, j - 1]], [[i - 1, j - 1]],
+            `word1[${i - 1}] == word2[${j - 1}] ⇒ dp[${i}][${j}] = dp[${i - 1}][${j - 1}] = ${dp[i][j]}`,
+            '字符相同：继承左上角'
+          );
+        } else {
+          const mn = Math.min(up, left, diag);
+          dp[i][j] = mn + 1;
+          const best = [];
+          if (up === mn) best.push([i - 1, j]);
+          if (left === mn) best.push([i, j - 1]);
+          if (diag === mn) best.push([i - 1, j - 1]);
+          snap(
+            `word1[${i - 1}] = '${a}' 与 word2[${j - 1}] = '${b}' 不同，三种操作各有一条来源：删除 word1 的 '${a}' ⇒ 上方 dp[${i - 1}][${j}] = ${up}；向 word1 插入 '${b}' ⇒ 左方 dp[${i}][${j - 1}] = ${left}；把 '${a}' 替换成 '${b}' ⇒ 左上 dp[${i - 1}][${j - 1}] = ${diag}。取三者最小 ${mn} 再加 1，得 dp[${i}][${j}] = ${dp[i][j]}。`,
+            [i, j], [[i - 1, j], [i, j - 1], [i - 1, j - 1]], best,
+            `dp[${i}][${j}] = 1 + min(删除=${up}, 插入=${left}, 替换=${diag}) = 1 + ${mn} = ${dp[i][j]}`,
+            '字符不同：三种操作取最小'
+          );
+        }
+      }
+    }
+  
+    steps.push({
+      dp: dp.map(r => r.slice()),
+      filled: filled.map(r => r.slice()),
+      cur: [M, N],
+      srcs: [],
+      best: [[M, N]],
+      formula: `dp[${M}][${N}] = ${dp[M][N]}`,
+      formulaTitle: '最终结果',
+      note: `填表完成，dp[${M}][${N}] = ${dp[M][N]}，即把 "${WORD1}" 转换成 "${WORD2}" 的最少操作数是 ${dp[M][N]}。例如 horse → rorse（替换 h→r）→ rose（删除 r）→ ros（删除 e），共 3 步。时间 O(m×n)，空间 O(m×n)（可滚动优化到 O(n)）。`,
+      done: true
+    });
+  
+    return steps;
+  }
+  
+  function charRow(word, activeIdx, label) {
+    const row = Demo.el('div', 'row');
+    for (let k = 0; k < word.length; k++) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(word[k]));
+      if (k === activeIdx) cell.classList.add('is-active');
+      col.appendChild(cell);
+      const ptr = Demo.el('div', 'ptr', k === activeIdx ? label : '');
+      if (k !== activeIdx) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    }
+    return row;
+  }
+  
+  function headCell(text, idx) {
+    const cell = Demo.el('div', 'grid-cell');
+    cell.style.fontSize = '13px';
+    cell.innerHTML = Demo.esc(text) +
+      (idx === '' ? '' : '<span style="font-size:9px;color:var(--demo-muted);margin-left:2px">' + idx + '</span>');
+    return cell;
+  }
+  
+  function valueCell(step, i, j) {
+    const cell = Demo.el('div', 'grid-cell');
+    const isCur = step.cur && step.cur[0] === i && step.cur[1] === j;
+    const inBest = step.best.some(p => p[0] === i && p[1] === j);
+    const inSrc = step.srcs.some(p => p[0] === i && p[1] === j);
+    if (isCur) cell.classList.add('is-active');
+    else if (inBest) cell.classList.add('is-ok');
+    else if (inSrc) cell.classList.add('is-warn');
+    else if (!step.filled[i][j]) cell.classList.add('is-dim');
+    cell.innerHTML = step.filled[i][j] ? Demo.esc(step.dp[i][j]) : '·';
+    return cell;
+  }
+  
+  function buildGrid(step) {
+    const grid = Demo.el('div', 'grid');
+    grid.style.gridTemplateColumns = 'repeat(' + (N + 2) + ', 46px)';
+  
+    const corner = Demo.el('div', 'grid-cell');
+    corner.style.fontSize = '11px';
+    corner.style.color = 'var(--demo-muted)';
+    corner.innerHTML = 'dp';
+    grid.appendChild(corner);
+  
+    grid.appendChild(headCell('ø', 0));
+    for (let j = 1; j <= N; j++) grid.appendChild(headCell(WORD2[j - 1], j));
+  
+    for (let i = 0; i <= M; i++) {
+      grid.appendChild(headCell(i === 0 ? 'ø' : WORD1[i - 1], i));
+      for (let j = 0; j <= N; j++) grid.appendChild(valueCell(step, i, j));
+    }
+    return grid;
+  }
+  
+  Demo.create({
+    title: '147. 编辑距离 — 二维 DP 逐格填表',
+    info: `输入：word1 = "${WORD1}"（m=${M}），word2 = "${WORD2}"（n=${N}）。dp[i][j] = word1 前 i 个字符转成 word2 前 j 个字符的最少操作数。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 360,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前计算的 dp[i][j]' },
+      { color: 'var(--demo-ok)', label: '被采用的转移来源' },
+      { color: 'var(--demo-warn)', label: '参与比较的候选来源' },
+      { color: 'var(--demo-muted)', label: '尚未填入的格子' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      if (step.cur && step.cur[0] >= 1 && step.cur[1] >= 1) {
+        const panel = Demo.el('div', 'panel');
+        panel.style.width = '100%';
+        panel.appendChild(Demo.el('div', 'panel__title',
+          `当前比较：word1[${step.cur[0] - 1}] 与 word2[${step.cur[1] - 1}]`));
+        const row = Demo.el('div', 'row');
+        row.appendChild(charRow(WORD1, step.cur[0] - 1, 'i'));
+        row.appendChild(Demo.el('div', 'arrow', '↔'));
+        row.appendChild(charRow(WORD2, step.cur[1] - 1, 'j'));
+        panel.appendChild(row);
+        ctx.stage.appendChild(panel);
+      }
+  
+      const gridPanel = Demo.el('div', 'panel');
+      gridPanel.style.width = '100%';
+      gridPanel.appendChild(Demo.el('div', 'panel__title',
+        'dp 表（第 i 行对应 word1 的前 i 个字符，第 j 列对应 word2 的前 j 个字符）'));
+      gridPanel.appendChild(buildGrid(step));
+      ctx.stage.appendChild(gridPanel);
+  
+      if (step.formula) {
+        const formulaPanel = Demo.el('div', 'panel');
+        formulaPanel.style.width = '100%';
+        formulaPanel.style.textAlign = 'center';
+        formulaPanel.appendChild(Demo.el('div', 'panel__title', Demo.esc(step.formulaTitle)));
+        formulaPanel.appendChild(Demo.el('div', null,
+          '<code>' + Demo.esc(step.formula) + '</code>' +
+          (step.done ? ' &nbsp;<span class="tag tag--ok">答案 ' + step.dp[M][N] + '</span>' : '')));
+        formulaPanel.appendChild(Demo.el('div', null,
+          '<span class="tag tag--warn">上方 = 删除</span> &nbsp;' +
+          '<span class="tag tag--info">左方 = 插入</span> &nbsp;' +
+          '<span class="tag tag--violet">左上 = 替换</span>'));
+        ctx.stage.appendChild(formulaPanel);
+      }
+    }
+  });
+  return Demo.__config
+}

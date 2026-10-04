@@ -1,0 +1,181 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/61-reverse-linked-list-ii-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const VALS = [1, 2, 3, 4, 5];
+  const LEFT = 2;
+  const RIGHT = 4;
+  
+  function buildSteps() {
+    const nodes = VALS.map((v, k) => ({ val: v, idx: k, next: null }));
+    for (let k = 0; k + 1 < nodes.length; k++) nodes[k].next = nodes[k + 1];
+    const dummy = { val: null, idx: -1, dummy: true, next: nodes[0] };
+  
+    const order = () => {
+      const arr = [];
+      let cur = dummy;
+      let guard = 0;
+      while (cur && guard < 20) { arr.push(cur.idx); cur = cur.next; guard += 1; }
+      return arr;
+    };
+    const valueOf = idx => (idx < 0 ? 'dummy' : VALS[idx]);
+    const nameOf = idx => '节点 ' + valueOf(idx);
+  
+    const steps = [];
+    let pre = dummy;
+    let cur = null;
+    let move = null;
+    let inserted = 0;
+  
+    steps.push({
+      order: order(), pre: -1, cur: null, move: null, inserted: 0, phase: 'init', done: false,
+      note: '初始化：dummy 指向头节点，pre 从 dummy 出发。要反转的是位置 ' + LEFT + ' 到 ' + RIGHT +
+        '（值为 ' + VALS.slice(LEFT - 1, RIGHT).join('、') + '）这一段。加 dummy 是为了让 left = 1（从头反转）时不用特判。'
+    });
+  
+    for (let k = 0; k < LEFT - 1; k++) pre = pre.next;
+    cur = pre.next;
+    steps.push({
+      order: order(), pre: pre.idx, cur: cur ? cur.idx : null, move: null, inserted: 0, phase: 'walk', done: false,
+      note: 'pre 从 dummy 走 left - 1 = ' + (LEFT - 1) + ' 步，停在 ' + nameOf(pre.idx) +
+        '，它就是待反转段的前驱；cur = pre.Next = ' + nameOf(cur.idx) +
+        '，是待反转段的第一个节点，反转后它会变成这一段的尾巴。'
+    });
+  
+    for (let t = 0; t < RIGHT - LEFT; t++) {
+      move = cur.next;
+      cur.next = move.next;
+      move.next = pre.next;
+      pre.next = move;
+      inserted += 1;
+      steps.push({
+        order: order(), pre: pre.idx, cur: cur.idx, move: move.idx, inserted: inserted, phase: 'insert', done: false,
+        note: '头插第 ' + inserted + ' 次（共需 ' + (RIGHT - LEFT) + ' 次）：把 cur.Next 处的 ' + nameOf(move.idx) +
+          ' 摘下来——令 cur.Next = move.Next 跳过它，再令 move.Next = pre.Next 接回原段的头部，最后 pre.Next = move 把它挂到 pre 后面。' +
+          ' 链表变成 [' + order().map(valueOf).join(', ') + ']。cur 保持不动，仍指向 ' + nameOf(cur.idx) +
+          '，它始终是已反转部分的尾巴。'
+      });
+    }
+  
+    steps.push({
+      order: order(), pre: pre.idx, cur: cur ? cur.idx : null, move: move ? move.idx : null, inserted: inserted,
+      phase: 'done', done: true,
+      note: '头插 ' + (RIGHT - LEFT) + ' 次后，位置 ' + LEFT + '..' + RIGHT + ' 已完成反转，返回 dummy.Next = [' +
+        order().slice(1).map(valueOf).join(', ') + ']。整个过程只调整 next 指针，没有新建节点，一次遍历，时间 O(n)、额外空间 O(1)。'
+    });
+  
+    return steps;
+  }
+  
+  function applyTone(node, tone) {
+    const tones = {
+      accent: ['var(--demo-accent-soft)', 'var(--demo-accent)'],
+      violet: ['var(--demo-violet-soft)', 'var(--demo-violet)'],
+      pink: ['var(--demo-pink-soft)', 'var(--demo-pink)'],
+      info: ['var(--demo-info-soft)', 'var(--demo-info)'],
+      ok: ['var(--demo-ok-soft)', 'var(--demo-ok)']
+    };
+    const pair = tones[tone];
+    if (!pair) return;
+    node.style.background = pair[0];
+    node.style.borderColor = pair[1];
+  }
+  
+  function col(item) {
+    const box = Demo.el('div', 'col');
+    const tag = Demo.el('div', 'ptr', Demo.esc(item.label));
+    tag.classList.add('ptr--dim');
+    tag.style.minWidth = '46px';
+    box.appendChild(tag);
+  
+    const node = Demo.el('div', 'll-node');
+    node.style.width = '48px';
+    node.style.flex = 'none';
+    if (item.dummy) {
+      node.style.borderStyle = 'dashed';
+      node.style.fontSize = '11px';
+    }
+    node.innerHTML = Demo.esc(item.text);
+    if (item.cls) node.classList.add(item.cls);
+    applyTone(node, item.tone);
+    box.appendChild(node);
+  
+    const ptr = Demo.el('div', 'ptr', Demo.esc(item.ptr || ''));
+    ptr.style.minWidth = '46px';
+    if (!item.ptr) ptr.classList.add('ptr--dim');
+    if (item.ptrCls) ptr.classList.add(item.ptrCls);
+    box.appendChild(ptr);
+    return box;
+  }
+  
+  Demo.create({
+    title: '61. 反转链表 II — 一次遍历的头插法（穿针引线）',
+    info: '输入：head = [' + VALS.join(', ') + ']，left = ' + LEFT + ', right = ' + RIGHT +
+      '。只需把 next 指针重新接线：pre 停在待反转段之前，cur 固定为已反转部分的尾巴，每次把 cur 后面的节点「拔出」再插到 pre 后面。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 300,
+    legend: [
+      { color: 'var(--demo-violet)', label: 'pre：待反转段的前驱' },
+      { color: 'var(--demo-accent)', label: 'cur：已反转部分的尾巴' },
+      { color: 'var(--demo-pink)', label: 'move：本步被拔出的节点' },
+      { color: 'var(--demo-info)', label: '待反转区间内的节点' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.appendChild(Demo.el('div', 'panel__title',
+        '当前链表（从左到右就是 next 的顺序，按原下标标注节点身份）'));
+      const row = Demo.el('div', 'row');
+      step.order.forEach((idx, k) => {
+        if (k > 0) {
+          const arrow = Demo.el('div', 'arrow', '→');
+          arrow.style.width = '22px';
+          arrow.style.textAlign = 'center';
+          row.appendChild(arrow);
+        }
+        const label = idx < 0 ? 'dummy' : '原 #' + idx;
+        const text = idx < 0 ? 'dummy' : VALS[idx];
+        const inRange = idx >= LEFT - 1 && idx <= RIGHT - 1;
+        let tone = inRange ? 'info' : '';
+        if (idx === step.pre) tone = 'violet';
+        if (idx === step.cur) tone = 'accent';
+        if (idx === step.move) tone = 'pink';
+  
+        const ptrLabels = [];
+        if (idx === step.pre) ptrLabels.push('pre');
+        if (idx === step.cur) ptrLabels.push('cur');
+        if (idx === step.move) ptrLabels.push('move');
+        let ptrCls = '';
+        if (idx === step.pre) ptrCls = 'ptr--violet';
+        else if (idx === step.move) ptrCls = 'ptr--pink';
+  
+        row.appendChild(col({
+          label: label,
+          text: text,
+          dummy: idx < 0,
+          tone: tone,
+          ptr: ptrLabels.join(' '),
+          ptrCls: ptrCls
+        }));
+      });
+      panel.appendChild(row);
+      ctx.stage.appendChild(panel);
+  
+      const info = Demo.el('div', 'panel');
+      info.style.width = '100%';
+      info.style.textAlign = 'center';
+      info.innerHTML = '反转区间：位置 ' + LEFT + '..' + RIGHT + '（原下标 ' + (LEFT - 1) + '..' + (RIGHT - 1) + '）　｜　' +
+        'pre = ' + (step.pre < 0 ? 'dummy' : VALS[step.pre]) + '　｜　' +
+        'cur = ' + (step.cur == null ? '—' : VALS[step.cur]) + '　｜　' +
+        '已完成头插 <strong>' + step.inserted + '</strong> / ' + (RIGHT - LEFT) +
+        '　' + (step.done ? '<span class="tag tag--ok">完成</span>' : '<span class="tag tag--warn">继续</span>');
+      ctx.stage.appendChild(info);
+    }
+  });
+  return Demo.__config
+}

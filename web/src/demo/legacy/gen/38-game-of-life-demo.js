@@ -1,0 +1,171 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/38-game-of-life-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const BOARD = [
+    [0, 1, 0],
+    [0, 0, 1],
+    [1, 1, 1],
+    [0, 0, 0]
+  ];
+  const M = BOARD.length;
+  const N = BOARD[0].length;
+  
+  const DIRS = [
+    [-1, -1], [-1, 0], [-1, 1],
+    [0, -1], [0, 1],
+    [1, -1], [1, 0], [1, 1]
+  ];
+  
+  const STATE_NAME = { 0: '死→死', 1: '活→活', 2: '活→死', 3: '死→活' };
+  
+  function isLive(v) {
+    return v === 1 || v === 2;
+  }
+  
+  function buildSteps() {
+    const board = BOARD.map(function (row) { return row.slice(); });
+    const steps = [];
+  
+    function snapshot(extra) {
+      return Object.assign({
+        board: board.map(function (row) { return row.slice(); }),
+        cell: null,
+        neighbors: [],
+        live: 0,
+        before: null,
+        after: null
+      }, extra);
+    }
+  
+    steps.push(snapshot({
+      kind: 'init',
+      note: '初始面板（示例 1）。为了原地更新，算法用 4 个编码值表示状态：0=死→死，1=活→活，2=活→死，3=死→活。统计邻居时 1 和 2 都算「原来是活的」。'
+    }));
+  
+    for (let i = 0; i < M; i++) {
+      for (let j = 0; j < N; j++) {
+        const self = board[i][j];
+        let live = 0;
+        const neighbors = [];
+        for (let d = 0; d < DIRS.length; d++) {
+          const ni = i + DIRS[d][0];
+          const nj = j + DIRS[d][1];
+          if (ni < 0 || ni >= M || nj < 0 || nj >= N) continue;
+          neighbors.push([ni, nj]);
+          if (isLive(board[ni][nj])) live++;
+        }
+        let next = self;
+        let reason;
+        if (isLive(self)) {
+          if (live < 2) { next = 2; reason = '活细胞但只有 ' + live + ' 个活邻居（少于 2），孤独死亡，编码为 2'; }
+          else if (live > 3) { next = 2; reason = '活细胞但有 ' + live + ' 个活邻居（多于 3），拥挤死亡，编码为 2'; }
+          else { next = 1; reason = '活细胞有 ' + live + ' 个活邻居（2 或 3），继续存活，编码为 1'; }
+        } else {
+          if (live === 3) { next = 3; reason = '死细胞周围正好 3 个活细胞，复活，编码为 3'; }
+          else { next = 0; reason = '死细胞周围只有 ' + live + ' 个活细胞（不是 3），保持死亡，编码为 0'; }
+        }
+        board[i][j] = next;
+        steps.push(snapshot({
+          kind: 'calc', cell: [i, j], neighbors: neighbors, live: live, before: self, after: next,
+          note: '第一遍 · 统计 (' + i + ',' + j + ') 周围的 8 个格子：共 ' + live + ' 个活细胞。该格原本是' +
+            (isLive(self) ? '活' : '死') + '细胞，' + reason + '。注意此时不能直接写最终值，否则会影响后面格子的邻居统计。'
+        }));
+      }
+    }
+  
+    for (let i = 0; i < M; i++) {
+      const rowCells = [];
+      for (let j = 0; j < N; j++) {
+        rowCells.push([i, j]);
+        board[i][j] %= 2;
+      }
+      steps.push(snapshot({
+        kind: 'flip', row: i, cell: [i, 0], flipRow: rowCells,
+        note: '第二遍 · 第 ' + i + ' 行统一解码：编码值对 2 取模（2→0、3→1），这一行的细胞在同一时刻完成生死切换。'
+      }));
+    }
+  
+    steps.push(snapshot({
+      kind: 'done', cell: null,
+      note: '完成。最终面板为 [' + board.map(function (r) { return '[' + r.join(',') + ']'; }).join(', ') +
+        ']，与题目示例 1 的输出一致。整个过程原地完成，额外空间 O(1)。'
+    }));
+  
+    return steps;
+  }
+  
+  function cellClass(step, r, c) {
+    const v = step.board[r][c];
+    if (step.cell && step.cell[0] === r && step.cell[1] === c) return 'is-active';
+    if (step.kind === 'flip') {
+      if (step.row === r) return 'is-active';
+      return v === 1 ? 'is-ok' : (v === 2 ? 'is-bad' : (v === 3 ? 'is-violet' : 'is-dim'));
+    }
+    for (let k = 0; k < step.neighbors.length; k++) {
+      if (step.neighbors[k][0] === r && step.neighbors[k][1] === c) return 'is-info';
+    }
+    if (v === 1) return 'is-ok';
+    if (v === 2) return 'is-bad';
+    if (v === 3) return 'is-violet';
+    return 'is-dim';
+  }
+  
+  function stateText(step, r, c) {
+    if (step.kind === 'init' || step.kind === 'done') return step.board[r][c] === 1 ? '1' : '0';
+    return String(step.board[r][c]);
+  }
+  
+  Demo.create({
+    title: '38. 生命游戏 — 状态编码实现原地同时更新',
+    info: '输入：4×3 面板 [[0,1,0],[0,0,1],[1,1,1],[0,0,0]]，要求原地求出下一状态（生死必须同时发生）。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前统计的格子' },
+      { color: 'var(--demo-info)', label: '当前格的 8 个邻居' },
+      { color: 'var(--demo-ok)', label: '1 活→活' },
+      { color: 'var(--demo-danger)', label: '2 活→死' },
+      { color: 'var(--demo-violet)', label: '3 死→活' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const grid = Demo.el('div', 'grid');
+      grid.style.gridTemplateColumns = 'repeat(' + N + ', 52px)';
+      for (let r = 0; r < M; r++) {
+        for (let c = 0; c < N; c++) {
+          const cls = cellClass(step, r, c);
+          const cell = Demo.el('div', 'grid-cell' + (cls ? ' ' + cls : ''), stateText(step, r, c));
+          cell.style.minWidth = '52px';
+          cell.style.height = '42px';
+          cell.style.fontSize = '17px';
+          grid.appendChild(cell);
+        }
+      }
+      ctx.stage.appendChild(grid);
+  
+      const tags = Demo.el('div', 'row');
+      if (step.kind === 'calc') {
+        tags.appendChild(Demo.el('div', 'tag tag--info', '邻居活细胞数 = ' + step.live + ' / 8'));
+        tags.appendChild(Demo.el('div', 'tag tag--violet',
+          '原状态 ' + step.before + '（' + (isLive(step.before) ? '活' : '死') + '） → 新编码 ' + step.after + '（' + STATE_NAME[step.after] + '）'));
+        tags.appendChild(Demo.el('div', 'tag', '位置 (' + step.cell[0] + ',' + step.cell[1] + ')'));
+      }
+      if (step.kind === 'flip') {
+        tags.appendChild(Demo.el('div', 'tag tag--warn', '第二遍：第 ' + step.row + ' 行对 2 取模'));
+      }
+      if (step.kind === 'init') tags.appendChild(Demo.el('div', 'tag', '第一遍：逐格统计邻居并编码'));
+      if (step.kind === 'done') tags.appendChild(Demo.el('div', 'tag tag--ok', '全部细胞已同时更新'));
+      ctx.stage.appendChild(tags);
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.textAlign = 'center';
+      panel.innerHTML = '编码含义：<strong>0</strong> 死→死 · <strong>1</strong> 活→活 · <strong>2</strong> 活→死 · <strong>3</strong> 死→活';
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

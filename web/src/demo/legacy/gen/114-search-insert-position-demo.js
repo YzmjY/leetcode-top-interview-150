@@ -1,0 +1,170 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/114-search-insert-position-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [1, 3, 5, 6];
+  const TARGET = 2;
+  
+  function buildSteps() {
+    const nums = NUMS;
+    const n = nums.length;
+    const steps = [];
+    let left = 0;
+    let right = n;          // 左闭右开区间 [left, right)
+    let checks = 0;
+  
+    steps.push({
+      left: left, right: right, mid: -1, midVal: null, cmp: null,
+      done: false, answer: null, checks: checks,
+      note: `初始化左闭右开区间 [left, right) = [0, ${n})，整个数组都还可能是「第一个 ≥ target 的位置」。区间为空（left == right）时循环结束，left 即为插入位置。目标值 target = ${TARGET}。`
+    });
+  
+    while (left < right) {
+      const mid = left + Math.floor((right - left) / 2);
+      const val = nums[mid];
+      checks += 1;
+      if (val < TARGET) {
+        const oldLeft = left;
+        left = mid + 1;
+        steps.push({
+          left: left, right: right, mid: mid, midVal: val, cmp: 'lt',
+          done: false, answer: null, checks: checks,
+          note: `第 ${checks} 次比较：mid = left + ⌊(right − left) / 2⌋ = ${oldLeft} + ⌊(${right} − ${oldLeft}) / 2⌋ = ${mid}，nums[${mid}] = ${val} < target = ${TARGET}。因为数组升序，mid 及其左边的元素全都小于 target，不可能成为「第一个 ≥ target」的位置，所以丢掉 [${oldLeft}, ${mid}]，令 left = mid + 1 = ${left}，候选区间收缩为 [${left}, ${right})。`
+        });
+      } else {
+        const oldRight = right;
+        right = mid;
+        steps.push({
+          left: left, right: right, mid: mid, midVal: val, cmp: 'ge',
+          done: false, answer: null, checks: checks,
+          note: `第 ${checks} 次比较：mid = left + ⌊(right − left) / 2⌋ = ${left} + ⌊(${oldRight} − ${left}) / 2⌋ = ${mid}，nums[${mid}] = ${val} ≥ target = ${TARGET}。mid 满足条件，可能正是答案，而且它右边不可能有更靠左的答案，所以保留 mid、丢掉 [${mid + 1}, ${oldRight})，令 right = mid = ${right}，候选区间收缩为 [${left}, ${right})。`
+        });
+      }
+    }
+  
+    const answer = left;
+    const exact = answer < n && nums[answer] === TARGET;
+    steps.push({
+      left: left, right: right, mid: -1, midVal: null, cmp: null,
+      done: true, answer: answer, checks: checks,
+      note: `left == right == ${answer}，候选区间为空，循环结束，left 就是第一个 ≥ target 的下标，也就是插入位置 ${answer}。` +
+        (exact
+          ? ` 可以看到 nums[${answer}] == ${TARGET}，target 本来就存在于数组中。`
+          : ` 数组中并不存在 ${TARGET}；把 ${TARGET} 插到下标 ${answer}（${answer} 号元素之前）仍能保持升序${answer === n ? '，即追加到数组末尾' : ''}。`) +
+        ` 一共比较了 ${checks} 次，区间长度每次至少减半，时间复杂度 O(log n)，只用了 left / right / mid 三个变量，空间复杂度 O(1)。`
+    });
+  
+    return steps;
+  }
+  
+  function arrayRow(step) {
+    const n = NUMS.length;
+    const row = Demo.el('div', 'row');
+  
+    for (let idx = 0; idx <= n; idx++) {
+      const atEnd = idx === n;
+      const col = Demo.el('div', 'col');
+  
+      const cell = Demo.el('div', 'cell' + (atEnd ? ' cell--empty' : ''), atEnd ? '' : Demo.esc(NUMS[idx]));
+      if (step.done) {
+        if (idx === step.answer) cell.classList.add('is-ok');
+        else if (idx < step.answer) cell.classList.add('is-info');
+        else cell.classList.add('is-dim');
+      } else if (idx === step.mid) {
+        cell.classList.add('is-active');
+      } else if (idx >= step.left && idx < step.right) {
+        cell.classList.add('is-info');
+      } else {
+        cell.classList.add('is-dim');
+      }
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (!step.done) {
+        if (idx === step.left) labels.push('left');
+        if (idx === step.right) labels.push('right');
+        if (idx === step.mid) labels.push('mid');
+      } else if (idx === step.answer) {
+        labels.push('插入位置');
+      }
+  
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : '#' + idx);
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (step.done && idx === step.answer) ptr.classList.add('ptr--ok');
+      else if (labels.indexOf('mid') >= 0) ptr.classList.add('ptr--warn');
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+    }
+  
+    return row;
+  }
+  
+  function rangeBar(step) {
+    const n = NUMS.length;
+    const bar = Demo.el('div', 'bar');
+    bar.style.width = '100%';
+    const width = Math.max(0, step.right - step.left);
+    bar.innerHTML =
+      '<div class="bar__fill" style="width:' + (width / n) * 100 + '%"></div>' +
+      '<div class="bar__label">候选区间长度 ' + width + ' / ' + n + '</div>';
+    return bar;
+  }
+  
+  Demo.create({
+    title: '114. 搜索插入位置 — lowerBound 二分（左闭右开）',
+    info: `输入：nums = [${NUMS.join(', ')}]（升序、无重复），target = ${TARGET}（示例 2）。要找的是第一个 ≥ target 的位置，也就是 target 的插入位置。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 320,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本轮比较的中点 mid' },
+      { color: 'var(--demo-info)', label: '候选区间 [left, right) 内的元素' },
+      { color: 'var(--demo-ok)', label: '最终插入位置' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const arrayPanel = Demo.el('div', 'panel');
+      arrayPanel.style.width = '100%';
+      arrayPanel.appendChild(Demo.el('div', 'panel__title',
+        step.done
+          ? '数组 nums（空格是数组末尾的下标 n，插入位置可能落在那里）'
+          : `数组 nums（候选区间 [${step.left}, ${step.right})）`));
+      arrayPanel.appendChild(arrayRow(step));
+      ctx.stage.appendChild(arrayPanel);
+  
+      const midPanel = Demo.el('div', 'panel');
+      midPanel.style.width = '100%';
+      let midHtml;
+      if (step.done) {
+        midHtml = '循环结束：left == right，区间内已没有任何元素。';
+      } else if (step.cmp == null) {
+        midHtml = '还未开始比较：下一轮会取 mid = left + ⌊(right − left) / 2⌋ 与 target 比较，再决定丢弃左半还是右半。';
+      } else if (step.cmp === 'lt') {
+        midHtml = `本轮判断：nums[${step.mid}] = <code>${step.midVal}</code> < target = <code>${TARGET}</code>` +
+          ' &nbsp;<span class="tag tag--bad">太小，往右找</span> &nbsp;left = mid + 1';
+      } else {
+        midHtml = `本轮判断：nums[${step.mid}] = <code>${step.midVal}</code> ≥ target = <code>${TARGET}</code>` +
+          ' &nbsp;<span class="tag tag--ok">够大，往左收</span> &nbsp;right = mid（mid 保留）';
+      }
+      midPanel.appendChild(Demo.el('div', 'panel__title', '本步动作'));
+      midPanel.appendChild(Demo.el('div', null, midHtml));
+      ctx.stage.appendChild(midPanel);
+  
+      ctx.stage.appendChild(rangeBar(step));
+  
+      const result = Demo.el('div', 'panel',
+        `已比较 <strong>${step.checks}</strong> 次 ｜ 区间 [left, right) = <code>[${step.left}, ${step.right})</code>` +
+        (step.done
+          ? ` &nbsp;<span class="tag tag--ok">插入位置 = ${step.answer}</span>`
+          : ''));
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

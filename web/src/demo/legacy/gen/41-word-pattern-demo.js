@@ -1,0 +1,193 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/41-word-pattern-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const PATTERN = 'abba';
+  const S = 'dog cat cat dog';
+  
+  function buildSteps() {
+    const words = S.split(' ');
+    const steps = [];
+    const p2w = {};
+    const w2p = {};
+    let failed = false;
+    let failAt = -1;
+  
+    function snap(extra) {
+      const step = {
+        p2w: Object.assign({}, p2w),
+        w2p: Object.assign({}, w2p),
+        note: extra.note
+      };
+      Object.keys(extra).forEach(function (key) {
+        if (key !== 'note') step[key] = extra[key];
+      });
+      steps.push(step);
+    }
+  
+    snap({
+      phase: 'length', i: -1, pch: '', word: '', mappedW: null, mappedP: null,
+      conflictPW: false, conflictWP: false,
+      note: `先把 s 按空格切成单词数组：["${words.join('", "')}"]，共 ${words.length} 个。pattern 有 ${PATTERN.length} 个字母。长度不等时一定无法一一对应，所以第一步就是比较两个长度：${PATTERN.length} == ${words.length}，通过，继续往下。`
+    });
+  
+    for (let i = 0; i < PATTERN.length; i++) {
+      const pch = PATTERN[i];
+      const word = words[i];
+      const hasW = Object.prototype.hasOwnProperty.call(p2w, pch);
+      const hasP = Object.prototype.hasOwnProperty.call(w2p, word);
+      const mappedW = hasW ? p2w[pch] : null;
+      const mappedP = hasP ? w2p[word] : null;
+      const conflictPW = hasW && mappedW !== word;
+      const conflictWP = hasP && mappedP !== pch;
+  
+      snap({
+        phase: conflictPW || conflictWP ? 'fail' : 'probe', i: i, pch: pch, word: word,
+        mappedW: mappedW, mappedP: mappedP, conflictPW: conflictPW, conflictWP: conflictWP,
+        note: `读入第 ${i} 组：pattern[${i}] = "${pch}"，words[${i}] = "${word}"。两条方向都要查：` +
+          (conflictPW
+            ? `p2w 里已经有 "${pch}" → "${mappedW}"，现在却要求它对应 "${word}"，同一个模式字母对应了两个不同单词，返回 false。`
+            : (conflictWP
+              ? `w2p 里已经有 "${word}" → "${mappedP}"，现在却要求它对应 "${pch}"，两个不同模式字母对应了同一个单词，返回 false。`
+              : (hasW
+                ? `p2w["${pch}"] = "${mappedW}"，与当前单词一致；`
+                : `p2w 中没有 "${pch}" 的记录；`) +
+                (hasP ? `w2p["${word}"] = "${mappedP}"，与当前模式字母一致，两组映射自洽。` : `w2p 中也没有 "${word}" 的记录，是一组全新的配对。`)))
+      });
+  
+      if (conflictPW || conflictWP) { failed = true; failAt = i; break; }
+  
+      const isNew = !hasW && !hasP;
+      p2w[pch] = word;
+      w2p[word] = pch;
+  
+      snap({
+        phase: 'apply', i: i, pch: pch, word: word, mappedW: word, mappedP: pch,
+        conflictPW: false, conflictWP: false, isNew: isNew,
+        note: isNew
+          ? `写入双向映射：p2w["${pch}"] = "${word}"，w2p["${word}"] = "${pch}"。这两张表就是题目说的「双向连接的映射规律」。`
+          : `"${pch}" ⇄ "${word}" 已经记录过且完全一致，重复写入并不改变内容，继续下一组。`
+      });
+    }
+  
+    snap({
+      phase: 'done', i: failed ? failAt : PATTERN.length, pch: '', word: '',
+      mappedW: null, mappedP: null, conflictPW: false, conflictWP: false, ok: !failed,
+      note: failed
+        ? `在第 ${failAt} 组发现映射矛盾，返回 false。可见「单词数量相同」只是必要条件，真正的判据是双向映射全程自洽。`
+        : `4 组配对全部检查完毕，两张映射表始终自洽，说明 s 遵循 pattern 的规律，返回 true。注意 "abba" 这种模式要求第 0、3 位是同一个单词，第 1、2 位是另一个相同单词，只满足「单词个数相同」是不够的。`
+    });
+  
+    return steps;
+  }
+  
+  function pairPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', '按位配对：pattern 的字母 ↔ s 的单词'));
+  
+    const row = Demo.el('div', 'row');
+    const words = S.split(' ');
+    for (let i = 0; i < PATTERN.length; i++) {
+      const col = Demo.el('div', 'col');
+      const isCur = step.i === i;
+      const isPast = i < step.i;
+      const badHere = step.phase === 'fail' || (step.phase === 'done' && step.ok === false && i === step.i);
+  
+      const inner = Demo.el('div', 'row');
+      const cellP = Demo.el('div', 'cell', Demo.esc(PATTERN[i]));
+      const cellW = Demo.el('div', 'cell', Demo.esc(words[i]));
+      if (isCur && badHere) {
+        cellP.classList.add('is-bad');
+        cellW.classList.add('is-bad');
+      } else if (isCur) {
+        cellP.classList.add('is-active');
+        cellW.classList.add('is-active');
+      } else if (isPast) {
+        cellP.classList.add('is-ok');
+        cellW.classList.add('is-ok');
+      } else if (!isCur) {
+        cellP.classList.add('cell--dim');
+        cellW.classList.add('cell--dim');
+      }
+      inner.appendChild(cellP);
+      inner.appendChild(Demo.el('div', 'arrow', '↔'));
+      inner.appendChild(cellW);
+      col.appendChild(inner);
+  
+      const ptr = Demo.el('div', 'ptr', '第 ' + i + ' 组');
+      if (!isCur) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    }
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  function mapTable(title, map, order, curKey) {
+    const panel = Demo.el('div', 'panel');
+    panel.appendChild(Demo.el('div', 'panel__title', title));
+    let html = '<table class="map-table"><tr><th>键</th><th>映射到</th></tr>';
+    if (order.length === 0) {
+      html += '<tr><td colspan="2">（空）</td></tr>';
+    } else {
+      order.forEach(function (key) {
+        html += '<tr' + (key === curKey ? ' class="is-active"' : '') + '>' +
+          '<td>' + Demo.esc(key) + '</td><td>' + Demo.esc(map[key]) + '</td></tr>';
+      });
+    }
+    html += '</table>';
+    panel.appendChild(Demo.el('div', null, html));
+    return panel;
+  }
+  
+  Demo.create({
+    title: '41. 单词规律 — 字符与单词的双向映射',
+    info: `输入：pattern = "${PATTERN}"，s = "${S}"（示例 1，输出 true）。先比长度，再用 p2w 和 w2p 两张表逐组检查。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 380,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前检查的一组配对' },
+      { color: 'var(--demo-ok)', label: '已检查通过 / 已建立的映射' },
+      { color: 'var(--demo-danger)', label: '映射冲突' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      ctx.stage.appendChild(pairPanel(step));
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-start';
+      const curP = step.phase === 'probe' || step.phase === 'apply' || step.phase === 'fail' ? step.pch : null;
+      const curW = step.phase === 'probe' || step.phase === 'apply' || step.phase === 'fail' ? step.word : null;
+      row.appendChild(mapTable('p2w：pattern 字母 → 单词', step.p2w, Object.keys(step.p2w), curP));
+      row.appendChild(mapTable('w2p：单词 → pattern 字母', step.w2p, Object.keys(step.w2p), curW));
+      ctx.stage.appendChild(row);
+  
+      const state = Demo.el('div', 'panel');
+      state.style.width = '100%';
+      state.style.textAlign = 'center';
+      if (step.phase === 'length') {
+        state.innerHTML = `<span class="tag tag--info">pattern 长度 ${PATTERN.length}</span> &nbsp; = &nbsp; <span class="tag tag--info">单词个数 ${S.split(' ').length}</span> &nbsp;<span class="tag tag--ok">长度检查通过</span>`;
+      } else if (step.phase === 'probe') {
+        const pw = step.mappedW === null ? 'p2w 无记录' : `p2w["${Demo.esc(step.pch)}"] = "${Demo.esc(step.mappedW)}" 一致`;
+        const wp = step.mappedP === null ? 'w2p 无记录' : `w2p["${Demo.esc(step.word)}"] = "${Demo.esc(step.mappedP)}" 一致`;
+        state.innerHTML = `<span class="tag tag--info">${pw}</span> &nbsp; <span class="tag tag--info">${wp}</span>`;
+      } else if (step.phase === 'apply') {
+        state.innerHTML = `<span class="tag tag--ok">${Demo.esc(step.pch)} ⇄ ${Demo.esc(step.word)}</span> 双向映射已记录`;
+      } else if (step.phase === 'fail') {
+        state.innerHTML = '<span class="tag tag--bad">映射矛盾，返回 false</span>';
+      } else {
+        state.innerHTML = step.ok
+          ? `全部 ${PATTERN.length} 组配对检查通过 &nbsp;<span class="tag tag--ok">返回 true</span>`
+          : '发现矛盾 &nbsp;<span class="tag tag--bad">返回 false</span>';
+      }
+      ctx.stage.appendChild(state);
+    }
+  });
+  return Demo.__config
+}

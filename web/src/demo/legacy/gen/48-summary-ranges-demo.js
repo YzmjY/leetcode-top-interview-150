@@ -1,0 +1,161 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/48-summary-ranges-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [0, 1, 2, 4, 5, 7];
+  
+  function buildSteps() {
+    const nums = NUMS;
+    const n = nums.length;
+    const steps = [];
+    const result = [];
+    let i = 0;
+  
+    function snap(o) {
+      steps.push({
+        i: o.i,
+        startIdx: o.startIdx == null ? null : o.startIdx,
+        endIdx: o.endIdx == null ? null : o.endIdx,
+        result: result.slice(),
+        phase: o.phase,
+        note: o.note
+      });
+    }
+  
+    snap({
+      i: 0, startIdx: null, endIdx: null, phase: 'init',
+      note: '初始状态：i = 0，结果列表为空，还没有开启任何区间。算法只需要一次遍历：外层循环决定区间起点，内层循环不断吞掉与前一元素相差 1 的数字。'
+    });
+  
+    while (i < n) {
+      const startIdx = i;
+      const start = nums[i];
+      snap({
+        i: i, startIdx: startIdx, endIdx: startIdx, phase: 'start',
+        note: '外层循环：i = ' + i + '，把 nums[' + i + '] = ' + start + ' 记为当前区间的起点 start，区间暂时是 [' + start + ', ' + start + ']。'
+      });
+  
+      i += 1;
+      while (i < n && nums[i] === nums[i - 1] + 1) {
+        snap({
+          i: i, startIdx: startIdx, endIdx: i, phase: 'extend',
+          note: '比较 nums[' + i + '] = ' + nums[i] + ' 与 nums[' + (i - 1) + '] + 1 = ' + (nums[i - 1] + 1) + '：两者相等，说明这两个数在数轴上紧挨着，属于同一个区间 → 右端点扩展为 ' + nums[i] + '，i 后移。'
+        });
+        i += 1;
+      }
+  
+      const endIdx = i - 1;
+      const end = nums[endIdx];
+      const text = start === end ? String(start) : start + '->' + end;
+      result.push(text);
+  
+      let why;
+      if (i >= n) {
+        why = 'i 已经越过数组末尾（i = ' + i + '），没有下一个元素可比。';
+      } else {
+        why = '比较 nums[' + i + '] = ' + nums[i] + ' 与 nums[' + (i - 1) + '] + 1 = ' + (nums[i - 1] + 1) + '：不相等，连续性被打破。';
+      }
+      snap({
+        i: i, startIdx: startIdx, endIdx: endIdx, phase: 'close',
+        note: why + ' 于是区间右端点定为 nums[' + endIdx + '] = ' + end + '。start = ' + start + '、end = ' + end + '，'
+          + (start === end ? '两者相等，按格式输出 "' + text + '"（不写箭头）' : '两者不等，按格式输出 "' + text + '"')
+          + '，加入结果列表。'
+      });
+    }
+  
+    snap({
+      i: n, startIdx: null, endIdx: null, phase: 'done',
+      note: 'i 越界，遍历结束。共得到 ' + result.length + ' 个区间：[' + result.map(function (r) { return '"' + r + '"'; }).join(', ')
+        + ']。每个元素恰好被内层循环访问一次，时间 O(n)、除结果外额外空间 O(1)。'
+    });
+  
+    return steps;
+  }
+  
+  Demo.create({
+    title: '48. 汇总区间 — 一次遍历划分连续段',
+    info: '输入：nums = [0, 1, 2, 4, 5, 7]（示例 1）。nums 无重复且升序，恰好覆盖它的最小有序区间列表为 ["0->2", "4->5", "7"]。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 260,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'i：当前比较的位置' },
+      { color: 'var(--demo-ok)', label: '当前正在扩展的区间' },
+      { color: 'var(--demo-muted)', label: '已输出区间，不再回看' }
+    ],
+    render: function (step, idx, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const arrayPanel = Demo.el('div', 'panel');
+      arrayPanel.style.width = '100%';
+      arrayPanel.appendChild(Demo.el('div', 'panel__title',
+        step.phase === 'done' ? '数组 nums（遍历结束）'
+          : (step.i < NUMS.length ? '数组 nums，i = ' + step.i : '数组 nums，i 已越过末尾')));
+  
+      const row = Demo.el('div', 'row');
+      NUMS.forEach(function (v, k) {
+        const col = Demo.el('div', 'col');
+        const cell = Demo.el('div', 'cell', Demo.esc(v));
+        const inRange = step.startIdx != null && k >= step.startIdx && k <= step.endIdx;
+  
+        if (step.phase === 'done') {
+          cell.classList.add('is-ok');
+        } else if (k === step.i) {
+          cell.classList.add('is-active');
+        } else if (inRange) {
+          cell.classList.add('is-ok');
+        } else if (step.startIdx != null && k < step.startIdx) {
+          cell.classList.add('cell--dim');
+        }
+        col.appendChild(cell);
+  
+        const isCurrent = k === step.i && step.i < NUMS.length;
+        const ptr = Demo.el('div', 'ptr', isCurrent ? 'i' : String(k));
+        if (!isCurrent) ptr.classList.add('ptr--dim');
+        col.appendChild(ptr);
+        row.appendChild(col);
+      });
+      arrayPanel.appendChild(row);
+      ctx.stage.appendChild(arrayPanel);
+  
+      const statusRow = Demo.el('div', 'row');
+      statusRow.style.width = '100%';
+      statusRow.style.alignItems = 'stretch';
+  
+      const curPanel = Demo.el('div', 'panel');
+      curPanel.style.flex = '1';
+      curPanel.appendChild(Demo.el('div', 'panel__title', '当前区间'));
+      if (step.startIdx == null) {
+        curPanel.appendChild(Demo.el('div', null, '<span class="tag tag--warn">未开启</span>'));
+      } else {
+        const s = NUMS[step.startIdx];
+        const e = NUMS[step.endIdx];
+        curPanel.appendChild(Demo.el('div', null,
+          '<span class="tag tag--ok">start = ' + s + '</span> &nbsp; <span class="tag tag--ok">end = ' + e + '</span>'));
+        curPanel.appendChild(Demo.el('div', null,
+          '<div style="margin-top:6px">当前区间为 <code>[' + s + ', ' + e + ']</code>，即 nums[' + step.startIdx + '..' + step.endIdx + ']</div>'));
+      }
+      statusRow.appendChild(curPanel);
+  
+      const resPanel = Demo.el('div', 'panel');
+      resPanel.style.flex = '1';
+      resPanel.appendChild(Demo.el('div', 'panel__title', '结果列表（共 ' + step.result.length + ' 个区间）'));
+      const resRow = Demo.el('div', 'row');
+      resRow.style.justifyContent = 'flex-start';
+      if (step.result.length === 0) {
+        resRow.appendChild(Demo.el('span', 'tag', '（空）'));
+      } else {
+        step.result.forEach(function (r) {
+          resRow.appendChild(Demo.el('span', 'tag ' + (step.phase === 'done' ? 'tag--ok' : 'tag--violet'), '"' + Demo.esc(r) + '"'));
+        });
+      }
+      resPanel.appendChild(resRow);
+      statusRow.appendChild(resPanel);
+  
+      ctx.stage.appendChild(statusRow);
+    }
+  });
+  return Demo.__config
+}

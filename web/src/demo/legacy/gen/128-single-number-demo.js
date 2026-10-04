@@ -1,0 +1,166 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/128-single-number-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [4, 1, 2, 1, 2];
+  
+  const BITS = NUMS.reduce((w, v) => Math.max(w, (v >>> 0).toString(2).length), 1);
+  
+  function bitsOf(v, width) {
+    return (v >>> 0).toString(2).padStart(width, '0').split('');
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    let acc = 0;
+    const firstIdx = {};
+    const cancelled = [];
+  
+    steps.push({
+      acc, i: -1, v: null, old: 0, cancelled: [], done: false,
+      note: `初始化：result = 0。异或的单位元是 0，任何数异或 0 都等于它自己，所以可以从 0 开始累积。`
+    });
+  
+    for (let i = 0; i < NUMS.length; i++) {
+      const v = NUMS[i];
+      const old = acc;
+      acc = (old ^ v) >>> 0;
+      let pairNote;
+      if (firstIdx[v] === undefined) {
+        firstIdx[v] = i;
+        pairNote = `${v} 是第一次出现，暂时留在累积结果里等待配对。`;
+      } else {
+        cancelled.push(firstIdx[v], i);
+        pairNote = `${v} 在 nums[${firstIdx[v]}] 已经出现过，第二次出现会和它互相抵消（a ^ a = 0），这对数从此不影响结果。`;
+      }
+      steps.push({
+        acc, i, v, old, cancelled: cancelled.slice(), done: false,
+        note: `取出 nums[${i}] = ${v}：result = ${old} ^ ${v} = ${acc}（${old} 的二进制 ${bitsOf(old, BITS).join('')}，` +
+          `${v} 的二进制 ${bitsOf(v, BITS).join('')}，异或结果 ${bitsOf(acc, BITS).join('')}）。${pairNote}`
+      });
+    }
+  
+    steps.push({
+      acc, i: NUMS.length - 1, v: null, old: acc, cancelled: cancelled.slice(), done: true,
+      note: `遍历结束，result = ${acc}。成对出现的元素两两异或为 0，只剩下那个只出现一次的元素，所以答案是 ${acc}。`
+    });
+  
+    return steps;
+  }
+  
+  function labelNode(text) {
+    const node = Demo.el('div', 'panel__title', Demo.esc(text));
+    node.style.width = '34px';
+    node.style.textAlign = 'right';
+    node.style.marginBottom = '0';
+    return node;
+  }
+  
+  Demo.create({
+    title: '128. 只出现一次的数字 — 全体异或，成对的元素两两抵消',
+    info: `输入：nums = [${NUMS.join(', ')}]，除一个元素只出现一次外其余都出现两次。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-violet)', label: '累积结果 result' },
+      { color: 'var(--demo-accent)', label: '当前参与异或的元素' },
+      { color: 'var(--demo-ok)', label: '已抵消的元素对 / 异或结果中的 1' },
+      { color: 'var(--demo-border)', label: '已处理但尚未抵消的元素' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const arrLabel = Demo.el('div', 'panel__title',
+        step.i < 0 ? '数组 nums（尚未开始遍历）' : `数组 nums（本次取出下标 ${step.i}）`);
+      arrLabel.style.marginBottom = '4px';
+      ctx.stage.appendChild(arrLabel);
+  
+      const arrRow = Demo.el('div', 'row');
+      const ptrRow = Demo.el('div', 'row');
+      NUMS.forEach((v, idx) => {
+        const cell = Demo.el('div', 'cell');
+        cell.textContent = String(v);
+        if (step.cancelled.indexOf(idx) >= 0) cell.classList.add('is-ok');
+        else if (idx === step.i) cell.classList.add('is-active');
+        else if (idx < step.i) cell.classList.add('cell--dim');
+        arrRow.appendChild(cell);
+  
+        const ptr = Demo.el('div', 'ptr', `[${idx}]`);
+        if (idx !== step.i) ptr.classList.add('ptr--dim');
+        ptrRow.appendChild(ptr);
+      });
+      ctx.stage.appendChild(arrRow);
+      ctx.stage.appendChild(ptrRow);
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+  
+      const big = Demo.el('div', 'row');
+      const accCell = Demo.el('div', 'cell cell--lg', String(step.acc));
+      if (step.done) accCell.classList.add('is-ok');
+      else accCell.classList.add('is-violet');
+      big.appendChild(accCell);
+  
+      const formula = Demo.el('div', 'col');
+      formula.style.gap = '4px';
+      const fLabel = Demo.el('div', 'panel__title',
+        step.i < 0 ? 'result 初始为 0' : `result = ${step.old} ^ ${step.v} = ${step.acc}`);
+      fLabel.style.marginBottom = '0';
+      formula.appendChild(fLabel);
+  
+      if (step.i >= 0) {
+        const rows = Demo.el('div', 'col');
+        rows.style.gap = '4px';
+        const mk = (label, value, decorate) => {
+          const row = Demo.el('div', 'row');
+          row.style.gap = '4px';
+          const lab = Demo.el('div', 'panel__title', Demo.esc(label));
+          lab.style.width = '64px';
+          lab.style.textAlign = 'right';
+          lab.style.marginBottom = '0';
+          lab.style.fontSize = '11px';
+          row.appendChild(lab);
+          bitsOf(value, BITS).forEach((b, k) => {
+            const cell = Demo.el('div', 'cell cell--sm');
+            cell.textContent = b;
+            cell.style.minWidth = '26px';
+            cell.style.fontSize = '12px';
+            if (decorate) decorate(cell, k);
+            row.appendChild(cell);
+          });
+          return row;
+        };
+        rows.appendChild(mk('累积值', step.old, null));
+        rows.appendChild(mk('当前元素', step.v, (cell, k) => {
+          if (bitsOf(step.v, BITS)[k] === '1') cell.classList.add('is-active');
+        }));
+        rows.appendChild(mk('异或结果', step.acc, (cell, k) => {
+          if (bitsOf(step.acc, BITS)[k] === '1') cell.classList.add('is-ok');
+        }));
+        formula.appendChild(rows);
+      }
+  
+      big.appendChild(formula);
+      panel.appendChild(big);
+  
+      const pairLine = Demo.el('div', 'panel__title');
+      pairLine.style.marginTop = '10px';
+      pairLine.style.marginBottom = '0';
+      pairLine.textContent = step.cancelled.length
+        ? `已抵消：${step.cancelled.map(idx => `nums[${idx}]=${NUMS[idx]}`).join('、')}`
+        : '已抵消：暂无';
+      panel.appendChild(pairLine);
+  
+      if (step.done) {
+        const done = Demo.el('div', 'tag tag--ok', `答案 ${step.acc}`);
+        done.style.marginTop = '8px';
+        panel.appendChild(done);
+      }
+  
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

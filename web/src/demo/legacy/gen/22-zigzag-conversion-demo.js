@@ -1,0 +1,180 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/22-zigzag-conversion-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const S = 'PAYPALISHIRING';
+  const NUM_ROWS = 3;
+  const ROW_CLASSES = ['is-active', 'is-info', 'is-violet', 'is-warn', 'is-pink'];
+  
+  function buildSteps() {
+    const chars = S.split('');
+    const steps = [];
+    const rows = [];
+    for (let r = 0; r < NUM_ROWS; r++) rows.push('');
+  
+    let curRow = 0;
+    let goingDown = false;
+    let col = 0;
+    let maxCol = 0;
+  
+    steps.push({
+      phase: 'init', rows: rows.slice(), placed: [], curRow: 0, goingDown: true, col: 0,
+      totalCols: 1, done: false,
+      note: `初始化：numRows = ${NUM_ROWS}，curRow = 0，方向 goingDown = false（即将反转为向下），每行一个空字符串。规则：字符先沿某一列从上到下填，到底后折返，沿斜线向右上一格填一个，直到回到第 0 行再重新向下。`
+    });
+  
+    for (let i = 0; i < chars.length; i++) {
+      const ch = chars[i];
+      const row = curRow;
+      const atCol = col;
+      rows[row] += ch;
+  
+      if (row === 0 || row === NUM_ROWS - 1) goingDown = !goingDown;
+      let nextRow;
+      if (goingDown) {
+        nextRow = row + 1;
+      } else {
+        nextRow = row - 1;
+        col++;
+      }
+      if (col > maxCol) maxCol = col;
+  
+      let note;
+      if (row === 0) {
+        note = `s[${i}] = '${ch}'：它落在第 ${row} 行。第 0 行是折返点，方向翻转为向${goingDown ? '下' : '上'}，下一个字符去第 ${nextRow} 行。`;
+      } else if (row === NUM_ROWS - 1) {
+        note = `s[${i}] = '${ch}'：它落在最后一行（第 ${row} 行）。最后一行同样是折返点，方向翻转为向${goingDown ? '下' : '上'}，下一个字符去第 ${nextRow} 行、列号 +1。`;
+      } else {
+        note = `s[${i}] = '${ch}'：它落在第 ${row} 行，当前方向向${goingDown ? '下' : '上'}，还不到折返点，下一个字符直接去第 ${nextRow} 行${goingDown ? '' : '、列号 +1'}。`;
+      }
+  
+      steps.push({
+        phase: 'place', rows: rows.slice(),
+        placed: steps[steps.length - 1].placed.concat([{ i: i, ch: ch, row: row, col: atCol }]),
+        curRow: row, nextRow: nextRow, goingDown: goingDown, col: atCol,
+        totalCols: maxCol + 1, done: false, note: note
+      });
+      curRow = nextRow;
+    }
+  
+    let result = '';
+    for (let r = 0; r < NUM_ROWS; r++) {
+      result += rows[r];
+      steps.push({
+        phase: 'read', rows: rows.slice(), placed: steps[steps.length - 1].placed,
+        readRow: r, result: result, totalCols: maxCol + 1, done: false,
+        note: `逐行读取：把第 ${r} 行的 "${rows[r]}" 拼到结果末尾，得到 "${result}"。`
+      });
+    }
+  
+    steps.push({
+      phase: 'done', rows: rows.slice(), placed: steps[steps.length - 1].placed,
+      result: result, totalCols: maxCol + 1, done: true,
+      note: `全部行拼接完毕，结果 = "${result}"。整个算法只扫描了一遍字符串，时间 O(n)、空间 O(n)（各行的字符串总长度为 n）。`
+    });
+  
+    steps.forEach(function (s) { s.totalCols = maxCol + 1; });
+  
+    return steps;
+  }
+  
+  Demo.create({
+    title: '22. Z 字形变换 — 模拟逐字符落行，再按行读取',
+    info: `输入：s = "${S}"，numRows = ${NUM_ROWS}（示例 1），预期输出 "PAHNAPLSIIGYIR"。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 400,
+    legend: [
+      { color: 'var(--demo-accent)', label: '第 0 行' },
+      { color: 'var(--demo-info)', label: '第 1 行' },
+      { color: 'var(--demo-violet)', label: '第 2 行' },
+      { color: 'var(--demo-muted)', label: '尚未填充的格子' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const totalCols = step.totalCols;
+      const byPos = {};
+      step.placed.forEach(function (p) { byPos[p.row + ',' + p.col] = p; });
+  
+      const grid = Demo.el('div', 'grid');
+      grid.style.gridTemplateColumns = 'repeat(' + totalCols + ', minmax(0, 1fr))';
+      grid.style.width = '100%';
+  
+      for (let c = 0; c < totalCols; c++) {
+        const head = Demo.el('div', 'ptr', '列 ' + c);
+        head.classList.add(c === step.col && step.phase === 'place' ? 'ptr--info' : 'ptr--dim');
+        grid.appendChild(head);
+      }
+  
+      for (let r = 0; r < NUM_ROWS; r++) {
+        for (let c = 0; c < totalCols; c++) {
+          const placed = byPos[r + ',' + c];
+          const cell = Demo.el('div', 'grid-cell' + (placed ? '' : ' is-dim'),
+            placed ? Demo.esc(placed.ch) : '&nbsp;');
+          if (placed) {
+            if (step.phase === 'read' || step.phase === 'done') {
+              cell.classList.add('is-ok');
+            } else {
+              cell.classList.add(ROW_CLASSES[r % ROW_CLASSES.length]);
+              if (step.phase === 'place' && placed.i === step.placed.length - 1) {
+                cell.style.boxShadow = '0 0 0 3px var(--demo-accent)';
+              }
+            }
+          }
+          grid.appendChild(cell);
+        }
+      }
+  
+      const gridPanel = Demo.el('div', 'panel');
+      gridPanel.style.width = '100%';
+      gridPanel.appendChild(Demo.el('div', 'panel__title',
+        step.phase === 'place' ? `Z 字形矩阵（刚放入 s[${step.placed.length - 1}] = '${S[step.placed.length - 1]}'）` : 'Z 字形矩阵'));
+      gridPanel.appendChild(grid);
+      ctx.stage.appendChild(gridPanel);
+  
+      const rowsPanel = Demo.el('div', 'panel');
+      rowsPanel.style.width = '100%';
+      rowsPanel.appendChild(Demo.el('div', 'panel__title', '每一行的字符'));
+      step.rows.forEach(function (text, r) {
+        const line = Demo.el('div', 'row');
+        line.appendChild(Demo.el('div', 'ptr', '第 ' + r + ' 行'));
+        if (!text) {
+          line.appendChild(Demo.el('span', 'tag', '（空）'));
+        } else {
+          text.split('').forEach(function (ch) {
+            const cell = Demo.el('div', 'cell cell--sm', Demo.esc(ch));
+            if (step.phase === 'read' || step.phase === 'done') {
+              cell.classList.add(r <= (step.phase === 'done' ? NUM_ROWS - 1 : step.readRow) ? 'is-ok' : 'is-warn');
+            } else {
+              cell.classList.add(ROW_CLASSES[r % ROW_CLASSES.length]);
+            }
+            line.appendChild(cell);
+          });
+        }
+        const tail = Demo.el('div', 'ptr', text ? '"' + text + '"' : '');
+        tail.classList.add('ptr--dim');
+        line.appendChild(tail);
+        rowsPanel.appendChild(line);
+      });
+      ctx.stage.appendChild(rowsPanel);
+  
+      const result = Demo.el('div', 'panel');
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      if (step.phase === 'read' || step.phase === 'done') {
+        result.innerHTML = `逐行拼接结果：<code>"${Demo.esc(step.result)}"</code>` +
+          (step.done ? ` &nbsp;<span class="tag tag--ok">完成</span>` : '');
+      } else if (step.phase === 'init') {
+        result.innerHTML = '等待放入第一个字符';
+      } else {
+        result.innerHTML = `当前放在第 <strong>${step.curRow}</strong> 行、方向向<strong>${step.goingDown ? '下' : '上'}</strong>` +
+          ` &nbsp;|&nbsp; 下一个字符去第 ${step.nextRow} 行`;
+      }
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

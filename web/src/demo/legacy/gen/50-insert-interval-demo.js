@@ -1,0 +1,172 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/50-insert-interval-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const INTERVALS = [[1, 2], [3, 5], [6, 7], [8, 10], [12, 16]];
+  const NEW_INTERVAL = [4, 8];
+  
+  function buildSteps() {
+    const intervals = INTERVALS.map(function (iv) { return [iv[0], iv[1]]; });
+    const n = intervals.length;
+    const newIv = NEW_INTERVAL.slice();
+    const result = [];
+    let i = 0;
+    const steps = [];
+  
+    function snap(o) {
+      steps.push({
+        intervals: intervals.map(function (iv) { return [iv[0], iv[1]]; }),
+        result: result.map(function (iv) { return [iv[0], iv[1]]; }),
+        newIv: newIv.slice(),
+        i: o.i == null ? i : o.i,
+        cur: o.cur == null ? -1 : o.cur,
+        phase: o.phase,
+        note: o.note
+      });
+    }
+  
+    snap({
+      phase: 'init',
+      note: '初始状态：intervals 已经按起点升序、彼此不重叠，newInterval = [' + newIv[0] + ', ' + newIv[1] + ']。既然原列表有序，就不需要重新排序：只需一次遍历，分三个阶段把它们分类。'
+    });
+  
+    while (i < n && intervals[i][1] < newIv[0]) {
+      const iv = intervals[i];
+      result.push([iv[0], iv[1]]);
+      snap({
+        phase: 'left', cur: i,
+        note: '阶段一：区间 [' + iv[0] + ', ' + iv[1] + '] 的终点 ' + iv[1] + ' < 新区间起点 ' + newIv[0] + '。它在新区间完全左侧，绝不可能重叠，直接放进结果，i 后移。'
+      });
+      i += 1;
+    }
+  
+    snap({
+      phase: 'left-stop', cur: i < n ? i : -1,
+      note: i < n
+        ? '阶段一结束：此时 intervals[' + i + '] = [' + intervals[i][0] + ', ' + intervals[i][1] + '] 的终点 ' + intervals[i][1] + ' ≥ 新区间起点 ' + newIv[0] + '，它有可能与新区间重叠，交给阶段二判断。'
+        : '阶段一结束：所有区间都在新区间左侧，已全部放入结果。'
+    });
+  
+    while (i < n && intervals[i][0] <= newIv[1]) {
+      const iv = intervals[i];
+      const beforeStart = newIv[0];
+      const beforeEnd = newIv[1];
+      if (iv[0] < newIv[0]) newIv[0] = iv[0];
+      if (iv[1] > newIv[1]) newIv[1] = iv[1];
+      snap({
+        phase: 'overlap', cur: i,
+        note: '阶段二：区间 [' + iv[0] + ', ' + iv[1] + '] 的起点 ' + iv[0] + ' ≤ 新区间当前终点 ' + beforeEnd + '，说明两者重叠，可以吸收。'
+          + ' 新区间扩展为 [min(' + beforeStart + ', ' + iv[0] + '), max(' + beforeEnd + ', ' + iv[1] + ')] = [' + newIv[0] + ', ' + newIv[1] + ']。'
+          + ' 注意判断条件用的是「起点 ≤ 新区间终点」，而不是终点，这样跨多个区间连续合并时不会漏掉下一个。'
+      });
+      i += 1;
+    }
+  
+    result.push(newIv.slice());
+    snap({
+      phase: 'insert',
+      note: '阶段二结束：与新区间重叠的区间都被吸收了，把合并后的 [' + newIv[0] + ', ' + newIv[1] + '] 加入结果。它顶替了原来的 [3,5]、[6,7]、[8,10] 三段。'
+    });
+  
+    while (i < n) {
+      const iv = intervals[i];
+      result.push([iv[0], iv[1]]);
+      snap({
+        phase: 'right', cur: i,
+        note: '阶段三：区间 [' + iv[0] + ', ' + iv[1] + '] 的起点 ' + iv[0] + ' > 合并后新区间的终点 ' + newIv[1] + '，位于右侧且不重叠，原样加入结果，i 后移。'
+      });
+      i += 1;
+    }
+  
+    snap({
+      phase: 'done',
+      note: '遍历结束，插入完成。结果 = ' + result.map(function (iv) { return '[' + iv[0] + ',' + iv[1] + ']'; }).join('、')
+        + '，仍然按起点升序且互不重叠。整个算法只扫描一次原数组，时间 O(n)、结果占用 O(n)。'
+    });
+  
+    return steps;
+  }
+  
+  function render(step, idx, ctx) {
+    ctx.stage.innerHTML = '';
+  
+    const xMin = 0, xMax = 18, X0 = 44, X1 = 756;
+    function xs(v) { return X0 + v * (X1 - X0) / (xMax - xMin); }
+  
+    const n = step.intervals.length;
+    const mergedRow = 26 + n * 30;
+    const axisY = mergedRow + 30;
+    const baseY = axisY + 46;
+    const H = baseY + (step.result.length + 1) * 28 + 16;
+  
+    const p = [];
+    p.push('<svg viewBox="0 0 800 ' + H + '" style="width:100%;max-width:800px;height:auto;display:block" role="img">');
+    p.push('<text x="8" y="16" style="fill:var(--demo-muted);font-size:12px;font-weight:700">原区间 intervals（已按起点升序）</text>');
+  
+    for (let k = 0; k < n; k++) {
+      const iv = step.intervals[k];
+      const y = 26 + k * 30;
+      let fill = 'var(--demo-subtle)';
+      let stroke = 'var(--demo-border)';
+      if (k === step.cur) { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; }
+      else if (step.cur >= 0 && k < step.cur) { fill = 'var(--demo-subtle)'; stroke = 'var(--demo-border)'; }
+      p.push('<rect x="' + xs(iv[0]) + '" y="' + y + '" width="' + Math.max(10, xs(iv[1]) - xs(iv[0])) + '" height="20" rx="5" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2' + (step.cur >= 0 && k < step.cur ? ';opacity:0.45' : '') + '"/>');
+      p.push('<text x="' + ((xs(iv[0]) + xs(iv[1])) / 2) + '" y="' + (y + 14) + '" text-anchor="middle" style="fill:var(--demo-text);font-size:11px;font-weight:700;font-family:var(--demo-mono)">[' + iv[0] + ',' + iv[1] + ']</text>');
+      p.push('<text x="20" y="' + (y + 14) + '" text-anchor="middle" style="fill:var(--demo-muted);font-size:10px;font-family:var(--demo-mono)">' + k + '</text>');
+    }
+  
+    p.push('<rect x="' + xs(step.newIv[0]) + '" y="' + mergedRow + '" width="' + Math.max(10, xs(step.newIv[1]) - xs(step.newIv[0])) + '" height="20" rx="5" style="fill:var(--demo-pink-soft);stroke:var(--demo-pink);stroke-width:2"/>');
+    p.push('<text x="' + ((xs(step.newIv[0]) + xs(step.newIv[1])) / 2) + '" y="' + (mergedRow + 14) + '" text-anchor="middle" style="fill:var(--demo-text);font-size:11px;font-weight:700;font-family:var(--demo-mono)">new = [' + step.newIv[0] + ',' + step.newIv[1] + ']</text>');
+  
+    p.push('<line x1="' + (X0 - 10) + '" y1="' + axisY + '" x2="' + (X1 + 10) + '" y2="' + axisY + '" style="stroke:var(--demo-border);stroke-width:1.5"/>');
+    for (let v = xMin; v <= xMax; v++) {
+      p.push('<line x1="' + xs(v) + '" y1="' + axisY + '" x2="' + xs(v) + '" y2="' + (axisY + 4) + '" style="stroke:var(--demo-border);stroke-width:1"/>');
+      if (v % 2 === 0) p.push('<text x="' + xs(v) + '" y="' + (axisY + 16) + '" text-anchor="middle" style="fill:var(--demo-muted);font-size:9px;font-family:var(--demo-mono)">' + v + '</text>');
+    }
+  
+    p.push('<text x="8" y="' + (axisY + 36) + '" style="fill:var(--demo-muted);font-size:12px;font-weight:700">结果 result（共 ' + step.result.length + ' 段）</text>');
+    if (step.result.length === 0) {
+      p.push('<text x="' + (X0 + 10) + '" y="' + (baseY + 16) + '" style="fill:var(--demo-muted);font-size:12px">（结果为空）</text>');
+    }
+    step.result.forEach(function (iv, k) {
+      const y = baseY + k * 28;
+      const isNew = step.phase === 'insert' && k === step.result.length - 1;
+      const fill = isNew ? 'var(--demo-pink-soft)' : 'var(--demo-ok-soft)';
+      const stroke = isNew ? 'var(--demo-pink)' : 'var(--demo-ok)';
+      p.push('<rect x="' + xs(iv[0]) + '" y="' + y + '" width="' + Math.max(10, xs(iv[1]) - xs(iv[0])) + '" height="20" rx="5" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2"/>');
+      p.push('<text x="' + ((xs(iv[0]) + xs(iv[1])) / 2) + '" y="' + (y + 14) + '" text-anchor="middle" style="fill:var(--demo-text);font-size:11px;font-weight:700;font-family:var(--demo-mono)">[' + iv[0] + ',' + iv[1] + ']</text>');
+    });
+    p.push('</svg>');
+  
+    const chart = Demo.el('div', 'col');
+    chart.style.width = '100%';
+    chart.innerHTML = p.join('');
+    ctx.stage.appendChild(chart);
+  
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.style.textAlign = 'center';
+    panel.innerHTML =
+      '当前待插入区间：<code>[' + step.newIv[0] + ', ' + step.newIv[1] + ']</code>' +
+      ' &nbsp; i = <code>' + (step.i < n ? step.i : n + '（越界）') + '</code>' +
+      (step.phase === 'done' ? ' &nbsp;<span class="tag tag--ok">答案 [[' + step.result.map(function (iv) { return iv[0] + ',' + iv[1]; }).join('], [') + ']]</span>' : '');
+    ctx.stage.appendChild(panel);
+  }
+  
+  Demo.create({
+    title: '50. 插入区间 — 一次遍历，三阶段分类',
+    info: '输入：intervals = [[1,2], [3,5], [6,7], [8,10], [12,16]]，newInterval = [4,8]（示例 2）。输出应与示例一致：[[1,2], [3,10], [12,16]]。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 460,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前判断的区间' },
+      { color: 'var(--demo-pink)', label: '待插入 / 正在合并的新区间' },
+      { color: 'var(--demo-ok)', label: '已确定的输出区间' }
+    ],
+    render: render
+  });
+  return Demo.__config
+}

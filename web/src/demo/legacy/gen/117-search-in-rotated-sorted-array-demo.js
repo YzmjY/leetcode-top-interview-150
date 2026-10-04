@@ -1,0 +1,209 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/117-search-in-rotated-sorted-array-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [4, 5, 6, 7, 0, 1, 2];
+  const TARGET = 0;
+  
+  function buildSteps() {
+    const nums = NUMS;
+    const n = nums.length;
+    const steps = [];
+    let left = 0;
+    let right = n - 1;
+    let checks = 0;
+    let found = -1;
+  
+    // 旋转点：第一个满足 nums[k] > nums[k+1] 的 k
+    let pivotBefore = -1;
+    for (let k = 0; k + 1 < n; k++) {
+      if (nums[k] > nums[k + 1]) { pivotBefore = k; break; }
+    }
+  
+    steps.push({
+      left: left, right: right, mid: -1, mv: null, cmp: null,
+      side: null, sortedLo: -1, sortedHi: -1, inSorted: null,
+      checks: checks, done: false, found: -1,
+      note: `输入 nums = [${nums.join(', ')}]，target = ${TARGET}。它由升序数组在下标 ${pivotBefore} 与 ${pivotBefore + 1} 之间旋转而来（${nums[pivotBefore]} → ${nums[pivotBefore + 1]} 是唯一一处下降），所以整体不是有序的。初始区间 [left, right] = [0, ${n - 1}]。关键性质：从中间切开后，左右两半至少有一半是升序的。`
+    });
+  
+    while (left <= right) {
+      const mid = left + Math.floor((right - left) / 2);
+      const mv = nums[mid];
+      checks += 1;
+  
+      if (mv === TARGET) {
+        found = mid;
+        steps.push({
+          left: left, right: right, mid: mid, mv: mv, cmp: 'eq',
+          side: null, sortedLo: -1, sortedHi: -1, inSorted: null,
+          checks: checks, done: false, found: mid,
+          note: `第 ${checks} 次比较：mid = ${mid}，nums[${mid}] = ${mv} 正好等于 target = ${TARGET}，找到目标，返回下标 ${mid}。旋转数组依然能二分，靠的就是每一轮先用 mid 排除掉一半。`
+        });
+        break;
+      }
+  
+      const leftVal = nums[left];
+      const rightVal = nums[right];
+      let side, lo, hi, inSorted;
+  
+      if (leftVal <= mv) {
+        side = 'left';
+        lo = left;
+        hi = mid;
+        inSorted = leftVal <= TARGET && TARGET < mv;
+      } else {
+        side = 'right';
+        lo = mid;
+        hi = right;
+        inSorted = mv < TARGET && TARGET <= rightVal;
+      }
+  
+      let note = `第 ${checks} 次比较：mid = ${mid}，nums[${mid}] = ${mv} ≠ target = ${TARGET}。`;
+      if (side === 'left') {
+        note += `因为 nums[left] = ${leftVal} ≤ nums[mid] = ${mv}，说明左半段 [${lo}, ${hi}] 是升序的（没有跨过旋转点）。`;
+        note += inSorted
+          ? `target = ${TARGET} 落在区间 [nums[${lo}], nums[${hi}]) = [${leftVal}, ${mv}) 内，只可能出现在这半段里，于是把右半丢掉，令 right = mid − 1 = ${mid - 1}。`
+          : `target = ${TARGET} 不在区间 [nums[${lo}], nums[${hi}]) = [${leftVal}, ${mv}) 内，所以它只可能在另一半，令 left = mid + 1 = ${mid + 1}。`;
+      } else {
+        note += `因为 nums[left] = ${leftVal} > nums[mid] = ${mv}，说明旋转点落在左半段里，于是右半段 [${lo}, ${hi}] 一定是升序的。`;
+        note += inSorted
+          ? `target = ${TARGET} 落在区间 (nums[${mid}], nums[${hi}]] = (${mv}, ${rightVal}] 内，只可能出现在这半段里，令 left = mid + 1 = ${mid + 1}。`
+          : `target = ${TARGET} 不在区间 (nums[${mid}], nums[${hi}]] = (${mv}, ${rightVal}] 内，说明它在左半段，令 right = mid − 1 = ${mid - 1}。`;
+      }
+  
+      if (inSorted) {
+        if (side === 'left') right = mid - 1;
+        else left = mid + 1;
+      } else {
+        if (side === 'left') left = mid + 1;
+        else right = mid - 1;
+      }
+  
+      steps.push({
+        left: left, right: right, mid: mid, mv: mv, cmp: inSorted ? 'in' : 'out',
+        side: side, sortedLo: lo, sortedHi: hi, inSorted: inSorted,
+        checks: checks, done: false, found: -1,
+        note: note
+      });
+    }
+  
+    if (found >= 0) {
+      steps.push({
+        left: left, right: right, mid: found, mv: TARGET, cmp: 'eq',
+        side: null, sortedLo: -1, sortedHi: -1, inSorted: null,
+        checks: checks, done: true, found: found,
+        note: `答案：target = ${TARGET} 在旋转数组中的下标是 ${found}。整个过程只做了 ${checks} 次比较，每次至少排除一半元素，时间复杂度 O(log n)，只用常数个变量，空间复杂度 O(1)。`
+      });
+    } else {
+      steps.push({
+        left: left, right: right, mid: -1, mv: null, cmp: null,
+        side: null, sortedLo: -1, sortedHi: -1, inSorted: null,
+        checks: checks, done: true, found: -1,
+        note: `left = ${left} > right = ${right}，候选区间为空，说明数组里没有 ${TARGET}，返回 −1。一共比较 ${checks} 次，时间复杂度 O(log n)，空间复杂度 O(1)。`
+      });
+    }
+  
+    return steps;
+  }
+  
+  function arrayRow(step) {
+    const n = NUMS.length;
+    const row = Demo.el('div', 'row');
+  
+    for (let idx = 0; idx < n; idx++) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(NUMS[idx]));
+  
+      const inRange = idx >= step.left && idx <= step.right;
+      const inSorted = step.sortedLo >= 0 && idx >= step.sortedLo && idx <= step.sortedHi;
+  
+      if (!inRange) cell.classList.add('is-dim');
+      else if (NUMS[idx] === TARGET) cell.classList.add('is-warn');
+      else cell.classList.add('is-info');
+  
+      if (inSorted) { cell.classList.remove('is-dim'); cell.classList.add('is-pink'); }
+      if (idx === step.mid) { cell.classList.remove('is-dim', 'is-pink', 'is-warn', 'is-info'); cell.classList.add('is-active'); }
+      if (step.done && step.found >= 0 && idx === step.found) {
+        cell.classList.remove('is-dim', 'is-pink', 'is-warn', 'is-info', 'is-active');
+        cell.classList.add('is-ok');
+      }
+  
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (idx === step.left) labels.push('left');
+      if (idx === step.right) labels.push('right');
+      if (idx === step.mid) labels.push('mid');
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : '#' + idx);
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (idx === step.mid) ptr.classList.add('ptr--warn');
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+    }
+  
+    return row;
+  }
+  
+  Demo.create({
+    title: '117. 搜索旋转排序数组 — 先找有序的一半，再决定往哪边收',
+    info: `输入：nums = [${NUMS.join(', ')}]（在下标 3 与 4 之间旋转），target = ${TARGET}（示例 1）。每轮先判断左半还是右半升序，再看 target 是否落在升序的那一半里。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 380,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本轮中点 mid' },
+      { color: 'var(--demo-info)', label: '候选区间 [left, right] 内' },
+      { color: 'var(--demo-pink)', label: '本轮确认升序的那一半' },
+      { color: 'var(--demo-warn)', label: '值等于 target 的元素' },
+      { color: 'var(--demo-ok)', label: '最终找到的 target' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const arrayPanel = Demo.el('div', 'panel');
+      arrayPanel.style.width = '100%';
+      arrayPanel.appendChild(Demo.el('div', 'panel__title',
+        step.done
+          ? (step.found >= 0 ? `数组 nums（target = ${TARGET} 在下标 ${step.found}）` : '数组 nums（区间为空，未找到）')
+          : `数组 nums（候选区间 [${step.left}, ${step.right}]）`));
+      arrayPanel.appendChild(arrayRow(step));
+      ctx.stage.appendChild(arrayPanel);
+  
+      const judgePanel = Demo.el('div', 'panel');
+      judgePanel.style.width = '100%';
+      judgePanel.appendChild(Demo.el('div', 'panel__title', '本步判断'));
+      let judgeHtml;
+      if (step.mid < 0) {
+        judgeHtml = `还没取中点。下一轮会取 mid = left + ⌊(right − left) / 2⌋，然后比较 nums[left] 与 nums[mid] 来判断哪一半升序。`;
+      } else if (step.cmp === 'eq') {
+        judgeHtml = `nums[${step.mid}] = <code>${step.mv}</code> 等于 target = <code>${TARGET}</code> &nbsp;<span class="tag tag--ok">直接命中</span>`;
+      } else {
+        const sideName = step.side === 'left' ? '左半段' : '右半段';
+        judgeHtml = `<code>nums[${step.mid}] = ${step.mv}</code> 不等于 target = ${TARGET}；` +
+          `${sideName} <code>[${step.sortedLo}, ${step.sortedHi}]</code> 升序 ` +
+          `&nbsp;<span class="tag tag--info">有序区间已定位</span>&nbsp; ` +
+          (step.inSorted
+            ? `target <span class="tag tag--ok">落在其中</span>，收缩到这一段里面`
+            : `target <span class="tag tag--bad">不在这段里</span>，只能去另一半找`);
+      }
+      judgePanel.appendChild(Demo.el('div', null, judgeHtml));
+      ctx.stage.appendChild(judgePanel);
+  
+      const result = Demo.el('div', 'panel',
+        `已比较 <strong>${step.checks}</strong> 次 ｜ 区间 <code>[${step.left}, ${step.right}]</code>` +
+        (step.done
+          ? (step.found >= 0
+            ? ` &nbsp;<span class="tag tag--ok">返回 ${step.found}</span>`
+            : ` &nbsp;<span class="tag tag--bad">返回 −1</span>`)
+          : ''));
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

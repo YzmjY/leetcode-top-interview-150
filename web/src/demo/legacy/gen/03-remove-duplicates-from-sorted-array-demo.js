@@ -1,0 +1,110 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/03-remove-duplicates-from-sorted-array-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [0, 0, 1, 1, 1, 2, 2, 3, 3, 4];
+  
+  function buildSteps() {
+    const nums = NUMS.slice();
+    const n = nums.length;
+    const steps = [];
+    let slow = 0;
+  
+    steps.push({
+      nums: nums.slice(), slow, fast: 1, phase: 'init',
+      note: `初始化：slow = 0 指向目前唯一确定的不重复元素 nums[0] = ${nums[0]}，fast 从下标 1 开始向后扫描。数组有序，所以相同的值一定相邻，只需和「已保留的最后一个唯一值」比较即可判断是否重复。`
+    });
+  
+    for (let fast = 1; fast < n; fast++) {
+      const cur = nums[fast];
+      const last = nums[slow];
+      if (cur !== last) {
+        slow++;
+        nums[slow] = cur;
+        steps.push({
+          nums: nums.slice(), slow, fast, phase: 'unique',
+          note: `比较 nums[${fast}] = ${cur} 与已保留的最后一个唯一值 ${last}：不相等，说明 ${cur} 是新的唯一值。动作：slow 右移到 ${slow} 并把 ${cur} 写到 nums[${slow}]，这样前 ${slow + 1} 个元素就是目前找到的全部唯一值。`
+        });
+      } else {
+        steps.push({
+          nums: nums.slice(), slow, fast, phase: 'dup',
+          note: `比较 nums[${fast}] = ${cur} 与 nums[slow = ${slow}] = ${last}：相等，是重复项，直接跳过（slow 不动）。因为数组有序，后面比 ${cur} 大的值只会出现在更靠右的位置，${cur} 不可能再成为新的唯一值。`
+        });
+      }
+    }
+  
+    steps.push({
+      nums: nums.slice(), slow, fast: n, phase: 'done',
+      note: `fast 越界，扫描结束。唯一元素个数 k = slow + 1 = ${slow + 1}，它们就是 nums 的前 ${slow + 1} 个元素 [${nums.slice(0, slow + 1).join(', ')}]；下标 ≥ ${slow + 1} 的位置是废弃区，内容与结果无关。`
+    });
+  
+    return steps;
+  }
+  
+  function buildRow(step) {
+    const row = Demo.el('div', 'row');
+    step.nums.forEach((value, i) => {
+      let cls = 'cell';
+      if (step.phase === 'init') {
+        cls += ' is-info';
+      } else if (i === step.fast) {
+        cls += step.phase === 'dup' ? ' is-bad' : ' is-active';
+      } else if (i <= step.slow) {
+        cls += ' is-ok';
+        if (step.phase === 'unique' && i === step.slow) cls += ' is-violet';
+      } else {
+        cls += ' cell--dim';
+      }
+  
+      const col = Demo.el('div', 'col');
+      col.appendChild(Demo.el('div', cls, Demo.esc(value)));
+  
+      const labels = [];
+      if (step.slow === i) labels.push('slow');
+      if (step.fast != null && step.fast === i) labels.push('fast');
+      const ptr = Demo.el('div', 'ptr', labels.join(' '));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (labels.indexOf('slow') >= 0) ptr.classList.add('ptr--ok');
+      if (step.phase === 'dup' && step.fast === i) {
+        ptr.classList.remove('ptr--ok');
+        ptr.classList.add('ptr--bad');
+      }
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  Demo.create({
+    title: '3. 删除有序数组中的重复项 — 快慢指针去重',
+    info: `nums = [${NUMS.join(', ')}]（非严格递增）。原地去重，返回唯一元素个数 k。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'fast：当前扫描元素' },
+      { color: 'var(--demo-violet)', label: '刚写入的唯一值' },
+      { color: 'var(--demo-ok)', label: '已确定的唯一区（含 slow）' },
+      { color: 'var(--demo-danger)', label: '重复项，被跳过' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      ctx.stage.appendChild(buildRow(step));
+  
+      const k = step.slow + 1;
+      const unique = step.nums.slice(0, k);
+      const tail = step.nums.slice(k);
+      const panel = Demo.el('div', 'panel');
+      panel.innerHTML =
+        '<div><span class="tag tag--ok">唯一元素数 k = ' + k + '</span>&nbsp; nums 前 k 位 = [ ' +
+        Demo.esc(unique.join(', ')) + ' ]</div>' +
+        '<div style="margin-top:6px"><span class="tag">忽略区</span>&nbsp; [ ' +
+        (tail.length ? Demo.esc(tail.join(', ')) : '（空）') + ' ]</div>';
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

@@ -1,0 +1,166 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/125-add-binary-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const A = '1010';
+  const B = '1011';
+  const WIDTH = Math.max(A.length, B.length) + 1;
+  
+  function buildSteps() {
+    const aBits = A.padStart(WIDTH, '0').split('');
+    const bBits = B.padStart(WIDTH, '0').split('');
+    const resBits = new Array(WIDTH).fill(null);
+    const steps = [];
+    let i = A.length - 1;
+    let j = B.length - 1;
+    let carry = 0;
+    let col = WIDTH - 1;
+  
+    steps.push({
+      aBits: aBits.slice(), bBits: bBits.slice(), resBits: resBits.slice(),
+      col: -1, carry, da: null, db: null, sum: null, bit: null, next: null,
+      active: false, done: false,
+      note: `初始化：a = "${A}"，b = "${B}"，进位 carry = 0。两数右端对齐，从最低位开始逐位相加。`
+    });
+  
+    while (i >= 0 || j >= 0 || carry > 0) {
+      const da = i >= 0 ? Number(A[i]) : 0;
+      const db = j >= 0 ? Number(B[j]) : 0;
+      const sum = da + db + carry;
+      const bit = sum % 2;
+      const next = Math.floor(sum / 2);
+      resBits[col] = bit;
+      steps.push({
+        aBits: aBits.slice(), bBits: bBits.slice(), resBits: resBits.slice(),
+        col, carry, da, db, sum, bit, next,
+        active: true, done: false,
+        note: `从右数第 ${WIDTH - col} 列：a 取 ${da}、b 取 ${db}、加上进位 ${carry}，和为 ${sum}，本位写 ${bit}，新进位为 ${next}。`
+      });
+      carry = next;
+      i -= 1;
+      j -= 1;
+      col -= 1;
+    }
+  
+    steps.push({
+      aBits: aBits.slice(), bBits: bBits.slice(), resBits: resBits.slice(),
+      col: -1, carry, da: null, db: null, sum: null, bit: null, next: null,
+      active: false, done: true,
+      note: `所有位处理完毕，进位为 ${carry}，两个二进制串相加的结果为 "${resBits.join('')}"。`
+    });
+  
+    return steps;
+  }
+  
+  function labelNode(text) {
+    const node = Demo.el('div', 'panel__title', Demo.esc(text));
+    node.style.width = '76px';
+    node.style.textAlign = 'right';
+    node.style.marginBottom = '0';
+    return node;
+  }
+  
+  function makeRow(label, count) {
+    const row = Demo.el('div', 'row');
+    row.appendChild(labelNode(label));
+    const cells = [];
+    for (let k = 0; k < count; k++) {
+      const cell = Demo.el('div', 'cell');
+      row.appendChild(cell);
+      cells.push(cell);
+    }
+    return { row, cells };
+  }
+  
+  Demo.create({
+    title: '125. 二进制求和 — 从低位到高位模拟加法进位',
+    info: `输入：a = "${A}"，b = "${B}"；结果按二进制字符串返回。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前处理的列' },
+      { color: 'var(--demo-ok)', label: '已确定的结果位' },
+      { color: 'var(--demo-warn)', label: '进位为 1' },
+      { color: 'var(--demo-border)', label: '对齐时补的 0' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+      const padA = WIDTH - A.length;
+      const padB = WIDTH - B.length;
+  
+      const block = Demo.el('div', 'col');
+      block.style.gap = '6px';
+  
+      const rowA = makeRow('a =', WIDTH);
+      const rowB = makeRow('b =', WIDTH);
+      const rowR = makeRow('结果 =', WIDTH);
+  
+      step.aBits.forEach((v, k) => {
+        const cell = rowA.cells[k];
+        cell.textContent = v;
+        if (k < padA) cell.classList.add('cell--dim');
+        if (step.active && k === step.col) {
+          cell.classList.remove('cell--dim');
+          cell.classList.add('is-active');
+        }
+      });
+  
+      step.bBits.forEach((v, k) => {
+        const cell = rowB.cells[k];
+        cell.textContent = v;
+        if (k < padB) cell.classList.add('cell--dim');
+        if (step.active && k === step.col) {
+          cell.classList.remove('cell--dim');
+          cell.classList.add('is-active');
+        }
+      });
+  
+      step.resBits.forEach((v, k) => {
+        const cell = rowR.cells[k];
+        if (v == null) {
+          cell.textContent = '·';
+          cell.classList.add('cell--empty');
+        } else if (step.active && k === step.col) {
+          cell.textContent = String(v);
+          cell.classList.add('is-active');
+        } else {
+          cell.textContent = String(v);
+          cell.classList.add('is-ok');
+        }
+      });
+  
+      const ptrRow = Demo.el('div', 'row');
+      ptrRow.appendChild(labelNode(''));
+      for (let k = 0; k < WIDTH; k++) {
+        ptrRow.appendChild(Demo.el('div', 'ptr', step.active && k === step.col ? '▲' : ''));
+      }
+  
+      block.appendChild(rowA.row);
+      block.appendChild(rowB.row);
+      block.appendChild(ptrRow);
+      block.appendChild(rowR.row);
+      ctx.stage.appendChild(block);
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.style.textAlign = 'center';
+      if (step.active) {
+        panel.innerHTML =
+          `本位求和：<strong>${step.da} + ${step.db} + ${step.carry} = ${step.sum}</strong>　` +
+          `本位写 <strong>${step.bit}</strong>（${step.sum} % 2）　` +
+          `进位 <span class="tag tag--warn">${step.next}</span>（${step.sum} / 2 向下取整）`;
+      } else if (step.done) {
+        panel.innerHTML =
+          `a + b = <code>${Demo.esc(step.resBits.join(''))}</code>　` +
+          `<span class="tag tag--ok">计算完成</span>`;
+      } else {
+        panel.innerHTML =
+          `进位 carry = <span class="tag">0</span>，指针还停在最低位右侧，等待开始计算。`;
+      }
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

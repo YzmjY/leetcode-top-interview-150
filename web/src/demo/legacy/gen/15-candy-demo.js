@@ -1,0 +1,193 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/15-candy-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const CASES = [
+    { label: '示例 1', ratings: [1, 0, 2] },
+    { label: '示例 2', ratings: [1, 2, 2] }
+  ];
+  
+  /* 真实跑一遍题解的两趟贪心：先只满足「比左边高」，再从右往左补「比右边高」 */
+  function simulate(label, ratings, steps) {
+    const n = ratings.length;
+    const candies = [];
+    for (let i = 0; i < n; i++) candies.push(1);
+    let left = candies.slice();
+  
+    function push(extra) {
+      const s = {
+        label: label, ratings: ratings, candies: candies.slice(), left: left.slice(),
+        phase: 'init', i: -1, old: null, need: null, done: false, total: null, note: ''
+      };
+      Object.keys(extra).forEach(function (k) { s[k] = extra[k]; });
+      steps.push(s);
+    }
+  
+    push({
+      note: `【${label}】初始化：每个孩子至少 1 颗糖，所以 candies = [${candies.join(', ')}]。"相邻评分更高者糖更多" 这个约束在左右两个方向上都要成立，一次遍历顾不过来，因此拆成两趟：第一趟只保证「比左边评分高的孩子更多」，第二趟再从右往左补齐「比右边评分高的孩子更多」。`
+    });
+  
+    // 第一趟：左 → 右
+    for (let i = 0; i < n; i++) {
+      if (i === 0) {
+        push({
+          phase: 'left', i: i,
+          note: `【${label}】第一趟（左→右）i = 0：最左边的孩子左边没有邻居，没有「比左边高」的问题，candies[0] 保持最少的 1 颗。`
+        });
+        continue;
+      }
+      const old = candies[i];
+      if (ratings[i] > ratings[i - 1]) {
+        candies[i] = candies[i - 1] + 1;
+        push({
+          phase: 'left', i: i, old: old,
+          note: `【${label}】第一趟（左→右）i = ${i}：比较 ratings[${i}] = ${ratings[i]} 与左边的 ratings[${i - 1}] = ${ratings[i - 1]}，前者更大，所以这个孩子必须比左边多。candies[${i}] = candies[${i - 1}] + 1 = ${candies[i - 1]} + 1 = ${candies[i]}。`
+        });
+      } else {
+        push({
+          phase: 'left', i: i, old: old,
+          note: `【${label}】第一趟（左→右）i = ${i}：比较 ratings[${i}] = ${ratings[i]} 与左边的 ratings[${i - 1}] = ${ratings[i - 1]}，前者不大于后者（评分相等或更低），左规则不要求他更多，candies[${i}] 保持 ${candies[i]} 颗——已经是最低配额，不能再少。`
+        });
+      }
+    }
+  
+    left = candies.slice();
+  
+    // 第二趟：右 → 左
+    for (let i = n - 1; i >= 0; i--) {
+      if (i === n - 1) {
+        push({
+          phase: 'right', i: i, left: left,
+          note: `【${label}】第二趟（右→左）起点 i = ${n - 1}：最右边的孩子右边没有邻居，candies[${i}] = ${candies[i]} 保持不变。接下来往左逐个检查「评分比右边高的孩子」。`
+        });
+        continue;
+      }
+      const old = candies[i];
+      if (ratings[i] > ratings[i + 1]) {
+        const need = candies[i + 1] + 1;
+        candies[i] = Math.max(candies[i], need);
+        push({
+          phase: 'right', i: i, old: old, need: need, left: left,
+          note: `【${label}】第二趟（右→左）i = ${i}：比较 ratings[${i}] = ${ratings[i]} 与右边的 ratings[${i + 1}] = ${ratings[i + 1]}，前者更大，所以这个孩子必须比右边多。右边孩子拿了 ${candies[i + 1]} 颗，他至少要 ${candies[i + 1]} + 1 = ${need} 颗。` +
+            (need > old
+              ? ` 第一趟算出的左侧值 ${old} 不够用，取两者较大的：candies[${i}] 从 ${old} 提升到 ${candies[i]}，这样左、右两条规则同时被满足（两者取 max 就是交集）。`
+              : ` 而第一趟已经算出的 ${old} 已经 ≥ ${need}，左侧规则要求得更严，所以 candies[${i}] 保持 ${candies[i]} 不变——取 max 的结果就是它自己。`)
+        });
+      } else {
+        push({
+          phase: 'right', i: i, old: old, left: left,
+          note: `【${label}】第二趟（右→左）i = ${i}：比较 ratings[${i}] = ${ratings[i]} 与右边的 ratings[${i + 1}] = ${ratings[i + 1]}，前者不大于后者，右规则不要求他更多，candies[${i}] 保持第一趟定下的 ${candies[i]}。`
+        });
+      }
+    }
+  
+    let total = 0;
+    for (let i = 0; i < n; i++) total += candies[i];
+  
+    push({
+      phase: 'done', done: true, total: total, left: left,
+      note: `【${label}】结论：最终糖果分配 [${candies.join(', ')}]，总和 ${candies.join(' + ')} = ${total}。第一趟让每个孩子不输给左邻居，第二趟让他不输给右邻居，两趟都只做加法取 max，所以时间 O(n)，空间 O(n)（可以优化到 O(1)）。`
+    });
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    CASES.forEach(function (c) { simulate(c.label, c.ratings, steps); });
+    return steps;
+  }
+  
+  function ratingsRow(step) {
+    const row = Demo.el('div', 'row');
+    step.ratings.forEach(function (v, idx) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(v));
+      if (idx === step.i && !step.done) cell.classList.add('is-active');
+      col.appendChild(cell);
+      const ptr = Demo.el('div', 'ptr', '孩子 ' + idx);
+      if (idx === step.i && !step.done) ptr.classList.add('ptr--info');
+      else ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  function candyRow(step, values, compareIdx) {
+    const row = Demo.el('div', 'row');
+    values.forEach(function (v, idx) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(v));
+      if (step.done) cell.classList.add('is-ok');
+      else if (idx === step.i) cell.classList.add('is-active');
+      else if (step.phase === 'right' && idx > step.i) cell.classList.add('is-ok');
+      else if (step.phase === 'left' && idx < step.i) cell.classList.add('is-info');
+      col.appendChild(cell);
+  
+      let label = '';
+      if (!step.done) {
+        if (idx === compareIdx) label = '比较中';
+        else if (idx === step.i) label = '当前';
+      }
+      const ptr = Demo.el('div', 'ptr', label);
+      if (!label) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  Demo.create({
+    title: '15. 分发糖果 — 左右两趟贪心，取较大值',
+    info: '示例 1：ratings = [1,0,2] → 5；示例 2：ratings = [1,2,2] → 4。每个孩子至少 1 颗，且相邻孩子中评分更高者必须拿到更多。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 400,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本步正在处理的孩子' },
+      { color: 'var(--demo-info)', label: '第一趟（左规则）已确定' },
+      { color: 'var(--demo-ok)', label: '第二趟（右规则）已核对 / 最终结果' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const head = Demo.el('div', 'row');
+      head.appendChild(Demo.el('span', 'tag', Demo.esc('用例 ' + step.label)));
+      head.appendChild(Demo.el('span', 'tag ' + (step.done ? 'tag--ok' : 'tag--info'),
+        step.done ? '答案：最少 ' + step.total + ' 颗糖'
+          : (step.phase === 'right' ? '第二趟：从右往左补右规则' : '第一趟：从左往右满足左规则')));
+      ctx.stage.appendChild(head);
+  
+      const ratePanel = Demo.el('div', 'panel');
+      ratePanel.style.width = '100%';
+      ratePanel.appendChild(Demo.el('div', 'panel__title', '孩子们的评分 ratings'));
+      ratePanel.appendChild(ratingsRow(step));
+      ctx.stage.appendChild(ratePanel);
+  
+      const leftPanel = Demo.el('div', 'panel');
+      leftPanel.style.width = '100%';
+      leftPanel.appendChild(Demo.el('div', 'panel__title', '第一趟（只考虑左边邻居）得到的糖果数'));
+      leftPanel.appendChild(candyRow(step, step.left, step.phase === 'left' ? step.i - 1 : -1));
+      ctx.stage.appendChild(leftPanel);
+  
+      const curPanel = Demo.el('div', 'panel');
+      curPanel.style.width = '100%';
+      curPanel.appendChild(Demo.el('div', 'panel__title',
+        step.done ? '最终糖果数（两趟取较大值）' : '当前糖果数 candies（第二趟会在它基础上往上取 max）'));
+      curPanel.appendChild(candyRow(step, step.candies, step.phase === 'right' ? step.i + 1 : -1));
+      ctx.stage.appendChild(curPanel);
+  
+      const foot = Demo.el('div', 'row');
+      const sum = step.candies.reduce(function (a, b) { return a + b; }, 0);
+      foot.appendChild(Demo.el('span', 'tag ' + (step.done ? 'tag--ok' : ''),
+        '当前糖果总数 = ' + sum));
+      if (step.need != null) {
+        foot.appendChild(Demo.el('span', 'tag ' + (step.need > step.old ? 'tag--warn' : 'tag--info'),
+          '右规则要求 ≥ ' + step.need + '，左侧已有 ' + step.old + '，取较大者 ' + step.candies[step.i]));
+      }
+      ctx.stage.appendChild(foot);
+    }
+  });
+  return Demo.__config
+}

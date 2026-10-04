@@ -1,0 +1,158 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/18-integer-to-roman-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUM = 1994;
+  const PAIRS = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+    [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+    [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']
+  ];
+  const GRID_COLS = 7;
+  
+  function buildSteps() {
+    const steps = [];
+    const used = PAIRS.map(function () { return false; });
+    let num = NUM;
+    let roman = '';
+  
+    steps.push({
+      i: -1, num: num, roman: roman, symbol: null, value: null, taken: false,
+      used: used.slice(), done: false,
+      note: `初始化：num = ${NUM}，roman = ""。先把 13 个罗马数字符号（含 IV/IX/XL/XC/CD/CM 六个减法特例）按数值从大到小排好，准备贪心匹配。`
+    });
+  
+    for (let i = 0; i < PAIRS.length && num > 0; i++) {
+      const value = PAIRS[i][0];
+      const symbol = PAIRS[i][1];
+  
+      if (num < value) {
+        steps.push({
+          i: i, num: num, roman: roman, symbol: symbol, value: value, taken: false,
+          used: used.slice(), done: false,
+          note: `检查 ${value}（${symbol}）：当前 num = ${num} < ${value}，这个符号太大、用不上，跳过它去试更小的符号。`
+        });
+        continue;
+      }
+  
+      while (num >= value) {
+        const before = num;
+        num -= value;
+        roman += symbol;
+        used[i] = true;
+        steps.push({
+          i: i, num: num, roman: roman, symbol: symbol, value: value, taken: true,
+          before: before, used: used.slice(), done: false,
+          note: `贪心命中：${value}（${symbol}）是当前能用的最大符号（${before} ≥ ${value}），于是 num = ${before} − ${value} = ${num}，并把 "${symbol}" 追加到 roman 末尾。`
+        });
+      }
+    }
+  
+    steps.push({
+      i: PAIRS.length, num: num, roman: roman, symbol: null, value: null, taken: false,
+      used: used.slice(), done: true,
+      note: `num 已经减到 0，贪心结束（num 归零后后面更小的符号无需再看）。结果 roman = "${roman}"，共 ${roman.length} 个罗马字符，与示例输出一致。`
+    });
+  
+    return steps;
+  }
+  
+  function pairGrid(step) {
+    const grid = Demo.el('div', 'grid');
+    grid.style.gridTemplateColumns = 'repeat(' + GRID_COLS + ', minmax(0, 1fr))';
+    grid.style.width = '100%';
+  
+    PAIRS.forEach(function (pair, idx) {
+      const value = pair[0];
+      const symbol = pair[1];
+      const col = Demo.el('div', 'col');
+  
+      const cell = Demo.el('div', 'grid-cell', Demo.esc(symbol));
+      if (idx === step.i && !step.done) cell.classList.add('is-active');
+      else if (step.used[idx]) cell.classList.add('is-ok');
+      else if (step.i >= 0 && idx < step.i) cell.classList.add('is-dim');
+      if (step.done && !step.used[idx]) cell.classList.add('is-dim');
+      col.appendChild(cell);
+  
+      const ptr = Demo.el('div', 'ptr', String(value));
+      if (idx === step.i && !step.done) ptr.classList.add('ptr--info');
+      else ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+  
+      grid.appendChild(col);
+    });
+  
+    return grid;
+  }
+  
+  Demo.create({
+    title: '18. 整数转罗马数字 — 从大到小贪心减数',
+    info: `输入：num = ${NUM}（示例 5）。贪心表按数值降序排列，每次尽量使用能装下的最大符号。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 340,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本步检查的符号' },
+      { color: 'var(--demo-ok)', label: '已经用过的符号' },
+      { color: 'var(--demo-muted)', label: '数值过大、被跳过的符号' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const tablePanel = Demo.el('div', 'panel');
+      tablePanel.style.width = '100%';
+      tablePanel.appendChild(Demo.el('div', 'panel__title',
+        step.done ? '贪心表（已停止匹配）' : '贪心表：13 个符号按数值从大到小排列'));
+      tablePanel.appendChild(pairGrid(step));
+      ctx.stage.appendChild(tablePanel);
+  
+      const stateRow = Demo.el('div', 'row');
+      stateRow.style.width = '100%';
+      stateRow.style.alignItems = 'stretch';
+  
+      const numPanel = Demo.el('div', 'panel');
+      numPanel.style.flex = '1';
+      numPanel.style.textAlign = 'center';
+      numPanel.appendChild(Demo.el('div', 'panel__title', '当前 num'));
+      numPanel.appendChild(Demo.el('div', null,
+        '<span style="font-size:26px;font-weight:700;color:var(--demo-warn);font-family:var(--demo-mono)">' +
+        step.num + '</span>'));
+      stateRow.appendChild(numPanel);
+  
+      const romanPanel = Demo.el('div', 'panel');
+      romanPanel.style.flex = '2';
+      romanPanel.appendChild(Demo.el('div', 'panel__title', '累积的 roman'));
+      const romanRow = Demo.el('div', 'row');
+      if (step.roman) {
+        step.roman.split('').forEach(function (ch, idx) {
+          romanRow.appendChild(Demo.el('div', 'cell cell--sm is-ok', Demo.esc(ch)));
+        });
+      } else {
+        romanRow.appendChild(Demo.el('span', 'tag', '（空）'));
+      }
+      romanPanel.appendChild(romanRow);
+      stateRow.appendChild(romanPanel);
+  
+      ctx.stage.appendChild(stateRow);
+  
+      const result = Demo.el('div', 'panel');
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      if (step.done) {
+        result.innerHTML = `最终结果：roman = <code>"${Demo.esc(step.roman)}"</code>` +
+          ` &nbsp;<span class="tag tag--ok">完成</span>`;
+      } else if (step.i < 0) {
+        result.innerHTML = `num = <strong>${step.num}</strong>，等待第一次贪心匹配`;
+      } else {
+        const verb = step.taken
+          ? `采用 ${step.value}（${step.symbol}）：num ${step.before} → <strong>${step.num}</strong>`
+          : `跳过 ${step.value}（${step.symbol}）：num 保持 <strong>${step.num}</strong>`;
+        result.innerHTML = verb + ` &nbsp;|&nbsp; roman = <code>"${Demo.esc(step.roman)}"</code>`;
+      }
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

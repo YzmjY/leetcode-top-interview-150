@@ -1,0 +1,183 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/150-maximal-square-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const MATRIX = [
+    ['1', '0', '1', '0', '0'],
+    ['1', '0', '1', '1', '1'],
+    ['1', '1', '1', '1', '1'],
+    ['1', '0', '0', '1', '0']
+  ];
+  const R = MATRIX.length;
+  const C = MATRIX[0].length;
+  
+  function buildSteps() {
+    const dp = Array.from({ length: R }, () => new Array(C).fill(0));
+    const filled = Array.from({ length: R }, () => new Array(C).fill(false));
+    const steps = [];
+    let maxSide = 0, bestI = -1, bestJ = -1;
+  
+    function push(note, cur, srcs, best, formulaTitle, formula) {
+      steps.push({
+        dp: dp.map(r => r.slice()),
+        filled: filled.map(r => r.slice()),
+        cur: cur, srcs: srcs || [], best: best || [],
+        maxSide: maxSide, bestI: bestI, bestJ: bestJ,
+        formulaTitle: formulaTitle, formula: formula,
+        note: note, done: false
+      });
+    }
+  
+    push(
+      `初始化 ${R}×${C} 的 dp 表，全部置 0。dp[i][j] 的含义是「以 (i, j) 为右下角的最大正方形的边长」，所以每个格子只依赖它的上、左、左上三个邻居。`,
+      null, [], [], '初始状态', 'dp 全 0，正方形边长最大值的起点也是 0'
+    );
+  
+    for (let i = 0; i < R; i++) {
+      for (let j = 0; j < C; j++) {
+        filled[i][j] = true;
+  
+        if (MATRIX[i][j] === '0') {
+          dp[i][j] = 0;
+          push(
+            `(${i}, ${j}) 的原始值是 '0'。以它作为右下角的正方形必须包含这个 0，根本放不了 1，所以 dp[${i}][${j}] = 0，它也不可能成为答案的一部分。`,
+            [i, j], [], [],
+            '遇到 0', `matrix[${i}][${j}] == '0' ⇒ dp[${i}][${j}] = 0`
+          );
+          continue;
+        }
+  
+        if (i === 0 || j === 0) {
+          dp[i][j] = 1;
+          if (dp[i][j] > maxSide) { maxSide = dp[i][j]; bestI = i; bestJ = j; }
+          push(
+            `(${i}, ${j}) 是 '1'，且位于第一行或第一列。它不可能再向左上扩展（缺少上/左/左上邻居），能构成的正方形最大就是 1×1，所以 dp[${i}][${j}] = 1。`,
+            [i, j], [], [[i, j]],
+            '边界格', `matrix[${i}][${j}] == '1' 且在边界 ⇒ dp[${i}][${j}] = 1`
+          );
+          continue;
+        }
+  
+        const up = dp[i - 1][j];
+        const left = dp[i][j - 1];
+        const diag = dp[i - 1][j - 1];
+        const mn = Math.min(up, left, diag);
+        dp[i][j] = mn + 1;
+        const best = [];
+        if (up === mn) best.push([i - 1, j]);
+        if (left === mn) best.push([i, j - 1]);
+        if (diag === mn) best.push([i - 1, j - 1]);
+        if (dp[i][j] > maxSide) { maxSide = dp[i][j]; bestI = i; bestJ = j; }
+  
+        push(
+          `(${i}, ${j}) 是 '1'，看三个邻居限制的边长：上方 dp[${i - 1}][${j}] = ${up}，左方 dp[${i}][${j - 1}] = ${left}，左上 dp[${i - 1}][${j - 1}] = ${diag}。取最小的 ${mn} 说明三个方向同时能满足的最大正方形是 ${mn}×${mn}，再加上当前格子自己，dp[${i}][${j}] = ${mn} + 1 = ${dp[i][j]}。`,
+          [i, j], [[i - 1, j], [i, j - 1], [i - 1, j - 1]], best,
+          '三个方向取最小再加 1',
+          `dp[${i}][${j}] = 1 + min(上 ${up}, 左 ${left}, 左上 ${diag}) = 1 + ${mn} = ${dp[i][j]}`
+        );
+      }
+    }
+  
+    steps.push({
+      dp: dp.map(r => r.slice()),
+      filled: filled.map(r => r.slice()),
+      cur: [bestI, bestJ], srcs: [], best: [[bestI, bestJ]],
+      maxSide: maxSide, bestI: bestI, bestJ: bestJ,
+      formulaTitle: '最终结果',
+      formula: `最大边长 maxSide = ${maxSide} ⇒ 面积 = ${maxSide} × ${maxSide} = ${maxSide * maxSide}`,
+      done: true,
+      note: `整个矩阵扫描完毕，过程中记录的最大边长 maxSide = ${maxSide}，答案 = 边长² = ${maxSide * maxSide}。这个 2×2 正方形以 (${bestI}, ${bestJ}) 为右下角，覆盖第 ${bestI - maxSide + 1}~${bestI} 行、第 ${bestJ - maxSide + 1}~${bestJ} 列（0 起编号）。每个格子只算一次且只读三个邻居，时间 O(m×n)；空间可用滚动数组优化到 O(n)。`
+    });
+  
+    return steps;
+  }
+  
+  function matrixCell(step, i, j) {
+    const cell = Demo.el('div', 'grid-cell');
+    cell.style.flexDirection = 'column';
+    cell.style.height = '46px';
+    cell.style.minWidth = '46px';
+    cell.style.fontSize = '15px';
+  
+    const isCur = step.cur && step.cur[0] === i && step.cur[1] === j;
+    const inBest = step.best.some(p => p[0] === i && p[1] === j);
+    const inSrc = step.srcs.some(p => p[0] === i && p[1] === j);
+    const inSquare = step.done && step.maxSide > 0 &&
+      i <= step.bestI && i > step.bestI - step.maxSide &&
+      j <= step.bestJ && j > step.bestJ - step.maxSide;
+  
+    if (inSquare) cell.classList.add('is-ok');
+    else if (isCur) cell.classList.add('is-active');
+    else if (inBest) cell.classList.add('is-ok');
+    else if (inSrc) cell.classList.add('is-warn');
+    else if (MATRIX[i][j] === '0') cell.classList.add('is-dim');
+    else if (!step.filled[i][j]) cell.classList.add('is-dim');
+  
+    const orig = Demo.esc(MATRIX[i][j]);
+    if (MATRIX[i][j] === '0') {
+      cell.innerHTML = '<span style="color:var(--demo-muted)">' + orig + '</span>';
+    } else {
+      const v = step.filled[i][j] ? Demo.esc(step.dp[i][j]) : '·';
+      cell.innerHTML = '<span style="font-size:10px;color:var(--demo-muted);line-height:1">' + orig + '</span>' +
+        '<span style="line-height:1.1">' + v + '</span>';
+    }
+    return cell;
+  }
+  
+  function buildGrid(step) {
+    const grid = Demo.el('div', 'grid');
+    grid.style.gridTemplateColumns = 'repeat(' + C + ', 46px)';
+    for (let i = 0; i < R; i++) {
+      for (let j = 0; j < C; j++) grid.appendChild(matrixCell(step, i, j));
+    }
+    return grid;
+  }
+  
+  Demo.create({
+    title: '150. 最大正方形 — 二维 DP，以 (i,j) 为右下角',
+    info: `输入：matrix = 4×5 的 0/1 矩阵（示例 1，输出应为 4）。dp[i][j] = 以 (i,j) 为右下角、只含 '1' 的最大正方形边长。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 340,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前计算的格子' },
+      { color: 'var(--demo-ok)', label: '被采用的转移来源 / 最终正方形' },
+      { color: 'var(--demo-warn)', label: '参与比较的上、左、左上' },
+      { color: 'var(--demo-muted)', label: '0 格或尚未计算' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const gridPanel = Demo.el('div', 'panel');
+      gridPanel.style.width = '100%';
+      gridPanel.appendChild(Demo.el('div', 'panel__title',
+        '矩阵（大字 = 原始 0/1，下方小字 = dp 值）'));
+      gridPanel.appendChild(buildGrid(step));
+      ctx.stage.appendChild(gridPanel);
+  
+      const infoPanel = Demo.el('div', 'panel');
+      infoPanel.style.width = '100%';
+      infoPanel.style.textAlign = 'center';
+      infoPanel.appendChild(Demo.el('div', 'panel__title', Demo.esc(step.formulaTitle)));
+      infoPanel.appendChild(Demo.el('div', null, '<code>' + Demo.esc(step.formula) + '</code>'));
+      if (!step.done) {
+        infoPanel.appendChild(Demo.el('div', null,
+          '<span class="tag tag--warn">上方 = dp[i-1][j]</span> &nbsp;' +
+          '<span class="tag tag--info">左方 = dp[i][j-1]</span> &nbsp;' +
+          '<span class="tag tag--violet">左上 = dp[i-1][j-1]</span>'));
+      }
+      ctx.stage.appendChild(infoPanel);
+  
+      const result = Demo.el('div', 'panel');
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      result.innerHTML = step.done
+        ? `最大正方形边长 = <strong>${step.maxSide}</strong>，面积 = <strong>${step.maxSide * step.maxSide}</strong> &nbsp;<span class="tag tag--ok">答案 ${step.maxSide * step.maxSide}</span>`
+        : `当前已发现的最大边长 maxSide = <strong>${step.maxSide}</strong>`;
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

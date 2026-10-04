@@ -1,0 +1,208 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/106-generate-parentheses-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const N = 3;
+  
+  function buildSteps() {
+    const steps = [];
+    const path = [];
+    const results = [];
+    let left = 0;
+    let right = 0;
+  
+    function snap(extra) {
+      return {
+        path: path.slice(),
+        results: results.slice(),
+        left: extra.left == null ? left : extra.left,
+        right: extra.right == null ? right : extra.right,
+        chosen: extra.chosen == null ? null : extra.chosen,
+        phase: extra.phase,
+        note: extra.note
+      };
+    }
+  
+    steps.push(snap({
+      phase: 'init',
+      note: `初始化：n = ${N}，path 为空，left = right = 0。合法括号序列满足两个条件：① 任意前缀中左括号数不少于右括号数；② 最终左右括号各有 n 个。回溯用 left、right 两个计数就能就地把非法分支剪掉。`
+    }));
+  
+    function backtrack() {
+      if (left === N && right === N) {
+        results.push(path.join(''));
+        steps.push(snap({
+          phase: 'collect',
+          note: `left = right = n = ${N}，括号已经用尽且过程中从未出现非法前缀，得到一个合法组合 "${path.join('')}"，加入结果集后返回。`
+        }));
+        return;
+      }
+  
+      const branches = [];
+      if (left < N) branches.push('还可以放左括号');
+      if (right < left) branches.push('还可以放右括号');
+      const branchText = branches.length ? branches.join('，') + '。' : '没有可用分支。';
+      steps.push(snap({
+        phase: 'node',
+        note: `进入递归节点：path = "${path.join('')}"，left = ${left}，right = ${right}。${branchText}${right >= left ? '此时 right ≥ left，放右括号会造成非法前缀，所以「放右括号」这个分支被直接封死。' : ''}`
+      }));
+  
+      if (left < N) {
+        path.push('(');
+        left++;
+        steps.push(snap({
+          chosen: '(', phase: 'choose-left',
+          note: `left = ${left - 1} < n = ${N}，允许放左括号：path 追加 '(' 得到 "${path.join('')}"，left 变为 ${left}。加左括号永远不会破坏「前缀左括号不少于右括号」的条件，所以只要没用满 n 个就可以放。`
+        }));
+  
+        backtrack();
+  
+        path.pop();
+        left--;
+        steps.push(snap({
+          chosen: '(', phase: 'undo',
+          note: `以 '(' 开头的所有分支已经试完，撤销这个左括号：path 回到 "${path.join('')}"，left 回到 ${left}，接着尝试同一层的另一个分支。`
+        }));
+      }
+  
+      if (right < left) {
+        path.push(')');
+        right++;
+        steps.push(snap({
+          chosen: ')', phase: 'choose-right',
+          note: `right = ${right - 1} < left = ${left}，允许放右括号：path 追加 ')' 得到 "${path.join('')}"，right 变为 ${right}。只有右括号数严格小于左括号数时才允许添加，这样任意前缀都不会出现右括号多于左括号的非法情况 —— 这就是本题最关键的剪枝。`
+        }));
+  
+        backtrack();
+  
+        path.pop();
+        right--;
+        steps.push(snap({
+          chosen: ')', phase: 'undo',
+          note: `以 ')' 结尾的分支已经试完，撤销这个右括号：path 回到 "${path.join('')}"，right 回到 ${right}。`
+        }));
+      }
+    }
+  
+    backtrack();
+  
+    steps.push(snap({
+      phase: 'done',
+      note: `回溯结束，n = ${N} 时共生成 ${results.length} 个合法组合：${results.join('、')}。数量正好是第 ${N} 个卡特兰数，说明每条合法路径都被恰好枚举了一次。`
+    }));
+  
+    return steps;
+  }
+  
+  function pathRow(step) {
+    const row = Demo.el('div', 'row');
+    for (let i = 0; i < 2 * N; i++) {
+      const value = step.path[i];
+      const cell = Demo.el('div', 'cell', value ? Demo.esc(value) : '·');
+      if (!value) cell.classList.add('cell--empty');
+      else if (i === step.path.length - 1 && step.phase !== 'undo') cell.classList.add('is-active');
+      else cell.classList.add('is-ok');
+      row.appendChild(cell);
+    }
+    return row;
+  }
+  
+  function branchRow(step) {
+    const row = Demo.el('div', 'row');
+    const openCell = Demo.el('div', 'cell', '(');
+    if (step.left < N) {
+      openCell.classList.add(step.phase === 'choose-left' ? 'is-active' : 'is-ok');
+    } else {
+      openCell.classList.add('cell--dim');
+    }
+    const openPtr = Demo.el('div', 'ptr', step.left < N ? 'left < n 可放' : 'left = n 已用满');
+    if (!(step.left < N)) openPtr.classList.add('ptr--dim');
+  
+    const closeCell = Demo.el('div', 'cell', ')');
+    if (step.right < step.left) {
+      closeCell.classList.add(step.phase === 'choose-right' ? 'is-active' : 'is-ok');
+    } else {
+      closeCell.classList.add('cell--dim');
+    }
+    const closePtr = Demo.el('div', 'ptr', step.right < step.left ? 'right < left 可放' : 'right ≥ left 会非法');
+    if (!(step.right < step.left)) closePtr.classList.add('ptr--dim');
+  
+    const b1 = Demo.el('div', 'col');
+    b1.appendChild(openCell);
+    b1.appendChild(openPtr);
+    const b2 = Demo.el('div', 'col');
+    b2.appendChild(closeCell);
+    b2.appendChild(closePtr);
+  
+    row.appendChild(b1);
+    row.appendChild(b2);
+    return row;
+  }
+  
+  function counterRow(step) {
+    const row = Demo.el('div', 'row');
+    const l = Demo.el('div', 'bar');
+    l.style.width = '120px';
+    const lf = Demo.el('div', 'bar__fill');
+    lf.style.width = (step.left / N) * 100 + '%';
+    l.appendChild(lf);
+    l.appendChild(Demo.el('div', 'bar__label', 'left = ' + step.left));
+  
+    const r = Demo.el('div', 'bar');
+    r.style.width = '120px';
+    const rf = Demo.el('div', 'bar__fill');
+    rf.style.background = 'var(--demo-info)';
+    rf.style.width = (step.right / N) * 100 + '%';
+    r.appendChild(rf);
+    r.appendChild(Demo.el('div', 'bar__label', 'right = ' + step.right));
+  
+    row.appendChild(l);
+    row.appendChild(r);
+    row.appendChild(Demo.el('span', 'tag' + (step.left === step.right ? ' tag--ok' : ''), '差值 left − right = ' + (step.left - step.right)));
+    return row;
+  }
+  
+  Demo.create({
+    title: '106. 括号生成 — 合法前缀约束下的回溯',
+    info: `输入：n = ${N}，要生成 ${N} 对括号的全部合法组合。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本步追加的括号 / 可选分支' },
+      { color: 'var(--demo-ok)', label: '路径中已确定的括号' },
+      { color: 'var(--demo-muted)', label: '被约束封死的分支' }
+    ],
+    stageHeight: 320,
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const pathPanel = Demo.el('div', 'col');
+      pathPanel.appendChild(Demo.el('div', 'panel__title', 'path 括号序列（总长 2n = ' + 2 * N + '）'));
+      pathPanel.appendChild(pathRow(step));
+      ctx.stage.appendChild(pathPanel);
+  
+      ctx.stage.appendChild(Demo.el('div', 'panel__title', '左右括号计数'));
+      ctx.stage.appendChild(counterRow(step));
+  
+      const branchPanel = Demo.el('div', 'col');
+      branchPanel.appendChild(Demo.el('div', 'panel__title', '本节点的两个分支是否可用'));
+      branchPanel.appendChild(branchRow(step));
+      ctx.stage.appendChild(branchPanel);
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.style.textAlign = 'center';
+      const resRow = Demo.el('div', 'row');
+      if (!step.results.length) {
+        resRow.appendChild(Demo.el('span', 'ptr ptr--dim', '（还没有生成合法组合）'));
+      } else {
+        step.results.forEach(r => resRow.appendChild(Demo.el('span', 'tag tag--ok', Demo.esc(r))));
+      }
+      panel.appendChild(resRow);
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

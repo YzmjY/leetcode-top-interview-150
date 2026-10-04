@@ -1,0 +1,186 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/130-bitwise-and-of-numbers-range-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const LEFT = 5;
+  const RIGHT = 7;
+  const WIDTH = Math.max((LEFT >>> 0).toString(2).length, (RIGHT >>> 0).toString(2).length);
+  
+  function bitsOf(v, width) {
+    return (v >>> 0).toString(2).padStart(width, '0').split('');
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    let l = LEFT;
+    let r = RIGHT;
+    let shift = 0;
+  
+    steps.push({
+      l, r, shift, equal: false, ans: null, verified: false,
+      note: `初始化：left = ${LEFT}（${bitsOf(LEFT, WIDTH).join('')}），right = ${RIGHT}（${bitsOf(RIGHT, WIDTH).join('')}），shift = 0。` +
+        `两者不相等，说明区间内低位的 0/1 会不断变化，需要继续右移比较。`
+    });
+  
+    while (l < r) {
+      const dropped = shift;
+      l >>= 1;
+      r >>= 1;
+      shift += 1;
+      steps.push({
+        l, r, shift, equal: l === r, ans: null, verified: false,
+        note: `第 ${shift} 次右移：丢弃最低的第 ${dropped} 位后，left 变成 ${l}、right 变成 ${r}，` +
+          (l === r
+            ? `二者相等，说明保留下来的高位在区间内始终不变，它们就是公共前缀。`
+            : `二者仍不相等，说明还会变化的位置在更高位，继续右移。`)
+      });
+    }
+  
+    const ans = l << shift;
+    steps.push({
+      l, r, shift, equal: true, ans, verified: false,
+      note: `循环停止：left == right == ${l}，说明两数最高的 ${WIDTH - shift} 位完全相同，这就是公共前缀。` +
+        `把它左移 ${shift} 位还原（低 ${shift} 位补 0），得到 ${ans}（${bitsOf(ans, WIDTH).join('')}）。`
+    });
+  
+    let acc = LEFT;
+    const parts = [String(LEFT)];
+    for (let v = LEFT + 1; v <= RIGHT; v++) {
+      acc &= v;
+      parts.push(String(v));
+    }
+    steps.push({
+      l, r, shift, equal: true, ans, verified: true,
+      note: `验证：区间内所有数字依次按位与，${parts.join(' & ')} = ${acc}，与公共前缀法得到的 ${ans} 一致，说明低位中总有数字在该位上是 0，与完必然为 0。`
+    });
+  
+    return steps;
+  }
+  
+  function labelNode(text, width) {
+    const node = Demo.el('div', 'panel__title', Demo.esc(text));
+    node.style.width = (width || 72) + 'px';
+    node.style.textAlign = 'right';
+    node.style.marginBottom = '0';
+    node.style.flex = 'none';
+    return node;
+  }
+  
+  function bitRow(label, bits, decorate, labelWidth) {
+    const row = Demo.el('div', 'row');
+    row.appendChild(labelNode(label, labelWidth));
+    bits.forEach((b, idx) => {
+      const cell = Demo.el('div', 'cell');
+      cell.textContent = b;
+      decorate(cell, idx);
+      row.appendChild(cell);
+    });
+    return row;
+  }
+  
+  Demo.create({
+    title: '130. 数字范围按位与 — 结果就是 left 与 right 的二进制公共前缀',
+    info: `输入：left = ${LEFT}，right = ${RIGHT}，求区间 [${LEFT}, ${RIGHT}] 内所有数字按位与的结果。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '仍在比较的最高位窗口' },
+      { color: 'var(--demo-ok)', label: '公共前缀 / 结果中的 1' },
+      { color: 'var(--demo-warn)', label: '最终补 0 的低位' },
+      { color: 'var(--demo-border)', label: '已被右移丢弃的位' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+      const lbits = bitsOf(LEFT, WIDTH);
+      const rbits = bitsOf(RIGHT, WIDTH);
+      const prefixLen = WIDTH - step.shift;
+  
+      const block = Demo.el('div', 'col');
+      block.style.gap = '6px';
+  
+      block.appendChild(bitRow('left =', lbits, (cell, idx) => {
+        if (idx >= prefixLen) cell.classList.add('cell--dim');
+        else if (lbits[idx] !== rbits[idx]) cell.classList.add('is-bad');
+        else cell.classList.add('is-active');
+      }));
+      block.appendChild(bitRow('right =', rbits, (cell, idx) => {
+        if (idx >= prefixLen) cell.classList.add('cell--dim');
+        else if (lbits[idx] !== rbits[idx]) cell.classList.add('is-bad');
+        else cell.classList.add('is-active');
+      }));
+      const posRow = Demo.el('div', 'row');
+      posRow.appendChild(labelNode('', 72));
+      for (let idx = 0; idx < WIDTH; idx++) {
+        const ptr = Demo.el('div', 'ptr', `位${WIDTH - 1 - idx}`);
+        if (idx >= prefixLen) ptr.classList.add('ptr--dim');
+        posRow.appendChild(ptr);
+      }
+      block.appendChild(posRow);
+      block.appendChild(bitRow('公共前缀', bitsOf(step.l, WIDTH), (cell, idx) => {
+        if (idx < prefixLen) cell.classList.add('is-ok');
+        else {
+          cell.textContent = '·';
+          cell.classList.add('cell--empty');
+        }
+      }));
+  
+      if (step.ans != null) {
+        block.appendChild(bitRow('结果 =', bitsOf(step.ans, WIDTH), (cell, idx) => {
+          if (idx < prefixLen) cell.classList.add('is-ok');
+          else cell.classList.add('is-warn');
+        }));
+      }
+  
+      const stateRow = Demo.el('div', 'row');
+      stateRow.appendChild(labelNode('比较', 72));
+      const tag = Demo.el('span', step.l === step.r ? 'tag tag--ok' : 'tag tag--warn',
+        `left >> ${step.shift} = ${step.l}　${step.l === step.r ? '==' : '!='}　${step.r} = right >> ${step.shift}`);
+      stateRow.appendChild(tag);
+      block.appendChild(stateRow);
+  
+      ctx.stage.appendChild(block);
+  
+      const rangeRow = Demo.el('div', 'row');
+      rangeRow.appendChild(labelNode('区间按位与', 92));
+      for (let v = LEFT; v <= RIGHT; v++) {
+        if (v > LEFT) rangeRow.appendChild(Demo.el('span', 'arrow', '&amp;'));
+        const cell = Demo.el('div', 'cell cell--sm');
+        cell.textContent = String(v);
+        if (step.verified) cell.classList.add('is-ok');
+        rangeRow.appendChild(cell);
+      }
+      rangeRow.appendChild(Demo.el('span', 'arrow', '='));
+      const ansCell = Demo.el('div', 'cell cell--sm');
+      if (step.ans == null) {
+        ansCell.textContent = '?';
+        ansCell.classList.add('cell--empty');
+      } else {
+        ansCell.textContent = String(step.ans);
+        ansCell.classList.add('is-ok');
+      }
+      rangeRow.appendChild(ansCell);
+      ctx.stage.appendChild(rangeRow);
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.style.textAlign = 'center';
+      if (step.verified) {
+        panel.innerHTML =
+          `区间 [${LEFT}, ${RIGHT}] 内所有数字的公共前缀是 <code>${Demo.esc(bitsOf(step.l, WIDTH).slice(0, prefixLen).join(''))}</code>，` +
+          `低 ${step.shift} 位在区间内都出现过 0，与完为 0，所以结果是 <strong>${step.ans}</strong>。` +
+          `　<span class="tag tag--ok">两种方法结果一致</span>`;
+      } else if (step.ans != null) {
+        panel.innerHTML =
+          `公共前缀 = <code>${Demo.esc(bitsOf(step.l, WIDTH).slice(0, prefixLen).join(''))}</code>（左移 ${step.shift} 位后低 ${step.shift} 位补 0）　` +
+          `结果 = <strong>${step.ans}</strong>`;
+      } else {
+        panel.innerHTML =
+          `已右移 ${step.shift} 位，公共前缀长度 ${prefixLen} 位：<code>${Demo.esc(bitsOf(step.l, WIDTH).slice(0, prefixLen).join(''))}</code>（还在收缩中）`;
+      }
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

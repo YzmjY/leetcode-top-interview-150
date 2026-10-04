@@ -1,0 +1,144 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/39-ransom-note-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const RANSOM = 'aa';
+  const MAGAZINE = 'aab';
+  const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
+  
+  function buildSteps() {
+    const mag = MAGAZINE.split('');
+    const ran = RANSOM.split('');
+    const cnt = new Array(26).fill(0);
+    const steps = [];
+    let result = null;
+  
+    steps.push({
+      phase: 'init', cnt: cnt.slice(), magIdx: -1, ranIdx: -1, changed: -1,
+      note: `初始化长度为 26 的频次数组 cnt，26 个格子全部为 0。cnt[k] 的含义是「magazine 里还剩几个能用的字母 k」。第一遍先完整扫描 magazine = "${MAGAZINE}"，把它的字符库存记进 cnt。`
+    });
+  
+    for (let j = 0; j < mag.length; j++) {
+      const k = mag[j].charCodeAt(0) - 97;
+      const before = cnt[k];
+      cnt[k] += 1;
+      steps.push({
+        phase: 'count', cnt: cnt.slice(), magIdx: j, ranIdx: -1, changed: k, before: before,
+        note: `统计 magazine[${j}] = "${mag[j]}"：cnt['${mag[j]}'] 由 ${before} 加 1 变成 ${cnt[k]}。因为只有小写字母，用下标 ${k} 直接定位，不需要真正的哈希函数，这也是用数组代替 map 的原因。`
+      });
+    }
+  
+    for (let i = 0; i < ran.length; i++) {
+      const k = ran[i].charCodeAt(0) - 97;
+      const before = cnt[k];
+      cnt[k] -= 1;
+      const fail = cnt[k] < 0;
+      steps.push({
+        phase: fail ? 'fail' : 'spend', cnt: cnt.slice(), magIdx: mag.length, ranIdx: i, changed: k,
+        before: before, fail: fail,
+        note: fail
+          ? `ransomNote[${i}] = "${ran[i]}"：查表得 cnt['${ran[i]}'] = ${before}，减 1 后变成 ${cnt[k]}，出现负数，说明 magazine 里的 "${ran[i]}" 已经被前面的字符用光了。字符只能使用一次，因此返回 false。`
+          : `ransomNote[${i}] = "${ran[i]}"：需要一个 "${ran[i]}"，把 cnt['${ran[i]}'] 由 ${before} 减到 ${cnt[k]}。减完仍然 ≥ 0，说明库存够用，继续处理下一个字符。`
+      });
+      if (fail) { result = false; break; }
+    }
+  
+    if (result === null) result = true;
+  
+    steps.push({
+      phase: 'done', cnt: cnt.slice(), magIdx: mag.length, ranIdx: ran.length, changed: -1, ok: result,
+      note: result
+        ? `ransomNote 的 ${ran.length} 个字符全部扣减完成，中途没有任何计数变成负数，说明 magazine 的字符足以拼出 ransomNote，返回 true。不变量：扣减到第 i 个字符时，每个 cnt[k] 都等于「magazine 中 k 的总数 − ransomNote 前 i 个字符里 k 的个数」，一旦它为负就说明某个字符被重复使用了。`
+        : `扣减过程中出现负数，magazine 的字符不足以拼出 ransomNote，返回 false。`
+    });
+  
+    return steps;
+  }
+  
+  function stringPanel(title, chars, activeIdx, doneCount) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', title));
+    const row = Demo.el('div', 'row');
+    chars.forEach(function (ch, idx) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(ch));
+      if (idx === activeIdx) cell.classList.add('is-active');
+      else if (idx < doneCount) cell.classList.add('is-ok');
+      col.appendChild(cell);
+      const ptr = Demo.el('div', 'ptr', String(idx));
+      if (idx !== activeIdx) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  function freqPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', '频次数组 cnt[26]：字母 → 剩余可用次数'));
+    const row = Demo.el('div', 'row');
+    ALPHABET.forEach(function (ch, k) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell cell--sm', String(step.cnt[k]));
+      if (step.changed === k) cell.classList.add(step.phase === 'fail' ? 'is-bad' : 'is-active');
+      else if (step.cnt[k] > 0) cell.classList.add('is-ok');
+      else if (step.cnt[k] < 0) cell.classList.add('is-bad');
+      else if (step.phase === 'done') cell.classList.add('cell--dim');
+      col.appendChild(cell);
+      const ptr = Demo.el('div', 'ptr', Demo.esc(ch));
+      if (step.changed !== k) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  Demo.create({
+    title: '39. 赎金信 — 26 格频次数组当字符库存',
+    info: `输入：ransomNote = "${RANSOM}"，magazine = "${MAGAZINE}"（示例 3，输出 true）。先把 magazine 的字符计进 cnt，再用 ransomNote 逐个扣减。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 380,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本步读入的字符 / 被改动的计数格' },
+      { color: 'var(--demo-ok)', label: '已统计完的字符 / 库存为正的字母' },
+      { color: 'var(--demo-danger)', label: '计数为负：字符不够用' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const magActive = step.magIdx >= 0 && step.magIdx < MAGAZINE.length ? step.magIdx : -1;
+      const magDone = step.phase === 'count' ? step.magIdx : MAGAZINE.length;
+      ctx.stage.appendChild(stringPanel(
+        `magazine = "${MAGAZINE}"（正在统计频次的字符）`, MAGAZINE.split(''), magActive, magDone));
+  
+      const ranActive = step.ranIdx >= 0 && step.ranIdx < RANSOM.length ? step.ranIdx : -1;
+      const ranDone = step.ranIdx > 0 ? step.ranIdx : 0;
+      ctx.stage.appendChild(stringPanel(
+        `ransomNote = "${RANSOM}"（正在消耗库存的字符）`, RANSOM.split(''), ranActive, ranDone));
+  
+      ctx.stage.appendChild(freqPanel(step));
+  
+      const state = Demo.el('div', 'panel');
+      state.style.width = '100%';
+      state.style.textAlign = 'center';
+      if (step.phase === 'done') {
+        state.innerHTML = step.ok
+          ? '全部字符都能从 magazine 中取到 &nbsp;<span class="tag tag--ok">返回 true</span>'
+          : '某个字符库存不足 &nbsp;<span class="tag tag--bad">返回 false</span>';
+      } else if (step.phase === 'fail') {
+        state.innerHTML = `<span class="tag tag--bad">cnt['${Demo.esc(RANSOM[step.ranIdx])}'] = -1 &lt; 0，立即返回 false</span>`;
+      } else {
+        state.innerHTML = `当前共统计了 ${step.phase === 'init' ? 0 : Math.min(step.magIdx < 0 ? 0 : step.magIdx + 1, MAGAZINE.length)} 个 magazine 字符，尚未出现负数 &nbsp;<span class="tag tag--warn">处理中</span>`;
+      }
+      ctx.stage.appendChild(state);
+    }
+  });
+  return Demo.__config
+}

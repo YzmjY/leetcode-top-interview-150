@@ -1,0 +1,261 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/88-validate-binary-search-tree-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const DATA = [5, 1, 4, null, null, 3, 6];
+  const GAP = 84;
+  
+  const NODES = [];
+  
+  function buildTree(arr) {
+    const nodes = arr.map((v, i) => (v == null ? null : { val: v, id: i, left: null, right: null }));
+    nodes.forEach(n => { if (n) NODES[n.id] = n; });
+    if (!nodes.length || !nodes[0]) return null;
+    const queue = [nodes[0]];
+    let next = 1;
+    while (queue.length > 0 && next < nodes.length) {
+      const node = queue.shift();
+      node.left = next < nodes.length ? (nodes[next++] || null) : null;
+      if (node.left) queue.push(node.left);
+      node.right = next < nodes.length ? (nodes[next++] || null) : null;
+      if (node.right) queue.push(node.right);
+    }
+    return nodes[0];
+  }
+  
+  const ROOT = buildTree(DATA);
+  
+  function layout(root) {
+    const pos = [];
+    let order = 0;
+    let maxDepth = 0;
+    (function walk(node, depth) {
+      if (!node) return;
+      walk(node.left, depth + 1);
+      pos[node.id] = { x: 0, y: 0, order: order, depth: depth };
+      order += 1;
+      if (depth > maxDepth) maxDepth = depth;
+      walk(node.right, depth + 1);
+    })(root, 0);
+    const width = 660;
+    const startX = (width - (order - 1) * GAP) / 2;
+    pos.forEach(p => {
+      p.x = startX + p.order * GAP;
+      p.y = 46 + p.depth * 84;
+    });
+    return { pos: pos, width: width, height: 46 + maxDepth * 84 + 46, maxDepth: maxDepth };
+  }
+  
+  const LAYOUT = layout(ROOT);
+  
+  function labelOf(id) {
+    return NODES[id] ? NODES[id].val : '?';
+  }
+  
+  function bounds(lo, hi) {
+    return '(' + (lo == null ? '-∞' : lo) + ', ' + (hi == null ? '+∞' : hi) + ')';
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const frames = [];
+    const okNodes = [];
+    let cur = null;
+    let curLo = null;
+    let curHi = null;
+    let bad = null;
+  
+    function snap(note, extra) {
+      const step = {
+        frames: frames.map(f => ({ id: f.id, lo: f.lo, hi: f.hi })),
+        okNodes: okNodes.slice(),
+        cur: cur,
+        curLo: curLo,
+        curHi: curHi,
+        bad: bad,
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    function focus(node, lo, hi) {
+      cur = node.id;
+      curLo = lo;
+      curHi = hi;
+    }
+  
+    function validate(node, lo, hi) {
+      if (!node) return true;
+  
+      frames.push({ id: node.id, lo: lo, hi: hi });
+      focus(node, lo, hi);
+      snap('进入节点 ' + node.val + '：它必须落在区间 ' + bounds(lo, hi) + ' 内。这个区间是从祖先一路收紧下来的，' +
+        '不能只看「比自己的父节点大/小」。');
+  
+      if (lo != null && node.val <= lo) {
+        bad = node.id;
+        frames.pop();
+        snap('检查失败：' + node.val + ' <= 下界 ' + lo + '。它位于祖先 ' + lo +
+          ' 的右子树中，右子树的所有值都必须严格大于 ' + lo + '，所以这棵树不是 BST，立即返回 false，不再浪费时间检查它的子树。');
+        return false;
+      }
+      if (hi != null && node.val >= hi) {
+        bad = node.id;
+        frames.pop();
+        snap('检查失败：' + node.val + ' >= 上界 ' + hi + '。它位于祖先 ' + hi +
+          ' 的左子树中，左子树的所有值都必须严格小于 ' + hi + '，所以这棵树不是 BST，立即返回 false。');
+        return false;
+      }
+  
+      const leftOk = validate(node.left, lo, node.val);
+      if (!leftOk) {
+        frames.pop();
+        focus(node, lo, hi);
+        snap('节点 ' + node.val + ' 的左子树返回 false → 以 ' + node.val + ' 为根的子树也不满足 BST，继续向上返回 false。');
+        return false;
+      }
+      focus(node, lo, hi);
+      snap('节点 ' + node.val + ' 的左子树检查通过（左孩子为空也算通过）。现在检查右子树，把下界收紧为 ' + node.val +
+        '：右子树里的每个值都必须大于 ' + node.val + '。');
+  
+      const rightOk = validate(node.right, node.val, hi);
+      if (!rightOk) {
+        frames.pop();
+        focus(node, lo, hi);
+        snap('节点 ' + node.val + ' 的右子树返回 false → 以 ' + node.val + ' 为根的子树也不满足 BST，继续向上返回 false。');
+        return false;
+      }
+  
+      frames.pop();
+      okNodes.push(node.id);
+      focus(node, lo, hi);
+      snap('节点 ' + node.val + ' 自身在区间 ' + bounds(lo, hi) + ' 内，左右子树也都合法 → 以 ' + node.val +
+        ' 为根的子树是一棵合法的 BST，返回 true。');
+      return true;
+    }
+  
+    snap('初始状态：从根节点 5 开始递归，根节点没有任何限制，允许区间是 (-∞, +∞)。关键在于把「祖先的约束」往下传：往左走把上界压成当前节点值，往右走把下界提成当前节点值。');
+    const ok = validate(ROOT, null, null);
+    cur = null;
+    snap('递归结束，整体返回 ' + ok + '。示例 2 里节点 4 位于祖先 5 的右子树中却比 5 小，正是这个越界让答案变成 false。',
+      { done: true });
+    return steps;
+  }
+  
+  function treeSvg(step) {
+    const L = LAYOUT;
+    let out = '';
+  
+    NODES.forEach(node => {
+      if (!node) return;
+      ['left', 'right'].forEach(side => {
+        const child = node[side];
+        if (!child) return;
+        const p = L.pos[node.id];
+        const q = L.pos[child.id];
+        const onPath = (step.frames.some(f => f.id === node.id) && (step.cur === child.id || step.frames.some(f => f.id === child.id))) ||
+          step.bad === child.id;
+        out += '<line x1="' + p.x + '" y1="' + (p.y + 24) + '" x2="' + q.x + '" y2="' + (q.y - 24) +
+          '" style="stroke:' + (onPath ? 'var(--demo-warn)' : 'var(--demo-border)') + ';stroke-width:2"/>';
+      });
+    });
+  
+    NODES.forEach(node => {
+      if (!node) return;
+      const p = L.pos[node.id];
+      let fill = 'var(--demo-subtle)';
+      let stroke = 'var(--demo-border)';
+      let text = 'var(--demo-text)';
+      let ring = null;
+      if (step.frames.some(f => f.id === node.id)) { fill = 'var(--demo-warn-soft)'; stroke = 'var(--demo-warn)'; text = 'var(--demo-warn)'; }
+      if (step.okNodes.indexOf(node.id) >= 0) { fill = 'var(--demo-ok-soft)'; stroke = 'var(--demo-ok)'; text = 'var(--demo-ok)'; }
+      if (step.cur === node.id) {
+        fill = 'var(--demo-accent)';
+        stroke = 'var(--demo-accent)';
+        text = 'var(--demo-card)';
+        ring = 'var(--demo-warn)';
+      }
+      if (step.bad === node.id) {
+        fill = 'var(--demo-danger)';
+        stroke = 'var(--demo-danger)';
+        text = 'var(--demo-card)';
+        ring = 'var(--demo-danger)';
+      }
+      if (ring) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="29" style="fill:none;stroke:' + ring + ';stroke-width:3"/>';
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="24" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2.5"/>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 6) + '" text-anchor="middle" style="fill:' + text +
+        ';font:600 16px sans-serif">' + node.val + '</text>';
+    });
+  
+    return '<div style="width:100%"><svg viewBox="0 0 ' + L.width + ' ' + L.height +
+      '" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+  }
+  
+  Demo.create({
+    title: '88. 验证二叉搜索树 — 递归传递上下界',
+    info: 'root = [5,1,4,null,null,3,6]（示例 2），期望输出 false：节点 4 在 5 的右子树里却比 5 小。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 480,
+    legend: [
+      { color: 'var(--demo-warn)', label: '递归栈中 / 正在递归的路径' },
+      { color: 'var(--demo-accent)', label: '当前检查的节点' },
+      { color: 'var(--demo-ok)', label: '已确认合法的子树' },
+      { color: 'var(--demo-danger)', label: '越界 → 不是 BST' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = treeSvg(step);
+      ctx.stage.appendChild(wrap);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-end';
+  
+      const stackPanel = Demo.el('div', 'panel');
+      stackPanel.appendChild(Demo.el('div', 'panel__title', '递归栈：validate(节点, 下界, 上界)'));
+      const stackBox = Demo.el('div', 'stack');
+      if (step.frames.length === 0) {
+        stackBox.appendChild(Demo.el('div', 'stack__item', '（递归已返回）'));
+      } else {
+        step.frames.forEach((f, k) => {
+          const item = Demo.el('div', 'stack__item', 'validate(' + labelOf(f.id) + ', ' + (f.lo == null ? '-∞' : f.lo) + ', ' +
+            (f.hi == null ? '+∞' : f.hi) + ')');
+          if (k === step.frames.length - 1) item.classList.add('is-active');
+          stackBox.appendChild(item);
+        });
+      }
+      stackPanel.appendChild(stackBox);
+  
+      const statePanel = Demo.el('div', 'panel');
+      statePanel.appendChild(Demo.el('div', 'panel__title', '当前判定'));
+      if (step.cur != null) {
+        statePanel.appendChild(Demo.el('div', null,
+          '节点 <strong>' + labelOf(step.cur) + '</strong> 的允许区间：<strong>' +
+          bounds(step.curLo, step.curHi) + '</strong>' +
+          (step.curLo != null && labelOf(step.cur) <= step.curLo ? ' &nbsp;<span class="tag tag--bad">小于等于下界</span>' : '') +
+          (step.curHi != null && labelOf(step.cur) >= step.curHi ? ' &nbsp;<span class="tag tag--bad">大于等于上界</span>' : '')));
+      }
+      statePanel.appendChild(Demo.el('div', null, '已确认合法的子树根：' +
+        (step.okNodes.length === 0 ? '（暂无）' : step.okNodes.map(labelOf).join('、'))));
+      statePanel.appendChild(Demo.el('div', null, step.done
+        ? (step.bad != null
+          ? '<span class="tag tag--bad">返回 false：不是 BST</span>'
+          : '<span class="tag tag--ok">返回 true：是 BST</span>')
+        : (step.bad != null
+          ? '<span class="tag tag--bad">节点 ' + labelOf(step.bad) + ' 越界，开始向上返回 false</span>'
+          : '<span class="tag tag--info">继续递归检查</span>')));
+  
+      row.appendChild(stackPanel);
+      row.appendChild(statePanel);
+      ctx.stage.appendChild(row);
+    }
+  });
+  return Demo.__config
+}

@@ -1,0 +1,274 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/113-maximum-sum-circular-subarray-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [5, -3, 5];
+  
+  function outsideWindow(n, l, r) {
+    const size = (r - l + n) % n + 1;
+    const out = [];
+    for (let k = 1; k <= n - size; k++) out.push((r + k) % n);
+    return out;
+  }
+  
+  function buildSteps() {
+    const nums = NUMS;
+    const n = nums.length;
+    const steps = [];
+  
+    let total = nums[0];
+    let maxHere = nums[0], maxSoFar = nums[0], maxStart = 0, maxL = 0, maxR = 0;
+    let minHere = nums[0], minSoFar = nums[0], minStart = 0, minL = 0, minR = 0;
+  
+    steps.push({
+      phase: 'init', cur: 0, i: 0, total: total,
+      maxHere: maxHere, maxSoFar: maxSoFar, maxL: maxL, maxR: maxR,
+      minHere: minHere, minSoFar: minSoFar, minL: minL, minR: minR,
+      circ: null, answer: null, circIdx: null,
+      note: `初始化（i = 0）：total、maxEndingHere、maxSoFar、minEndingHere、minSoFar 都先取 nums[0] = ${nums[0]}；最大窗口与最小窗口暂时都只有 nums[0..0]。接下来每读入一个元素，同时推进「最大 Kadane」和「最小 Kadane」两条线。`
+    });
+  
+    for (let i = 1; i < n; i++) {
+      total += nums[i];
+  
+      const maxPrev = maxHere;
+      const maxExtend = maxPrev + nums[i];
+      const maxRestart = nums[i];
+      const maxJoined = maxExtend > maxRestart;
+      if (maxJoined) {
+        maxHere = maxExtend;
+      } else {
+        maxHere = maxRestart;
+        maxStart = i;
+      }
+      const maxBeat = maxHere > maxSoFar;
+      if (maxBeat) {
+        maxSoFar = maxHere;
+        maxL = maxStart;
+        maxR = i;
+      }
+  
+      steps.push({
+        phase: 'max', cur: i, i: i, total: total,
+        maxHere: maxHere, maxSoFar: maxSoFar, maxL: maxL, maxR: maxR,
+        minHere: minHere, minSoFar: minSoFar, minL: minL, minR: minR,
+        circ: null, answer: null, circIdx: null,
+        note: `i = ${i}，nums[${i}] = ${nums[i]}。① 最大 Kadane：接上旧窗口 ${maxPrev} + (${nums[i]}) = ${maxExtend}，从当前元素重开 = ${maxRestart}，因为 ${maxExtend} ${maxJoined ? '>' : '≤'} ${maxRestart}，` +
+          `${maxJoined ? `取较大的 ${maxHere}，窗口变为 nums[${maxStart}..${i}]` : `取较大的 ${maxHere}，窗口重置为 nums[${i}..${i}]`}，maxEndingHere = ${maxHere}。` +
+          (maxBeat ? ` 它超过了 maxSoFar，于是更新 maxSoFar = ${maxSoFar}，并记下窗口 nums[${maxL}..${maxR}]。` : ` 它没有超过 maxSoFar = ${maxSoFar}，全局最大值保持不变。`)
+      });
+  
+      const minPrev = minHere;
+      const minExtend = minPrev + nums[i];
+      const minRestart = nums[i];
+      const minJoined = minExtend < minRestart;
+      if (minJoined) {
+        minHere = minExtend;
+      } else {
+        minHere = minRestart;
+        minStart = i;
+      }
+      const minBeat = minHere < minSoFar;
+      if (minBeat) {
+        minSoFar = minHere;
+        minL = minStart;
+        minR = i;
+      }
+  
+      steps.push({
+        phase: 'min', cur: i, i: i, total: total,
+        maxHere: maxHere, maxSoFar: maxSoFar, maxL: maxL, maxR: maxR,
+        minHere: minHere, minSoFar: minSoFar, minL: minL, minR: minR,
+        circ: null, answer: null, circIdx: null,
+        note: `同一个 i = ${i}，② 最小 Kadane（把比较方向反过来）：接上旧窗口 ${minPrev} + (${nums[i]}) = ${minExtend}，从当前元素重开 = ${minRestart}，因为 ${minExtend} ${minJoined ? '<' : '≥'} ${minRestart}，取较小的 ${minHere} 作为 minEndingHere。` +
+          (minBeat ? ` 它小于 minSoFar，更新 minSoFar = ${minSoFar}，对应窗口 nums[${minL}..${minR}]。` : ` 它没有小于 minSoFar = ${minSoFar}，最小窗口不变。`) +
+          ` 求最小值是为了情况②：跨过首尾的子数组等价于「总和减去中间被挖掉的那一段」，中间那段和越小，剩下的首尾和就越大。`
+      });
+    }
+  
+    const degenerate = total === minSoFar;
+    const circ = total - minSoFar;
+    const circIdx = outsideWindow(n, minL, minR);
+    const answer = degenerate ? maxSoFar : Math.max(maxSoFar, circ);
+  
+    steps.push({
+      phase: 'check', cur: -1, i: n - 1, total: total,
+      maxHere: maxHere, maxSoFar: maxSoFar, maxL: maxL, maxR: maxR,
+      minHere: minHere, minSoFar: minSoFar, minL: minL, minR: minR,
+      circ: null, answer: null, circIdx: null,
+      note: `扫描结束，先做特殊情况检查：如果最小子数组正好就是整个数组（数组全为负数），那么 total 会等于 minSoFar，此时情况②算出来是 total − minSoFar = 0，对应空子数组，题目不允许。这里 total = ${total}，minSoFar = ${minSoFar}，两者` +
+        `${degenerate ? '相等，说明退化发生，答案必须改取 maxSoFar。' : '不相等，说明存在至少一个正贡献元素，两种情况得到的候选值都合法，可以放心比较。'}`
+    });
+  
+    steps.push({
+      phase: 'sum', cur: -1, i: n - 1, total: total,
+      maxHere: maxHere, maxSoFar: maxSoFar, maxL: maxL, maxR: maxR,
+      minHere: minHere, minSoFar: minSoFar, minL: minL, minR: minR,
+      circ: circ, answer: null, circIdx: circIdx,
+      note: `汇总两个候选值。情况①（不跨界）：maxSoFar = ${maxSoFar}，窗口 nums[${maxL}..${maxR}]。` +
+        `情况②（跨界）：total − minSoFar = ${total} − (${minSoFar}) = ${circ}，做法是挖掉最小窗口 nums[${minL}..${minR}]，剩下的就是绕环的首尾两段 nums[${circIdx.join('], nums[')}]（从下标 ${circIdx[0]} 向后绕回下标 ${circIdx[circIdx.length - 1]}）。`
+    });
+  
+    steps.push({
+      phase: 'done', cur: -1, i: n - 1, total: total,
+      maxHere: maxHere, maxSoFar: maxSoFar, maxL: maxL, maxR: maxR,
+      minHere: minHere, minSoFar: minSoFar, minL: minL, minR: minR,
+      circ: circ, answer: answer, circIdx: circIdx,
+      note: (degenerate
+        ? `因为发生了全负数退化，情况②不合法，答案直接取情况①：`
+        : `比较两个候选：`) +
+        `max(${maxSoFar}, ${circ}) = ${answer}。` +
+        (degenerate
+          ? `答案 = ${answer}。`
+          : `${circ > maxSoFar ? `跨界的首尾拼接更大（${circ} > ${maxSoFar}），所以答案是 ${answer}，它来自 nums[${circIdx.join('] + nums[')}]，即被最小窗口 nums[${minL}..${minR}] 隔开的首尾两段。` : `不跨界的中间一段更大（${maxSoFar} ≥ ${circ}），所以答案是 ${maxSoFar}，窗口为 nums[${maxL}..${maxR}]。`}`)
+    });
+  
+    return steps;
+  }
+  
+  function circleView(step) {
+    const n = NUMS.length;
+    const size = 210;
+    const radius = 72;
+  
+    const box = Demo.el('div');
+    box.style.position = 'relative';
+    box.style.width = size + 'px';
+    box.style.height = size + 'px';
+  
+    const ring = Demo.el('div');
+    ring.style.position = 'absolute';
+    ring.style.left = '0';
+    ring.style.top = '0';
+    ring.style.width = '100%';
+    ring.style.height = '100%';
+    ring.style.borderRadius = '50%';
+    ring.style.border = '2px dashed var(--demo-border)';
+    box.appendChild(ring);
+  
+    function inRange(idx, l, r) { return idx >= l && idx <= r; }
+    function inCirc(idx) { return step.circIdx != null && step.circIdx.indexOf(idx) >= 0; }
+  
+    for (let idx = 0; idx < n; idx++) {
+      const angle = -Math.PI / 2 + (2 * Math.PI * idx) / n;
+      const col = Demo.el('div', 'col');
+      col.style.position = 'absolute';
+      col.style.left = (size / 2 + radius * Math.cos(angle)) + 'px';
+      col.style.top = (size / 2 + radius * Math.sin(angle)) + 'px';
+      col.style.transform = 'translate(-50%, -50%)';
+  
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(NUMS[idx]));
+      if (idx === step.cur) {
+        cell.classList.add('is-active');
+      } else if (step.phase === 'max') {
+        if (inRange(idx, step.maxL, step.maxR)) cell.classList.add('is-ok');
+      } else if (step.phase === 'min') {
+        if (inRange(idx, step.minL, step.minR)) cell.classList.add('is-warn');
+      } else if (step.phase !== 'init') {
+        if (inCirc(idx)) cell.classList.add('is-pink');
+        else if (inRange(idx, step.minL, step.minR)) cell.classList.add('is-warn');
+        else if (inRange(idx, step.maxL, step.maxR)) cell.classList.add('is-ok');
+      }
+      col.appendChild(cell);
+  
+      const isCur = idx === step.cur;
+      const ptr = Demo.el('div', 'ptr', (isCur ? '▶ #' : '#') + idx);
+      if (!isCur) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+  
+      box.appendChild(col);
+    }
+  
+    const labels = {
+      init: ['初始化', 'tag--info'],
+      max: ['① 最大 Kadane', 'tag--ok'],
+      min: ['② 最小 Kadane', 'tag--warn'],
+      check: ['全负数检查', 'tag--info'],
+      sum: ['候选汇总', 'tag--info'],
+      done: ['答案 ' + step.answer, 'tag--ok']
+    };
+    const center = Demo.el('div', 'tag ' + labels[step.phase][1], Demo.esc(labels[step.phase][0]));
+    center.style.position = 'absolute';
+    center.style.left = '50%';
+    center.style.top = '50%';
+    center.style.transform = 'translate(-50%, -50%)';
+    center.style.whiteSpace = 'nowrap';
+    box.appendChild(center);
+  
+    return box;
+  }
+  
+  function stateTable(step) {
+    const t = Demo.el('table', 'map-table');
+  
+    const thead = Demo.el('thead');
+    const headRow = Demo.el('tr');
+    headRow.appendChild(Demo.el('th', null, '变量'));
+    headRow.appendChild(Demo.el('th', null, '当前值'));
+    thead.appendChild(headRow);
+    t.appendChild(thead);
+  
+    const tbody = Demo.el('tbody');
+  
+    function addRow(label, value, active) {
+      const tr = Demo.el('tr');
+      if (active) tr.classList.add('is-active');
+      tr.appendChild(Demo.el('td', null, Demo.esc(label)));
+      tr.appendChild(Demo.el('td', null, Demo.esc(value)));
+      tbody.appendChild(tr);
+    }
+  
+    addRow('total（数组总和）', step.total, step.phase === 'init' || step.phase === 'sum');
+    addRow('maxEndingHere', step.maxHere, step.phase === 'max');
+    addRow('maxSoFar（情况①）', step.maxSoFar, step.phase === 'max');
+    addRow('minEndingHere', step.minHere, step.phase === 'min');
+    addRow('minSoFar（最小子数组和）', step.minSoFar, step.phase === 'min');
+    addRow('情况② = total − minSoFar', step.circ == null ? '—' : step.circ, step.phase === 'sum');
+    addRow('答案 = max(①, ②)', step.answer == null ? '—' : step.answer, step.phase === 'done');
+  
+    t.appendChild(tbody);
+    return t;
+  }
+  
+  Demo.create({
+    title: '113. 环形子数组的最大和 — 最大 Kadane + 最小 Kadane',
+    info: `输入：nums = [${NUMS.join(', ')}]（示例 2，数组首尾相接成环）。情况①不跨界 = maxSoFar；情况②跨界 = total − minSoFar；答案取两者较大值。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 360,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前处理的元素 i' },
+      { color: 'var(--demo-ok)', label: '最大子数组窗口（情况①）' },
+      { color: 'var(--demo-warn)', label: '最小子数组窗口（情况②中被挖掉的一段）' },
+      { color: 'var(--demo-pink)', label: '情况②的环形窗口（首尾拼接，即答案窗口）' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const top = Demo.el('div', 'row');
+  
+      const circlePanel = Demo.el('div', 'panel');
+      circlePanel.appendChild(Demo.el('div', 'panel__title', '环形数组 nums（末端与开头相连）'));
+      circlePanel.appendChild(circleView(step));
+      top.appendChild(circlePanel);
+  
+      const tablePanel = Demo.el('div', 'panel');
+      tablePanel.appendChild(Demo.el('div', 'panel__title', '算法状态（每读入一个元素同时更新两条 Kadane）'));
+      tablePanel.appendChild(stateTable(step));
+      top.appendChild(tablePanel);
+  
+      ctx.stage.appendChild(top);
+  
+      const result = Demo.el('div', 'panel',
+        `情况① 不跨界 maxSoFar = <strong>${step.maxSoFar}</strong> ｜ ` +
+        `情况② 跨界 total − minSoFar = <strong>${step.circ == null ? '…' : step.circ}</strong>` +
+        (step.answer == null ? '' : ` &nbsp;<span class="tag tag--ok">答案 ${step.answer}</span>`));
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

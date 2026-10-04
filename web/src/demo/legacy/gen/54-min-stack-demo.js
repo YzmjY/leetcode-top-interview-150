@@ -1,0 +1,166 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/54-min-stack-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const OPS = [
+    ['push', -2], ['push', 0], ['push', -3],
+    ['getMin'], ['pop'], ['top'], ['getMin']
+  ];
+  
+  function opLabel(op) {
+    return op[0] + '(' + (op.length > 1 ? op[1] : '') + ')';
+  }
+  
+  function buildSteps() {
+    const stack = [];
+    const minStack = [];
+    const steps = [];
+  
+    function snap(o) {
+      steps.push({
+        stack: stack.slice(),
+        minStack: minStack.slice(),
+        opIndex: o.opIndex,
+        op: o.op,
+        arg: o.arg == null ? null : o.arg,
+        ret: o.ret == null ? null : o.ret,
+        phase: o.phase,
+        note: o.note
+      });
+    }
+  
+    snap({
+      opIndex: -1, op: null, phase: 'init',
+      note: '初始状态：主栈 stack 与辅助栈 minStack 都是空的。主栈保存所有元素；辅助栈的第 k 个元素记录「主栈只有下面 k 个元素时」的最小值，这样 getMin 永远只需读辅助栈的栈顶，做到 O(1)。'
+    });
+  
+    OPS.forEach(function (op, k) {
+      const name = op[0];
+      const arg = op.length > 1 ? op[1] : null;
+  
+      if (name === 'push') {
+        stack.push(arg);
+        const had = minStack.length > 0;
+        const oldMin = had ? minStack[minStack.length - 1] : null;
+        if (!had || arg < minStack[minStack.length - 1]) {
+          minStack.push(arg);
+          snap({
+            opIndex: k, op: name, arg: arg, phase: 'push',
+            note: 'push(' + arg + ')：先把 ' + arg + ' 压入主栈。'
+              + (had ? '再和辅助栈顶 ' + oldMin + ' 比较，' + arg + ' < ' + oldMin + '，所以这是新的最小值' : '辅助栈原本为空，没有可比较的最小值')
+              + '，把 ' + arg + ' 压入辅助栈。'
+          });
+        } else {
+          minStack.push(oldMin);
+          snap({
+            opIndex: k, op: name, arg: arg, phase: 'push',
+            note: 'push(' + arg + ')：先把 ' + arg + ' 压入主栈。再和辅助栈顶 ' + oldMin + ' 比较，' + arg + ' ≥ ' + oldMin + '，最小值没有被刷新，于是把当前最小值 ' + oldMin + ' 再压一次到辅助栈，保证两个栈高度一致、可以同步弹出。'
+          });
+        }
+      } else if (name === 'pop') {
+        const removed = stack[stack.length - 1];
+        stack.pop();
+        minStack.pop();
+        snap({
+          opIndex: k, op: name, phase: 'pop',
+          note: 'pop()：主栈和辅助栈同时弹出栈顶（题目保证不会在空栈上调用）。主栈中被删掉的是 ' + removed + '，辅助栈也弹出它对应的那一层最小值，于是恢复成「上一个状态」的最小值。'
+        });
+      } else if (name === 'top') {
+        const ret = stack[stack.length - 1];
+        snap({
+          opIndex: k, op: name, ret: ret, phase: 'top',
+          note: 'top()：不做任何修改，只读主栈栈顶，返回 ' + ret + '。'
+        });
+      } else {
+        const ret = minStack[minStack.length - 1];
+        snap({
+          opIndex: k, op: name, ret: ret, phase: 'getmin',
+          note: 'getMin()：直接读辅助栈栈顶，返回 ' + ret + '，不需要遍历主栈，所以是 O(1)。辅助栈栈顶始终等于当前主栈里的最小值。'
+        });
+      }
+    });
+  
+    snap({
+      opIndex: OPS.length, op: null, phase: 'done',
+      note: '操作序列执行完毕。四个操作 push / pop / top / getMin 都只做常数次读写，时间全部 O(1)；代价是额外一个等高的辅助栈，空间 O(n)。'
+    });
+  
+    return steps;
+  }
+  
+  function stackBox(items, emptyText) {
+    const box = Demo.el('div', 'stack');
+    if (items.length === 0) {
+      box.appendChild(Demo.el('div', 'stack__item', emptyText));
+      return box;
+    }
+    items.forEach(function (v, k) {
+      const item = Demo.el('div', 'stack__item', Demo.esc(v));
+      if (k === items.length - 1) item.classList.add('is-active');
+      box.appendChild(item);
+    });
+    return box;
+  }
+  
+  function render(step, idx, ctx) {
+    ctx.stage.innerHTML = '';
+  
+    const mainRow = Demo.el('div', 'row');
+    mainRow.style.width = '100%';
+    mainRow.style.alignItems = 'flex-start';
+  
+    const stackPanel = Demo.el('div', 'panel');
+    stackPanel.appendChild(Demo.el('div', 'panel__title', '主栈 stack（自下而上，上方为栈顶）'));
+    stackPanel.appendChild(stackBox(step.stack, '（空）'));
+    mainRow.appendChild(stackPanel);
+  
+    const minPanel = Demo.el('div', 'panel');
+    minPanel.appendChild(Demo.el('div', 'panel__title', '辅助栈 minStack（每层记录当时的最小值）'));
+    minPanel.appendChild(stackBox(step.minStack, '（空）'));
+    mainRow.appendChild(minPanel);
+  
+    const infoPanel = Demo.el('div', 'panel');
+    infoPanel.style.flex = '1';
+    infoPanel.appendChild(Demo.el('div', 'panel__title', '本次操作'));
+    infoPanel.appendChild(Demo.el('div', null, step.op == null
+      ? '<span class="tag tag--warn">等待操作</span>'
+      : '<span class="tag tag--info">' + Demo.esc(opLabel(step.op === 'push' ? ['push', step.arg] : [step.op])) + '</span>'));
+    infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">返回值：'
+      + (step.ret == null ? '<code>null</code>' : '<code>' + step.ret + '</code>')
+      + (step.ret != null ? ' <span class="tag tag--ok">返回 ' + step.ret + '</span>' : '')
+      + '</div>'));
+    infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">主栈大小：<code>' + step.stack.length + '</code></div>'));
+    infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">当前最小值：<code>'
+      + (step.minStack.length ? step.minStack[step.minStack.length - 1] : '—') + '</code></div>'));
+    mainRow.appendChild(infoPanel);
+  
+    ctx.stage.appendChild(mainRow);
+  
+    const logPanel = Demo.el('div', 'panel');
+    logPanel.style.width = '100%';
+    let t = '<table class="map-table" style="margin:0 auto"><tr><th>#</th><th>操作</th><th>返回</th></tr>';
+    OPS.forEach(function (op, k) {
+      t += '<tr' + (k === step.opIndex ? ' class="is-active"' : '') + '><td>' + k + '</td><td>'
+        + Demo.esc(opLabel(op)) + '</td><td>' + (op[0] === 'push' || op[0] === 'pop' ? 'null' : '…') + '</td></tr>';
+    });
+    t += '</table>';
+    logPanel.innerHTML = '<div class="panel__title">操作序列（示例 1）</div>' + t;
+    ctx.stage.appendChild(logPanel);
+  }
+  
+  Demo.create({
+    title: '54. 最小栈 — 主栈 + 同步辅助栈，getMin 为 O(1)',
+    info: '输入（示例 1）：依次执行 push(-2)、push(0)、push(-3)、getMin()、pop()、top()、getMin()，期望返回值依次为 -3、0、-2。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 400,
+    legend: [
+      { color: 'var(--demo-accent)', label: '栈顶（两个栈始终保持等高）' },
+      { color: 'var(--demo-ok)', label: '被读取 / 返回的值' }
+    ],
+    render: render
+  });
+  return Demo.__config
+}

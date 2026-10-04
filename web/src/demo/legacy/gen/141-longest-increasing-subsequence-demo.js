@@ -1,0 +1,425 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/141-longest-increasing-subsequence-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [10, 9, 2, 5, 3, 7, 101, 18];
+  
+  /* 演示分两个阶段，都真实跑一遍：
+     阶段一（phase = 'dp'）：O(n²) 一维 DP，dp[i] = 以 nums[i] 结尾的 LIS 长度，逐个 j 比较填表；
+     阶段二（phase = 'bs'）：O(n log n) 贪心 + 二分，维护 tails 并画出 lo / hi / mid 的收缩过程。 */
+  function buildSteps() {
+    const nums = NUMS;
+    const n = nums.length;
+    const steps = [];
+    const dp = new Array(n).fill(null);
+    const tails = [];
+    let maxLen = 0;
+  
+    function push(extra) {
+      steps.push(Object.assign({
+        phase: 'dp',
+        dp: dp.slice(),
+        tails: tails.slice(),
+        i: -1,
+        j: -1,
+        cmp: null,
+        candidate: null,
+        best: null,
+        bestJ: -1,
+        improving: false,
+        maxLen: maxLen,
+        lo: -1,
+        hi: -1,
+        mid: -1,
+        action: '',
+        lis: null,
+        endIdx: -1,
+        note: ''
+      }, extra));
+    }
+  
+    /* ---------- 阶段一：O(n²) DP ---------- */
+  
+    push({
+      phase: 'dp', i: -1,
+      note: '阶段一：一维 DP。开一个长度 n = ' + n + ' 的数组 dp，dp[i] 表示「以 nums[i] 结尾」的最长递增子序列长度。' +
+        '之所以把「结尾」写进状态，是因为结尾元素决定了后面还能接什么，这样状态之间才能干净地转移。现在数组全部待定。'
+    });
+  
+    for (let i = 0; i < n; i++) {
+      let best = 1;
+      let bestJ = -1;
+  
+      if (i === 0) {
+        dp[0] = 1;
+        maxLen = 1;
+        push({
+          phase: 'dp', i: 0, best: 1, bestJ: -1, maxLen: maxLen,
+          note: 'i = 0，nums[0] = ' + nums[0] + '：它前面没有任何元素，只能自己单独构成一条长度为 1 的递增子序列，所以 dp[0] = 1。'
+        });
+        continue;
+      }
+  
+      for (let j = 0; j < i; j++) {
+        const ok = nums[j] < nums[i];
+        const beforeBest = best;
+        const cand = ok ? dp[j] + 1 : null;
+        const improving = ok && cand > beforeBest;
+        if (improving) {
+          best = cand;
+          bestJ = j;
+        }
+  
+        let note;
+        if (!ok) {
+          note = 'j = ' + j + '：nums[' + j + '] = ' + nums[j] + ' ≥ nums[' + i + '] = ' + nums[i] +
+            '，不是严格递增，nums[' + i + '] 接不到以 nums[' + j + '] 结尾的序列后面，这条转移非法，跳过。';
+        } else if (improving) {
+          note = 'j = ' + j + '：nums[' + j + '] = ' + nums[j] + ' < nums[' + i + '] = ' + nums[i] +
+            '，可以接在它后面，候选长度 = dp[' + j + '] + 1 = ' + dp[j] + ' + 1 = ' + cand +
+            '，比当前最优 ' + beforeBest + ' 更大，于是更新最优为 ' + cand + '（来源 j = ' + j + '）。';
+        } else {
+          note = 'j = ' + j + '：nums[' + j + '] = ' + nums[j] + ' < nums[' + i + '] = ' + nums[i] +
+            '，可以接，候选长度 = dp[' + j + '] + 1 = ' + dp[j] + ' + 1 = ' + cand +
+            '，但没有超过当前最优 ' + beforeBest + '，不更新。';
+        }
+  
+        push({
+          phase: 'dp', i: i, j: j, cmp: ok, candidate: cand,
+          best: best, bestJ: bestJ, improving: improving, maxLen: maxLen,
+          note: note
+        });
+      }
+  
+      dp[i] = best;
+      if (best > maxLen) maxLen = best;
+  
+      push({
+        phase: 'dp', i: i, j: -1, cmp: null, candidate: null,
+        best: best, bestJ: bestJ, maxLen: maxLen,
+        note: 'i = ' + i + ' 的所有 j 都比完了，取候选中的最大值：dp[' + i + '] = ' + best +
+          (bestJ >= 0
+            ? '，它来自 j = ' + bestJ + '（nums[' + bestJ + '] = ' + nums[bestJ] + '），即把 nums[' + i + '] 接在那条子序列后面。'
+            : '，前面没有比 nums[' + i + '] 小的元素，只能自己单独成段，长度为 1。') +
+          ' 当前全局最长 = ' + maxLen + '。'
+      });
+    }
+  
+    // 由 dp 还原出一条最长递增子序列
+    let endIdx = 0;
+    for (let k = 0; k < n; k++) if (dp[k] > dp[endIdx]) endIdx = k;
+    const lis = [];
+    let need = dp[endIdx];
+    let prevVal = Infinity;
+    for (let k = endIdx; k >= 0 && need > 0; k--) {
+      if (dp[k] === need && nums[k] < prevVal) {
+        lis.unshift(nums[k]);
+        prevVal = nums[k];
+        need -= 1;
+      }
+    }
+  
+    /* ---------- 阶段二：贪心 + 二分（O(n log n)） ---------- */
+  
+    push({
+      phase: 'bs', i: -1, lis: lis, endIdx: endIdx,
+      note: '阶段二：进阶的 O(n log n) 做法。维护数组 tails，tails[k] 表示「长度为 k+1 的递增子序列，其结尾值最小可以是多少」。' +
+        '在相同长度下结尾越小，后面越容易接上新的数，所以这是贪心；而 tails 本身严格递增，于是可以用二分查找定位要替换的位置。'
+    });
+  
+    for (let t = 0; t < n; t++) {
+      const num = nums[t];
+      let lo = 0;
+      let hi = tails.length;
+  
+      while (lo < hi) {
+        const mid = lo + Math.floor((hi - lo) / 2);
+        const less = tails[mid] < num;
+        push({
+          phase: 'bs', i: t, lo: lo, hi: hi, mid: mid, action: 'probe',
+          note: '处理 nums[' + t + '] = ' + num + '。二分区间是 [' + lo + ', ' + hi + ')，取 mid = ' + mid +
+            '，比较 tails[' + mid + '] = ' + tails[mid] + ' 与 ' + num + '：' +
+            (less
+              ? 'tails[' + mid + '] < ' + num + '，说明第一个 ≥ ' + num + ' 的位置一定在 mid 右边，把左边界收缩为 lo = mid + 1 = ' + (mid + 1) + '。'
+              : 'tails[' + mid + '] ≥ ' + num + '，mid 本身就是一个合法位置，答案不可能更靠右，把右边界收缩为 hi = mid = ' + mid + '。')
+        });
+        if (less) lo = mid + 1;
+        else hi = mid;
+      }
+  
+      const idx = lo;
+      let action;
+      let note;
+      if (idx === tails.length) {
+        tails.push(num);
+        action = 'append';
+        note = '二分结束，第一个 ≥ ' + num + ' 的位置是 ' + idx + '，正好等于 tails 的长度 ' + (idx) +
+          '：说明 ' + num + ' 比 tails 里所有元素都大，可以接在最长的那条子序列后面，于是把它追加到末尾，tails 长度变成 ' + tails.length + '。';
+      } else {
+        const old = tails[idx];
+        tails[idx] = num;
+        action = 'replace';
+        note = '二分结束，第一个 ≥ ' + num + ' 的位置是 ' + idx + '：把 tails[' + idx + '] 从 ' + old + ' 替换成 ' + num +
+          '。长度没变，但「长度为 ' + (idx + 1) + ' 的递增子序列的最小结尾」变小了，后面更容易接上更大的数。';
+      }
+  
+      push({
+        phase: 'bs', i: t, lo: idx, hi: idx, mid: -1, action: action,
+        note: note
+      });
+    }
+  
+    push({
+      phase: 'done', i: n - 1, lis: lis, endIdx: endIdx, maxLen: maxLen,
+      note: '两种方法结果一致：O(n²) 的 dp 最大值为 ' + maxLen + '，O(n log n) 的 tails 长度为 ' + tails.length +
+        '，答案都是 ' + maxLen + '。其中 dp 方法还能顺便还原出具体的一条 LIS：' + lis.join(' → ') +
+        '，长度 ' + maxLen + '。注意 tails 只是「各长度的最小结尾」，它本身未必是一条真实的 LIS。'
+    });
+  
+    return steps;
+  }
+  
+  function numsColumn(step, k) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(NUMS[k]));
+  
+    let label = String(k);
+    let ptrClass = 'ptr ptr--dim';
+  
+    if (step.phase === 'dp') {
+      if (k === step.i) {
+        cell.classList.add('is-active');
+        label = 'i';
+        ptrClass = 'ptr';
+      } else if (k === step.j) {
+        cell.classList.add(step.cmp ? 'is-info' : 'is-bad');
+        label = 'j';
+        ptrClass = step.cmp ? 'ptr ptr--info' : 'ptr ptr--bad';
+      } else if (k === step.bestJ) {
+        cell.classList.add('is-violet');
+        label = '最优来源';
+        ptrClass = 'ptr ptr--violet';
+      }
+    } else if (step.phase === 'bs') {
+      if (k === step.i) {
+        cell.classList.add('is-active');
+        label = '当前 num';
+        ptrClass = 'ptr';
+      } else if (k < step.i) {
+        cell.classList.add('cell--dim');
+      }
+    } else {
+      if (step.lis && step.lis.indexOf(NUMS[k]) >= 0 && k === step.endIdx) {
+        cell.classList.add('is-ok');
+        label = 'LIS 结尾';
+        ptrClass = 'ptr ptr--ok';
+      }
+    }
+  
+    col.appendChild(cell);
+    col.appendChild(Demo.el('div', ptrClass, Demo.esc(label)));
+    return col;
+  }
+  
+  function dpColumn(step, k) {
+    const col = Demo.el('div', 'col');
+    const value = step.dp[k];
+    const cell = Demo.el('div', 'cell');
+  
+    if (value == null) {
+      cell.classList.add('cell--empty');
+      cell.innerHTML = '?';
+    } else {
+      cell.innerHTML = Demo.esc(value);
+    }
+  
+    let label = 'dp[' + k + ']';
+    let ptrClass = 'ptr ptr--dim';
+  
+    if (step.phase === 'dp') {
+      if (k === step.i && value == null) {
+        cell.classList.add('is-active');
+        label = '待定 → best';
+        ptrClass = 'ptr';
+      } else if (k === step.i) {
+        cell.classList.add('is-ok');
+        label = 'dp[i]';
+        ptrClass = 'ptr ptr--ok';
+      } else if (k === step.j) {
+        cell.classList.add('is-info');
+        label = 'dp[j]';
+        ptrClass = 'ptr ptr--info';
+      } else if (k === step.bestJ) {
+        cell.classList.add('is-violet');
+        label = '最优来源';
+        ptrClass = 'ptr ptr--violet';
+      } else if (value != null) {
+        cell.classList.add('is-ok');
+      }
+    } else if (value != null) {
+      if (value === step.maxLen) {
+        cell.classList.add('is-ok');
+        if (k === step.endIdx) {
+          label = '答案';
+          ptrClass = 'ptr ptr--ok';
+        }
+      }
+    }
+  
+    col.appendChild(cell);
+    col.appendChild(Demo.el('div', ptrClass, Demo.esc(label)));
+    return col;
+  }
+  
+  function tailsColumn(step, k) {
+    const col = Demo.el('div', 'col');
+    const has = k < step.tails.length;
+    const cell = Demo.el('div', 'cell');
+  
+    if (has) cell.innerHTML = Demo.esc(step.tails[k]);
+    else {
+      cell.classList.add('cell--empty');
+      cell.innerHTML = '空';
+    }
+  
+    if (has && k === step.mid) cell.classList.add('is-active');
+    else if (has && step.action !== 'probe' && k === step.lo && step.mid < 0) cell.classList.add(step.action === 'append' ? 'is-ok' : 'is-warn');
+  
+    col.appendChild(cell);
+  
+    const labels = [];
+    let ptrClass = 'ptr ptr--dim';
+    if (k === step.mid) { labels.push('mid'); ptrClass = 'ptr'; }
+    if (k === step.lo) { labels.push('lo'); if (ptrClass === 'ptr ptr--dim') ptrClass = 'ptr ptr--info'; }
+    if (k === step.hi) { labels.push('hi'); if (ptrClass === 'ptr ptr--dim') ptrClass = 'ptr ptr--bad'; }
+    if (!labels.length) labels.push(has ? 'tails[' + k + ']' : '待追加位');
+  
+    col.appendChild(Demo.el('div', ptrClass, Demo.esc(labels.join(' '))));
+    return col;
+  }
+  
+  Demo.create({
+    title: '141. 最长递增子序列 — O(n²) 一维 DP 填表 + O(n log n) 贪心二分',
+    info: '输入：nums = [' + NUMS.join(', ') + ']（示例 1，预期输出 4，如 [2, 3, 7, 101]）。阶段一填 dp 表，阶段二画出 tails 的二分收缩。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 420,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前处理的 i / 二分的 mid' },
+      { color: 'var(--demo-info)', label: '被枚举的 j 或 lo 边界' },
+      { color: 'var(--demo-violet)', label: '最优转移来源' },
+      { color: 'var(--demo-ok)', label: '已确定的 dp 值 / 答案' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      /* ---------- 数组行 ---------- */
+      const numPanel = Demo.el('div', 'panel');
+      numPanel.style.width = '100%';
+      numPanel.appendChild(Demo.el('div', 'panel__title', step.phase === 'bs' || step.phase === 'done'
+        ? '数组 nums（高亮当前正在处理的元素）'
+        : '数组 nums（i 是当前要算 dp 的元素，j 是正在枚举的前驱）'));
+      const nrow = Demo.el('div', 'row');
+      for (let k = 0; k < NUMS.length; k++) nrow.appendChild(numsColumn(step, k));
+      numPanel.appendChild(nrow);
+      ctx.stage.appendChild(numPanel);
+  
+      if (step.phase === 'done') {
+        const lisPanel = Demo.el('div', 'panel');
+        lisPanel.style.width = '100%';
+        lisPanel.appendChild(Demo.el('div', 'panel__title', '由 dp 回溯出的最长递增子序列（长度 ' + step.maxLen + '）'));
+        const lrow = Demo.el('div', 'row');
+        step.lis.forEach(function (value, k) {
+          if (k > 0) lrow.appendChild(Demo.el('div', 'arrow', '→'));
+          lrow.appendChild(Demo.el('div', 'cell cell--sm is-ok', Demo.esc(value)));
+        });
+        lrow.appendChild(Demo.el('div', 'arrow', '→'));
+        lrow.appendChild(Demo.el('span', 'tag tag--ok', '长度 ' + step.lis.length));
+        lisPanel.appendChild(lrow);
+        ctx.stage.appendChild(lisPanel);
+  
+        const tailsPanel = Demo.el('div', 'panel');
+        tailsPanel.style.width = '100%';
+        tailsPanel.appendChild(Demo.el('div', 'panel__title', 'tails 数组（各长度的最小结尾）'));
+        const trow = Demo.el('div', 'row');
+        for (let k = 0; k < step.tails.length; k++) trow.appendChild(Demo.el('div', 'cell cell--sm is-info', Demo.esc(step.tails[k])));
+        tailsPanel.appendChild(trow);
+        const sum = Demo.el('div', 'row');
+        sum.style.marginTop = '6px';
+        sum.innerHTML = 'O(n²) DP 最大值 <code>' + step.maxLen + '</code> ｜ tails 长度 <code>' + step.tails.length +
+          '</code> ｜ <span class="tag tag--ok">答案 ' + step.maxLen + '</span>';
+        tailsPanel.appendChild(sum);
+        ctx.stage.appendChild(tailsPanel);
+        return;
+      }
+  
+      if (step.phase === 'bs') {
+        const tailsPanel = Demo.el('div', 'panel');
+        tailsPanel.style.width = '100%';
+        tailsPanel.appendChild(Demo.el('div', 'panel__title', 'tails 数组（严格递增，所以能二分；lo/hi 为左闭右开区间）'));
+        const trow = Demo.el('div', 'row');
+        for (let k = 0; k <= step.tails.length; k++) trow.appendChild(tailsColumn(step, k));
+        tailsPanel.appendChild(trow);
+        ctx.stage.appendChild(tailsPanel);
+  
+        const info = Demo.el('div', 'panel');
+        info.style.width = '100%';
+        info.style.textAlign = 'center';
+        if (step.action === 'probe') {
+          info.innerHTML = '二分：lo = <code>' + step.lo + '</code>，hi = <code>' + step.hi + '</code>，mid = <code>' + step.mid +
+            '</code>；nums[' + step.i + '] = <code>' + NUMS[step.i] + '</code>，tails[mid] = <code>' + step.tails[step.mid] + '</code>' +
+            ' &nbsp;<span class="tag tag--info">找第一个 ≥ ' + NUMS[step.i] + ' 的位置</span>';
+        } else if (step.action === 'append') {
+          info.innerHTML = 'nums[' + step.i + '] = <code>' + NUMS[step.i] + '</code> 是当前最大，二分落点 = tails 长度 → ' +
+            '<span class="tag tag--ok">追加到末尾，当前 LIS 长度变成 ' + step.tails.length + '</span>';
+        } else {
+          info.innerHTML = 'nums[' + step.i + '] = <code>' + NUMS[step.i] + '</code> 替换 tails[' + step.lo + '] → ' +
+            '<span class="tag tag--warn">长度不变（' + step.tails.length + '），但该长度的最小结尾变小了</span>';
+        }
+        ctx.stage.appendChild(info);
+        return;
+      }
+  
+      /* ---------- 阶段一：dp 表 ---------- */
+      const dpPanel = Demo.el('div', 'panel');
+      dpPanel.style.width = '100%';
+      dpPanel.appendChild(Demo.el('div', 'panel__title', '状态表 dp（dp[i] = 以 nums[i] 结尾的最长递增子序列长度）'));
+      const drow = Demo.el('div', 'row');
+      for (let k = 0; k < NUMS.length; k++) drow.appendChild(dpColumn(step, k));
+      dpPanel.appendChild(drow);
+      ctx.stage.appendChild(dpPanel);
+  
+      const cmp = Demo.el('div', 'panel');
+      cmp.style.width = '100%';
+      cmp.style.textAlign = 'center';
+      if (step.j >= 0 && step.cmp === false) {
+        cmp.innerHTML = '比较 nums[' + step.j + '] = <code>' + NUMS[step.j] + '</code> 与 nums[' + step.i + '] = <code>' + NUMS[step.i] +
+          '</code> &nbsp;<span class="tag tag--bad">不是严格递增，无法转移</span>';
+      } else if (step.j >= 0) {
+        cmp.innerHTML = 'dp[' + step.j + '] + 1 = <code>' + step.dp[step.j] + ' + 1 = ' + step.candidate + '</code> ' +
+          (step.improving
+            ? '<span class="tag tag--ok">超过当前最优，更新候选</span>'
+            : '<span class="tag tag--warn">未超过当前最优 ' + step.best + '</span>') +
+          ' &nbsp; 当前最优候选 best = <code>' + step.best + '</code>';
+      } else if (step.i >= 0) {
+        cmp.innerHTML = '确定 dp[' + step.i + '] = <code>' + step.best + '</code>' +
+          (step.bestJ >= 0
+            ? ' &nbsp;<span class="tag tag--violet">最优转移来自 j = ' + step.bestJ + '</span>'
+            : ' &nbsp;<span class="tag tag--warn">无可用前驱，自成一段</span>');
+      } else {
+        cmp.innerHTML = '状态转移方程：dp[i] = max(dp[i], dp[j] + 1)，其中 j &lt; i 且 nums[j] &lt; nums[i]；初始每个 dp[i] 都是 1。';
+      }
+      ctx.stage.appendChild(cmp);
+  
+      const ans = Demo.el('div', 'panel');
+      ans.style.width = '100%';
+      ans.style.textAlign = 'center';
+      ans.innerHTML = '当前全局最长递增子序列长度 = <strong>' + step.maxLen + '</strong> ' +
+        '（最终答案取 max(dp[0..n-1])，而不是 dp[n-1]）';
+      ctx.stage.appendChild(ans);
+    }
+  });
+  return Demo.__config
+}

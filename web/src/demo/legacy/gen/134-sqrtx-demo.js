@@ -1,0 +1,164 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/134-sqrtx-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const X = 1000;
+  
+  function buildSteps() {
+    const steps = [];
+    let left = 2, right = Math.floor(X / 2);
+    const history = [];
+  
+    steps.push({
+      left, mid: null, right, square: null, cmp: null, history: [],
+      note: `初始状态：x = ${X}。平方根单调递增，可以在 [2, ⌊x/2⌋] = [${left}, ${right}] 上二分。`
+        + `（x 为 0 或 1 时直接返回 x，不走二分。）`
+    });
+  
+    while (left <= right) {
+      const mid = left + Math.floor((right - left) / 2);
+      const square = mid * mid;
+      const prevLeft = left, prevRight = right;
+      let cmp, next;
+      if (square === X) {
+        cmp = 'eq';
+        history.push({ left: prevLeft, mid, right: prevRight, square, cmp });
+        steps.push({
+          left: prevLeft, mid, right: prevRight, square, cmp, history: history.slice(), done: true, answer: mid,
+          note: `取中点 mid = ⌊(${prevLeft} + ${prevRight}) / 2⌋ = ${mid}，比较 ${mid} × ${mid} = ${square} 与 x = ${X}：恰好相等，${mid} 就是精确平方根，直接返回。`
+        });
+        return steps;
+      } else if (square < X) {
+        cmp = 'lt';
+        next = `mid² 偏小，答案在右半区，left = mid + 1 = ${mid + 1}`;
+        left = mid + 1;
+      } else {
+        cmp = 'gt';
+        next = `mid² 偏大，答案在左半区，right = mid - 1 = ${mid - 1}`;
+        right = mid - 1;
+      }
+      history.push({ left: prevLeft, mid, right: prevRight, square, cmp });
+      steps.push({
+        left, mid, right, square, cmp, history: history.slice(),
+        note: `取中点 mid = ⌊(${prevLeft} + ${prevRight}) / 2⌋ = ${mid}，比较 ${mid}² = ${square} 与 x = ${X}：`
+          + `${square < X ? '小于' : '大于'}，${next}。新区间 [${left}, ${right}]。`
+      });
+    }
+  
+    steps.push({
+      left, mid: null, right, square: null, cmp: null, history: history.slice(), done: true, answer: right,
+      note: `left = ${left} 已经越过 right = ${right}，二分结束。此时 left 是第一个平方超过 x 的数，`
+        + `所以向下取整的平方根就是 right = ${right}（${right}² = ${right * right} ≤ ${X} < ${right + 1}² = ${(right + 1) * (right + 1)}）。`
+    });
+  
+    return steps;
+  }
+  
+  Demo.create({
+    title: '134. x 的平方根 — 二分查找',
+    info: `输入：x = ${X}（示例 8 → 2 走的是同一套流程，只是区间更小）。代码里常用 mid > x / mid 代替 mid * mid，避免溢出。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前取的中点 mid' },
+      { color: 'var(--demo-ok)', label: '保留的搜索区间' },
+      { color: 'var(--demo-warn)', label: 'mid² 偏小，向右收缩' },
+      { color: 'var(--demo-danger)', label: 'mid² 偏大，向左收缩' }
+    ],
+    stageHeight: 260,
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const lo0 = 2, hi0 = Math.floor(X / 2);
+      const span = hi0 - lo0 + 1;
+  
+      const barPanel = Demo.el('div', 'panel');
+      barPanel.appendChild(Demo.el('div', 'panel__title',
+        `搜索区间在 [${lo0}, ${hi0}] 上的位置（剩余候选 ${step.right - step.left + 1} 个）`));
+      barPanel.style.width = '100%';
+  
+      const track = Demo.el('div', 'bar');
+      track.style.width = '100%';
+      const fill = Demo.el('div', 'bar__fill');
+      const empty = step.right < step.left;
+      const start = empty ? step.right : step.left;
+      fill.style.left = ((start - lo0) / span) * 100 + '%';
+      fill.style.width = empty ? '3px' : ((step.right - step.left + 1) / span) * 100 + '%';
+      fill.style.background = step.done ? 'var(--demo-ok)' : 'var(--demo-accent)';
+      track.appendChild(fill);
+      if (step.mid != null) {
+        const mark = Demo.el('div', 'bar__fill');
+        mark.style.left = ((step.mid - lo0 + 0.5) / span) * 100 + '%';
+        mark.style.width = '3px';
+        mark.style.background = 'var(--demo-warn)';
+        mark.style.zIndex = '2';
+        track.appendChild(mark);
+      }
+      barPanel.appendChild(track);
+      barPanel.appendChild(Demo.el('div', 'ptr ptr--dim',
+        `${lo0} ←—— 区间随 mid² 与 x 的比较不断折半 ——→ ${hi0}`));
+      ctx.stage.appendChild(barPanel);
+  
+      const row = Demo.el('div', 'row');
+      [['left', step.left], ['mid', step.mid], ['right', step.right]].forEach(pair => {
+        const col = Demo.el('div', 'col');
+        const cell = Demo.el('div', 'cell', pair[1] == null ? '—' : Demo.esc(pair[1]));
+        if (pair[0] === 'mid') cell.classList.add('is-active');
+        if (step.done && pair[0] !== 'mid') cell.classList.add('is-ok');
+        col.appendChild(cell);
+        const ptr = Demo.el('div', 'ptr', pair[0]);
+        if (pair[1] == null) ptr.classList.add('ptr--dim');
+        col.appendChild(ptr);
+        row.appendChild(col);
+      });
+      const rowWrap = Demo.el('div', 'panel');
+      rowWrap.appendChild(row);
+      rowWrap.style.width = '100%';
+      ctx.stage.appendChild(rowWrap);
+  
+      if (step.cmp) {
+        const verdict = step.cmp === 'lt' ? 'mid² < x' : (step.cmp === 'gt' ? 'mid² > x' : 'mid² = x');
+        const tagCls = step.cmp === 'lt' ? 'tag--warn' : (step.cmp === 'gt' ? 'tag--bad' : 'tag--ok');
+        const info = Demo.el('div', 'panel',
+          `<span class="tag ${tagCls}">${verdict}</span>&nbsp; ${step.mid}² = ${step.square}，x = ${X}`);
+        info.style.width = '100%';
+        info.style.textAlign = 'center';
+        ctx.stage.appendChild(info);
+      }
+  
+      if (step.history.length) {
+        const table = Demo.el('table', 'map-table');
+        const head = Demo.el('tr');
+        ['迭代', 'left', 'mid', 'mid²', '比较', '收缩后的区间'].forEach(h => head.appendChild(Demo.el('th', null, h)));
+        table.appendChild(head);
+        step.history.forEach((h, k) => {
+          const tr = Demo.el('tr');
+          if (k === step.history.length - 1 && !step.done) tr.classList.add('is-active');
+          const relation = h.cmp === 'lt' ? 'mid² < x → 向右' : (h.cmp === 'gt' ? 'mid² > x → 向左' : 'mid² = x → 命中');
+          const after = h.cmp === 'lt' ? `[${h.mid + 1}, ${h.right}]`
+            : (h.cmp === 'gt' ? `[${h.left}, ${h.mid - 1}]` : `mid = ${h.mid}`);
+          [k + 1, h.left, h.mid, h.square, relation, after].forEach(v => tr.appendChild(Demo.el('td', null, Demo.esc(v))));
+          table.appendChild(tr);
+        });
+        const wrap = Demo.el('div', 'panel');
+        wrap.appendChild(Demo.el('div', 'panel__title', '每轮二分记录'));
+        wrap.style.width = '100%';
+        wrap.style.overflowX = 'auto';
+        wrap.appendChild(table);
+        ctx.stage.appendChild(wrap);
+      }
+  
+      if (step.done) {
+        const out = Demo.el('div', 'panel',
+          `<span class="tag tag--ok">⌊√${X}⌋ = ${step.answer}</span>&nbsp; 小数部分直接舍去，共二分 `
+          + `${step.history.length} 轮，区间长度每轮减半，复杂度 O(log x)。`);
+        out.style.width = '100%';
+        out.style.textAlign = 'center';
+        ctx.stage.appendChild(out);
+      }
+    }
+  });
+  return Demo.__config
+}

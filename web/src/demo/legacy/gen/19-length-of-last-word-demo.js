@@ -1,0 +1,146 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/19-length-of-last-word-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const S = '   fly me   to   the moon  ';
+  
+  function buildSteps() {
+    const chars = S.split('');
+    const n = chars.length;
+    const steps = [];
+    let index = n - 1;
+    let length = 0;
+    let wordEnd = -1;
+    let wordStart = -1;
+  
+    steps.push({
+      index: index, length: 0, phase: 'init', wordEnd: -1, wordStart: -1, done: false,
+      note: `初始化：s = "${S}"，指针 index 指向字符串最后一个字符（下标 ${index}），计数器 length = 0。先从右往左跳过末尾空格。`
+    });
+  
+    while (index >= 0 && chars[index] === ' ') {
+      steps.push({
+        index: index, length: 0, phase: 'skip', wordEnd: -1, wordStart: -1, done: false,
+        note: `s[${index}] 是空格：它是尾随空格，不属于任何一个单词，直接跳过，index 左移。length 仍为 0。`
+      });
+      index--;
+    }
+  
+    wordEnd = index;
+  
+    while (index >= 0 && chars[index] !== ' ') {
+      length++;
+      wordStart = index;
+      steps.push({
+        index: index, length: length, phase: 'count', wordEnd: wordEnd, wordStart: wordStart, done: false,
+        note: `s[${index}] = '${chars[index]}' 是字母：说明还处在最后一个单词内部，length 累加为 ${length}，index 继续左移，去数单词的下一个字符。`
+      });
+      index--;
+    }
+  
+    const stopText = index < 0
+      ? '已经走到字符串开头'
+      : `停在 s[${index}] 的空格上（或字符串开头）`;
+  
+    steps.push({
+      index: index, length: length, phase: 'done', wordEnd: wordEnd, wordStart: wordStart, done: true,
+      note: `指针${stopText}，说明单词的起点已经找到，计数结束。最后一个单词是 "${S.slice(wordStart, wordEnd + 1)}"，长度为 ${length}。整个过程只用了 index 和 length 两个变量。`
+    });
+  
+    return steps;
+  }
+  
+  function charColumn(ch, idx, step) {
+    const col = Demo.el('div', 'col');
+    const isSpace = ch === ' ';
+    const inWord = step.wordStart >= 0 && idx >= step.wordStart && idx <= step.wordEnd;
+    const passed = step.index >= 0 && idx > step.index;
+  
+    const cell = Demo.el('div', 'cell' + (isSpace ? ' cell--empty' : ''),
+      isSpace ? '&nbsp;' : Demo.esc(ch));
+  
+    if (idx === step.index && !step.done) cell.classList.add('is-active');
+    else if (inWord) cell.classList.add('is-ok');
+    else if (step.done) cell.classList.add('cell--dim');
+    else if (passed) cell.classList.add('is-warn');
+  
+    col.appendChild(cell);
+  
+    const labels = [];
+    if (idx === step.index && !step.done) labels.push('index');
+    const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : String(idx));
+    if (labels.length) {
+      ptr.classList.add('ptr--info');
+    } else if (inWord) {
+      ptr.classList.add('ptr--ok');
+    } else {
+      ptr.classList.add('ptr--dim');
+    }
+    col.appendChild(ptr);
+  
+    return col;
+  }
+  
+  Demo.create({
+    title: '19. 最后一个单词的长度 — 从右向左，先跳空格再计数',
+    info: `输入：s = "${S}"（示例 2），预期输出 4。空格用虚线方块表示。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 260,
+    legend: [
+      { color: 'var(--demo-accent)', label: '指针 index 当前指向' },
+      { color: 'var(--demo-ok)', label: '最后一个单词（被计数）' },
+      { color: 'var(--demo-warn)', label: '已跳过的尾随空格' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.appendChild(Demo.el('div', 'panel__title',
+        step.done ? '扫描结束，最后一个单词已定位' : '字符串 s（下标从左到右递增，指针从右端开始）'));
+      const row = Demo.el('div', 'row');
+      S.split('').forEach(function (ch, idx) {
+        row.appendChild(charColumn(ch, idx, step));
+      });
+      panel.appendChild(row);
+      ctx.stage.appendChild(panel);
+  
+      const stateRow = Demo.el('div', 'row');
+      stateRow.style.width = '100%';
+  
+      const phaseText = step.phase === 'init' ? '准备'
+        : step.phase === 'skip' ? '阶段 1：跳过尾随空格'
+          : step.phase === 'count' ? '阶段 2：统计单词长度' : '完成';
+  
+      const statusPanel = Demo.el('div', 'panel');
+      statusPanel.style.flex = '1';
+      statusPanel.style.textAlign = 'center';
+      statusPanel.appendChild(Demo.el('div', 'panel__title', phaseText));
+      statusPanel.appendChild(Demo.el('div', null,
+        `index = <strong>${step.index < 0 ? '−1（已到开头）' : step.index}</strong>` +
+        ` &nbsp;|&nbsp; length = <strong>${step.length}</strong>`));
+      stateRow.appendChild(statusPanel);
+  
+      ctx.stage.appendChild(stateRow);
+  
+      const result = Demo.el('div', 'panel');
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      if (step.done) {
+        result.innerHTML = `最后一个单词 "${Demo.esc(S.slice(step.wordStart, step.wordEnd + 1))}" 的长度 = ` +
+          `<span class="tag tag--ok">${step.length}</span>`;
+      } else if (step.phase === 'skip') {
+        result.innerHTML = '还在跳过末尾的空格，length 保持 0（尾随空格不算单词）';
+      } else if (step.phase === 'count') {
+        result.innerHTML = `正在从右往左数最后一个单词：目前 length = <strong>${step.length}</strong>`;
+      } else {
+        result.innerHTML = '点「下一步」开始从字符串末尾扫描';
+      }
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

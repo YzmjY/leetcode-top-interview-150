@@ -1,0 +1,209 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/107-word-search-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const BOARD = [
+    ['A', 'B', 'C', 'E'],
+    ['S', 'F', 'C', 'S'],
+    ['A', 'D', 'E', 'E']
+  ];
+  const WORD = 'SEE';
+  const M = BOARD.length;
+  const N = BOARD[0].length;
+  const DIRS = [[1, 0, '下'], [-1, 0, '上'], [0, 1, '右'], [0, -1, '左']];
+  
+  function buildSteps() {
+    const grid = BOARD.map(row => row.slice());
+    const steps = [];
+    const path = [];
+    let found = false;
+  
+    function inPath(r, c) {
+      return path.some(p => p[0] === r && p[1] === c);
+    }
+  
+    function snap(extra) {
+      return {
+        grid: grid.map(row => row.slice()),
+        path: path.map(p => [p[0], p[1]]),
+        matched: path.length,
+        attempt: extra.attempt == null ? null : extra.attempt,
+        mismatch: extra.mismatch == null ? null : extra.mismatch,
+        startCell: extra.startCell == null ? null : extra.startCell,
+        dir: extra.dir == null ? null : extra.dir,
+        outOfBounds: !!extra.outOfBounds,
+        found: !!extra.found,
+        phase: extra.phase,
+        note: extra.note
+      };
+    }
+  
+    steps.push(snap({
+      phase: 'init',
+      note: `初始化：board 为 ${M}×${N} 网格，word = "${WORD}"。先遍历每个格子找与 word[0] = '${WORD[0]}' 相同的字符作为 DFS 起点；DFS 中一旦进入某个格子，就把它原地改成 '#'，避免同一条路径重复使用同一个格子。`
+    }));
+  
+    function dfs(i, j, index, dirName) {
+      if (index === WORD.length) return true;
+  
+      if (i < 0 || i >= M || j < 0 || j >= N) {
+        steps.push(snap({
+          dir: dirName, outOfBounds: true, phase: 'fail',
+          note: `从上一层向${dirName}走到 (${i}, ${j})，已经越出 ${M}×${N} 的边界，直接返回 false，让上一层换一个方向。`
+        }));
+        return false;
+      }
+  
+      if (grid[i][j] !== WORD[index]) {
+        steps.push(snap({
+          dir: dirName, attempt: [i, j], mismatch: [i, j], phase: 'fail',
+          note: `来到 (${i}, ${j})，格子字符是 '${grid[i][j]}'，而当前位置需要匹配 word[${index}] = '${WORD[index]}'，字符不匹配，剪枝返回 false。`
+        }));
+        return false;
+      }
+  
+      const origin = grid[i][j];
+      grid[i][j] = '#';
+      path.push([i, j]);
+      steps.push(snap({
+        attempt: [i, j], dir: dirName, phase: 'enter',
+        note: `进入 (${i}, ${j})：字符 '${origin}' 与 word[${index}] 匹配，把该格标记为 '#' 后压入路径，已匹配前缀 "${WORD.slice(0, index + 1)}"。接下来按 ${DIRS.map(d => d[2]).join('→')} 的顺序尝试四个方向。`
+      }));
+  
+      for (let k = 0; k < DIRS.length; k++) {
+        const d = DIRS[k];
+        if (dfs(i + d[0], j + d[1], index + 1, d[2])) {
+          grid[i][j] = origin;
+          return true;
+        }
+      }
+  
+      grid[i][j] = origin;
+      path.pop();
+      steps.push(snap({
+        attempt: [i, j], phase: 'back',
+        note: `( ${i}, ${j} ) 的四个方向都走不通，撤销该格的访问标记（'#' 恢复为 '${origin}'）并把路径弹出，返回 false，让上一层换个方向继续尝试。这就是回溯的「撤销」。`
+      }));
+      return false;
+    }
+  
+    for (let i = 0; i < M && !found; i++) {
+      for (let j = 0; j < N && !found; j++) {
+        if (grid[i][j] !== WORD[0]) continue;
+        steps.push(snap({
+          startCell: [i, j], phase: 'start',
+          note: `扫描到 (${i}, ${j})：字符 '${WORD[0]}' 与 word[0] 相同，可以作为起点尝试 DFS。若从这里出发搜不到，就继续扫描后面的格子作为新起点。`
+        }));
+        if (dfs(i, j, 0, '起点')) {
+          found = true;
+          steps.push(snap({
+            found: true, phase: 'found',
+            note: `从 (${i}, ${j}) 出发的 DFS 找到了完整路径，递归逐层返回 true，搜索提前结束。`
+          }));
+        }
+      }
+    }
+  
+    steps.push(snap({
+      found, phase: 'done',
+      note: found
+        ? `word = "${WORD}" 存在于网格中，路径为 ${path.map(p => '(' + p[0] + ',' + p[1] + ')').join(' → ')}，逐格检查字符正好拼出 "${WORD}"，因此返回 true。`
+        : `所有起点都尝试完毕，没有找到 "${WORD}"，返回 false。`
+    }));
+  
+    return steps;
+  }
+  
+  function wordRow(step) {
+    const row = Demo.el('div', 'row');
+    WORD.split('').forEach((ch, i) => {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(ch));
+      if (i < step.matched) cell.classList.add('is-ok');
+      else if (i === step.matched) cell.classList.add('is-active');
+      else cell.classList.add('cell--empty');
+      col.appendChild(cell);
+      col.appendChild(Demo.el('div', 'ptr ptr--dim', String(i)));
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  function boardView(step) {
+    const grid = Demo.el('div', 'grid');
+    grid.style.gridTemplateColumns = 'repeat(' + N + ', 44px)';
+    for (let r = 0; r < M; r++) {
+      for (let c = 0; c < N; c++) {
+        const value = step.grid[r][c];
+        const cell = Demo.el('div', 'grid-cell', Demo.esc(value));
+        const isPath = step.path.some(p => p[0] === r && p[1] === c);
+        const isAttempt = step.attempt && step.attempt[0] === r && step.attempt[1] === c;
+        const isMismatch = step.mismatch && step.mismatch[0] === r && step.mismatch[1] === c;
+        const isStart = step.startCell && step.startCell[0] === r && step.startCell[1] === c;
+        if (isMismatch) {
+          cell.classList.add('is-bad');
+        } else if (isPath) {
+          const last = step.path[step.path.length - 1];
+          const isLast = last && last[0] === r && last[1] === c;
+          if (isLast && (step.phase === 'enter' || step.phase === 'start')) cell.classList.add('is-active');
+          else cell.classList.add('is-ok');
+        } else if (isAttempt) {
+          cell.classList.add(step.phase === 'fail' ? 'is-bad' : 'is-active');
+        } else if (isStart) {
+          cell.classList.add('is-info');
+        } else if (value === '#') {
+          cell.classList.add('is-ok');
+        }
+        cell.style.fontSize = '18px';
+        grid.appendChild(cell);
+      }
+    }
+    return grid;
+  }
+  
+  Demo.create({
+    title: '107. 单词搜索 — 网格 DFS + 原地标记回溯',
+    info: `输入：3×4 网格（含 "SEE" 所需字符），word = "${WORD}"（题目示例 2，结果 true）。示例 1 的 "ABCCED" 同样为 true，路径更长，原理一致。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前进入 / 正在匹配的格子' },
+      { color: 'var(--demo-ok)', label: '当前路径上的格子（已标记 #）' },
+      { color: 'var(--demo-danger)', label: '字符不匹配，剪枝' },
+      { color: 'var(--demo-info)', label: '本步的 DFS 起点' }
+    ],
+    stageHeight: 380,
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const top = Demo.el('div', 'row');
+      top.appendChild(boardView(step));
+      const side = Demo.el('div', 'col');
+      side.appendChild(Demo.el('div', 'panel__title', 'word = "' + WORD + '"'));
+      side.appendChild(wordRow(step));
+      side.appendChild(Demo.el('span', 'tag' + (step.found ? ' tag--ok' : ''), '已匹配 ' + step.matched + ' / ' + WORD.length + ' 个字符'));
+      top.appendChild(side);
+      ctx.stage.appendChild(top);
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.style.textAlign = 'center';
+      const dirText = step.dir
+        ? '本次方向：' + step.dir + (step.outOfBounds ? '（越界）' : '')
+        : '（尚未移动）';
+      const cellText = step.attempt ? '(' + step.attempt[0] + ', ' + step.attempt[1] + ')' : '—';
+      panel.appendChild(Demo.el('div', null,
+        '<span class="tag">' + Demo.esc(dirText) + '</span>' +
+        ' &nbsp; <span class="tag tag--info">当前格子 ' + Demo.esc(cellText) + '</span>' +
+        ' &nbsp; <span class="tag' + (step.found ? ' tag--ok' : '') + '">' + (step.found ? '找到 word，返回 true' : '搜索中') + '</span>'));
+      const pathText = step.path.map(p => '(' + p[0] + ',' + p[1] + ')').join(' → ');
+      const line2 = Demo.el('div', null, '路径：' + Demo.esc(pathText || '（空）'));
+      line2.style.marginTop = '6px';
+      panel.appendChild(line2);
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

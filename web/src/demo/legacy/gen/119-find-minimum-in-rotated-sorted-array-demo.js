@@ -1,0 +1,159 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/119-find-minimum-in-rotated-sorted-array-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [4, 5, 6, 7, 0, 1, 2];
+  
+  function buildSteps() {
+    const nums = NUMS;
+    const n = nums.length;
+    const steps = [];
+    let left = 0;
+    let right = n - 1;
+    let checks = 0;
+  
+    let drop = -1;
+    for (let k = 0; k + 1 < n; k++) {
+      if (nums[k] > nums[k + 1]) { drop = k; break; }
+    }
+  
+    steps.push({
+      left: left, right: right, mid: -1, mv: null, rv: null, cmp: null,
+      sortedLo: -1, sortedHi: -1, checks: checks, done: false, minIdx: -1,
+      note: `数组 nums = [${nums.join(', ')}] 由升序数组 [${nums.slice(drop + 1).concat(nums.slice(0, drop + 1)).join(', ')}] 旋转而来，唯一一处下降发生在下标 ${drop} → ${drop + 1}（${nums[drop]} → ${nums[drop + 1]}），那里就是旋转点，也就是最小值的位置。初始区间 [left, right] = [0, ${n - 1}]。每一轮比较 nums[mid] 与 nums[right]，判断右半段是否升序。`
+    });
+  
+    while (left < right) {
+      const mid = left + Math.floor((right - left) / 2);
+      const mv = nums[mid];
+      const rv = nums[right];
+      checks += 1;
+  
+      if (mv < rv) {
+        const oldRight = right;
+        right = mid;
+        steps.push({
+          left: left, right: right, mid: mid, mv: mv, rv: rv, cmp: 'lt', rvIdx: oldRight,
+          sortedLo: mid, sortedHi: oldRight, checks: checks, done: false, minIdx: -1,
+          note: `第 ${checks} 次比较：mid = left + ⌊(right − left) / 2⌋ = ${left} + ⌊(${oldRight} − ${left}) / 2⌋ = ${mid}，nums[${mid}] = ${mv} < nums[right] = nums[${oldRight}] = ${rv}。说明右半段 [${mid}, ${oldRight}] 是一路升序的，没有跨过旋转点，因此这一段里最小的是最左端的 ${mv}；真正的最小值只可能在 mid 或 mid 左边。丢掉 (${mid}, ${oldRight}]，令 right = mid = ${right}（mid 自己保留）。`
+        });
+      } else {
+        const oldLeft = left;
+        left = mid + 1;
+        steps.push({
+          left: left, right: right, mid: mid, mv: mv, rv: rv, cmp: 'gt', rvIdx: right,
+          sortedLo: oldLeft, sortedHi: mid, checks: checks, done: false, minIdx: -1,
+          note: `第 ${checks} 次比较：mid = left + ⌊(right − left) / 2⌋ = ${oldLeft} + ⌊(${right} − ${oldLeft}) / 2⌋ = ${mid}，nums[${mid}] = ${mv} > nums[right] = nums[${right}] = ${rv}。从 mid 到 right 之间存在下降，说明旋转点就藏在 (${mid}, ${right}] 里，最小值一定在 mid 右边。丢掉 [${oldLeft}, ${mid}]，令 left = mid + 1 = ${left}。顺便知道 [${oldLeft}, ${mid}] 这一段是升序的，但它的最小值 ${nums[oldLeft]} 仍然比右半段的最小值大，不可能是答案。`
+        });
+      }
+    }
+  
+    const minIdx = left;
+    steps.push({
+      left: left, right: right, mid: -1, mv: null, rv: null, cmp: null,
+      sortedLo: -1, sortedHi: -1, checks: checks, done: true, minIdx: minIdx,
+      note: `left == right == ${minIdx}，区间收缩到只剩一个元素，它就是旋转点，也就是最小值：nums[${minIdx}] = ${nums[minIdx]}，返回 ${nums[minIdx]}。` +
+        (minIdx > 0 ? ` 验证一下：nums[${minIdx - 1}] = ${nums[minIdx - 1]} > ${nums[minIdx]}，确实在这里下降。` : ' 旋转点就在数组开头（等价于没有旋转）。') +
+        ` 一共比较 ${checks} 次，每次砍掉一半区间，时间复杂度 O(log n)，空间复杂度 O(1)。`
+    });
+  
+    return steps;
+  }
+  
+  function arrayRow(step) {
+    const n = NUMS.length;
+    const row = Demo.el('div', 'row');
+  
+    for (let idx = 0; idx < n; idx++) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(NUMS[idx]));
+      const inRange = idx >= step.left && idx <= step.right;
+      const inSorted = step.sortedLo >= 0 && idx >= step.sortedLo && idx <= step.sortedHi;
+  
+      if (step.done) {
+        if (idx === step.minIdx) cell.classList.add('is-ok');
+        else cell.classList.add('is-dim');
+      } else {
+        if (idx === step.mid) cell.classList.add('is-active');
+        else if (inSorted) cell.classList.add('is-pink');
+        else if (inRange) cell.classList.add('is-info');
+        else cell.classList.add('is-dim');
+      }
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (!step.done) {
+        if (idx === step.left) labels.push('left');
+        if (idx === step.right) labels.push('right');
+        if (idx === step.mid) labels.push('mid');
+      } else if (idx === step.minIdx) {
+        labels.push('最小值');
+      }
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : '#' + idx);
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (step.done && idx === step.minIdx) ptr.classList.add('ptr--ok');
+      else if (labels.indexOf('mid') >= 0) ptr.classList.add('ptr--warn');
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+    }
+  
+    return row;
+  }
+  
+  Demo.create({
+    title: '119. 寻找旋转排序数组中的最小值 — 比较 mid 与 right',
+    info: `输入：nums = [${NUMS.join(', ')}]（示例 2，由 [0,1,2,4,5,6,7] 旋转 4 次得到）。每轮比较 nums[mid] 与 nums[right]：右半升序就丢弃右半，否则丢弃左半。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 380,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本轮中点 mid' },
+      { color: 'var(--demo-info)', label: '候选区间 [left, right] 内' },
+      { color: 'var(--demo-pink)', label: '本轮判定为升序的一段' },
+      { color: 'var(--demo-ok)', label: '最小值（旋转点）' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const arrayPanel = Demo.el('div', 'panel');
+      arrayPanel.style.width = '100%';
+      arrayPanel.appendChild(Demo.el('div', 'panel__title',
+        step.done
+          ? `数组 nums（最小值在下标 ${step.minIdx}）`
+          : `数组 nums（候选区间 [${step.left}, ${step.right}]）`));
+      arrayPanel.appendChild(arrayRow(step));
+      ctx.stage.appendChild(arrayPanel);
+  
+      const judgePanel = Demo.el('div', 'panel');
+      judgePanel.style.width = '100%';
+      judgePanel.appendChild(Demo.el('div', 'panel__title', '本步判断'));
+      let judgeHtml;
+      if (step.mid < 0) {
+        judgeHtml = step.done
+          ? `区间只剩一个元素，它就是最小值 <code>${NUMS[step.minIdx]}</code>。`
+          : '还没取中点：下一轮会取 mid = left + ⌊(right − left) / 2⌋，并比较 nums[mid] 与 nums[right]。';
+      } else if (step.cmp === 'lt') {
+        judgeHtml = `nums[${step.mid}] = <code>${step.mv}</code> < nums[${step.rvIdx}] = <code>${step.rv}</code>` +
+          ` &nbsp;<span class="tag tag--info">右半 [${step.sortedLo}, ${step.sortedHi}] 升序</span>` +
+          ` &nbsp;<span class="tag tag--ok">最小值在左半（含 mid）</span> &nbsp;right = mid`;
+      } else {
+        judgeHtml = `nums[${step.mid}] = <code>${step.mv}</code> > nums[${step.rvIdx}] = <code>${step.rv}</code>` +
+          ` &nbsp;<span class="tag tag--warn">有下降，旋转点在右侧</span>` +
+          ` &nbsp;<span class="tag tag--bad">丢左半</span> &nbsp;left = mid + 1`;
+      }
+      judgePanel.appendChild(Demo.el('div', null, judgeHtml));
+      ctx.stage.appendChild(judgePanel);
+  
+      const result = Demo.el('div', 'panel',
+        `已比较 <strong>${step.checks}</strong> 次 ｜ 区间 <code>[${step.left}, ${step.right}]</code>` +
+        (step.done ? ` &nbsp;<span class="tag tag--ok">最小值 = ${NUMS[step.minIdx]}</span>` : ''));
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

@@ -1,0 +1,174 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/137-climbing-stairs-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const N = 5;
+  
+  /* 真实跑一遍「一维 DP（斐波那契递推）」：从边界 dp[0]、dp[1] 出发，
+     逐级用 dp[i] = dp[i-1] + dp[i-2] 填表，每一步都记录 dp 快照与转移来源。 */
+  function buildSteps() {
+    const steps = [];
+    const dp = new Array(N + 1).fill(null);
+  
+    function snap(i, cur, src, note, done) {
+      steps.push({
+        dp: dp.slice(),
+        i: i,
+        prev1: i >= 1 && dp[i - 1] != null ? dp[i - 1] : null,
+        prev2: i >= 2 && dp[i - 2] != null ? dp[i - 2] : null,
+        cur: cur,
+        src: src || [],
+        done: !!done,
+        note: note
+      });
+    }
+  
+    snap(-1, null, [],
+      '初始化：开一个长度 ' + (N + 1) + ' 的数组 dp，dp[i] 表示爬到第 i 级台阶的方法数。此刻数组全是待定值，递推还没有开始。');
+  
+    dp[0] = 1;
+    snap(0, 1, [],
+      '填边界 dp[0] = 1：站在地面（第 0 级）本身就是唯一一种「一步都不走」的方案，它作为递推的起点。');
+  
+    dp[1] = 1;
+    snap(1, 1, [],
+      '填边界 dp[1] = 1：要上到第 1 级，只能从地面跨 1 级，没有第二种走法。');
+  
+    for (let i = 2; i <= N; i++) {
+      const one = dp[i - 1];
+      const two = dp[i - 2];
+      dp[i] = one + two;
+      snap(i, dp[i], [i - 1, i - 2],
+        '处理第 ' + i + ' 级：最后一步要么从第 ' + (i - 1) + ' 级跨 1 级上来（有 ' + one + ' 种走法），要么从第 ' +
+        (i - 2) + ' 级跨 2 级上来（有 ' + two + ' 种走法）。两类走法的最后一步不同，互不重叠，又合起来覆盖了全部方案，' +
+        '所以 dp[' + i + '] = dp[' + (i - 1) + '] + dp[' + (i - 2) + '] = ' + one + ' + ' + two + ' = ' + dp[i] + '。');
+    }
+  
+    steps.push({
+      dp: dp.slice(),
+      i: N,
+      prev1: dp[N - 1],
+      prev2: dp[N - 2],
+      cur: dp[N],
+      src: [],
+      done: true,
+      note: '递推结束：dp[' + N + '] = ' + dp[N] + '，也就是爬 ' + N + ' 级台阶共有 ' + dp[N] +
+        ' 种走法。由于每个 dp[i] 只依赖前两项，实际写代码时可以只用 prev2、prev1 两个滚动变量，把空间压到 O(1)。'
+    });
+  
+    return steps;
+  }
+  
+  function dpColumn(step, i) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell cell--lg');
+    const value = step.dp[i];
+  
+    if (value == null) {
+      cell.classList.add('cell--empty');
+      cell.innerHTML = '?';
+    } else {
+      cell.innerHTML = Demo.esc(value);
+    }
+  
+    let labels = 'dp[' + i + ']';
+    let ptrClass = 'ptr ptr--dim';
+  
+    if (step.done) {
+      if (i === N) {
+        cell.classList.add('is-ok');
+        labels = '答案';
+        ptrClass = 'ptr ptr--ok';
+      }
+    } else if (i === step.i) {
+      cell.classList.add('is-active');
+      labels = 'i = ' + i;
+      ptrClass = 'ptr';
+    } else if (step.src[0] === i) {
+      cell.classList.add('is-info');
+      labels = '跨 1 级';
+      ptrClass = 'ptr ptr--info';
+    } else if (step.src[1] === i) {
+      cell.classList.add('is-violet');
+      labels = '跨 2 级';
+      ptrClass = 'ptr ptr--violet';
+    }
+  
+    col.appendChild(cell);
+    col.appendChild(Demo.el('div', ptrClass, Demo.esc(labels)));
+    return col;
+  }
+  
+  function varColumn(label, value, cls) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', value == null ? '—' : Demo.esc(value));
+    if (value == null) cell.classList.add('cell--empty');
+    else if (cls) cell.classList.add(cls);
+    col.appendChild(cell);
+    col.appendChild(Demo.el('div', 'ptr ptr--dim', Demo.esc(label)));
+    return col;
+  }
+  
+  Demo.create({
+    title: '137. 爬楼梯 — 一维 DP 逐级填表 dp[i] = dp[i-1] + dp[i-2]',
+    info: '输入：n = ' + N + '（示例取 n = 5）。dp[i] 表示爬到第 i 级台阶的方法数，每次只能跨 1 级或 2 级。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 330,
+    legend: [
+      { color: 'var(--demo-accent)', label: '正在计算的 dp[i]' },
+      { color: 'var(--demo-info)', label: 'dp[i-1]：跨 1 级上来' },
+      { color: 'var(--demo-violet)', label: 'dp[i-2]：跨 2 级上来' },
+      { color: 'var(--demo-ok)', label: '最终答案' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const arrayPanel = Demo.el('div', 'panel');
+      arrayPanel.style.width = '100%';
+      arrayPanel.appendChild(Demo.el('div', 'panel__title', 'dp 数组（已填出的位置显示数值，灰色的 ? 表示还没算到）'));
+      const row = Demo.el('div', 'row');
+      for (let k = 0; k <= N; k++) row.appendChild(dpColumn(step, k));
+      arrayPanel.appendChild(row);
+      ctx.stage.appendChild(arrayPanel);
+  
+      const formula = Demo.el('div', 'panel');
+      formula.style.width = '100%';
+      formula.style.textAlign = 'center';
+      let html;
+      if (step.done) {
+        html = '答案：dp[' + N + '] = <strong>' + step.dp[N] + '</strong> &nbsp;' +
+          '<span class="tag tag--ok">n = ' + N + ' 时共 ' + step.dp[N] + ' 种走法</span>';
+      } else if (step.i >= 2) {
+        html = 'dp[' + step.i + '] = dp[' + (step.i - 1) + '] + dp[' + (step.i - 2) + '] = <code>' +
+          step.dp[step.i - 1] + '</code> + <code>' + step.dp[step.i - 2] + '</code> = <strong>' +
+          step.dp[step.i] + '</strong>' +
+          ' &nbsp;<span class="tag tag--info">来源 dp[' + (step.i - 1) + ']</span>' +
+          ' <span class="tag tag--violet">来源 dp[' + (step.i - 2) + ']</span>';
+      } else if (step.i === 0 || step.i === 1) {
+        html = '边界：dp[' + step.i + '] = <strong>' + step.dp[step.i] + '</strong> ' +
+          '<span class="tag tag--warn">递推起点，不由公式得出</span>';
+      } else {
+        html = '状态转移公式：dp[i] = dp[i-1]（最后跨 1 级）+ dp[i-2]（最后跨 2 级），等右侧边界填好后再逐级套用。';
+      }
+      formula.innerHTML = html;
+      ctx.stage.appendChild(formula);
+  
+      const roll = Demo.el('div', 'panel');
+      roll.style.width = '100%';
+      roll.appendChild(Demo.el('div', 'panel__title',
+        '滚动变量视角：dp[i] 只用到前两项，所以两个变量即可，空间 O(1)' +
+        (step.i >= 0 ? '（当前 i = ' + step.i + '）' : '')));
+      const rrow = Demo.el('div', 'row');
+      rrow.appendChild(varColumn('prev2', step.prev2, 'is-violet'));
+      rrow.appendChild(varColumn('prev1', step.prev1, 'is-info'));
+      rrow.appendChild(Demo.el('div', 'arrow', '→'));
+      rrow.appendChild(varColumn('current = prev1 + prev2', step.cur, step.done ? 'is-ok' : 'is-active'));
+      roll.appendChild(rrow);
+      ctx.stage.appendChild(roll);
+    }
+  });
+  return Demo.__config
+}

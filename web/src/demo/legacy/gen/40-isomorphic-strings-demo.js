@@ -1,0 +1,189 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/40-isomorphic-strings-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const S = 'paper';
+  const T = 'title';
+  
+  function buildSteps() {
+    const steps = [];
+    const s2t = {};
+    const t2s = {};
+    let failed = false;
+    let failAt = -1;
+  
+    function snap(extra) {
+      const step = {
+        s2t: Object.assign({}, s2t),
+        t2s: Object.assign({}, t2s),
+        note: extra.note
+      };
+      Object.keys(extra).forEach(function (key) {
+        if (key !== 'note') step[key] = extra[key];
+      });
+      steps.push(step);
+    }
+  
+    snap({
+      phase: 'init', i: -1, sc: '', tc: '', mappedT: null, mappedS: null,
+      conflictST: false, conflictTS: false,
+      note: `两张哈希表都为空：s2t 记 s 的字符映射到哪个 t 字符，t2s 记反向映射。同构要求「不同字符不能映射到同一个字符」（靠 s2t 检查），也要求「同一个字符不能映射到不同字符」（靠两张表双向检查），所以两张表缺一不可。接下来逐位读入 s 和 t。`
+    });
+  
+    for (let i = 0; i < S.length; i++) {
+      const sc = S[i];
+      const tc = T[i];
+      const hasT = Object.prototype.hasOwnProperty.call(s2t, sc);
+      const hasS = Object.prototype.hasOwnProperty.call(t2s, tc);
+      const mappedT = hasT ? s2t[sc] : null;
+      const mappedS = hasS ? t2s[tc] : null;
+      const conflictST = hasT && mappedT !== tc;
+      const conflictTS = hasS && mappedS !== sc;
+  
+      snap({
+        phase: conflictST || conflictTS ? 'fail' : 'probe', i: i, sc: sc, tc: tc,
+        mappedT: mappedT, mappedS: mappedS, conflictST: conflictST, conflictTS: conflictTS,
+        note: `读入第 ${i} 位：s[${i}] = "${sc}"，t[${i}] = "${tc}"。先查 s2t["${sc}"]，再查 t2s["${tc}"]：` +
+          (conflictST
+            ? `s2t 里已有 "${sc}" → "${mappedT}"，与本次要求的 "${tc}" 冲突，说明同一个 s 字符被要求映射成两个不同字符，返回 false。`
+            : (conflictTS
+              ? `t2s 里已有 "${tc}" → "${mappedS}"，与本次的 "${sc}" 冲突，说明两个不同的 s 字符被要求映射到同一个 t 字符，返回 false。`
+              : (hasT
+                ? `s2t["${sc}"] = "${mappedT}"，正好等于 t[${i}]；`
+                : `s2t 中没有 "${sc}" 的记录；`) +
+                (hasS ? `t2s["${tc}"] = "${mappedS}"，正好等于 s[${i}]。两个方向都一致，映射无需改动。` : `t2s 中也没有 "${tc}" 的记录，是一对全新的字符。`)))
+      });
+  
+      if (conflictST || conflictTS) { failed = true; failAt = i; break; }
+  
+      const isNew = !hasT && !hasS;
+      s2t[sc] = tc;
+      t2s[tc] = sc;
+  
+      snap({
+        phase: 'apply', i: i, sc: sc, tc: tc, mappedT: tc, mappedS: sc,
+        conflictST: false, conflictTS: false, isNew: isNew,
+        note: isNew
+          ? `建立双向映射：s2t["${sc}"] = "${tc}"，t2s["${tc}"] = "${sc}"。两个方向同时写入，后面再遇到 "${sc}" 或 "${tc}" 时就能立刻判断是否自洽。`
+          : `"${sc}" → "${tc}" 这对映射已经存在且完全一致，重复写入不改变任何内容，继续下一位。`
+      });
+    }
+  
+    snap({
+      phase: 'done', i: failed ? failAt : S.length, sc: '', tc: '',
+      mappedT: null, mappedS: null, conflictST: false, conflictTS: false, ok: !failed,
+      note: failed
+        ? `在第 ${failAt} 位发现了矛盾的映射，直接返回 false。整个算法只扫描一次字符串，每次查表都是 O(1)，所以时间 O(n)、空间 O(1)（大小固定的字符表）。`
+        : `${S.length} 位字符全部检查完毕，每一步的两张表都自洽，说明 s 与 t 同构，返回 true。注意映射必须是双向一一对应：只用 s→t 一张表会漏掉「两个 s 字符映射到同一个 t 字符」这种非法情况，例如 s = "ab"、t = "aa"。`
+    });
+  
+    return steps;
+  }
+  
+  function pairPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', '按位读入：上面是 s 的字符，下面是 t 的字符'));
+  
+    const row = Demo.el('div', 'row');
+    for (let i = 0; i < S.length; i++) {
+      const col = Demo.el('div', 'col');
+      const isCur = step.i === i;
+      const isPast = i < step.i;
+  
+      const cellS = Demo.el('div', 'cell', Demo.esc(S[i]));
+      const cellT = Demo.el('div', 'cell', Demo.esc(T[i]));
+      const badHere = step.phase === 'fail' || (step.phase === 'done' && step.ok === false && i === step.i);
+      if (isCur && badHere) {
+        cellS.classList.add('is-bad');
+        cellT.classList.add('is-bad');
+      } else if (isCur) {
+        cellS.classList.add('is-active');
+        cellT.classList.add('is-active');
+      } else if (isPast) {
+        cellS.classList.add('is-ok');
+        cellT.classList.add('is-ok');
+      } else {
+        cellS.classList.add('cell--dim');
+        cellT.classList.add('cell--dim');
+      }
+      col.appendChild(cellS);
+      col.appendChild(Demo.el('div', 'arrow', '↓'));
+      col.appendChild(cellT);
+      const ptr = Demo.el('div', 'ptr', String(i));
+      if (!isCur) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    }
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  function mapTable(title, map, order, curKey) {
+    const panel = Demo.el('div', 'panel');
+    panel.appendChild(Demo.el('div', 'panel__title', title));
+    let html = '<table class="map-table"><tr><th>字符</th><th>映射到</th></tr>';
+    if (order.length === 0) {
+      html += '<tr><td colspan="2">（空）</td></tr>';
+    } else {
+      order.forEach(function (key) {
+        html += '<tr' + (key === curKey ? ' class="is-active"' : '') + '>' +
+          '<td>' + Demo.esc(key) + '</td><td>' + Demo.esc(map[key]) + '</td></tr>';
+      });
+    }
+    html += '</table>';
+    panel.appendChild(Demo.el('div', null, html));
+    return panel;
+  }
+  
+  Demo.create({
+    title: '40. 同构字符串 — 双向映射表缺一不可',
+    info: `输入：s = "${S}"，t = "${T}"（示例 3，输出 true）。s2t 与 t2s 是两张方向相反的表，每次读入一对字符都要两个方向各查一次。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 380,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前读入的一对字符' },
+      { color: 'var(--demo-ok)', label: '已检查通过 / 已建立的映射' },
+      { color: 'var(--demo-danger)', label: '映射冲突' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      ctx.stage.appendChild(pairPanel(step));
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-start';
+  
+      const orderS = Object.keys(step.s2t);
+      const orderT = Object.keys(step.t2s);
+      row.appendChild(mapTable('s2t：s 的字符 → t 的字符', step.s2t, orderS, step.phase === 'init' || step.phase === 'done' ? null : step.sc));
+      row.appendChild(mapTable('t2s：t 的字符 → s 的字符', step.t2s, orderT, step.phase === 'init' || step.phase === 'done' ? null : step.tc));
+      ctx.stage.appendChild(row);
+  
+      const state = Demo.el('div', 'panel');
+      state.style.width = '100%';
+      state.style.textAlign = 'center';
+      if (step.phase === 'init') {
+        state.innerHTML = '两张表都是空的，开始逐位比较 &nbsp;<span class="tag tag--warn">准备就绪</span>';
+      } else if (step.phase === 'probe') {
+        const st = step.mappedT === null ? 's2t 无记录' : `s2t["${Demo.esc(step.sc)}"] = "${Demo.esc(step.mappedT)}" 一致`;
+        const ts = step.mappedS === null ? 't2s 无记录' : `t2s["${Demo.esc(step.tc)}"] = "${Demo.esc(step.mappedS)}" 一致`;
+        state.innerHTML = `<span class="tag tag--info">${st}</span> &nbsp; <span class="tag tag--info">${ts}</span>`;
+      } else if (step.phase === 'apply') {
+        state.innerHTML = `<span class="tag tag--ok">${Demo.esc(step.sc)} ⇄ ${Demo.esc(step.tc)}</span> 双向映射已记录`;
+      } else if (step.phase === 'fail') {
+        state.innerHTML = `<span class="tag tag--bad">映射矛盾，返回 false</span>`;
+      } else {
+        state.innerHTML = step.ok
+          ? `全部 ${S.length} 位检查通过 &nbsp;<span class="tag tag--ok">返回 true</span>`
+          : `发现冲突 &nbsp;<span class="tag tag--bad">返回 false</span>`;
+      }
+      ctx.stage.appendChild(state);
+    }
+  });
+  return Demo.__config
+}

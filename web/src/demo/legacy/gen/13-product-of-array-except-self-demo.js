@@ -1,0 +1,164 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/13-product-of-array-except-self-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [1, 2, 3, 4];
+  
+  /* 真实模拟题解的两趟做法：answer 先存前缀积，再乘上后缀积 */
+  function buildSteps() {
+    const n = NUMS.length;
+    const answer = [];
+    for (let i = 0; i < n; i++) answer.push(null);
+  
+    const steps = [];
+  
+    steps.push({
+      nums: NUMS, answer: answer.slice(), phase: 'init', i: -1, suffix: 1, old: null, done: false,
+      note: `初始化：不开额外数组，直接把答案数组 answer[0..${n - 1}] 当成草稿纸。题目禁止用除法，所以答案是「左边所有元素的乘积 × 右边所有元素的乘积」。第一趟先只算左边的乘积（前缀积），第二趟再乘上右边的乘积（后缀积）。`
+    });
+  
+    // 第一趟：前缀积
+    for (let i = 0; i < n; i++) {
+      if (i === 0) {
+        answer[0] = 1;
+        steps.push({
+          nums: NUMS, answer: answer.slice(), phase: 'prefix', i: 0, suffix: 1, old: null, done: false,
+          note: `第一趟（从左到右）i = 0：answer[0] = 1。因为下标 0 的左边没有任何元素，空乘积规定为 1，这样后面乘起来才不会破坏结果。`
+        });
+      } else {
+        const left = answer[i - 1];
+        const mult = NUMS[i - 1];
+        answer[i] = left * mult;
+        steps.push({
+          nums: NUMS, answer: answer.slice(), phase: 'prefix', i: i, suffix: 1, old: null, done: false,
+          note: `第一趟（从左到右）i = ${i}：answer[${i}] = answer[${i - 1}] × nums[${i - 1}] = ${left} × ${mult} = ${answer[i]}。` +
+            (i === 1
+              ? `answer[0] = 1 代表「下标 0 左边（空区间）的乘积」，再补上 nums[0]，就得到「下标 1 左边所有元素的乘积」。`
+              : `answer[${i - 1}] 已经含了 nums[0..${i - 2}] 的乘积，再补上 nums[${i - 1}]，就得到「下标 ${i} 左边所有元素的乘积」，不必每步重新连乘。`)
+        });
+      }
+    }
+  
+    // 第二趟：后缀积
+    let suffix = 1;
+    for (let i = n - 1; i >= 0; i--) {
+      const old = answer[i];
+      answer[i] = old * suffix;
+      const usedSuffix = suffix;
+      suffix *= NUMS[i];
+      steps.push({
+        nums: NUMS, answer: answer.slice(), phase: 'suffix', i: i, suffix: usedSuffix, old: old, done: false,
+        note: `第二趟（从右到左）i = ${i}：` +
+          (i === n - 1
+            ? `下标 ${i} 右边一个元素都没有，空乘积规定为 1，所以此时 suffix = 1。`
+            : `此时 suffix 里装的是 nums[${i + 1}..${n - 1}] 的乘积 = ${usedSuffix}，正是下标 ${i} 右边所有元素的乘积。`) +
+          `于是 answer[${i}] = 前缀积 ${old} × 后缀积 ${usedSuffix} = ${answer[i]}，左右两边都不含 nums[${i}] 自己，答案就此定型。` +
+          (i === 0
+            ? `接着代码还会更新 suffix = ${usedSuffix} × nums[0] = ${suffix}，但最左边的下标已经算完，这个值不会再被用到。`
+            : `接着更新 suffix = ${usedSuffix} × nums[${i}] = ${suffix}，供更左边的下标使用。`)
+      });
+    }
+  
+    steps.push({
+      nums: NUMS, answer: answer.slice(), phase: 'done', i: -1, suffix: suffix, old: null, done: true,
+      note: `结论：answer = [${answer.join(', ')}]，正是「除自身以外其余元素的乘积」。整个过程 answer 只被写了两次、并且没有额外数组，所以时间复杂度 O(n)，额外空间 O(1)（答案数组不计入）。`
+    });
+  
+    return steps;
+  }
+  
+  function numsRow(step) {
+    const row = Demo.el('div', 'row');
+    NUMS.forEach(function (v, idx) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(v));
+      if (idx === step.i && !step.done) cell.classList.add('is-active');
+      else if (idx === step.i - 1 || idx === step.i + 1) cell.classList.add('is-info');
+      col.appendChild(cell);
+      const ptr = Demo.el('div', 'ptr', String(idx));
+      if (idx === step.i && !step.done) ptr.classList.add('ptr--info');
+      else ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  function answerRow(step) {
+    const row = Demo.el('div', 'row');
+    step.answer.forEach(function (v, idx) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', v == null ? '?' : Demo.esc(v));
+      if (v == null) cell.classList.add('cell--empty');
+      else if (idx === step.i && !step.done) cell.classList.add('is-active');
+      else if (step.phase === 'suffix' && idx > step.i) cell.classList.add('is-ok');
+      else if (step.done) cell.classList.add('is-ok');
+      else cell.classList.add('is-info');
+  
+      col.appendChild(cell);
+      const tags = [];
+      if (step.phase === 'prefix' && idx === step.i) tags.push('前缀积');
+      if (step.phase === 'suffix' && idx === step.i) tags.push('× suffix');
+      if (step.phase === 'suffix' && idx > step.i) tags.push('已完成');
+      if (step.done) tags.push('answer');
+      const ptr = Demo.el('div', 'ptr', tags.join(' '));
+      if (!tags.length) ptr.classList.add('ptr--dim');
+      else if (step.phase === 'suffix' && idx === step.i) ptr.classList.add('ptr--pink');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  Demo.create({
+    title: '13. 除自身以外数组的乘积 — 前缀积 × 后缀积，两趟扫描',
+    info: '输入：nums = [1,2,3,4]（示例 1），期望输出 [24,12,8,6]。全程不使用除法，答案数组复用为前缀积草稿。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 340,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本步正在计算的 answer[i]' },
+      { color: 'var(--demo-info)', label: '只含左侧乘积（前缀积）' },
+      { color: 'var(--demo-ok)', label: '左右两侧都乘完，答案定型' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const numsPanel = Demo.el('div', 'panel');
+      numsPanel.style.width = '100%';
+      numsPanel.appendChild(Demo.el('div', 'panel__title', '原始数组 nums'));
+      numsPanel.appendChild(numsRow(step));
+      ctx.stage.appendChild(numsPanel);
+  
+      const ansPanel = Demo.el('div', 'panel');
+      ansPanel.style.width = '100%';
+      ansPanel.appendChild(Demo.el('div', 'panel__title',
+        step.done ? 'answer（最终结果）'
+          : step.phase === 'prefix' ? 'answer（第一趟：只填左侧元素的乘积 = 前缀积）'
+            : step.phase === 'suffix' ? 'answer（第二趟：从右向左乘上右侧元素的乘积 = 后缀积）'
+              : 'answer（还没有开始填）'));
+      ansPanel.appendChild(answerRow(step));
+      ctx.stage.appendChild(ansPanel);
+  
+      const info = Demo.el('div', 'row');
+  
+      const suffixBox = Demo.el('div', 'panel');
+      suffixBox.appendChild(Demo.el('div', 'panel__title', '后缀积 suffix（右边元素的乘积）'));
+      suffixBox.appendChild(Demo.el('div', 'tag ' + (step.phase === 'suffix' ? 'tag--violet' : ''),
+        'suffix = ' + (step.phase === 'prefix' || step.phase === 'init' ? '1（还没开始）' : String(step.suffix))));
+      info.appendChild(suffixBox);
+  
+      const stepBox = Demo.el('div', 'panel');
+      stepBox.appendChild(Demo.el('div', 'panel__title', '当前位置'));
+      stepBox.appendChild(Demo.el('div', 'tag ' + (step.done ? 'tag--ok' : 'tag--info'),
+        step.done ? '完成，answer = [' + step.answer.join(', ') + ']'
+          : 'i = ' + step.i + '（nums[' + step.i + '] = ' + NUMS[step.i] + '）'));
+      info.appendChild(stepBox);
+  
+      ctx.stage.appendChild(info);
+    }
+  });
+  return Demo.__config
+}

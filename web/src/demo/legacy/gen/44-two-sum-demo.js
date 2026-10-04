@@ -1,0 +1,192 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/44-two-sum-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [3, 2, 4];
+  const TARGET = 6;
+  
+  function buildSteps() {
+    const steps = [];
+    const seen = {};
+    const order = [];
+    let answer = null;
+  
+    function snap(extra) {
+      const copy = {};
+      order.forEach(function (key) { copy[key] = seen[key]; });
+      const step = { seen: copy, note: extra.note };
+      Object.keys(extra).forEach(function (key) {
+        if (key !== 'note') step[key] = extra[key];
+      });
+      steps.push(step);
+    }
+  
+    snap({
+      phase: 'init', i: -1, complement: null, hit: false, hitIdx: -1, value: null, answer: null,
+      note: `哈希表 seen 为空，它记录「已经扫描过的数值 → 它的下标」。目标 target = ${TARGET}。算法一边扫描数组，一边把见过的数放进表里，这样在 O(1) 时间里就能回答「target − 当前值 出现过吗」。`
+    });
+  
+    for (let i = 0; i < NUMS.length; i++) {
+      const value = NUMS[i];
+      const complement = TARGET - value;
+      const hit = Object.prototype.hasOwnProperty.call(seen, complement);
+      const hitIdx = hit ? seen[complement] : -1;
+  
+      snap({
+        phase: 'probe', i: i, complement: complement, hit: hit, hitIdx: hitIdx, value: value,
+        note: `扫描到 nums[${i}] = ${value}，它需要的搭档是 target − ${value} = ${complement}。查哈希表：` +
+          (hit
+            ? `seen 里已经有 ${complement}，对应下标 ${hitIdx}，正是我们要找的另一个数。`
+            : `seen 里没有 ${complement}，说明能和 ${value} 凑成 ${TARGET} 的搭档还没出现过。`)
+      });
+  
+      if (hit) {
+        answer = [hitIdx, i];
+        snap({
+          phase: 'found', i: i, complement: complement, hit: true, hitIdx: hitIdx, value: value, answer: answer,
+          note: `命中！nums[${hitIdx}] = ${complement} 与 nums[${i}] = ${value} 之和为 ${complement} + ${value} = ${TARGET}，返回下标 [${hitIdx}, ${i}]。之所以先查再插，是为了保证同一个元素不被用两次——查的时候当前元素还没进表。`
+        });
+        break;
+      }
+  
+      seen[value] = i;
+      order.push(String(value));
+  
+      snap({
+        phase: 'insert', i: i, complement: complement, hit: false, hitIdx: -1, value: value,
+        note: `没找到搭档，就把当前元素存进表：seen[${value}] = ${i}，留给后面的元素来配对。注意存的是值 → 下标，而不是下标 → 值，因为查找是按「值」来找的。`
+      });
+    }
+  
+    snap({
+      phase: 'done', i: NUMS.length, complement: null, hit: true, hitIdx: -1, value: null, answer: answer,
+      note: `返回 [${answer[0]}, ${answer[1]}]。整个过程只扫描数组一遍，每次哈希查找平均 O(1)，因此时间 O(n)、空间 O(n)。对比暴力双重循环的 O(n²)，差别就在于用哈希表把「找一个数」从线性查找降成了常数查找。`
+    });
+  
+    return steps;
+  }
+  
+  function arrayPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', `数组 nums（target = ${TARGET}）`));
+    const row = Demo.el('div', 'row');
+    NUMS.forEach(function (value, i) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell cell--lg', Demo.esc(value));
+      if (i === step.i) cell.classList.add(step.phase === 'found' ? 'is-ok' : 'is-active');
+      else if (i === step.hitIdx && (step.phase === 'probe' || step.phase === 'found')) cell.classList.add('is-ok');
+      else if (i < step.i || step.phase === 'done') cell.classList.add('is-ok');
+      col.appendChild(cell);
+      const labels = [];
+      if (i === step.i) labels.push('i');
+      if (i === step.hitIdx && i !== step.i && (step.phase === 'probe' || step.phase === 'found')) labels.push('搭档下标');
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : String(i));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  function equationPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', '本步要解的等式'));
+  
+    const row = Demo.el('div', 'row');
+    if (step.phase === 'init' || step.phase === 'done') {
+      row.appendChild(Demo.el('span', 'tag tag--info', `每个元素 x 都在寻找搭档 ${TARGET} − x`));
+    } else {
+      const cellV = Demo.el('div', 'cell', Demo.esc(step.value));
+      cellV.classList.add('is-active');
+      const cellC = Demo.el('div', 'cell', Demo.esc(step.complement));
+      cellC.classList.add(step.hit ? 'is-ok' : 'is-warn');
+      const cellT = Demo.el('div', 'cell', String(TARGET));
+      row.appendChild(cellV);
+      row.appendChild(Demo.el('div', 'arrow', '+'));
+      row.appendChild(cellC);
+      row.appendChild(Demo.el('div', 'arrow', '='));
+      row.appendChild(cellT);
+    }
+    panel.appendChild(row);
+  
+    const sub = Demo.el('div', 'row');
+    sub.style.marginTop = '6px';
+    if (step.phase === 'probe') {
+      sub.appendChild(Demo.el('span', 'tag ' + (step.hit ? 'tag--ok' : 'tag--warn'),
+        step.hit ? `搭档已在表中（下标 ${step.hitIdx}）` : '搭档尚未出现，先记录当前元素'));
+    } else if (step.phase === 'init') {
+      sub.appendChild(Demo.el('span', 'tag tag--info', '尚未开始扫描'));
+    } else {
+      sub.appendChild(Demo.el('span', 'tag tag--ok', '找到答案'));
+    }
+    panel.appendChild(sub);
+    return panel;
+  }
+  
+  function mapPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.appendChild(Demo.el('div', 'panel__title', '哈希表 seen：数值 → 下标'));
+    let html = '<table class="map-table"><tr><th>数值</th><th>下标</th></tr>';
+    const keys = Object.keys(step.seen);
+    if (keys.length === 0) {
+      html += '<tr><td colspan="2">（空）</td></tr>';
+    } else {
+      keys.forEach(function (key) {
+        const active = step.phase === 'probe' && String(step.complement) === key;
+        html += '<tr' + (active ? ' class="is-active"' : '') + '>' +
+          '<td>' + Demo.esc(key) + '</td><td>' + Demo.esc(step.seen[key]) + '</td></tr>';
+      });
+    }
+    html += '</table>';
+    panel.appendChild(Demo.el('div', null, html));
+    return panel;
+  }
+  
+  Demo.create({
+    title: '44. 两数之和 — 边扫描边建「值 → 下标」表',
+    info: `输入：nums = [${NUMS.join(', ')}]，target = ${TARGET}（示例 2，输出 [1,2]）。每步先算 complement = target − nums[i]，查表命中就返回，否则把 nums[i] 存进表。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 380,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前扫描的元素 / 正在找的搭档' },
+      { color: 'var(--demo-ok)', label: '已记录 / 配对成功' },
+      { color: 'var(--demo-warn)', label: '搭档尚未出现' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      ctx.stage.appendChild(arrayPanel(step));
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-start';
+      row.appendChild(equationPanel(step));
+      row.appendChild(mapPanel(step));
+      ctx.stage.appendChild(row);
+  
+      const state = Demo.el('div', 'panel');
+      state.style.width = '100%';
+      state.style.textAlign = 'center';
+      if (step.phase === 'init') {
+        state.innerHTML = '准备扫描第一个元素 &nbsp;<span class="tag tag--warn">哈希表为空</span>';
+      } else if (step.phase === 'probe') {
+        state.innerHTML = `查表 complement = ${TARGET} − ${Demo.esc(step.value)} = ${Demo.esc(step.complement)} &nbsp;` +
+          (step.hit ? `<span class="tag tag--ok">命中下标 ${step.hitIdx}</span>` : '<span class="tag tag--warn">未命中</span>');
+      } else if (step.phase === 'insert') {
+        state.innerHTML = `seen[${Demo.esc(step.value)}] = ${step.i} &nbsp;<span class="tag tag--info">已记录</span>`;
+      } else if (step.phase === 'found') {
+        state.innerHTML = `<span class="tag tag--ok">答案 = [${step.answer.join(', ')}]</span>`;
+      } else {
+        state.innerHTML = `答案 = [${step.answer.join(', ')}] &nbsp;<span class="tag tag--ok">返回结果</span>`;
+      }
+      ctx.stage.appendChild(state);
+    }
+  });
+  return Demo.__config
+}

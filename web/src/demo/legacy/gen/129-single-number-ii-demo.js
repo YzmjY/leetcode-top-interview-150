@@ -1,0 +1,153 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/129-single-number-ii-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [2, 2, 3, 2];
+  
+  const BITS = NUMS.reduce((w, v) => Math.max(w, (v >>> 0).toString(2).length), 1);
+  
+  function bitsOf(v, width) {
+    return (v >>> 0).toString(2).padStart(width, '0').split('');
+  }
+  
+  function resultFrom(counts) {
+    let ans = 0;
+    for (let b = 0; b < counts.length; b++) {
+      if (counts[b] % 3 !== 0) ans |= 1 << b;
+    }
+    return ans;
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const counts = new Array(BITS).fill(0);
+  
+    steps.push({
+      counts: counts.slice(), i: -1, contrib: [], ans: 0, done: false,
+      note: `初始化：为二进制的每一位准备一个计数器。${BITS} 个计数器全部清零（实际代码固定统计 32 位，本题示例的数值不超过 3，用 ${BITS} 位就够）。`
+    });
+  
+    for (let i = 0; i < NUMS.length; i++) {
+      const v = NUMS[i];
+      const contrib = [];
+      for (let b = 0; b < BITS; b++) {
+        if ((v >> b) & 1) {
+          counts[b] += 1;
+          contrib.push(b);
+        }
+      }
+      const ans = resultFrom(counts);
+      steps.push({
+        counts: counts.slice(), i, contrib, ans, done: false,
+        note: `加入 nums[${i}] = ${v}（二进制 ${bitsOf(v, BITS).join('')}）：它在 ${contrib.map(b => `位 ${b}`).join('、')} 上是 1，` +
+          `对应的计数器各加 1，当前各位计数为 ${counts.map((c, b) => `位${b}=${c}`).join('、')}。` +
+          `把每个计数对 3 取余再拼回去，得到当前的候选值 ${ans}。`
+      });
+    }
+  
+    steps.push({
+      counts: counts.slice(), i: NUMS.length - 1, contrib: [], ans: resultFrom(counts), done: true,
+      note: `遍历结束。出现三次的元素在每一位上都贡献了 3 个 1，取余后被消掉；只有出现一次的元素留下余数，` +
+        `所以答案 = ${resultFrom(counts)}（二进制 ${bitsOf(resultFrom(counts), BITS).join('')}）。`
+    });
+  
+    return steps;
+  }
+  
+  function td(text, cls) {
+    const cell = document.createElement('td');
+    cell.textContent = String(text);
+    if (cls) cell.className = cls;
+    cell.style.padding = '3px 7px';
+    return cell;
+  }
+  
+  Demo.create({
+    title: '129. 只出现一次的数字 II — 按位统计 1 的个数并对 3 取模',
+    info: `输入：nums = [${NUMS.join(', ')}]，除某个元素只出现一次外，其余元素都恰好出现三次。演示按位统计（示例数值最大为 ${(1 << BITS) - 1}，故只显示 ${BITS} 位）。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前统计的元素' },
+      { color: 'var(--demo-ok)', label: '计数对 3 取余后为 1 的位' },
+      { color: 'var(--demo-border)', label: '尚未统计的元素' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const arrLabel = Demo.el('div', 'panel__title',
+        step.done ? '数组 nums（已全部统计）' : (step.i < 0 ? '数组 nums（尚未开始统计）' : `数组 nums（本次统计下标 ${step.i}）`));
+      arrLabel.style.marginBottom = '4px';
+      ctx.stage.appendChild(arrLabel);
+  
+      const arrRow = Demo.el('div', 'row');
+      NUMS.forEach((v, idx) => {
+        const cell = Demo.el('div', 'cell');
+        cell.textContent = String(v);
+        if (idx === step.i && !step.done) cell.classList.add('is-active');
+        else if (idx > step.i) cell.classList.add('cell--dim');
+        arrRow.appendChild(cell);
+      });
+      ctx.stage.appendChild(arrRow);
+  
+      const table = document.createElement('table');
+      table.className = 'map-table';
+      const head = document.createElement('tr');
+      head.appendChild(td('位'));
+      NUMS.forEach((v, idx) => head.appendChild(td(`nums[${idx}]`)));
+      head.appendChild(td('计数'));
+      head.appendChild(td('% 3'));
+      const thead = document.createElement('thead');
+      thead.appendChild(head);
+      table.appendChild(thead);
+  
+      const tbody = document.createElement('tbody');
+      for (let b = BITS - 1; b >= 0; b--) {
+        const row = document.createElement('tr');
+        if (step.i >= 0 && !step.done && step.contrib.indexOf(b) >= 0) row.classList.add('is-active');
+        const th = document.createElement('th');
+        th.textContent = `位 ${b}`;
+        th.style.padding = '3px 7px';
+        row.appendChild(th);
+  
+        NUMS.forEach((v, idx) => {
+          const known = idx <= step.i;
+          const bit = (v >> b) & 1;
+          const cell = td(known ? bit : '·');
+          if (!known) cell.style.color = 'var(--demo-muted)';
+          if (idx === step.i && !step.done) cell.style.background = 'var(--demo-accent-soft)';
+          row.appendChild(cell);
+        });
+  
+        const cCell = td(step.counts[b]);
+        if (step.i >= 0 && !step.done && step.contrib.indexOf(b) >= 0) {
+          cCell.innerHTML = `<span class="tag">${step.counts[b]}</span>`;
+        }
+        row.appendChild(cCell);
+  
+        const mod = step.counts[b] % 3;
+        const mCell = td(mod);
+        if (mod !== 0) mCell.innerHTML = `<span class="tag tag--ok">${mod}</span>`;
+        row.appendChild(mCell);
+        tbody.appendChild(row);
+      }
+      table.appendChild(tbody);
+      ctx.stage.appendChild(table);
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.style.textAlign = 'center';
+      const perBit = [];
+      for (let b = BITS - 1; b >= 0; b--) {
+        perBit.push(`位 ${b}：${step.counts[b]} % 3 = ${step.counts[b] % 3} → ${step.counts[b] % 3}`);
+      }
+      panel.innerHTML = perBit.join('　　') +
+        `<br>当前候选结果 <strong>${step.ans}</strong>（二进制 ${Demo.esc(bitsOf(step.ans, BITS).join(''))}）` +
+        (step.done ? '　<span class="tag tag--ok">答案确定</span>' : '　<span class="tag">仍在统计中</span>');
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

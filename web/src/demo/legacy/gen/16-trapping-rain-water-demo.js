@@ -1,0 +1,239 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/16-trapping-rain-water-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const CASES = [
+    { label: '示例 1', heights: [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1] },
+    { label: '示例 2', heights: [4, 2, 0, 3, 2, 5] }
+  ];
+  
+  const UNIT = 22; // 每个单位高度对应的像素
+  
+  /* 真实跑一遍题解的双指针法：谁矮先处理谁，水量由较矮一侧的边界决定 */
+  function simulate(label, heights, steps) {
+    const n = heights.length;
+    let left = 0, right = n - 1, leftMax = 0, rightMax = 0, water = 0;
+    const waterAt = [];
+    for (let i = 0; i < n; i++) waterAt.push(0);
+  
+    function push(extra) {
+      const s = {
+        label: label, heights: heights, left: left, right: right,
+        leftMax: leftMax, rightMax: rightMax, water: water,
+        waterAt: waterAt.slice(), acted: -1, side: '', done: false, note: ''
+      };
+      Object.keys(extra).forEach(function (k) { s[k] = extra[k]; });
+      steps.push(s);
+    }
+  
+    push({
+      note: `【${label}】初始化：left = 0，right = ${n - 1}，leftMax = 0，rightMax = 0，water = 0。核心公式是：位置 i 能接的水 = min(左边最高柱, 右边最高柱) - height[i]（木桶原理，水位由较矮的那一侧决定）。双指针的妙处在于：不必先知道全局的左右最高柱，只要比较两端的 leftMax 和 rightMax，矮的那一侧的答案就已经确定，可以立刻结算。`
+    });
+  
+    while (left < right) {
+      const oldLm = leftMax;
+      const oldRm = rightMax;
+      const hL = heights[left];
+      const hR = heights[right];
+  
+      let note = `【${label}】看两端：下标 ${left} 高度 ${hL}，下标 ${right} 高度 ${hR}。先更新两侧见过的最高柱——`;
+      const upd = [];
+      if (hL > leftMax) { leftMax = hL; upd.push(`左边的 ${hL} 高于原 leftMax = ${oldLm}，leftMax 更新为 ${leftMax}`); }
+      if (hR > rightMax) { rightMax = hR; upd.push(`右边的 ${hR} 高于原 rightMax = ${oldRm}，rightMax 更新为 ${rightMax}`); }
+      note += upd.length
+        ? upd.join('；') + '。'
+        : `height[${left}] = ${hL} 没有超过 leftMax = ${leftMax}，height[${right}] = ${hR} 没有超过 rightMax = ${rightMax}，两个边界值都保持不变。`;
+  
+      if (leftMax < rightMax) {
+        const add = leftMax - hL;
+        water += add;
+        waterAt[left] = add;
+        note += ` 比较两个边界：leftMax = ${leftMax} < rightMax = ${rightMax}，左边更矮，左侧的水位就被 leftMax 卡死了（就算右边还有没扫到的高墙，水位也不会超过更矮的这一边），所以下标 ${left} 的答案现在就能定下来：积水 = leftMax - height[${left}] = ${leftMax} - ${hL} = ${add}，`;
+        note += add > 0 ? `这一格蓄到 ${add} 单位水。` : `这一格与水位齐平，蓄不到水。`;
+        note += ` 累加后 water = ${water}，然后 left 右移到 ${left + 1}。`;
+        push({
+          waterAt: waterAt.slice(), water: water, leftMax: leftMax, rightMax: rightMax,
+          left: left + 1, right: right, acted: left, side: 'left', note: note
+        });
+        left += 1;
+      } else {
+        const add = rightMax - hR;
+        water += add;
+        waterAt[right] = add;
+        note += ` 比较两个边界：leftMax = ${leftMax} ≥ rightMax = ${rightMax}，右边不高于左边，右侧水位由 rightMax 卡住，下标 ${right} 的答案现在就能定下来：积水 = rightMax - height[${right}] = ${rightMax} - ${hR} = ${add}，`;
+        note += add > 0 ? `这一格蓄到 ${add} 单位水。` : `这一格与水位齐平，蓄不到水。`;
+        note += ` 累加后 water = ${water}，然后 right 左移到 ${right - 1}。`;
+        push({
+          waterAt: waterAt.slice(), water: water, leftMax: leftMax, rightMax: rightMax,
+          left: left, right: right - 1, acted: right, side: 'right', note: note
+        });
+        right -= 1;
+      }
+    }
+  
+    push({
+      left: left, right: right, acted: -1, side: '', done: true,
+      note: `【${label}】两指针在下标 ${left} 相遇，循环结束（相遇处是一堵最高的墙，它自己存不住水，两侧的水在前面都已经算过了）。最终接雨水量 = ${water}。每个下标只被处理一次，时间 O(n)；全程只用 left、right、leftMax、rightMax、water 几个变量，空间 O(1)，不需要额外的左右最高柱数组。`
+    });
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    CASES.forEach(function (c) { simulate(c.label, c.heights, steps); });
+    return steps;
+  }
+  
+  function chart(step) {
+    const heights = step.heights;
+    const n = heights.length;
+    const maxH = Math.max(1, Math.max.apply(null, heights));
+    const chartH = maxH * UNIT;
+    const colW = 34;
+    const gap = 6;
+  
+    const wrap = Demo.el('div');
+    wrap.style.position = 'relative';
+    wrap.style.display = 'inline-block';
+  
+    const row = Demo.el('div', 'row');
+    row.style.alignItems = 'flex-end';
+    row.style.flexWrap = 'nowrap';
+  
+    for (let i = 0; i < n; i++) {
+      const col = Demo.el('div', 'col');
+      col.style.gap = '4px';
+  
+      const box = Demo.el('div');
+      box.style.position = 'relative';
+      box.style.width = colW + 'px';
+      box.style.height = chartH + 'px';
+  
+      const w = step.waterAt[i];
+      if (w > 0) {
+        const water = Demo.el('div');
+        water.style.position = 'absolute';
+        water.style.left = '0';
+        water.style.right = '0';
+        water.style.bottom = (heights[i] * UNIT) + 'px';
+        water.style.height = (w * UNIT) + 'px';
+        water.style.background = 'var(--demo-info)';
+        water.style.opacity = '0.8';
+        water.style.borderRadius = '2px';
+        box.appendChild(water);
+      }
+  
+      const wall = Demo.el('div');
+      wall.style.position = 'absolute';
+      wall.style.left = '0';
+      wall.style.right = '0';
+      wall.style.bottom = '0';
+      wall.style.height = Math.max(3, heights[i] * UNIT) + 'px';
+      const level = Math.min(step.leftMax, step.rightMax);
+      wall.style.background = (level > 0 && heights[i] >= level) ? 'var(--demo-accent)' : 'var(--demo-muted)';
+      if (i === step.acted) wall.style.background = 'var(--demo-warn)';
+      wall.style.borderRadius = '3px 3px 0 0';
+      box.appendChild(wall);
+  
+      col.appendChild(box);
+  
+      const hLabel = Demo.el('div', 'ptr', String(heights[i]));
+      hLabel.classList.add(i === step.acted ? 'ptr--warn' : 'ptr--dim');
+      col.appendChild(hLabel);
+  
+      const labels = [];
+      if (i === step.left) labels.push('L');
+      if (i === step.right) labels.push('R');
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : String(i));
+      if (labels.indexOf('L') >= 0 && labels.indexOf('R') >= 0) ptr.classList.add('ptr--violet');
+      else if (labels.indexOf('L') >= 0) ptr.classList.add('ptr--info');
+      else if (labels.indexOf('R') >= 0) ptr.classList.add('ptr--pink');
+      else ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+    }
+  
+    wrap.appendChild(row);
+  
+    function levelLine(level, widthPx, offsetFromLeft, color, label) {
+      const line = Demo.el('div');
+      line.style.position = 'absolute';
+      line.style.height = '0';
+      line.style.borderTop = '2px dashed ' + color;
+      line.style.width = widthPx + 'px';
+      line.style.bottom = (level * UNIT + 4) + 'px';
+      if (offsetFromLeft) line.style.left = '0';
+      else line.style.right = '0';
+      line.style.pointerEvents = 'none';
+      wrap.appendChild(line);
+      const tag = Demo.el('div', 'ptr', label);
+      tag.style.position = 'absolute';
+      tag.style.bottom = (level * UNIT + 6) + 'px';
+      if (offsetFromLeft) tag.style.left = '-8px';
+      else tag.style.right = '-8px';
+      tag.classList.add(offsetFromLeft ? 'ptr--info' : 'ptr--pink');
+      wrap.appendChild(tag);
+    }
+  
+    if (step.leftMax > 0) {
+      levelLine(step.leftMax, (step.left + 1) * (colW + gap) - gap, true, 'var(--demo-info)', 'leftMax ' + step.leftMax);
+    }
+    if (step.rightMax > 0) {
+      levelLine(step.rightMax, (n - step.right) * (colW + gap) - gap, false, 'var(--demo-pink)', 'rightMax ' + step.rightMax);
+    }
+  
+    return wrap;
+  }
+  
+  Demo.create({
+    title: '16. 接雨水 — 双指针，谁矮先算谁',
+    info: '示例 1：[0,1,0,2,1,0,1,3,2,1,2,1] → 6；示例 2：[4,2,0,3,2,5] → 9。蓝色方块就是该位置接到的雨水。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 420,
+    legend: [
+      { color: 'var(--demo-info)', label: '接到的雨水 / leftMax 水位线' },
+      { color: 'var(--demo-pink)', label: 'rightMax 水位线' },
+      { color: 'var(--demo-warn)', label: '本步结算的位置' },
+      { color: 'var(--demo-accent)', label: '达到当前最高水位的柱子' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const head = Demo.el('div', 'row');
+      head.appendChild(Demo.el('span', 'tag', Demo.esc('用例 ' + step.label)));
+      head.appendChild(Demo.el('span', 'tag ' + (step.done ? 'tag--ok' : 'tag--info'),
+        step.done ? '答案：能接 ' + step.water + ' 单位雨水' : (step.side ? '正在结算' + (step.side === 'left' ? '左' : '右') + '端下标' : '双指针就绪')));
+      head.appendChild(Demo.el('span', 'tag tag--violet', '已积水 ' + step.water));
+      ctx.stage.appendChild(head);
+  
+      const chartPanel = Demo.el('div', 'panel');
+      chartPanel.style.width = '100%';
+      chartPanel.appendChild(Demo.el('div', 'panel__title',
+        '柱状图（柱子 = 墙高，蓝色 = 接到的水，虚线 = 两侧见过的最高水位）'));
+      const chartHolder = Demo.el('div', 'row');
+      chartHolder.appendChild(chart(step));
+      chartPanel.appendChild(chartHolder);
+      ctx.stage.appendChild(chartPanel);
+  
+      const state = Demo.el('div', 'row');
+      const vars = [
+        ['left', String(step.left)],
+        ['right', String(step.right)],
+        ['leftMax', String(step.leftMax)],
+        ['rightMax', String(step.rightMax)],
+        ['water', String(step.water)]
+      ];
+      vars.forEach(function (it) {
+        const box = Demo.el('div', 'panel');
+        box.appendChild(Demo.el('div', 'panel__title', Demo.esc(it[0])));
+        box.appendChild(Demo.el('div', 'tag', Demo.esc(it[1])));
+        state.appendChild(box);
+      });
+      ctx.stage.appendChild(state);
+    }
+  });
+  return Demo.__config
+}

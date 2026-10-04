@@ -1,0 +1,189 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/101-letter-combinations-of-a-phone-number-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const DIGITS = '23';
+  const PHONE = {
+    '2': 'abc', '3': 'def', '4': 'ghi', '5': 'jkl',
+    '6': 'mno', '7': 'pqrs', '8': 'tuv', '9': 'wxyz'
+  };
+  const KEY_ORDER = '23456789';
+  
+  function buildSteps() {
+    const steps = [];
+    const path = new Array(DIGITS.length).fill('');
+    const results = [];
+  
+    function snap(extra) {
+      return {
+        path: path.slice(),
+        results: results.slice(),
+        index: extra.index,
+        letter: extra.letter == null ? null : extra.letter,
+        letterIdx: extra.letterIdx == null ? -1 : extra.letterIdx,
+        phase: extra.phase,
+        note: extra.note
+      };
+    }
+  
+    steps.push(snap({
+      index: 0, phase: 'init',
+      note: '初始化：digits = "23"，path 是长度为 2 的空槽位。回溯从第 0 层开始，每一层负责为 digits 中的一个数字挑一个字母。'
+    }));
+  
+    function backtrack(index) {
+      if (index === DIGITS.length) {
+        const word = path.join('');
+        results.push(word);
+        steps.push(snap({
+          index, phase: 'collect',
+          note: `路径长度已经等于 digits 的长度 ${DIGITS.length}，说明每个数字都选好了字母，得到一个完整组合 "${word}"，加入结果集；随后返回上一层继续尝试其它字母。`
+        }));
+        return;
+      }
+  
+      const letters = PHONE[DIGITS[index]];
+      for (let i = 0; i < letters.length; i++) {
+        const ch = letters[i];
+        path[index] = ch;
+        steps.push(snap({
+          index, letter: ch, letterIdx: i, phase: 'choose',
+          note: `第 ${index} 层：数字 '${DIGITS[index]}' 对应字母集合 "${letters}"，本次选第 ${i + 1} 个字母 '${ch}' 写入 path[${index}]，当前路径 "${path.slice(0, index + 1).join('')}"，继续递归到第 ${index + 1} 层。`
+        }));
+  
+        backtrack(index + 1);
+  
+        steps.push(snap({
+          index, letter: ch, letterIdx: i, phase: 'undo',
+          note: `第 ${index} 层以 '${ch}' 开头的分支已经全部尝试完毕，撤销 path[${index}]，把选择权交还给 "${letters}" 中的下一个字母。这正是回溯「撤销选择」的一步。`
+        }));
+        path[index] = '';
+      }
+    }
+  
+    backtrack(0);
+  
+    steps.push(snap({
+      index: DIGITS.length, phase: 'done',
+      note: `所有分支都走完了，共得到 ${results.length} 个组合：[${results.join(', ')}]。每个组合都从每个数字的字母集合中恰好挑一个字母，因此既不重复也不遗漏。`
+    }));
+  
+    return steps;
+  }
+  
+  function keypadRow(step) {
+    const row = Demo.el('div', 'row');
+    KEY_ORDER.split('').forEach(d => {
+      const pos = DIGITS.indexOf(d);
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(d));
+      if (pos < 0) {
+        cell.classList.add('cell--dim');
+      } else if (step.index === pos && step.phase !== 'done') {
+        cell.classList.add('is-active');
+      } else if (step.path[pos]) {
+        cell.classList.add('is-ok');
+      }
+      col.appendChild(cell);
+      const letters = Demo.el('div', 'ptr', PHONE[d]);
+      if (pos < 0) letters.classList.add('ptr--dim');
+      else if (step.index === pos && step.phase !== 'done') letters.classList.add('ptr--violet');
+      col.appendChild(letters);
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  function pathRow(step) {
+    const row = Demo.el('div', 'row');
+    for (let i = 0; i < DIGITS.length; i++) {
+      const value = step.path[i];
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell cell--lg', value ? Demo.esc(value) : '?');
+      if (!value) cell.classList.add('cell--empty');
+      if (step.phase === 'choose' && i === step.index) cell.classList.add('is-active');
+      else if (step.phase === 'undo' && i === step.index) cell.classList.add('is-warn');
+      else if (value) cell.classList.add('is-ok');
+      col.appendChild(cell);
+      const label = Demo.el('div', 'ptr ptr--dim', "第" + i + "层·'" + DIGITS[i] + "'");
+      col.appendChild(label);
+      row.appendChild(col);
+    }
+    return row;
+  }
+  
+  function candidateRow(step) {
+    const row = Demo.el('div', 'row');
+    if (step.index >= DIGITS.length) {
+      row.appendChild(Demo.el('span', 'ptr ptr--dim', '已到达叶子层，没有待选字母'));
+      return row;
+    }
+    const letters = PHONE[DIGITS[step.index]];
+    letters.split('').forEach((ch, i) => {
+      const cell = Demo.el('div', 'cell', Demo.esc(ch));
+      if (i < step.letterIdx) cell.classList.add('cell--dim');
+      else if (i === step.letterIdx) cell.classList.add(step.phase === 'undo' ? 'is-warn' : 'is-active');
+      row.appendChild(cell);
+    });
+    return row;
+  }
+  
+  function resultsRow(results) {
+    const row = Demo.el('div', 'row');
+    if (!results.length) {
+      row.appendChild(Demo.el('span', 'ptr ptr--dim', '（还没有收集到组合）'));
+      return row;
+    }
+    results.forEach(r => row.appendChild(Demo.el('span', 'tag tag--ok', Demo.esc(r))));
+    return row;
+  }
+  
+  Demo.create({
+    title: '101. 电话号码的字母组合 — 逐层选择 + 回溯撤销',
+    info: '输入：digits = "23"。2 → "abc"，3 → "def"，需要从两个集合中各取一个字母拼成组合。',
+    steps: buildSteps(),
+    desc: (s, i) => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本层正在尝试的字母' },
+      { color: 'var(--demo-violet)', label: '当前处理的数字键' },
+      { color: 'var(--demo-warn)', label: '正在撤销的选择' },
+      { color: 'var(--demo-ok)', label: '已确定的路径 / 结果' }
+    ],
+    stageHeight: 300,
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      ctx.stage.appendChild(Demo.el('div', 'panel__title', '电话按键映射（高亮为当前数字）'));
+      ctx.stage.appendChild(keypadRow(step));
+  
+      const pathPanel = Demo.el('div', 'col');
+      pathPanel.appendChild(Demo.el('div', 'panel__title', 'path 路径槽位（每层一个字母）'));
+      pathPanel.appendChild(pathRow(step));
+      ctx.stage.appendChild(pathPanel);
+  
+      const candPanel = Demo.el('div', 'col');
+      candPanel.appendChild(Demo.el('div', 'panel__title',
+        step.index < DIGITS.length
+          ? "数字 '" + DIGITS[step.index] + "' 的候选字母（灰 = 已试过）"
+          : '候选字母'));
+      candPanel.appendChild(candidateRow(step));
+      ctx.stage.appendChild(candPanel);
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.style.textAlign = 'center';
+      const line1 = Demo.el('div', null,
+        '<span class="tag">当前路径：' +
+        (step.path.filter(Boolean).join('') || '（空）') +
+        '</span> &nbsp; <span class="tag tag--ok">已收集 ' + step.results.length + ' 个</span>');
+      panel.appendChild(line1);
+      const line2 = resultsRow(step.results);
+      line2.style.marginTop = '6px';
+      panel.appendChild(line2);
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

@@ -1,0 +1,205 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/24-text-justification-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const WORDS = ['This', 'is', 'an', 'example', 'of', 'text', 'justification.'];
+  const MAX_WIDTH = 16;
+  
+  function buildSteps() {
+    const steps = [];
+    const lines = [];
+    let i = 0;
+  
+    steps.push({
+      phase: 'init', i: 0, lines: [], lineIdx: [], lineLength: 0, done: false,
+      note: `初始化：words 共 ${WORDS.length} 个单词，maxWidth = ${MAX_WIDTH}。贪心策略是「能塞就塞」：反复尝试把下一个单词放进当前行，只要「已有宽度 + 1 个空格 + 新单词长度」不超过 maxWidth 就放。`
+    });
+  
+    while (i < WORDS.length) {
+      const lineStart = i;
+      const lineIdx = [lineStart];
+      let lineLength = WORDS[lineStart].length;
+  
+      steps.push({
+        phase: 'start', i: i, lines: lines.slice(), lineIdx: lineIdx.slice(), lineLength: lineLength,
+        done: false,
+        note: `新开一行，先放入本行第一个单词 words[${i}] = "${WORDS[i]}"（长度 ${WORDS[i].length}），当前行宽 lineLength = ${lineLength}。`
+      });
+      i++;
+  
+      while (i < WORDS.length) {
+        const wlen = WORDS[i].length;
+        const wouldBe = lineLength + 1 + wlen;
+        if (wouldBe <= MAX_WIDTH) {
+          lineLength = wouldBe;
+          lineIdx.push(i);
+          steps.push({
+            phase: 'fit', i: i, lines: lines.slice(), lineIdx: lineIdx.slice(), lineLength: lineLength,
+            wouldBe: wouldBe, done: false,
+            note: `试放 words[${i}] = "${WORDS[i]}"（长度 ${wlen}）：${wouldBe - 1 - wlen} + 1 个空格 + ${wlen} = ${wouldBe} ≤ ${MAX_WIDTH}，放得下。把它并入本行，lineLength 变为 ${lineLength}，继续试下一个。`
+          });
+          i++;
+        } else {
+          steps.push({
+            phase: 'reject', i: i, lines: lines.slice(), lineIdx: lineIdx.slice(), lineLength: lineLength,
+            wouldBe: wouldBe, done: false,
+            note: `试放 words[${i}] = "${WORDS[i]}"（长度 ${wlen}）：${lineLength} + 1 + ${wlen} = ${wouldBe} > ${MAX_WIDTH}，会超出宽度。贪心到此为止，这一行就用已放入的 ${lineIdx.length} 个单词排版，"${WORDS[i]}" 留给下一行。`
+          });
+          break;
+        }
+      }
+  
+      const isLast = i >= WORDS.length;
+      const lineWords = lineIdx.map(function (k) { return WORDS[k]; });
+      const wordCount = lineWords.length;
+      let line = '';
+      let gapSizes = [];
+      let detail;
+  
+      if (isLast || wordCount === 1) {
+        line = lineWords.join(' ');
+        const pad = MAX_WIDTH - line.length;
+        line += ' '.repeat(pad);
+        detail = isLast
+          ? `这是最后一行：按题目要求改为左对齐，单词之间只放 1 个空格，再在末尾补 ${pad} 个空格凑满宽度。`
+          : `这一行只有一个单词：单词之间没有间隙可分，同样左对齐，末尾补 ${pad} 个空格。`;
+      } else {
+        const totalSpaces = MAX_WIDTH - lineLength + (wordCount - 1);
+        const gaps = wordCount - 1;
+        const spacePerGap = Math.floor(totalSpaces / gaps);
+        const extraSpaces = totalSpaces % gaps;
+        detail = `这一行有 ${wordCount} 个单词，单词字符总长 ${lineLength - gaps}，需要分配的空格总数 = ${MAX_WIDTH} − (单词总长) = ${totalSpaces}，间隙数 = ${wordCount} − 1 = ${gaps}。`
+          + (extraSpaces === 0
+            ? `每个间隙正好分到 ${spacePerGap} 个空格，能整除、无需额外分配。`
+            : `每个间隙先分到 ${spacePerGap} 个空格，余数 ${extraSpaces} 个分给最左边的 ${extraSpaces} 个间隙（左侧多、右侧少）。`);
+        for (let j = 0; j < wordCount; j++) {
+          line += lineWords[j];
+          if (j === wordCount - 1) break;
+          const extra = j < extraSpaces ? 1 : 0;
+          const count = spacePerGap + extra;
+          gapSizes.push(count);
+          line += ' '.repeat(count);
+        }
+      }
+  
+      lines.push({ text: line, gapSizes: gapSizes, words: lineWords, left: isLast || wordCount === 1 });
+      steps.push({
+        phase: 'line', i: i, lines: lines.slice(), lineIdx: lineIdx.slice(), lineLength: lineLength,
+        lineText: line, gapSizes: gapSizes, wordCount: wordCount, isLast: isLast, done: false,
+        note: detail + ` 排版结果 = "${line}"（长度 ${line.length}）。`
+      });
+    }
+  
+    steps.push({
+      phase: 'done', i: WORDS.length, lines: lines.slice(), lineIdx: [], lineLength: 0, done: true,
+      note: `所有单词都排完了，共 ${lines.length} 行，每行长度都恰好是 ${MAX_WIDTH}。贪心过程每个单词只被访问一次，除结果外的额外空间是常数级。`
+    });
+  
+    return steps;
+  }
+  
+  function wordChips(step, i) {
+    const row = Demo.el('div', 'row');
+    const activeLine = step.lineIdx || [];
+    const doneCount = (step.lines || []).reduce(function (acc, l) { return acc + l.words.length; }, 0);
+  
+    WORDS.forEach(function (w, idx) {
+      const cell = Demo.el('div', 'cell', Demo.esc(w));
+      if (step.phase === 'done') {
+        cell.classList.add('is-ok');
+      } else if (idx < doneCount) {
+        cell.classList.add('is-ok');
+      } else if (idx === step.i && (step.phase === 'reject' || step.phase === 'fit')) {
+        cell.classList.add(step.phase === 'reject' ? 'is-bad' : 'is-active');
+      } else if (activeLine.indexOf(idx) >= 0) {
+        cell.classList.add('is-info');
+      } else if (idx > step.i) {
+        cell.classList.add('cell--dim');
+      } else {
+        cell.classList.add('cell--dim');
+      }
+      row.appendChild(cell);
+    });
+    return row;
+  }
+  
+  function lineCells(entry) {
+    const row = Demo.el('div', 'row');
+    entry.text.split('').forEach(function (ch) {
+      const isSpace = ch === ' ';
+      row.appendChild(Demo.el('div', 'cell cell--sm' + (isSpace ? ' cell--empty' : ' is-ok'),
+        isSpace ? '·' : Demo.esc(ch)));
+    });
+    return row;
+  }
+  
+  Demo.create({
+    title: '24. 文本左右对齐 — 贪心装行 + 空格均匀分配',
+    info: `输入：words = [${WORDS.map(function (w) { return '"' + w + '"'; }).join(', ')}]，maxWidth = ${MAX_WIDTH}（示例 1）。实心小方格是字母，虚线方格是空格。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 460,
+    legend: [
+      { color: 'var(--demo-accent)', label: '正在尝试放入的单词' },
+      { color: 'var(--demo-info)', label: '本行已放入的单词' },
+      { color: 'var(--demo-ok)', label: '已排版完成的行' },
+      { color: 'var(--demo-danger)', label: '放不下、被推到下一行' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wordsPanel = Demo.el('div', 'panel');
+      wordsPanel.style.width = '100%';
+      wordsPanel.appendChild(Demo.el('div', 'panel__title', '单词数组 words'));
+      wordsPanel.appendChild(wordChips(step, i));
+      ctx.stage.appendChild(wordsPanel);
+  
+      const bar = Demo.el('div', 'bar');
+      bar.style.width = '100%';
+      const ratio = step.done ? 1 : Math.min(1, step.lineLength / MAX_WIDTH);
+      const fill = Demo.el('div', 'bar__fill');
+      fill.style.width = (ratio * 100) + '%';
+      fill.style.background = step.phase === 'reject' ? 'var(--demo-danger)'
+        : step.phase === 'done' ? 'var(--demo-ok)' : 'var(--demo-accent)';
+      bar.appendChild(fill);
+      bar.appendChild(Demo.el('div', 'bar__label',
+        step.done ? `全部完成` : `当前行宽 ${step.lineLength} / ${MAX_WIDTH}` +
+          (step.wouldBe != null ? `（试放后 ${step.wouldBe}）` : '')));
+      ctx.stage.appendChild(bar);
+  
+      const resultPanel = Demo.el('div', 'panel');
+      resultPanel.style.width = '100%';
+      resultPanel.appendChild(Demo.el('div', 'panel__title',
+        `已排版的行（每行长度 ${MAX_WIDTH}）`));
+  
+      if (!step.lines.length) {
+        resultPanel.appendChild(Demo.el('span', 'tag', '（还没有完成的行）'));
+      } else {
+        step.lines.forEach(function (entry, li) {
+          const line = Demo.el('div', 'col');
+          line.style.width = '100%';
+          line.style.alignItems = 'flex-start';
+          const title = Demo.el('div', 'ptr',
+            `第 ${li} 行` + (entry.left ? ' · 左对齐（末行/单词）' : ' · 间隙空格 [' + entry.gapSizes.join(', ') + ']'));
+          title.classList.add(entry.left ? 'ptr--warn' : 'ptr--ok');
+          line.appendChild(title);
+          line.appendChild(lineCells(entry));
+          resultPanel.appendChild(line);
+        });
+      }
+      ctx.stage.appendChild(resultPanel);
+  
+      if (step.phase === 'line' && step.lineText != null) {
+        const tag = Demo.el('div', 'panel');
+        tag.style.width = '100%';
+        tag.style.textAlign = 'center';
+        tag.innerHTML = `刚完成第 ${step.lines.length - 1} 行，长度 <strong>${step.lineText.length}</strong> / ${MAX_WIDTH}` +
+          (step.isLast ? ' &nbsp;<span class="tag tag--warn">最后一行，左对齐</span>' : ' &nbsp;<span class="tag tag--ok">左右两端对齐</span>');
+        ctx.stage.appendChild(tag);
+      }
+    }
+  });
+  return Demo.__config
+}

@@ -1,0 +1,115 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/132-plus-one-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const DIGITS = [9, 9, 9];
+  
+  function buildSteps() {
+    const steps = [];
+    const d = DIGITS.slice();
+    const n = d.length;
+  
+    steps.push({
+      d: d.slice(), i: n - 1, carry: false, phase: 'init',
+      note: `初始状态：digits = [${d.join(', ')}]。从末位开始逐位加 1，只要某一位小于 9，加一后不进位就能立刻返回；等于 9 才需要继续向前进位。`
+    });
+  
+    let carry = false;
+    for (let i = n - 1; i >= 0; i--) {
+      if (d[i] < 9) {
+        d[i] += 1;
+        steps.push({
+          d: d.slice(), i, carry: false, phase: 'stop', done: true, expanded: false,
+          note: `检查 digits[${i}] = ${d[i] - 1} < 9：加一后为 ${d[i]}，不会产生进位，高位全部不受影响，直接返回结果。`
+        });
+        return steps;
+      }
+      d[i] = 0;
+      carry = true;
+      steps.push({
+        d: d.slice(), i, carry: true, phase: 'carry',
+        note: `检查 digits[${i}] = 9：加一后变成 10 会溢出这一位，于是把该位置 0，进位 1 交给前一位去处理，继续向左排查。`
+      });
+    }
+  
+    d.unshift(1);
+    steps.push({
+      d: d.slice(), i: 0, carry: false, phase: 'expand', done: true, expanded: true,
+      note: `所有位都是 9，进位一直传到了最高位：把每一位都置 0 后，还要在最前面补一个 1，数组长度由 ${n} 变成 ${n + 1}，得到 [${d.join(', ')}]。`
+    });
+    return steps;
+  }
+  
+  Demo.create({
+    title: '132. 加一 — 从末位模拟进位',
+    info: `输入：digits = [${DIGITS.join(', ')}]（全是 9 的最坏情况，需要一路进位并扩展数组；若末位小于 9 则一步就结束）`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前检查的一位' },
+      { color: 'var(--demo-warn)', label: '被置 0 并向前进位' },
+      { color: 'var(--demo-ok)', label: '进位结束 / 最终结果' },
+      { color: 'var(--demo-violet)', label: '新扩展出的最高位' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const panel = Demo.el('div', 'panel');
+      panel.appendChild(Demo.el('div', 'panel__title',
+        step.phase === 'expand'
+          ? `digits 扩展为 ${step.d.length} 位，最高位是进位新补出来的`
+          : `digits 共 ${step.d.length} 位，指针 i 从末位向左扫描`));
+      panel.style.width = '100%';
+  
+      const row = Demo.el('div', 'row');
+      step.d.forEach((value, idx) => {
+        const col = Demo.el('div', 'col');
+        const cell = Demo.el('div', 'cell', Demo.esc(value));
+        if (step.phase === 'expand' && idx === 0) cell.classList.add('is-violet');
+        else if (step.done && !step.expanded) cell.classList.add('is-ok');
+        else if (idx === step.i) cell.classList.add(step.phase === 'carry' ? 'is-warn' : 'is-active');
+        else if (idx > step.i) cell.classList.add(step.phase === 'stop' ? 'cell--dim' : 'is-warn');
+        col.appendChild(cell);
+  
+        const ptr = Demo.el('div', 'ptr',
+          idx === step.i && step.phase !== 'expand' ? 'i' : (idx === step.i ? '新位' : ''));
+        if (idx !== step.i) ptr.classList.add('ptr--dim');
+        col.appendChild(ptr);
+        row.appendChild(col);
+      });
+      panel.appendChild(row);
+      ctx.stage.appendChild(panel);
+  
+      if (step.carry) {
+        const carry = Demo.el('div', 'panel',
+          '<span class="tag tag--warn">进位 1</span>&nbsp; 该位已是 9，置 0 后把进位带给左边一位。');
+        carry.style.width = '100%';
+        carry.style.textAlign = 'center';
+        ctx.stage.appendChild(carry);
+      }
+  
+      const shown = step.d.join('');
+      const result = Demo.el('div', 'panel',
+        `当前数组 <code>[${step.d.join(', ')}]</code> &nbsp;表示整数&nbsp; <code>${shown}</code>`
+        + (step.phase === 'init' ? ` &nbsp;→&nbsp; 目标：求 ${DIGITS.join('')} + 1` : ''));
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      ctx.stage.appendChild(result);
+  
+      if (step.done) {
+        const verdict = Demo.el('div', 'panel',
+          `<span class="tag tag--ok">加一完成</span>&nbsp; `
+          + `${DIGITS.join('')} + 1 = ${step.d.join('')}`
+          + (step.expanded
+            ? `，原来的 ${DIGITS.length} 位装不下，必须在数组最前面插入 1。`
+            : `，第 ${step.i} 位加一后没有进位，右边已经处理过的位保持为 0 也无需再动。`));
+        verdict.style.width = '100%';
+        verdict.style.textAlign = 'center';
+        ctx.stage.appendChild(verdict);
+      }
+    }
+  });
+  return Demo.__config
+}

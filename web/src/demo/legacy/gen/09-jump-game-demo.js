@@ -1,0 +1,170 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/09-jump-game-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const CASES = [
+    { label: '示例 1', nums: [2, 3, 1, 1, 4] },
+    { label: '示例 2', nums: [3, 2, 1, 0, 4] }
+  ];
+  
+  /* 对一组输入真实跑一遍贪心：维护能到达的最远下标 maxReach */
+  function simulate(label, nums, steps) {
+    const n = nums.length;
+    let maxReach = 0;
+  
+    steps.push({
+      label: label, nums: nums, i: -1, val: null, maxReach: 0,
+      done: false, failed: false, result: null,
+      note: `【${label}】初始化：从下标 0 出发，maxReach = 0，含义是「目前只保证能到达下标 0」。数组里其余元素都还没看。`
+    });
+  
+    let result = null;
+  
+    for (let i = 0; i < n; i++) {
+      // 分支一：当前位置已经超出可达范围 → 断档，返回 false
+      if (i > maxReach) {
+        result = false;
+        steps.push({
+          label: label, nums: nums, i: i, val: nums[i], maxReach: maxReach,
+          done: false, failed: true, result: false,
+          note: `【${label}】轮到 i = ${i}，比较后发现有 i > maxReach（${i} > ${maxReach}）：下标 ${i} 落在可达范围之外，前面的元素无论怎么跳都够不到它，数组中间出现断档。算法在此直接返回 false。`
+        });
+        break;
+      }
+  
+      const prev = maxReach;
+      const cand = i + nums[i];
+      if (cand > maxReach) maxReach = cand;
+      const hits = maxReach >= n - 1;
+  
+      let note = `【${label}】i = ${i}，nums[${i}] = ${nums[i]}。先做安全检查：i ≤ maxReach（${i} ≤ ${prev}），这个位置走得到。再看从 i 出发的最远落点是 i + nums[${i}] = ${i} + ${nums[i]} = ${cand}，`;
+      note += cand > prev
+        ? `比原来的 maxReach = ${prev} 更远，于是把 maxReach 更新为 ${cand}。`
+        : `没有超过原来的 maxReach = ${prev}，maxReach 保持不变。`;
+      if (hits) {
+        note += ` 此时 maxReach = ${maxReach} ≥ n - 1 = ${n - 1}，从起点已经能踩到最后一个下标，代码在这里提前返回 true，后面的元素不必再扫描。`;
+      }
+  
+      steps.push({
+        label: label, nums: nums, i: i, val: nums[i], maxReach: maxReach,
+        done: false, failed: false, result: null,
+        note: note
+      });
+  
+      if (hits) { result = true; break; }
+    }
+  
+    steps.push({
+      label: label, nums: nums, i: -1, val: null, maxReach: maxReach,
+      done: true, failed: result === false, result: result,
+      note: result
+        ? `【${label}】结论：maxReach = ${maxReach} ≥ n - 1 = ${n - 1}，一路上都没有断档，所以返回 true。整个判断只用到 maxReach 一个变量：时间 O(n)，空间 O(1)。`
+        : `【${label}】结论：扫描到 i = ${maxReach + 1} 时 i > maxReach 成立，可达范围再也接不上，因此返回 false。注意失败不代表遍历完整个数组就结束——断档的那一刻答案就已确定。`
+    });
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    CASES.forEach(function (c) { simulate(c.label, c.nums, steps); });
+    return steps;
+  }
+  
+  function arrayRow(step) {
+    const n = step.nums.length;
+    const row = Demo.el('div', 'row');
+    for (let idx = 0; idx < n; idx++) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(step.nums[idx]));
+  
+      const outlier = idx > step.maxReach;
+      if (step.failed && outlier) cell.classList.add('is-bad');
+      else if (idx === step.i) cell.classList.add('is-active');
+      else if (idx <= step.maxReach) cell.classList.add('is-ok');
+      if (outlier && !step.failed) cell.classList.add('cell--dim');
+  
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (idx === step.i) labels.push('i');
+      if (!step.done && idx === step.maxReach && step.maxReach < n) labels.push('maxReach');
+      if (idx === 0 && labels.length === 0) labels.push('起点');
+  
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : String(idx));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (step.failed && outlier) ptr.classList.add('ptr--bad');
+      else if (idx === step.i) ptr.classList.add('ptr--info');
+      else if (labels.indexOf('maxReach') >= 0) ptr.classList.add('ptr--ok');
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+    }
+    return row;
+  }
+  
+  Demo.create({
+    title: '9. 跳跃游戏 — 贪心维护最远可达位置',
+    info: '依次跑两个官方用例：示例 1 nums = [2,3,1,1,4] → true；示例 2 nums = [3,2,1,0,4] → false。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 320,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前处理的 i' },
+      { color: 'var(--demo-ok)', label: '已经在可达范围内' },
+      { color: 'var(--demo-danger)', label: '断档，够不到' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+  
+      const head = Demo.el('div', 'row');
+      head.appendChild(Demo.el('span', 'tag', Demo.esc('用例 ' + step.label)));
+      head.appendChild(Demo.el('span', 'tag ' + (step.done ? (step.result ? 'tag--ok' : 'tag--bad') : 'tag--info'),
+        step.done
+          ? (step.result ? '结论：可以到达终点，返回 true' : '结论：断档，返回 false')
+          : '扫描中'));
+      head.appendChild(Demo.el('span', 'tag tag--violet', 'maxReach = ' + step.maxReach));
+      panel.appendChild(head);
+  
+      panel.appendChild(Demo.el('div', 'panel__title', '数组 nums（标绿 = 目前保证能走到，变灰 = 还够不到）'));
+      panel.appendChild(arrayRow(step));
+      ctx.stage.appendChild(panel);
+  
+      const n = step.nums.length;
+      const covered = Math.min(n, step.maxReach + 1);
+  
+      const barPanel = Demo.el('div', 'panel');
+      barPanel.style.width = '100%';
+      barPanel.appendChild(Demo.el('div', 'panel__title',
+        '可达范围覆盖情况：下标 0 ~ ' + Math.min(step.maxReach, n - 1) + '，共 ' + covered + ' / ' + n + ' 个'));
+      const bar = Demo.el('div', 'bar');
+      bar.style.width = '100%';
+      const fill = Demo.el('div', 'bar__fill');
+      fill.style.width = Math.round((covered / n) * 100) + '%';
+      if (step.failed) fill.style.background = 'var(--demo-danger)';
+      else if (step.done) fill.style.background = 'var(--demo-ok)';
+      bar.appendChild(fill);
+      bar.appendChild(Demo.el('div', 'bar__label', '目标下标 n - 1 = ' + (n - 1)));
+      barPanel.appendChild(bar);
+      ctx.stage.appendChild(barPanel);
+  
+      const vars = Demo.el('div', 'row');
+      const items = [
+        ['当前 i', step.i >= 0 ? String(step.i) : '—'],
+        ['nums[i]', step.val == null ? '—' : String(step.val)],
+        ['maxReach', String(step.maxReach)]
+      ];
+      items.forEach(function (it) {
+        const box = Demo.el('div', 'panel');
+        box.appendChild(Demo.el('div', 'panel__title', Demo.esc(it[0])));
+        box.appendChild(Demo.el('div', 'tag', Demo.esc(it[1])));
+        vars.appendChild(box);
+      });
+      ctx.stage.appendChild(vars);
+    }
+  });
+  return Demo.__config
+}

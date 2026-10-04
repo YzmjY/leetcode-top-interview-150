@@ -1,0 +1,127 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/05-majority-element-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [2, 2, 1, 1, 1, 2, 2];
+  
+  function buildSteps() {
+    const n = NUMS.length;
+    const steps = [];
+    const marks = [];
+    let cand = null;
+    let count = 0;
+  
+    steps.push({
+      i: null, cand, count, marks: marks.slice(), phase: 'init',
+      note: '初始化：candidate 为空，count = 0。摩尔投票把数组看成一场选举，candidate 是当前候选人，count 是它的净票数。'
+    });
+  
+    for (let i = 0; i < n; i++) {
+      const v = NUMS[i];
+      let phase;
+      let note;
+      if (count === 0) {
+        cand = v;
+        count = 1;
+        phase = 'reset';
+        note = `nums[${i}] = ${v}：此时 count 已归零，说明此前的票全部互相抵消，无法再区分谁更强。动作：重新推举候选人为 ${v}，count = 1。`;
+        marks.push('reset');
+      } else if (v === cand) {
+        count++;
+        phase = 'match';
+        note = `比较 nums[${i}] = ${v} 与 candidate = ${cand}：相同，投支持票，count 增加到 ${count}。`;
+        marks.push('match');
+      } else {
+        count--;
+        phase = 'mismatch';
+        note = `比较 nums[${i}] = ${v} 与 candidate = ${cand}：不同，投反对票，count 减少到 ${count}。`;
+        marks.push('mismatch');
+      }
+      steps.push({ i, cand, count, marks: marks.slice(), phase, note });
+    }
+  
+    steps.push({
+      i: null, cand, count, marks: marks.slice(), phase: 'done', done: true,
+      note: `遍历结束，candidate = ${cand}。为什么正确：多数元素出现次数 > n/2，比其他所有元素的总数还多，所以无论中间怎样两两抵消，它都不会被完全抵消掉，最后留在候选人位置上的必定是它。`
+    });
+  
+    return steps;
+  }
+  
+  function markClass(type) {
+    if (type === 'reset') return ' is-violet';
+    if (type === 'match') return ' is-ok';
+    if (type === 'mismatch') return ' is-bad';
+    return '';
+  }
+  
+  Demo.create({
+    title: '5. 多数元素 — Boyer-Moore 摩尔投票',
+    info: `nums = [${NUMS.join(', ')}]，n = ${NUMS.length}，多数元素出现次数严格大于 n/2。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前处理的元素' },
+      { color: 'var(--demo-ok)', label: '与候选人相同：count++' },
+      { color: 'var(--demo-danger)', label: '不同：count--' },
+      { color: 'var(--demo-violet)', label: 'count 归零：重新选举' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const row = Demo.el('div', 'row');
+      NUMS.forEach((value, idx) => {
+        const col = Demo.el('div', 'col');
+        let cls = 'cell';
+        if (step.phase === 'init') cls += '';
+        else if (step.i === idx) cls += ' is-active';
+        else if (step.marks[idx]) cls += markClass(step.marks[idx]);
+        else cls += ' cell--dim';
+        col.appendChild(Demo.el('div', cls, Demo.esc(value)));
+  
+        const labels = [];
+        if (step.i === idx) {
+          if (step.phase === 'match') labels.push('== cand +1');
+          else if (step.phase === 'mismatch') labels.push('!= cand -1');
+          else labels.push('i');
+        }
+        const ptr = Demo.el('div', 'ptr', labels.join(' '));
+        if (!labels.length) ptr.classList.add('ptr--dim');
+        col.appendChild(ptr);
+  
+        row.appendChild(col);
+      });
+      ctx.stage.appendChild(row);
+  
+      const stateRow = Demo.el('div', 'row');
+      const candBox = Demo.el('div', 'panel',
+        '<span class="tag">candidate</span>&nbsp;&nbsp;<strong>' + (step.cand == null ? '—' : Demo.esc(step.cand)) + '</strong>');
+      stateRow.appendChild(candBox);
+  
+      const bar = Demo.el('div', 'bar');
+      bar.style.width = '240px';
+      const fill = Demo.el('div', 'bar__fill');
+      fill.style.width = (step.count / NUMS.length) * 100 + '%';
+      bar.appendChild(fill);
+      bar.appendChild(Demo.el('div', 'bar__label', 'count = ' + step.count));
+      const barWrap = Demo.el('div', 'panel');
+      barWrap.appendChild(bar);
+      stateRow.appendChild(barWrap);
+  
+      ctx.stage.appendChild(stateRow);
+  
+      const action = Demo.el('div', 'panel');
+      let chip = '<span class="tag">本步：尚未投票</span>';
+      if (step.phase === 'match') chip = '<span class="tag tag--ok">本步：count++</span>';
+      else if (step.phase === 'mismatch') chip = '<span class="tag tag--bad">本步：count--</span>';
+      else if (step.phase === 'reset') chip = '<span class="tag tag--violet">本步：count 归零，重新选举</span>';
+      else if (step.phase === 'done') chip = '<span class="tag tag--ok">结论：多数元素 = ' + Demo.esc(step.cand) + '</span>';
+      action.innerHTML = chip + '&nbsp;&nbsp;已处理 ' + (step.i == null ? (step.phase === 'done' ? NUMS.length : 0) : step.i + 1) +
+        ' / ' + NUMS.length + ' 个元素';
+      ctx.stage.appendChild(action);
+    }
+  });
+  return Demo.__config
+}

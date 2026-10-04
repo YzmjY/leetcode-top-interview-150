@@ -1,0 +1,355 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 44 33% 97%;
+    --foreground: 230 25% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 230 25% 13%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 230 25% 13%;
+    --primary: 28 92% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 44 20% 93%;
+    --secondary-foreground: 230 25% 18%;
+    --muted: 44 18% 93%;
+    --muted-foreground: 230 9% 44%;
+    --accent: 28 92% 45%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 350 75% 48%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 42 14% 87%;
+    --input: 42 14% 84%;
+    --ring: 28 92% 45%;
+    --radius: 0.625rem;
+    --sidebar-background: 44 25% 95.5%;
+    --sidebar-foreground: 230 15% 26%;
+    --sidebar-primary: 28 92% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 42 20% 91%;
+    --sidebar-accent-foreground: 230 25% 15%;
+    --sidebar-border: 42 12% 88%;
+    --sidebar-ring: 28 92% 45%;
+
+    /* 站点自定义令牌 */
+    --ink: 230 25% 13%;
+    --ink-soft: 230 10% 40%;
+    --paper: 44 33% 97%;
+    --amber: 28 92% 45%;
+    --amber-soft: 34 90% 93%;
+    --teal: 178 60% 32%;
+    --teal-soft: 175 45% 92%;
+    --easy: 158 64% 34%;
+    --easy-soft: 152 55% 92%;
+    --medium: 36 92% 42%;
+    --medium-soft: 42 90% 92%;
+    --hard: 350 72% 48%;
+    --hard-soft: 350 70% 94%;
+    --code-bg: 232 28% 12%;
+    --code-fg: 220 20% 88%;
+    --water: 205 85% 55%;
+    --water-soft: 205 85% 55%;
+  }
+
+  .dark {
+    --background: 232 24% 8%;
+    --foreground: 44 25% 92%;
+    --card: 232 20% 11.5%;
+    --card-foreground: 44 25% 92%;
+    --popover: 232 20% 11.5%;
+    --popover-foreground: 44 25% 92%;
+    --primary: 32 95% 55%;
+    --primary-foreground: 232 30% 10%;
+    --secondary: 232 14% 17%;
+    --secondary-foreground: 44 20% 88%;
+    --muted: 232 14% 16%;
+    --muted-foreground: 230 10% 62%;
+    --accent: 32 95% 55%;
+    --accent-foreground: 232 30% 10%;
+    --destructive: 350 70% 55%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 232 12% 21%;
+    --input: 232 12% 26%;
+    --ring: 32 95% 55%;
+    --sidebar-background: 232 24% 9.5%;
+    --sidebar-foreground: 230 12% 72%;
+    --sidebar-primary: 32 95% 55%;
+    --sidebar-primary-foreground: 232 30% 10%;
+    --sidebar-accent: 232 14% 16%;
+    --sidebar-accent-foreground: 44 25% 92%;
+    --sidebar-border: 232 12% 19%;
+    --sidebar-ring: 32 95% 55%;
+
+    --ink: 44 25% 92%;
+    --ink-soft: 230 10% 62%;
+    --paper: 232 24% 8%;
+    --amber: 32 95% 55%;
+    --amber-soft: 30 60% 18%;
+    --teal: 178 55% 45%;
+    --teal-soft: 180 40% 16%;
+    --easy: 158 60% 45%;
+    --easy-soft: 160 45% 16%;
+    --medium: 40 95% 55%;
+    --medium-soft: 40 60% 17%;
+    --hard: 350 75% 60%;
+    --hard-soft: 350 45% 18%;
+    --code-bg: 232 30% 7%;
+    --code-fg: 220 20% 86%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+      "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC",
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: hsl(var(--amber) / 0.25);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: Georgia, "Times New Roman", "Songti SC", "STSong", "SimSun",
+      serif;
+  }
+  .font-code {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, "Courier New",
+      monospace;
+  }
+  .text-ink {
+    color: hsl(var(--ink));
+  }
+  .text-ink-soft {
+    color: hsl(var(--ink-soft));
+  }
+  .bg-paper {
+    background-color: hsl(var(--paper));
+  }
+}
+
+/* ============ 滚动条 ============ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* ============ Markdown 题解排版 (.lc-prose) ============ */
+.lc-prose {
+  line-height: 1.85;
+  font-size: 0.9375rem;
+  color: hsl(var(--ink) / 0.92);
+}
+.lc-prose p {
+  margin: 0.9em 0;
+}
+.lc-prose strong {
+  color: hsl(var(--ink));
+  font-weight: 650;
+}
+.lc-prose h3 {
+  font-size: 1.05rem;
+  font-weight: 650;
+  margin: 1.6em 0 0.6em;
+  color: hsl(var(--ink));
+}
+.lc-prose ul,
+.lc-prose ol {
+  margin: 0.8em 0;
+  padding-left: 1.4em;
+}
+.lc-prose ul {
+  list-style: none;
+}
+.lc-prose ul > li {
+  position: relative;
+  margin: 0.45em 0;
+}
+.lc-prose ul > li::before {
+  content: "";
+  position: absolute;
+  left: -1.05em;
+  top: 0.72em;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: hsl(var(--amber) / 0.75);
+}
+.lc-prose ol {
+  list-style: decimal;
+}
+.lc-prose ol > li {
+  margin: 0.45em 0;
+  padding-left: 0.2em;
+}
+.lc-prose ol > li::marker {
+  color: hsl(var(--amber));
+  font-weight: 650;
+  font-family: "JetBrains Mono", Menlo, monospace;
+  font-size: 0.85em;
+}
+.lc-prose code:not(pre code) {
+  font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.83em;
+  background: hsl(var(--amber-soft) / 0.65);
+  color: hsl(var(--amber));
+  padding: 0.14em 0.42em;
+  border-radius: 5px;
+  border: 1px solid hsl(var(--amber) / 0.18);
+  white-space: nowrap;
+}
+.dark .lc-prose code:not(pre code) {
+  background: hsl(var(--amber-soft) / 0.5);
+}
+.lc-prose pre {
+  background: hsl(var(--secondary));
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  padding: 0.9em 1.1em;
+  margin: 1em 0;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+.lc-prose pre code {
+  font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  background: transparent;
+  color: hsl(var(--ink) / 0.85);
+}
+.lc-prose a {
+  color: hsl(var(--amber));
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.lc-prose blockquote {
+  border-left: 3px solid hsl(var(--amber));
+  padding: 0.2em 0 0.2em 1em;
+  margin: 1em 0;
+  color: hsl(var(--ink-soft));
+  background: hsl(var(--amber-soft) / 0.35);
+  border-radius: 0 8px 8px 0;
+}
+.lc-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.2em 0;
+  font-size: 0.88rem;
+}
+.lc-prose th {
+  text-align: left;
+  font-weight: 650;
+  padding: 0.55em 0.8em;
+  border-bottom: 2px solid hsl(var(--border));
+  color: hsl(var(--ink));
+}
+.lc-prose td {
+  padding: 0.55em 0.8em;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.lc-prose hr {
+  border: none;
+  border-top: 1px solid hsl(var(--border));
+  margin: 1.8em 0;
+}
+
+/* ============ Go 代码块高亮 (highlight.js) ============ */
+.code-view {
+  background: hsl(var(--code-bg));
+  color: hsl(var(--code-fg));
+  border-radius: 12px;
+  font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.75;
+  overflow-x: auto;
+}
+.code-view .hljs-comment,
+.code-view .hljs-quote {
+  color: #7c8598;
+  font-style: italic;
+}
+.code-view .hljs-keyword,
+.code-view .hljs-selector-tag,
+.code-view .hljs-type {
+  color: #ff9e64;
+}
+.code-view .hljs-string,
+.code-view .hljs-regexp {
+  color: #9ece6a;
+}
+.code-view .hljs-number,
+.code-view .hljs-literal {
+  color: #bb9af7;
+}
+.code-view .hljs-title,
+.code-view .hljs-name,
+.code-view .hljs-built_in {
+  color: #7aa2f7;
+}
+.code-view .hljs-attr,
+.code-view .hljs-variable,
+.code-view .hljs-template-variable {
+  color: #e0af68;
+}
+.code-view .hljs-params {
+  color: #c0caf5;
+}
+
+/* ============ 演示运行时 (DemoShell) ============ */
+.demo-stage {
+  transition: opacity 0.18s ease;
+}
+.demo-bar {
+  transition: transform 0.35s cubic-bezier(0.34, 1.3, 0.64, 1),
+    background-color 0.25s ease, opacity 0.25s ease;
+}
+.demo-water {
+  transition: all 0.35s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+@keyframes demo-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+.demo-pulse {
+  animation: demo-pulse 1.4s ease-in-out infinite;
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-up {
+  animation: fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}

@@ -1,0 +1,164 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/11-h-index-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const CITATIONS = [3, 0, 6, 1, 5];
+  
+  function buildSteps() {
+    const n = CITATIONS.length;
+    const count = [];
+    for (let i = 0; i <= n; i++) count.push(0);
+  
+    const steps = [];
+    let total = 0;
+    let h = null;
+  
+    steps.push({
+      count: count.slice(), seen: 0, activeBucket: -1, scanI: -1, total: 0, h: null, done: false,
+      note: `初始化：一共 n = ${n} 篇论文。h 指数不可能超过论文总数，所以只需要关心引用次数落在 0 ~ ${n} 之间的论文。开一个长度 n + 1 = ${n + 1} 的计数数组 count[0..${n}]：count[i] 统计「引用次数恰好为 i」的论文数，引用次数 ≥ ${n} 的一律归到 count[${n}]。`
+    });
+  
+    // 第一遍：计数排序统计每篇论文落在哪个桶
+    for (let k = 0; k < n; k++) {
+      const c = CITATIONS[k];
+      const bucket = Math.min(c, n);
+      count[bucket] += 1;
+      const why = c >= n
+        ? `引用次数 ${c} ≥ n = ${n}，已经超出 h 可能取到的范围，按规则并入 count[${n}]`
+        : `引用次数 ${c} < n，直接计入 count[${c}]`;
+      steps.push({
+        count: count.slice(), seen: k + 1, activeBucket: bucket, scanI: -1, total: 0, h: null, done: false,
+        note: `处理第 ${k + 1} 篇论文：它被引用了 ${c} 次。${why}，于是 count[${bucket}] 从 ${count[bucket] - 1} 增加到 ${count[bucket]}。`
+      });
+    }
+  
+    // 第二遍：从大到小累计，找最大的 h
+    for (let i = n; i >= 0; i--) {
+      const prevTotal = total;
+      total += count[i];
+      const ok = total >= i;
+      if (ok && h === null) h = i;
+  
+      let why = `先看 h 能不能取到 ${i}：把引用次数 ≥ ${i + 1} 的论文数 ${prevTotal} 加上引用次数恰好为 ${i} 的 ${count[i]} 篇，得到「至少被引用 ${i} 次」的论文数 total = ${total}。`;
+      why += ok
+        ? ` 判断 total ≥ h，即 ${total} ≥ ${i} 成立——有 ${total} 篇论文每篇至少被引用 ${i} 次，满足 H 指数定义，而我们从大到小第一次遇到成立的值，所以 h = ${i} 就是最大可能的 h 指数，可以直接返回。`
+        : ` 判断 total ≥ h，即 ${total} ≥ ${i} 不成立——只有 ${total} 篇论文够得上「至少被引用 ${i} 次」，达不到 i 篇的要求，h = ${i} 不可能，继续往小试。`;
+  
+      steps.push({
+        count: count.slice(), seen: n, activeBucket: -1, scanI: i, total: total, h: ok ? i : null, done: false,
+        note: why
+      });
+  
+      if (ok) break;
+    }
+  
+    steps.push({
+      count: count.slice(), seen: n, activeBucket: -1, scanI: -1, total: total, h: h, done: true,
+      note: `结论：H 指数 = ${h}，也就是有 ${total} 篇论文每篇至少被引用 ${h} 次。整个过程只做了一次计数统计和一次从后向前的扫描，没有排序：时间 O(n)，空间 O(n)（计数数组）。`
+    });
+  
+    return steps;
+  }
+  
+  function citationsRow(step) {
+    const row = Demo.el('div', 'row');
+    CITATIONS.forEach(function (c, idx) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(c));
+      if (idx === step.seen - 1 && !step.done) cell.classList.add('is-active');
+      else if (idx < step.seen) cell.classList.add('is-ok');
+      else cell.classList.add('cell--dim');
+      if (step.done) cell.classList.remove('cell--dim');
+      col.appendChild(cell);
+      const ptr = Demo.el('div', 'ptr', '第 ' + (idx + 1) + ' 篇');
+      ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  function countRow(step) {
+    const row = Demo.el('div', 'row');
+    step.count.forEach(function (value, i) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(value));
+      if (i === step.activeBucket) cell.classList.add('is-active');
+      else if (step.scanI >= 0 && i > step.scanI) cell.classList.add('is-ok');
+      else if (value > 0) cell.classList.add('is-info');
+      if (step.scanI === i) cell.classList.add('is-active');
+      if (step.done && step.h != null && i === step.h) cell.classList.add('is-ok');
+      col.appendChild(cell);
+      const ptr = Demo.el('div', 'ptr', 'h=' + i);
+      ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  Demo.create({
+    title: '11. H 指数 — 计数排序 + 从后向前累计',
+    info: '输入：citations = [3,0,6,1,5]（示例 1），输出 3。h 指数不会超过论文数 n = 5，所以只需统计 0~5 各引用次数各有多少篇。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 340,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前处理的论文 / 当前考察的 h' },
+      { color: 'var(--demo-ok)', label: '已统计 / 已累计（引用次数 ≥ 当前 h）' },
+      { color: 'var(--demo-info)', label: '该引用次数有论文落入' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const n = CITATIONS.length;
+  
+      const papers = Demo.el('div', 'panel');
+      papers.style.width = '100%';
+      papers.appendChild(Demo.el('div', 'panel__title',
+        '论文引用次数 citations（第 ' + step.seen + ' / ' + n + ' 篇已归类）'));
+      papers.appendChild(citationsRow(step));
+      ctx.stage.appendChild(papers);
+  
+      const buckets = Demo.el('div', 'panel');
+      buckets.style.width = '100%';
+      buckets.appendChild(Demo.el('div', 'panel__title',
+        '计数数组 count（下标 = 引用次数，值 = 论文篇数；引用次数 ≥ ' + n + ' 的都并入 count[' + n + ']）'));
+      buckets.appendChild(countRow(step));
+      ctx.stage.appendChild(buckets);
+  
+      const bottom = Demo.el('div', 'row');
+  
+      const barPanel = Demo.el('div', 'panel');
+      barPanel.style.minWidth = '320px';
+      barPanel.appendChild(Demo.el('div', 'panel__title',
+        step.scanI >= 0 ? '累计「至少被引用 ' + step.scanI + ' 次」的论文数' : '等待进入从大到小的累计扫描'));
+      const bar = Demo.el('div', 'bar');
+      const fill = Demo.el('div', 'bar__fill');
+      const pct = Math.min(100, Math.round((step.total / n) * 100));
+      fill.style.width = pct + '%';
+      fill.style.background = step.done ? 'var(--demo-ok)' : 'var(--demo-accent)';
+      bar.appendChild(fill);
+      bar.appendChild(Demo.el('div', 'bar__label', 'total = ' + step.total + ' / n = ' + n));
+      barPanel.appendChild(bar);
+      bottom.appendChild(barPanel);
+  
+      const conclusion = Demo.el('div', 'panel');
+      conclusion.appendChild(Demo.el('div', 'panel__title', '判断 total ≥ h ?'));
+      conclusion.appendChild(Demo.el('span',
+        'tag ' + (step.done ? 'tag--ok' : (step.scanI >= 0 && step.total >= step.scanI ? 'tag--ok' : 'tag--info')),
+        step.done
+          ? 'H 指数 = ' + step.h
+          : (step.scanI < 0 ? '统计阶段：先数清楚每个引用次数有多少篇' : 'h = ' + step.scanI + '：total = ' + step.total + ' ' + (step.total >= step.scanI ? '≥' : '<') + ' ' + step.scanI)));
+      if (step.total >= step.scanI && step.scanI >= 0) {
+        conclusion.appendChild(Demo.el('div', 'panel__title', '条件成立，取得最大 h'));
+      }
+      bottom.appendChild(conclusion);
+  
+      ctx.stage.appendChild(bottom);
+    }
+  });
+  return Demo.__config
+}

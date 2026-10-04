@@ -1,0 +1,143 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/126-reverse-bits-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const N = 43261596;
+  const BITS = 32;
+  
+  function bin32(v) {
+    return (v >>> 0).toString(2).padStart(BITS, '0');
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    let n = N >>> 0;
+    let result = 0;
+  
+    steps.push({
+      n, result, iter: 0, readIdx: BITS - 1, bit: null, done: false,
+      note: `初始化：result = 0，n = ${N}，二进制 ${bin32(N)}。循环固定 32 次，每次从 n 的最低有效位取一位。`
+    });
+  
+    for (let k = 1; k <= BITS; k++) {
+      const bit = n & 1;
+      result = ((result << 1) | bit) >>> 0;
+      n = n >>> 1;
+      steps.push({
+        n, result, iter: k, readIdx: BITS - k, bit, done: false,
+        note: `第 ${k} 次：n 的最低位是 ${bit}（也就是原数从右数第 ${k} 位）。` +
+          `result 先左移一位腾出最低位，再把这个 ${bit} 放进去，得到 ${result}；n 右移一位继续处理下一位。`
+      });
+    }
+  
+    steps.push({
+      n, result, iter: BITS, readIdx: -1, bit: null, done: true,
+      note: `32 次循环结束，result = ${result}，二进制 ${bin32(result)}。` +
+        `注意已拼好的位每轮都会整体左移一格，所以第一次取出的位最终落在最左端。`
+    });
+  
+    return steps;
+  }
+  
+  function groupRow(bits, decorate) {
+    const row = Demo.el('div', 'row');
+    row.style.gap = '12px';
+    for (let g = 0; g < 4; g++) {
+      const col = Demo.el('div', 'col');
+      col.style.gap = '4px';
+      const head = Demo.el('div', 'panel__title', `位 ${31 - g * 8}–${24 - g * 8}`);
+      head.style.fontSize = '11px';
+      head.style.marginBottom = '0';
+      col.appendChild(head);
+  
+      const grp = Demo.el('div', 'row');
+      grp.style.gap = '2px';
+      grp.style.flexWrap = 'nowrap';
+      for (let k = 0; k < 8; k++) {
+        const idx = g * 8 + k;
+        const cell = Demo.el('div', 'cell cell--sm');
+        cell.textContent = bits[idx];
+        cell.style.minWidth = '20px';
+        cell.style.width = '20px';
+        cell.style.height = '26px';
+        cell.style.fontSize = '12px';
+        cell.style.padding = '0';
+        decorate(cell, idx);
+        grp.appendChild(cell);
+      }
+      col.appendChild(grp);
+      row.appendChild(col);
+    }
+    return row;
+  }
+  
+  Demo.create({
+    title: `126. 颠倒二进制位 — 每轮取最低位拼到结果低位，共 ${BITS} 轮`,
+    info: `输入：n = ${N}（32 位无符号整数，二进制 ${bin32(N)}）。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本轮读出的位 / 新拼入的位' },
+      { color: 'var(--demo-ok)', label: '已处理的位（已读出 / 已拼好）' },
+      { color: 'var(--demo-border)', label: '尚未处理的位' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const nLabel = Demo.el('div', 'panel__title',
+        step.done
+          ? `输入 n（原始 32 位，已全部读出）`
+          : `输入 n（当前读出位置：位 ${step.readIdx}）`);
+      nLabel.style.marginBottom = '4px';
+      ctx.stage.appendChild(nLabel);
+  
+      ctx.stage.appendChild(groupRow(bin32(N).split(''), (cell, idx) => {
+        if (step.done) {
+          cell.classList.add('cell--dim');
+        } else if (idx > step.readIdx) {
+          cell.classList.add('cell--dim');
+        } else if (idx === step.readIdx) {
+          cell.classList.add('is-active');
+        }
+      }));
+  
+      const rLabel = Demo.el('div', 'panel__title',
+        step.iter === 0 ? '结果 result（还没有拼入任何位）' : `结果 result（已拼入 ${step.iter} 位，整体左移后从右端追加）`);
+      rLabel.style.marginTop = '6px';
+      rLabel.style.marginBottom = '4px';
+      ctx.stage.appendChild(rLabel);
+  
+      const filled = step.iter;
+      ctx.stage.appendChild(groupRow(bin32(step.result).split(''), (cell, idx) => {
+        if (idx >= BITS - filled) {
+          if (!step.done && idx === BITS - 1) cell.classList.add('is-active');
+          else cell.classList.add('is-ok');
+        } else {
+          cell.textContent = '·';
+          cell.classList.add('cell--empty');
+        }
+      }));
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.style.textAlign = 'center';
+      if (step.done) {
+        panel.innerHTML =
+          `颠倒结果：<code>${bin32(step.result)}</code> = <strong>${step.result}</strong>　` +
+          `<span class="tag tag--ok">32 位全部处理完成</span>`;
+      } else if (step.iter === 0) {
+        panel.innerHTML =
+          `result = 0，下一轮将读取 n 的最低位（位 31）。`;
+      } else {
+        panel.innerHTML =
+          `第 ${step.iter} 轮：取出 n &amp; 1 = <strong>${step.bit}</strong>　` +
+          `result 左移一位后 |= ${step.bit} → <strong>${step.result}</strong>　` +
+          `已处理 ${step.iter} / ${BITS} 位`;
+      }
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

@@ -1,0 +1,240 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/82-binary-tree-right-side-view-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const DATA = [1, 2, 3, null, 5, null, 4];
+  const GAP = 84;
+  
+  const NODES = [];
+  
+  function buildTree(arr) {
+    const nodes = arr.map((v, i) => (v == null ? null : { val: v, id: i, left: null, right: null }));
+    nodes.forEach(n => { if (n) NODES[n.id] = n; });
+    if (!nodes.length || !nodes[0]) return null;
+    const queue = [nodes[0]];
+    let next = 1;
+    while (queue.length > 0 && next < nodes.length) {
+      const node = queue.shift();
+      node.left = next < nodes.length ? (nodes[next++] || null) : null;
+      if (node.left) queue.push(node.left);
+      node.right = next < nodes.length ? (nodes[next++] || null) : null;
+      if (node.right) queue.push(node.right);
+    }
+    return nodes[0];
+  }
+  
+  const ROOT = buildTree(DATA);
+  
+  function layout(root) {
+    const pos = [];
+    let order = 0;
+    let maxDepth = 0;
+    (function walk(node, depth) {
+      if (!node) return;
+      walk(node.left, depth + 1);
+      pos[node.id] = { x: 0, y: 0, order: order, depth: depth };
+      order += 1;
+      if (depth > maxDepth) maxDepth = depth;
+      walk(node.right, depth + 1);
+    })(root, 0);
+    const width = 660;
+    const startX = (width - (order - 1) * GAP) / 2;
+    pos.forEach(p => {
+      p.x = startX + p.order * GAP;
+      p.y = 46 + p.depth * 84;
+    });
+    return { pos: pos, width: width, height: 46 + maxDepth * 84 + 46, maxDepth: maxDepth };
+  }
+  
+  const LAYOUT = layout(ROOT);
+  
+  function labelOf(id) {
+    return NODES[id] ? NODES[id].val : '?';
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const queue = [];
+    const processed = [];
+    const rightNodes = [];
+    const result = [];
+    let levelDepth = -1;
+    let cur = null;
+    let curLevel = 0;
+    let levelSize = 0;
+  
+    function snap(note, extra) {
+      const step = {
+        queue: queue.map(n => n.id),
+        processed: processed.slice(),
+        rightNodes: rightNodes.slice(),
+        result: result.slice(),
+        cur: cur,
+        curLevel: curLevel,
+        levelSize: levelSize,
+        levelDepth: levelDepth,
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    queue.push(ROOT);
+    snap('初始状态：根节点 ' + ROOT.val + ' 入队。每一层单独处理，该层最后一个出队的节点就是站在右侧能看到的节点。');
+  
+    while (queue.length > 0) {
+      levelSize = queue.length;
+      levelDepth = LAYOUT.pos[queue[0].id].depth;
+      cur = null;
+      snap('新的一层：此刻队列里正好是同一层的 ' + levelSize + ' 个节点，先记下 levelSize = ' + levelSize +
+        '，下面的循环只处理它们 ' + levelSize + ' 次，这一层新入队的子节点留给下一层。');
+  
+      for (let i = 0; i < levelSize; i++) {
+        const node = queue.shift();
+        cur = node.id;
+        curLevel = i;
+        const kids = [];
+        if (node.left) { queue.push(node.left); kids.push(node.left.val); }
+        if (node.right) { queue.push(node.right); kids.push(node.right.val); }
+        processed.push(node.id);
+        const isLast = i === levelSize - 1;
+        if (isLast) {
+          rightNodes.push(node.id);
+          result.push(node.val);
+        }
+        snap('本层第 ' + (i + 1) + '/' + levelSize + ' 个出队：节点 ' + node.val +
+          (kids.length ? '，把它的子节点 ' + kids.join('、') + ' 入队（它们是下一层的节点）' : '，它没有子节点') +
+          (isLast
+            ? '。它是本层最右边、最后一个出队的节点 → 站在右侧能直接看到它，记入结果。'
+            : '。它右边还有同层节点挡着，从右侧看不到，不记录。'));
+      }
+    }
+  
+    levelDepth = -1;
+    cur = null;
+    snap('队列为空，所有层都处理完了。每层只取最后一个节点，右视图结果 = [' + result.join(', ') + ']。时间 O(n)，每个节点进出队列各一次。',
+      { done: true });
+    return steps;
+  }
+  
+  function treeSvg(step) {
+    const L = LAYOUT;
+    let out = '';
+  
+    if (step.levelDepth >= 0) {
+      const y = 46 + step.levelDepth * 84;
+      out += '<rect x="8" y="' + (y - 34) + '" width="' + (L.width - 16) + '" height="68" rx="10" style="fill:var(--demo-accent-soft)"/>';
+    }
+  
+    NODES.forEach(node => {
+      if (!node) return;
+      ['left', 'right'].forEach(side => {
+        const child = node[side];
+        if (!child) return;
+        const p = L.pos[node.id];
+        const q = L.pos[child.id];
+        out += '<line x1="' + p.x + '" y1="' + (p.y + 24) + '" x2="' + q.x + '" y2="' + (q.y - 24) +
+          '" style="stroke:var(--demo-border);stroke-width:2"/>';
+      });
+    });
+  
+    NODES.forEach(node => {
+      if (!node) return;
+      const p = L.pos[node.id];
+      let fill = 'var(--demo-subtle)';
+      let stroke = 'var(--demo-border)';
+      let text = 'var(--demo-text)';
+      let ring = null;
+      if (step.processed.indexOf(node.id) >= 0) { fill = 'var(--demo-ok-soft)'; stroke = 'var(--demo-ok)'; text = 'var(--demo-ok)'; }
+      if (step.queue.indexOf(node.id) >= 0) { fill = 'var(--demo-info-soft)'; stroke = 'var(--demo-info)'; text = 'var(--demo-info)'; }
+      if (step.rightNodes.indexOf(node.id) >= 0) { fill = 'var(--demo-pink-soft)'; stroke = 'var(--demo-pink)'; text = 'var(--demo-pink)'; }
+      if (step.cur === node.id) {
+        fill = 'var(--demo-accent)';
+        stroke = 'var(--demo-accent)';
+        text = 'var(--demo-card)';
+        ring = 'var(--demo-warn)';
+      }
+      if (ring) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="29" style="fill:none;stroke:' + ring + ';stroke-width:3"/>';
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="24" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2.5"/>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 6) + '" text-anchor="middle" style="fill:' + text +
+        ';font:600 16px sans-serif">' + node.val + '</text>';
+    });
+  
+    return '<div style="width:100%"><svg viewBox="0 0 ' + L.width + ' ' + L.height +
+      '" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+  }
+  
+  Demo.create({
+    title: '82. 二叉树的右视图 — BFS 每层取最右节点',
+    info: 'root = [1,2,3,null,5,null,4]，期望输出 [1,3,4]。队列按层保存节点，每层出队到最后一个时记录答案。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 420,
+    legend: [
+      { color: 'var(--demo-info)', label: '队列中待处理' },
+      { color: 'var(--demo-accent)', label: '本步出队的节点' },
+      { color: 'var(--demo-ok)', label: '已出队的节点' },
+      { color: 'var(--demo-pink)', label: '每层最后一个 → 记入右视图' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = treeSvg(step);
+      ctx.stage.appendChild(wrap);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-end';
+  
+      const queuePanel = Demo.el('div', 'panel');
+      queuePanel.appendChild(Demo.el('div', 'panel__title', '队列（队首在左）'));
+      const qrow = Demo.el('div', 'row');
+      if (step.queue.length === 0) {
+        qrow.appendChild(Demo.el('span', 'ptr ptr--dim', '（空）'));
+      } else {
+        step.queue.forEach((id, k) => {
+          const cell = Demo.el('div', 'cell cell--sm', Demo.esc(labelOf(id)));
+          cell.classList.add(k === 0 ? 'is-active' : 'is-info');
+          qrow.appendChild(cell);
+        });
+      }
+      queuePanel.appendChild(qrow);
+  
+      const outPanel = Demo.el('div', 'panel');
+      outPanel.appendChild(Demo.el('div', 'panel__title', '右视图结果'));
+      const orow = Demo.el('div', 'row');
+      if (step.result.length === 0) {
+        orow.appendChild(Demo.el('span', 'ptr ptr--dim', '等待每层最后一个节点'));
+      } else {
+        step.result.forEach(v => {
+          orow.appendChild(Demo.el('div', 'cell is-ok', Demo.esc(v)));
+        });
+        if (step.done) orow.appendChild(Demo.el('span', 'tag tag--ok', '已完成'));
+      }
+      outPanel.appendChild(orow);
+  
+      row.appendChild(queuePanel);
+      row.appendChild(outPanel);
+      ctx.stage.appendChild(row);
+  
+      const status = Demo.el('div', 'panel');
+      status.style.width = '100%';
+      status.style.textAlign = 'center';
+      if (step.done) {
+        status.innerHTML = '所有层处理完毕，右视图 = <code>[' + step.result.join(', ') + ']</code>';
+      } else if (step.cur == null && step.levelSize > 0) {
+        status.innerHTML = '本层共 <strong>' + step.levelSize + '</strong> 个节点，从队首依次出队。';
+      } else if (step.cur == null) {
+        status.innerHTML = '队首是根节点 <strong>' + labelOf(step.queue[0]) + '</strong>，它是第 0 层唯一的节点。';
+      } else {
+        status.innerHTML = '正在处理本层第 <strong>' + (step.curLevel + 1) + '</strong> / ' + step.levelSize + ' 个节点：值 ' + labelOf(step.cur);
+      }
+      ctx.stage.appendChild(status);
+    }
+  });
+  return Demo.__config
+}

@@ -1,0 +1,310 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/123-find-k-pairs-with-smallest-sums-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS1 = [1, 7, 11];
+  const NUMS2 = [2, 4, 6];
+  const K = 3;
+  
+  function marksOf(pairs) {
+    const out = {};
+    pairs.forEach(function (p) { out[p[0]] = p[1]; });
+    return out;
+  }
+  
+  /* 小顶堆 → 完全二叉树；节点下方标注它在 (i, j) 中的位置。 */
+  function heapSvg(entries, marks) {
+    const n = entries.length;
+    if (n === 0) {
+      return '<div class="ptr ptr--dim" style="padding:12px 0">（堆为空）</div>';
+    }
+    const GAP = 92, LEVEL = 78, PAD = 52;
+    const pos = new Array(n);
+    let order = 0, maxDepth = 0;
+    (function walk(i, depth) {
+      if (i >= n) return;
+      walk(2 * i + 1, depth + 1);
+      pos[i] = { order: order, depth: depth, x: 0, y: 0 };
+      order += 1;
+      if (depth > maxDepth) maxDepth = depth;
+      walk(2 * i + 2, depth + 1);
+    })(0, 0);
+    pos.forEach(function (p) { p.x = PAD + p.order * GAP; p.y = PAD + p.depth * LEVEL; });
+    const width = PAD * 2 + (order - 1) * GAP;
+    const height = PAD * 2 + maxDepth * LEVEL;
+    let out = '';
+    for (let i = 0; i < n; i++) {
+      for (let c = 2 * i + 1; c <= 2 * i + 2; c++) {
+        if (c < n) {
+          out += '<line x1="' + pos[i].x + '" y1="' + (pos[i].y + 22) + '" x2="' + pos[c].x +
+            '" y2="' + (pos[c].y - 22) + '" style="stroke:var(--demo-border);stroke-width:2"></line>';
+        }
+      }
+    }
+    for (let i = 0; i < n; i++) {
+      const st = marks[i] || 'n';
+      let fill = 'var(--demo-subtle)', stroke = 'var(--demo-border)', text = 'var(--demo-text)';
+      if (st === 'cmp') { fill = 'var(--demo-warn-soft)'; stroke = 'var(--demo-warn)'; text = 'var(--demo-warn)'; }
+      if (st === 'swap') { fill = 'var(--demo-pink-soft)'; stroke = 'var(--demo-pink)'; text = 'var(--demo-pink)'; }
+      if (st === 'active') { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; text = 'var(--demo-accent-strong)'; }
+      if (st === 'top') { fill = 'var(--demo-ok-soft)'; stroke = 'var(--demo-ok)'; text = 'var(--demo-ok)'; }
+      out += '<circle cx="' + pos[i].x + '" cy="' + pos[i].y + '" r="22" style="fill:' + fill +
+        ';stroke:' + stroke + ';stroke-width:2.5"></circle>';
+      out += '<text x="' + pos[i].x + '" y="' + (pos[i].y + 5) + '" text-anchor="middle" font-size="15" ' +
+        'font-weight="600" font-family="monospace" style="fill:' + text + '">' + entries[i].s + '</text>';
+      out += '<text x="' + pos[i].x + '" y="' + (pos[i].y + 40) + '" text-anchor="middle" font-size="11" ' +
+        'style="fill:var(--demo-muted)">(' + entries[i].i + ',' + entries[i].j + ')</text>';
+    }
+    return '<svg viewBox="0 0 ' + width + ' ' + height + '" style="width:100%;max-width:' + width +
+      'px;height:auto;display:block;margin:0 auto">' + out + '</svg>';
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const heap = [];
+    const taken = [];
+  
+    function less(a, b) {
+      if (a.s !== b.s) return a.s < b.s;
+      if (a.i !== b.i) return a.i < b.i;
+      return a.j < b.j;
+    }
+  
+    function pairText(e) {
+      return '(' + NUMS1[e.i] + ', ' + NUMS2[e.j] + ')';
+    }
+  
+    function snap(mk, text, extra) {
+      const step = {
+        heap: heap.map(function (e) { return { s: e.s, i: e.i, j: e.j }; }),
+        taken: taken.map(function (p) { return { i: p.i, j: p.j }; }),
+        marks: mk || {},
+        note: text,
+        done: false
+      };
+      if (extra) Object.keys(extra).forEach(function (key) { step[key] = extra[key]; });
+      steps.push(step);
+    }
+  
+    snap(null,
+      '把 nums1 的每个元素看成一条有序链表：链表 i = nums1[i]+nums2[0], nums1[i]+nums2[1], …，' +
+      '因为 nums2 升序，每条链表内部也升序。问题变成「从 ' + NUMS1.length + ' 条有序链表里归并出前 k = ' + K + ' 个最小值」。' +
+      '初始化：每条链表的表头 (i, 0) 先入小顶堆。');
+  
+    for (let i = 0; i < NUMS1.length && i < K; i++) {
+      heap.push({ s: NUMS1[i] + NUMS2[0], i: i, j: 0 });
+      let cur = heap.length - 1;
+      snap(marksOf([[cur, 'active']]),
+        '链表 ' + i + ' 的表头是 (' + NUMS1[i] + ', ' + NUMS2[0] + ')，和 = ' + NUMS1[i] + ' + ' + NUMS2[0] + ' = ' +
+        heap[cur].s + '，放到堆尾 heap[' + cur + ']。');
+      while (cur > 0) {
+        const parent = (cur - 1) >> 1;
+        const a = heap[cur], b = heap[parent];
+        snap(marksOf([[cur, 'cmp'], [parent, 'cmp']]),
+          '向上调整：比较 heap[' + cur + '] = ' + a.s + '（' + pairText(a) + '）与父节点 heap[' + parent + '] = ' +
+          b.s + '（' + pairText(b) + '）。');
+        if (less(a, b)) {
+          const tmp = heap[cur];
+          heap[cur] = heap[parent];
+          heap[parent] = tmp;
+          snap(marksOf([[parent, 'swap'], [cur, 'swap']]),
+            a.s + ' < ' + b.s + '，小顶堆被破坏，交换：' + a.s + ' 上浮，' + b.s + ' 下沉，继续向上比较。');
+          cur = parent;
+        } else {
+          snap(marksOf([[cur, 'active'], [parent, 'active']]),
+            a.s + ' ≥ ' + b.s + '，父节点已经不大于子节点，停止上浮。');
+          break;
+        }
+      }
+    }
+  
+    while (heap.length > 0 && taken.length < K) {
+      const top = heap[0];
+      snap(marksOf([[0, 'top']]),
+        '堆顶 heap[0] = ' + top.s + '（' + pairText(top) + '）是所有链表当前表头里和最小的，' +
+        '它一定是全局第 ' + (taken.length + 1) + ' 小的数对，取出。');
+  
+      if (heap.length === 1) {
+        heap.pop();
+      } else {
+        const lastEntry = heap[heap.length - 1];
+        heap[0] = lastEntry;
+        heap.pop();
+        snap(marksOf([[0, 'active']]),
+          '删除堆顶：把堆尾的 ' + lastEntry.s + '（' + pairText(lastEntry) + '）搬到根 heap[0]，再向下调整。');
+        let node = 0;
+        while (true) {
+          const l = 2 * node + 1;
+          const r = 2 * node + 2;
+          if (l >= heap.length) {
+            snap(marksOf([[node, 'active']]), 'heap[' + node + '] 没有子节点，向下调整结束，堆恢复。');
+            break;
+          }
+          let smallest = node;
+          if (less(heap[l], heap[smallest])) smallest = l;
+          if (r < heap.length && less(heap[r], heap[smallest])) smallest = r;
+          const pairs = [[node, 'cmp'], [l, 'cmp']];
+          if (r < heap.length) pairs.push([r, 'cmp']);
+          let desc = '向下调整：比较 heap[' + node + '] = ' + heap[node].s + '（' + pairText(heap[node]) +
+            '）与子节点 heap[' + l + '] = ' + heap[l].s + '（' + pairText(heap[l]) + '）' +
+            (r < heap.length ? '、heap[' + r + '] = ' + heap[r].s + '（' + pairText(heap[r]) + '）' : '') + '。';
+          if (smallest === node) {
+            snap(marksOf(pairs), desc + '父节点已经最小，调整结束。');
+            break;
+          }
+          const smallV = heap[smallest].s;
+          const nodeV = heap[node].s;
+          desc += 'heap[' + smallest + '] = ' + smallV + ' 更小，交换：' + smallV + ' 上浮、' + nodeV + ' 下沉。';
+          const tmp = heap[node];
+          heap[node] = heap[smallest];
+          heap[smallest] = tmp;
+          snap(marksOf([[node, 'swap'], [smallest, 'swap']]), desc);
+          node = smallest;
+        }
+      }
+  
+      taken.push({ i: top.i, j: top.j });
+  
+      if (top.j + 1 < NUMS2.length) {
+        const nj = top.j + 1;
+        const sum = NUMS1[top.i] + NUMS2[nj];
+        heap.push({ s: sum, i: top.i, j: nj });
+        let cur = heap.length - 1;
+        snap(marksOf([[cur, 'active']]),
+          '链表 ' + top.i + ' 还没取完，把它表头指针前移一位：(' + NUMS1[top.i] + ', ' + NUMS2[nj] + ')，和 = ' +
+          NUMS1[top.i] + ' + ' + NUMS2[nj] + ' = ' + sum + ' 入堆，让这条链表继续参与比较。');
+        while (cur > 0) {
+          const parent = (cur - 1) >> 1;
+          const a = heap[cur], b = heap[parent];
+          snap(marksOf([[cur, 'cmp'], [parent, 'cmp']]),
+            '向上调整：比较 heap[' + cur + '] = ' + a.s + '（' + pairText(a) + '）与父节点 heap[' + parent + '] = ' +
+            b.s + '（' + pairText(b) + '）。');
+          if (less(a, b)) {
+            const tmp = heap[cur];
+            heap[cur] = heap[parent];
+            heap[parent] = tmp;
+            snap(marksOf([[parent, 'swap'], [cur, 'swap']]),
+              a.s + ' < ' + b.s + '，交换：' + a.s + ' 上浮，' + b.s + ' 下沉。');
+            cur = parent;
+          } else {
+            snap(marksOf([[cur, 'active'], [parent, 'active']]),
+              a.s + ' ≥ ' + b.s + '，停止上浮，堆性质恢复。');
+            break;
+          }
+        }
+      } else {
+        snap(null, '链表 ' + top.i + ' 的指针已经走到 nums2 末尾，没有后继元素可以补进堆，堆里少了一个候选。');
+      }
+    }
+  
+    snap(marksOf([[0, 'top']]),
+      '已经取满 k = ' + K + ' 对数对，算法结束。答案 = [' +
+      taken.map(function (p) { return '(' + NUMS1[p.i] + ',' + NUMS2[p.j] + ')'; }).join(', ') + ']。' +
+      '每个元素出堆时最多补入一个新元素，堆的大小不超过 min(k, nums1.length)，所以时间复杂度 O(k log min(k, m))。',
+      { done: true });
+  
+    return steps;
+  }
+  
+  Demo.create({
+    title: '123. 查找和最小的 K 对数字 — 多路归并 + 小顶堆',
+    info: '输入：nums1 = [1,7,11]，nums2 = [2,4,6]，k = 3，期望输出 [[1,2],[1,4],[1,6]]。每条链表 i 是 nums1[i] 依次加 nums2[0..]。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 460,
+    legend: [
+      { color: 'var(--demo-accent)', label: '刚入堆 / 正在调整' },
+      { color: 'var(--demo-warn)', label: '正在比较' },
+      { color: 'var(--demo-pink)', label: '发生交换' },
+      { color: 'var(--demo-ok)', label: '堆顶（本轮取出的最小对）' },
+      { color: 'var(--demo-info)', label: '在堆中的候选' },
+      { color: 'var(--demo-ok-soft)', label: '已入选答案' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const listPanel = Demo.el('div', 'panel');
+      listPanel.style.width = '100%';
+      listPanel.appendChild(Demo.el('div', 'panel__title',
+        '把 nums1 的每个元素看成一条有序链表（行 = 链表 i = nums1[i]，列 = nums2[j]），格子里是两数之和'));
+      const grid = Demo.el('div', 'grid');
+      grid.style.gridTemplateColumns = 'auto repeat(' + NUMS2.length + ', auto)';
+      grid.style.alignItems = 'center';
+  
+      grid.appendChild(Demo.el('div', 'ptr ptr--dim', 'i ＼ j'));
+      NUMS2.forEach(function (v, j) {
+        grid.appendChild(Demo.el('div', 'ptr ptr--info', 'j=' + j + ' (' + v + ')'));
+      });
+  
+      NUMS1.forEach(function (u, i2) {
+        grid.appendChild(Demo.el('div', 'ptr', '链表' + i2 + ' (' + u + ')'));
+        NUMS2.forEach(function (v, j) {
+          const cell = Demo.el('div', 'grid-cell', Demo.esc(u + v));
+          const isTaken = step.taken.some(function (p) { return p.i === i2 && p.j === j; });
+          const inHeap = step.heap.some(function (e) { return e.i === i2 && e.j === j; });
+          if (isTaken) cell.classList.add('is-ok');
+          else if (inHeap) cell.classList.add('is-info');
+          else cell.classList.add('is-dim');
+          grid.appendChild(cell);
+        });
+      });
+      listPanel.appendChild(grid);
+      ctx.stage.appendChild(listPanel);
+  
+      const heapPanel = Demo.el('div', 'panel');
+      heapPanel.style.width = '100%';
+      heapPanel.appendChild(Demo.el('div', 'panel__title',
+        '小顶堆（元素为 (和, i, j)，按和比较；节点下方是它来自哪条链表的哪个位置）　当前大小 ' + step.heap.length));
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = heapSvg(step.heap, step.marks);
+      heapPanel.appendChild(wrap);
+      if (step.heap.length) {
+        const arow = Demo.el('div', 'row');
+        step.heap.forEach(function (e, k) {
+          const col = Demo.el('div', 'col');
+          const c = Demo.el('div', 'cell cell--sm', Demo.esc(e.s));
+          const mark = step.marks[k];
+          if (mark === 'top') c.classList.add('is-ok');
+          else if (mark === 'active') c.classList.add('is-active');
+          else if (mark === 'cmp') c.classList.add('is-warn');
+          else if (mark === 'swap') c.classList.add('is-pink');
+          else c.classList.add('is-info');
+          col.appendChild(c);
+          col.appendChild(Demo.el('div', 'ptr ptr--dim', '(' + e.i + ',' + e.j + ')'));
+          arow.appendChild(col);
+        });
+        heapPanel.appendChild(arow);
+      }
+      ctx.stage.appendChild(heapPanel);
+  
+      const resPanel = Demo.el('div', 'panel');
+      resPanel.style.width = '100%';
+      resPanel.appendChild(Demo.el('div', 'panel__title',
+        '已取出的数对（按取出顺序，即和从小到大）　' + step.taken.length + ' / ' + K));
+      const rrow = Demo.el('div', 'row');
+      if (step.taken.length === 0) {
+        rrow.appendChild(Demo.el('div', 'ptr ptr--dim', '（还没有取出任何数对）'));
+      } else {
+        step.taken.forEach(function (p, k) {
+          const col = Demo.el('div', 'col');
+          const c = Demo.el('div', 'cell', '(' + NUMS1[p.i] + ',' + NUMS2[p.j] + ')');
+          if (step.done) c.classList.add('is-ok');
+          else c.classList.add('is-info');
+          col.appendChild(c);
+          col.appendChild(Demo.el('div', 'ptr ptr--dim', '第' + (k + 1) + ' 小'));
+          rrow.appendChild(col);
+        });
+      }
+      resPanel.appendChild(rrow);
+      if (step.done) {
+        resPanel.appendChild(Demo.el('div', 'row', '<span class="tag tag--ok">答案 = [' +
+          step.taken.map(function (p) { return '(' + NUMS1[p.i] + ',' + NUMS2[p.j] + ')'; }).join(', ') + ']</span>'));
+      }
+      ctx.stage.appendChild(resPanel);
+    }
+  });
+  return Demo.__config
+}

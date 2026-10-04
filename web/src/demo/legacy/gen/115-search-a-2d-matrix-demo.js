@@ -1,0 +1,181 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/115-search-a-2d-matrix-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const MATRIX = [
+    [1, 3, 5, 7],
+    [10, 11, 16, 20],
+    [23, 30, 34, 60]
+  ];
+  const TARGET = 3;
+  const M = MATRIX.length;
+  const N = MATRIX[0].length;
+  const TOTAL = M * N;
+  
+  function buildSteps() {
+    const steps = [];
+    let left = 0;
+    let right = TOTAL - 1;      // 一维下标区间 [left, right]，闭区间
+    let checks = 0;
+    let hitMid = -1;
+  
+    steps.push({
+      left: left, right: right, mid: -1, r: -1, c: -1, midVal: null, cmp: null,
+      checks: checks, found: false, done: false,
+      note: `题目保证「行内升序」且「下一行行首大于上一行行尾」，所以把 ${M} × ${N} 的矩阵按行首尾相接展开，就得到一个长度为 ${M} × ${N} = ${TOTAL} 的升序数组。于是问题变成在一维数组上二分：区间 [left, right] = [0, ${TOTAL - 1}]，target = ${TARGET}。`
+    });
+  
+    while (left <= right) {
+      const mid = left + Math.floor((right - left) / 2);
+      const r = Math.floor(mid / N);
+      const c = mid % N;
+      const val = MATRIX[r][c];
+      checks += 1;
+  
+      if (val === TARGET) {
+        hitMid = mid;
+        steps.push({
+          left: left, right: right, mid: mid, r: r, c: c, midVal: val, cmp: 'eq',
+          checks: checks, found: true, done: false, hit: mid,
+          note: `第 ${checks} 次比较：mid = ${mid}，映射回二维是 r = ⌊${mid} / ${N}⌋ = ${r}、c = ${mid} % ${N} = ${c}，即 matrix[${r}][${c}] = ${val}，正好等于 target = ${TARGET}，搜索成功，直接返回 true。`
+        });
+        break;
+      }
+  
+      if (val < TARGET) {
+        const oldLeft = left;
+        left = mid + 1;
+        steps.push({
+          left: left, right: right, mid: mid, r: r, c: c, midVal: val, cmp: 'lt',
+          checks: checks, found: false, done: false,
+          note: `第 ${checks} 次比较：mid = ${mid}，映射为 matrix[${r}][${c}] = ${val} < target = ${TARGET}。展开后的一维数组升序，所以 mid 及它左边全都太小，丢掉 [${oldLeft}, ${mid}]，令 left = mid + 1 = ${left}。`
+        });
+      } else {
+        const oldRight = right;
+        right = mid - 1;
+        steps.push({
+          left: left, right: right, mid: mid, r: r, c: c, midVal: val, cmp: 'gt',
+          checks: checks, found: false, done: false,
+          note: `第 ${checks} 次比较：mid = ${mid}，映射为 matrix[${r}][${c}] = ${val} > target = ${TARGET}。mid 及它右边全都太大，丢掉 [${mid}, ${oldRight}]，令 right = mid − 1 = ${right}。`
+        });
+      }
+    }
+  
+    const found = hitMid >= 0;
+    steps.push({
+      left: left, right: right, mid: hitMid, r: hitMid >= 0 ? Math.floor(hitMid / N) : -1,
+      c: hitMid >= 0 ? hitMid % N : -1, midVal: found ? TARGET : null, cmp: null,
+      checks: checks, found: found, done: true, hit: hitMid,
+      note: found
+        ? `命中后返回，一共比较 ${checks} 次。查找范围从 ${TOTAL} 个元素缩到 1 个，时间复杂度 O(log(m × n)) = O(log ${TOTAL})；坐标只用了 mid / N 与 mid % N 两个算式，空间复杂度 O(1)。答案就是 matrix[${Math.floor(hitMid / N)}][${hitMid % N}] = ${TARGET}。`
+        : `left = ${left} > right = ${right}，一维区间为空，说明整个矩阵里没有 ${TARGET}，返回 false。一共比较 ${checks} 次，时间复杂度 O(log(m × n))，空间复杂度 O(1)。`
+    });
+  
+    return steps;
+  }
+  
+  function flatRow(step) {
+    const row = Demo.el('div', 'row');
+    for (let idx = 0; idx < TOTAL; idx++) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(MATRIX[Math.floor(idx / N)][idx % N]));
+  
+      if (step.done && step.found && idx === step.hit) cell.classList.add('is-ok');
+      else if (idx === step.mid) cell.classList.add('is-active');
+      else if (idx >= step.left && idx <= step.right) cell.classList.add('is-info');
+      else cell.classList.add('is-dim');
+      col.appendChild(cell);
+  
+      const labels = [];
+      if (idx === step.left) labels.push('left');
+      if (idx === step.right) labels.push('right');
+      if (idx === step.mid) labels.push('mid');
+      const ptr = Demo.el('div', 'ptr', labels.length ? labels.join(' ') : '#' + idx);
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (idx === step.mid) ptr.classList.add('ptr--warn');
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+    }
+    return row;
+  }
+  
+  function gridView(step) {
+    const grid = Demo.el('div', 'grid');
+    grid.style.gridTemplateColumns = 'repeat(' + N + ', 52px)';
+  
+    for (let r = 0; r < M; r++) {
+      for (let c = 0; c < N; c++) {
+        const idx = r * N + c;
+        const cell = Demo.el('div', 'grid-cell');
+        cell.style.flexDirection = 'column';
+        cell.innerHTML = '<span>' + Demo.esc(MATRIX[r][c]) + '</span>' +
+          '<span style="font-size:9px;font-weight:400;color:var(--demo-muted)">' + idx + '</span>';
+  
+        if (step.done && step.found && idx === step.hit) cell.classList.add('is-ok');
+        else if (idx === step.mid) cell.classList.add('is-active');
+        else if (idx < step.left || idx > step.right) cell.classList.add('is-dim');
+        grid.appendChild(cell);
+      }
+    }
+    return grid;
+  }
+  
+  Demo.create({
+    title: '115. 搜索二维矩阵 — 展平成一维数组再二分',
+    info: `输入：matrix = [[1,3,5,7],[10,11,16,20],[23,30,34,60]]，target = ${TARGET}（示例 1）。矩阵行内升序且行首大于前行行尾，因此按行展开就是严格递增的一维数组。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 440,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'mid 指向的元素（当前比较）' },
+      { color: 'var(--demo-info)', label: '一维候选区间 [left, right]' },
+      { color: 'var(--demo-ok)', label: '命中 target 的格子' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const flatPanel = Demo.el('div', 'panel');
+      flatPanel.style.width = '100%';
+      flatPanel.appendChild(Demo.el('div', 'panel__title', '把矩阵按行展开成的一维数组（下标 0 … ' + (TOTAL - 1) + '）'));
+      flatPanel.appendChild(flatRow(step));
+      ctx.stage.appendChild(flatPanel);
+  
+      const gridPanel = Demo.el('div', 'panel');
+      gridPanel.appendChild(Demo.el('div', 'panel__title', '原始矩阵（右下角小字是一维下标，便于核对映射）'));
+      gridPanel.appendChild(gridView(step));
+      ctx.stage.appendChild(gridPanel);
+  
+      const mapPanel = Demo.el('div', 'panel');
+      mapPanel.style.width = '100%';
+      mapPanel.appendChild(Demo.el('div', 'panel__title', '坐标映射'));
+      let mapHtml;
+      if (step.mid < 0) {
+        mapHtml = '还没取中点。取到 mid 后，用 r = ⌊mid / n⌋、c = mid % n 把它翻译成矩阵的行列号。';
+      } else {
+        mapHtml = `mid = <code>${step.mid}</code> → 行 r = ⌊${step.mid} / ${N}⌋ = <code>${step.r}</code>，` +
+          `列 c = ${step.mid} % ${N} = <code>${step.c}</code> → matrix[${step.r}][${step.c}] = <code>${step.midVal}</code>` +
+          (step.cmp === 'eq' ? ' &nbsp;<span class="tag tag--ok">命中 target，查找结束</span>'
+            : step.cmp === 'lt' ? ' &nbsp;<span class="tag tag--bad">偏小 → 往右找</span>'
+              : step.cmp === 'gt' ? ' &nbsp;<span class="tag tag--warn">偏大 → 往左找</span>'
+                : ' &nbsp;<span class="tag tag--info">这就是最后一次比较的落点</span>');
+      }
+      mapPanel.appendChild(Demo.el('div', null, mapHtml));
+      ctx.stage.appendChild(mapPanel);
+  
+      const result = Demo.el('div', 'panel',
+        `已比较 <strong>${step.checks}</strong> 次 ｜ 一维区间 <code>[${step.left}, ${step.right}]</code>` +
+        (step.done
+          ? (step.found
+            ? ` &nbsp;<span class="tag tag--ok">返回 true</span>`
+            : ` &nbsp;<span class="tag tag--bad">返回 false</span>`)
+          : ''));
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

@@ -1,0 +1,180 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/57-linked-list-cycle-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const VALUES = [3, 2, 0, -4];
+  const POS = 1;
+  
+  function nextOf(i) {
+    if (i == null || i < 0 || i >= VALUES.length) return null;
+    return i === VALUES.length - 1 ? POS : i + 1;
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    let slow = 0;
+    let fast = 0;
+    let iter = 0;
+  
+    steps.push({
+      slow: slow, fast: fast, iter: iter, meet: false, done: false,
+      note: '初始化：slow 与 fast 都指向头节点（值为 ' + VALUES[0] + '）。slow 每轮走 1 步，fast 每轮走 2 步。为表示环，尾节点 ' + VALUES[VALUES.length - 1] + ' 的 next 回指下标 ' + POS + ' 的节点（即 pos = ' + POS + '）。'
+    });
+  
+    while (true) {
+      if (fast == null || nextOf(fast) == null) {
+        steps.push({
+          slow: slow, fast: fast, iter: iter, meet: false, done: true,
+          note: 'fast 走到了空节点（fast == nil 或 fast.Next == nil），链表有终点，判定无环，返回 false。'
+        });
+        break;
+      }
+  
+      const slowFrom = slow;
+      const fastFrom = fast;
+      slow = nextOf(slow);
+      fast = nextOf(nextOf(fastFrom));
+      iter += 1;
+      const meet = slow === fast;
+  
+      let note = '第 ' + iter + ' 轮：slow 从 ' + VALUES[slowFrom] + ' 走 1 步到 ' + VALUES[slow] +
+        '；fast 从 ' + VALUES[fastFrom] + ' 走 2 步到 ' + VALUES[fast] + '。';
+      if (meet) {
+        note += 'slow == fast，两指针相遇，说明 fast 在环里追上了 slow，链表有环。';
+      } else {
+        note += '此时 slow(' + VALUES[slow] + ') != fast(' + VALUES[fast] + ')，继续前进。fast 每轮比 slow 多走 1 步，一旦进入环，两者的距离每轮缩短 1，必然追上而不会跳过。';
+      }
+  
+      steps.push({ slow: slow, fast: fast, iter: iter, meet: meet, done: false, note: note });
+  
+      if (meet) {
+        steps.push({
+          slow: slow, fast: fast, iter: iter, meet: true, done: true,
+          note: '结论：快慢指针在值为 ' + VALUES[slow] + ' 的节点相遇，链表存在环，返回 true。全程只用了两个指针，时间 O(n)、额外空间 O(1)。'
+        });
+        break;
+      }
+      if (iter > 50) break;
+    }
+  
+    return steps;
+  }
+  
+  function buildSvg(step) {
+    const n = VALUES.length;
+    const nodeW = 100;
+    const nodeH = 56;
+    const nodeY = 64;
+    const gap = 80;
+    const left = i => 50 + i * (nodeW + gap);
+    const cx = i => left(i) + nodeW / 2;
+    const cy = nodeY + nodeH / 2;
+  
+    let s = '<svg viewBox="0 0 780 214" style="width:100%;height:auto;max-width:780px">';
+    s += '<defs>';
+    s += '<marker id="arwNext" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">' +
+      '<path d="M0,0 L10,5 L0,10 Z" style="fill:var(--demo-muted)"/></marker>';
+    s += '<marker id="arwCycle" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">' +
+      '<path d="M0,0 L10,5 L0,10 Z" style="fill:var(--demo-warn)"/></marker>';
+    s += '</defs>';
+  
+    for (let i = 0; i + 1 < n; i++) {
+      s += '<line x1="' + (left(i) + nodeW) + '" y1="' + cy + '" x2="' + left(i + 1) + '" y2="' + cy +
+        '" style="stroke:var(--demo-muted)" stroke-width="2" marker-end="url(#arwNext)"/>';
+    }
+  
+    const tailX = left(n - 1) + nodeW - 17;
+    const targetX = left(POS) + nodeW - 17;
+    s += '<polyline points="' + tailX + ',' + (nodeY + nodeH) + ' ' + tailX + ',188 ' + targetX + ',188 ' + targetX + ',' + (nodeY + nodeH) + '" ' +
+      'fill="none" style="stroke:var(--demo-warn)" stroke-width="2" marker-end="url(#arwCycle)"/>';
+    s += '<text x="' + ((tailX + targetX) / 2) + '" y="206" text-anchor="middle" ' +
+      'style="fill:var(--demo-warn);font:600 12px var(--demo-mono)">尾节点回指 pos=' + POS + '</text>';
+  
+    for (let i = 0; i < n; i++) {
+      let fill = 'var(--demo-card)';
+      let stroke = 'var(--demo-border)';
+      if (step.meet && i === step.slow) {
+        fill = 'var(--demo-ok-soft)';
+        stroke = 'var(--demo-ok)';
+      } else if (i === step.slow) {
+        fill = 'var(--demo-accent-soft)';
+        stroke = 'var(--demo-accent)';
+      } else if (i === step.fast) {
+        fill = 'var(--demo-pink-soft)';
+        stroke = 'var(--demo-pink)';
+      }
+      const x = left(i);
+      s += '<rect x="' + x + '" y="' + nodeY + '" width="' + nodeW + '" height="' + nodeH + '" rx="8" ' +
+        'style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2.5"/>';
+      s += '<line x1="' + (x + nodeW - 34) + '" y1="' + nodeY + '" x2="' + (x + nodeW - 34) + '" y2="' + (nodeY + nodeH) +
+        '" style="stroke:var(--demo-border)" stroke-width="1.5"/>';
+      s += '<text x="' + (x + 33) + '" y="' + (nodeY + 36) + '" text-anchor="middle" ' +
+        'style="fill:var(--demo-text);font:600 17px var(--demo-mono)">' + VALUES[i] + '</text>';
+      s += '<circle cx="' + (x + nodeW - 17) + '" cy="' + cy + '" r="6" style="fill:' + stroke + '"/>';
+      s += '<text x="' + cx(i) + '" y="' + (nodeY + nodeH + 16) + '" text-anchor="middle" ' +
+        'style="fill:var(--demo-muted);font:11px var(--demo-mono)">[' + i + ']</text>';
+    }
+  
+    function marker(x, label, colorVar) {
+      return '<text x="' + x + '" y="' + (nodeY - 32) + '" text-anchor="middle" ' +
+        'style="fill:' + colorVar + ';font:700 12px var(--demo-mono)">' + label + '</text>' +
+        '<polygon points="' + (x - 7) + ',' + (nodeY - 24) + ' ' + (x + 7) + ',' + (nodeY - 24) + ' ' + x + ',' + (nodeY - 10) + '" ' +
+        'style="fill:' + colorVar + '"/>';
+    }
+  
+    if (step.meet) {
+      s += marker(cx(step.slow), 'slow · fast 相遇', 'var(--demo-ok)');
+    } else if (step.slow === step.fast) {
+      s += marker(cx(step.slow) - 26, 'slow', 'var(--demo-accent)');
+      s += marker(cx(step.fast) + 26, 'fast', 'var(--demo-pink)');
+    } else {
+      s += marker(cx(step.slow), 'slow', 'var(--demo-accent)');
+      s += marker(cx(step.fast), 'fast', 'var(--demo-pink)');
+    }
+  
+    s += '</svg>';
+    return s;
+  }
+  
+  Demo.create({
+    title: '57. 环形链表 — Floyd 快慢指针判圈',
+    info: '输入：head = [' + VALUES.join(', ') + ']，pos = ' + POS + '（尾节点 ' + VALUES[VALUES.length - 1] +
+      ' 连回下标 ' + POS + ' 的节点）。只维护 slow、fast 两个指针，额外空间 O(1)。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 340,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'slow：每轮走 1 步' },
+      { color: 'var(--demo-pink)', label: 'fast：每轮走 2 步' },
+      { color: 'var(--demo-ok)', label: '两指针相遇（有环）' },
+      { color: 'var(--demo-warn)', label: '尾节点回边' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.appendChild(Demo.el('div', 'panel__title', step.done ? '链表现状（判定完成）' : '链表现状与两个指针位置'));
+  
+      const holder = Demo.el('div');
+      holder.style.width = '100%';
+      holder.innerHTML = buildSvg(step);
+      panel.appendChild(holder);
+      ctx.stage.appendChild(panel);
+  
+      const tags = Demo.el('div', 'panel');
+      tags.style.width = '100%';
+      const row = Demo.el('div', 'row');
+      row.appendChild(Demo.el('span', 'tag' + (step.meet ? ' tag--ok' : ''), 'slow → 节点 ' + VALUES[step.slow]));
+      row.appendChild(Demo.el('span', 'tag' + (step.meet ? ' tag--ok' : ''), 'fast → 节点 ' + VALUES[step.fast]));
+      row.appendChild(Demo.el('span', 'tag tag--info', '已走 ' + step.iter + ' 轮'));
+      row.appendChild(Demo.el('span', 'tag ' + (step.done ? (step.meet ? 'tag--ok' : 'tag--info') : 'tag--warn'),
+        step.done ? (step.meet ? '判定：有环 true' : '判定：无环 false') : '继续比较'));
+      tags.appendChild(row);
+      ctx.stage.appendChild(tags);
+    }
+  });
+  return Demo.__config
+}

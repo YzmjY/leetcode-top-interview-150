@@ -1,0 +1,252 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/86-minimum-absolute-difference-in-bst-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const DATA = [4, 2, 6, 1, 3];
+  const GAP = 84;
+  
+  const NODES = [];
+  
+  function buildTree(arr) {
+    const nodes = arr.map((v, i) => (v == null ? null : { val: v, id: i, left: null, right: null }));
+    nodes.forEach(n => { if (n) NODES[n.id] = n; });
+    if (!nodes.length || !nodes[0]) return null;
+    const queue = [nodes[0]];
+    let next = 1;
+    while (queue.length > 0 && next < nodes.length) {
+      const node = queue.shift();
+      node.left = next < nodes.length ? (nodes[next++] || null) : null;
+      if (node.left) queue.push(node.left);
+      node.right = next < nodes.length ? (nodes[next++] || null) : null;
+      if (node.right) queue.push(node.right);
+    }
+    return nodes[0];
+  }
+  
+  const ROOT = buildTree(DATA);
+  
+  function layout(root) {
+    const pos = [];
+    let order = 0;
+    let maxDepth = 0;
+    (function walk(node, depth) {
+      if (!node) return;
+      walk(node.left, depth + 1);
+      pos[node.id] = { x: 0, y: 0, order: order, depth: depth };
+      order += 1;
+      if (depth > maxDepth) maxDepth = depth;
+      walk(node.right, depth + 1);
+    })(root, 0);
+    const width = 660;
+    const startX = (width - (order - 1) * GAP) / 2;
+    pos.forEach(p => {
+      p.x = startX + p.order * GAP;
+      p.y = 46 + p.depth * 84;
+    });
+    return { pos: pos, width: width, height: 46 + maxDepth * 84 + 46, maxDepth: maxDepth };
+  }
+  
+  const LAYOUT = layout(ROOT);
+  
+  function labelOf(id) {
+    return NODES[id] ? NODES[id].val : '?';
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const stack = [];
+    const popped = [];
+    const seq = [];
+    let cur = null;
+    let prevNode = null;
+    let minDiff = null;
+    let lastDiff = null;
+    let improved = false;
+    let bestIndex = -1;
+  
+    function snap(note, extra) {
+      const step = {
+        stack: stack.map(n => n.id),
+        popped: popped.slice(),
+        seq: seq.map(item => ({ val: item.val, diff: item.diff })),
+        cur: cur,
+        prevNode: prevNode ? prevNode.id : null,
+        minDiff: minDiff,
+        lastDiff: lastDiff,
+        improved: improved,
+        bestIndex: bestIndex,
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    cur = ROOT;
+    snap('初始状态：用栈做中序遍历。BST 的中序序列是升序的，而升序序列中「差值最小的一对」一定出现在相邻两个元素之间，所以只需比较中序相邻节点。minDiff 初始为 ∞，prev 表示上一个访问过的节点。');
+  
+    while (cur || stack.length > 0) {
+      while (cur) {
+        stack.push(cur);
+        const pushed = cur;
+        cur = cur.left;
+        improved = false;
+        lastDiff = null;
+        snap('节点 ' + pushed.val + ' 压入栈（中序要先走完左子树），cur 移到它的左孩子。栈里保存的是「还没访问自己」的祖先。');
+      }
+  
+      const node = stack.pop();
+      cur = node;
+      seq.push({ val: node.val, diff: null });
+      improved = false;
+      lastDiff = null;
+      let note;
+      if (prevNode == null) {
+        note = '弹出栈顶节点 ' + node.val + '：这是中序序列的第一个节点，前面没有 prev，无法比较，先把它记为 prev。';
+      } else {
+        lastDiff = Math.abs(node.val - prevNode.val);
+        seq[seq.length - 1].diff = lastDiff;
+        if (minDiff == null || lastDiff < minDiff) {
+          minDiff = lastDiff;
+          improved = true;
+          bestIndex = seq.length - 1;
+        }
+        note = '弹出栈顶节点 ' + node.val + '，与中序前驱 ' + prevNode.val + ' 作差：|' + node.val + ' - ' + prevNode.val +
+          '| = ' + lastDiff + (improved
+            ? '，比当前的 minDiff 更小 → 更新答案为 ' + minDiff + '。'
+            : '，没有比当前的 minDiff = ' + minDiff + ' 更小，答案保持不变。');
+      }
+      popped.push(node.id);
+      snap(note);
+  
+      prevNode = node;
+      cur = node.right;
+    }
+  
+    snap('栈已空，所有节点都按中序访问过一遍。minDiff = ' + minDiff +
+      '，就是全树任意两节点值之差的最小值。中序只走一趟，时间 O(n)，递归/栈深度 O(h)。', { done: true });
+    return steps;
+  }
+  
+  function treeSvg(step) {
+    const L = LAYOUT;
+    let out = '';
+  
+    NODES.forEach(node => {
+      if (!node) return;
+      ['left', 'right'].forEach(side => {
+        const child = node[side];
+        if (!child) return;
+        const p = L.pos[node.id];
+        const q = L.pos[child.id];
+        out += '<line x1="' + p.x + '" y1="' + (p.y + 24) + '" x2="' + q.x + '" y2="' + (q.y - 24) +
+          '" style="stroke:var(--demo-border);stroke-width:2"/>';
+      });
+    });
+  
+    NODES.forEach(node => {
+      if (!node) return;
+      const p = L.pos[node.id];
+      let fill = 'var(--demo-subtle)';
+      let stroke = 'var(--demo-border)';
+      let text = 'var(--demo-text)';
+      let ring = null;
+      if (step.stack.indexOf(node.id) >= 0) { fill = 'var(--demo-info-soft)'; stroke = 'var(--demo-info)'; text = 'var(--demo-info)'; }
+      if (step.popped.indexOf(node.id) >= 0) { fill = 'var(--demo-ok-soft)'; stroke = 'var(--demo-ok)'; text = 'var(--demo-ok)'; }
+      if (step.prevNode === node.id) { fill = 'var(--demo-violet-soft)'; stroke = 'var(--demo-violet)'; text = 'var(--demo-violet)'; }
+      if (step.cur === node.id) { fill = 'var(--demo-accent-soft)'; stroke = 'var(--demo-accent)'; text = 'var(--demo-accent-strong)'; }
+      if (step.lastDiff != null && step.cur === node.id) {
+        fill = 'var(--demo-accent)';
+        stroke = 'var(--demo-accent)';
+        text = 'var(--demo-card)';
+        ring = 'var(--demo-accent)';
+      }
+      if (ring) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="29" style="fill:none;stroke:' + ring + ';stroke-width:3"/>';
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="24" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:2.5"/>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 6) + '" text-anchor="middle" style="fill:' + text +
+        ';font:600 16px sans-serif">' + node.val + '</text>';
+    });
+  
+    return '<div style="width:100%"><svg viewBox="0 0 ' + L.width + ' ' + L.height +
+      '" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+  }
+  
+  Demo.create({
+    title: '86. BST 的最小绝对差 — 中序遍历比较相邻值',
+    info: 'root = [4,2,6,1,3]，期望输出 1。中序序列 [1,2,3,4,6] 升序，最小差必然出现在相邻两数之间。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 520,
+    legend: [
+      { color: 'var(--demo-info)', label: '栈中待访问' },
+      { color: 'var(--demo-accent)', label: '本次比较的节点' },
+      { color: 'var(--demo-violet)', label: '中序前驱 prev' },
+      { color: 'var(--demo-ok)', label: '已访问 / 最优的一对' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = treeSvg(step);
+      ctx.stage.appendChild(wrap);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-end';
+  
+      const stackPanel = Demo.el('div', 'panel');
+      stackPanel.appendChild(Demo.el('div', 'panel__title', '中序栈（栈顶在下方）'));
+      const stackBox = Demo.el('div', 'stack');
+      if (step.stack.length === 0) {
+        stackBox.appendChild(Demo.el('div', 'stack__item', '（空）'));
+      } else {
+        step.stack.forEach((id, k) => {
+          const item = Demo.el('div', 'stack__item', labelOf(id));
+          if (k === step.stack.length - 1) item.classList.add('is-active');
+          stackBox.appendChild(item);
+        });
+      }
+      stackPanel.appendChild(stackBox);
+  
+      const statePanel = Demo.el('div', 'panel');
+      statePanel.appendChild(Demo.el('div', 'panel__title', '状态'));
+      statePanel.appendChild(Demo.el('div', null,
+        'prev = <strong>' + (step.prevNode == null ? '—' : labelOf(step.prevNode)) + '</strong>'));
+      statePanel.appendChild(Demo.el('div', null,
+        '当前差值 = <strong>' + (step.lastDiff == null ? '—' : step.lastDiff) + '</strong>'));
+      statePanel.appendChild(Demo.el('div', null,
+        'minDiff = <strong>' + (step.minDiff == null ? '∞' : step.minDiff) + '</strong>'));
+      statePanel.appendChild(Demo.el('div', null, step.done
+        ? '<span class="tag tag--ok">答案 ' + step.minDiff + '</span>'
+        : (step.improved ? '<span class="tag tag--ok">本步更新了答案</span>' : '<span class="tag tag--info">继续中序遍历</span>')));
+  
+      row.appendChild(stackPanel);
+      row.appendChild(statePanel);
+      ctx.stage.appendChild(row);
+  
+      const seqPanel = Demo.el('div', 'panel');
+      seqPanel.style.width = '100%';
+      seqPanel.appendChild(Demo.el('div', 'panel__title', '中序序列（下方数字是与前一个元素的差）'));
+      const srow = Demo.el('div', 'row');
+      if (step.seq.length === 0) {
+        srow.appendChild(Demo.el('span', 'ptr ptr--dim', '（还没有访问任何节点）'));
+      } else {
+        step.seq.forEach((item, k) => {
+          const col = Demo.el('div', 'col');
+          const cell = Demo.el('div', 'cell', Demo.esc(item.val));
+          if (k === step.seq.length - 1) cell.classList.add('is-active');
+          if (step.bestIndex >= 0 && (k === step.bestIndex || k === step.bestIndex - 1)) cell.classList.add('is-ok');
+          col.appendChild(cell);
+          col.appendChild(Demo.el('div', 'ptr' + (item.diff == null ? ' ptr--dim' : (k === step.bestIndex ? ' ptr--ok' : '')),
+            item.diff == null ? '—' : 'Δ' + item.diff));
+          srow.appendChild(col);
+        });
+      }
+      seqPanel.appendChild(srow);
+      ctx.stage.appendChild(seqPanel);
+    }
+  });
+  return Demo.__config
+}

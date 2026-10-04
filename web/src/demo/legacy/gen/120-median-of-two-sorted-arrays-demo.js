@@ -1,0 +1,310 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/120-median-of-two-sorted-arrays-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS1 = [1, 3];
+  const NUMS2 = [2];
+  
+  function fmt(v) {
+    if (v === -Infinity) return '−∞';
+    if (v === Infinity) return '+∞';
+    return String(v);
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    let A = NUMS1.slice();
+    let B = NUMS2.slice();
+    let swapped = false;
+    if (A.length > B.length) {
+      const t = A; A = B; B = t;
+      swapped = true;
+    }
+    const m = A.length;
+    const n = B.length;
+    const halfLen = Math.floor((m + n + 1) / 2);
+    const aName = swapped ? 'nums2' : 'nums1';
+    const bName = swapped ? 'nums1' : 'nums2';
+  
+    let left = 0;
+    let right = m;
+    let checks = 0;
+    let answer = null;
+    let found = false;
+    let foundStep = null;
+  
+    steps.push({
+      A: A, B: B, aName: aName, bName: bName, left: left, right: right, i: -1, j: -1,
+      aL: null, aR: null, bL: null, bR: null, cond1: null, cond2: null,
+      checks: 0, found: false, done: false, answer: null,
+      leftCells: [], rightCells: [],
+      note: `原 nums1 = [${NUMS1.join(', ')}]（长度 ${NUMS1.length}），nums2 = [${NUMS2.join(', ')}]（长度 ${NUMS2.length}）。` +
+        (swapped
+          ? `因为 nums1 比 nums2 长，先交换两者：把较短的 [${A.join(', ')}] 记作 A（来自 ${aName}），较长的 [${B.join(', ')}] 记作 B（来自 ${bName}）。只对较短的 A 二分，二分的次数就更少。`
+          : `A 就是 ${aName} = [${A.join(', ')}]，B 是 ${bName} = [${B.join(', ')}]。只对较短的 A 二分。`) +
+        ` 合并后共 ${m + n} 个元素，左半部分应有 halfLen = ⌊(${m} + ${n} + 1) / 2⌋ = ${halfLen} 个。设 A 分 i 个元素到左半，则 B 必须分 j = halfLen − i 个，所以 i 的搜索区间是 [0, m] = [0, ${m}]。`
+    });
+  
+    while (left <= right) {
+      const i = left + Math.floor((right - left) / 2);
+      const j = halfLen - i;
+      const aL = i === 0 ? -Infinity : A[i - 1];
+      const aR = i === m ? Infinity : A[i];
+      const bL = j === 0 ? -Infinity : B[j - 1];
+      const bR = j === n ? Infinity : B[j];
+      const cond1 = aL <= bR;
+      const cond2 = bL <= aR;
+      checks += 1;
+  
+      if (cond1 && cond2) {
+        found = true;
+        foundStep = {
+          A: A, B: B, aName: aName, bName: bName, left: left, right: right, i: i, j: j,
+          aL: aL, aR: aR, bL: bL, bR: bR, cond1: cond1, cond2: cond2,
+          checks: checks, found: true, done: false, answer: null,
+          leftCells: [], rightCells: [],
+          note: `第 ${checks} 次尝试：i = ${i}，j = halfLen − i = ${halfLen} − ${i} = ${j}。此时 A 的左半是 [${A.slice(0, i).join(', ') || '空'}]、右半是 [${A.slice(i).join(', ') || '空'}]；B 的左半是 [${B.slice(0, j).join(', ') || '空'}]、右半是 [${B.slice(j).join(', ') || '空'}]。` +
+            ` 四个边界值：ALmax = ${fmt(aL)}，ARmin = ${fmt(aR)}，BLmax = ${fmt(bL)}，BRmin = ${fmt(bR)}。` +
+            ` 检查交叉条件：ALmax = ${fmt(aL)} ≤ BRmin = ${fmt(bR)} ✓，BLmax = ${fmt(bL)} ≤ ARmin = ${fmt(aR)} ✓，两条都成立，说明左半部分的所有元素都不大于右半部分的所有元素，划分正确，可以计算中位数了。`
+        };
+        break;
+      }
+  
+      if (aL > bR) {
+        const oldRight = right;
+        right = i - 1;
+        steps.push({
+          A: A, B: B, aName: aName, bName: bName, left: left, right: right, i: i, j: j,
+          aL: aL, aR: aR, bL: bL, bR: bR, cond1: cond1, cond2: cond2,
+          checks: checks, found: false, done: false, answer: null,
+          leftCells: [], rightCells: [],
+          note: `第 ${checks} 次尝试：i = ${i}，j = halfLen − i = ${halfLen} − ${i} = ${j}。四个边界值 ALmax = ${fmt(aL)}，ARmin = ${fmt(aR)}，BLmax = ${fmt(bL)}，BRmin = ${fmt(bR)}。` +
+            ` 第一条交叉条件 ALmax ≤ BRmin 不满足：ALmax = ${fmt(aL)} > BRmin = ${fmt(bR)}，意思是 A 放进左半的元素太大了，连 B 右半最小的元素都比它小。这说明 i 取大了，要往左收，令 right = i − 1 = ${right}，搜索区间变成 [${left}, ${right}]。`
+        });
+      } else {
+        const oldLeft = left;
+        left = i + 1;
+        steps.push({
+          A: A, B: B, aName: aName, bName: bName, left: left, right: right, i: i, j: j,
+          aL: aL, aR: aR, bL: bL, bR: bR, cond1: cond1, cond2: cond2,
+          checks: checks, found: false, done: false, answer: null,
+          leftCells: [], rightCells: [],
+          note: `第 ${checks} 次尝试：i = ${i}，j = halfLen − i = ${halfLen} − ${i} = ${j}。四个边界值 ALmax = ${fmt(aL)}，ARmin = ${fmt(aR)}，BLmax = ${fmt(bL)}，BRmin = ${fmt(bR)}。` +
+            ` 第二条交叉条件 BLmax ≤ ARmin 不满足：BLmax = ${fmt(bL)} > ARmin = ${fmt(aR)}，意思是 B 放进左半的元素太多了，A 分给左半的个数不够。这说明 i 取小了，要往右扩，令 left = i + 1 = ${left}，搜索区间变成 [${left}, ${right}]。`
+        });
+      }
+    }
+  
+    if (found) {
+      const leftMax = Math.max(foundStep.aL, foundStep.bL);
+      const rightMin = Math.min(foundStep.aR, foundStep.bR);
+      const odd = (m + n) % 2 === 1;
+      answer = odd ? leftMax : (leftMax + rightMin) / 2;
+      const leftCells = [];
+      const rightCells = [];
+      if (foundStep.i > 0) leftCells.push({ arr: 'A', idx: foundStep.i - 1 });
+      if (foundStep.j > 0) leftCells.push({ arr: 'B', idx: foundStep.j - 1 });
+      if (foundStep.i < m) rightCells.push({ arr: 'A', idx: foundStep.i });
+      if (foundStep.j < n) rightCells.push({ arr: 'B', idx: foundStep.j });
+  
+      foundStep.leftCells = leftCells;
+      foundStep.rightCells = rightCells;
+      steps.push(foundStep);
+  
+      steps.push({
+        A: A, B: B, aName: aName, bName: bName, left: left, right: right,
+        i: foundStep.i, j: foundStep.j,
+        aL: foundStep.aL, aR: foundStep.aR, bL: foundStep.bL, bR: foundStep.bR,
+        cond1: true, cond2: true, checks: checks, found: true, done: true, answer: answer,
+        leftCells: leftCells, rightCells: rightCells,
+        note: `划分正确后计算中位数。左半部分的最大值是 max(ALmax, BLmax) = max(${fmt(foundStep.aL)}, ${fmt(foundStep.bL)}) = ${fmt(leftMax)}，右半部分的最小值是 min(ARmin, BRmin) = min(${fmt(foundStep.aR)}, ${fmt(foundStep.bR)}) = ${fmt(rightMin)}。` +
+          (odd
+            ? ` 总共 ${m + n} 个元素是奇数个，左半比右半多一个，中位数就是左半的最大值 ${fmt(leftMax)}。`
+            : ` 总共 ${m + n} 个元素是偶数个，中位数取中间两个的平均值 (${fmt(leftMax)} + ${fmt(rightMin)}) / 2 = ${answer}。`) +
+          ` 全程只对长度 ${m} 的 A 做了 ${checks} 次二分，时间复杂度 O(log(min(m, n)))，只用常数个变量，空间复杂度 O(1)。`
+      });
+    } else {
+      steps.push({
+        A: A, B: B, aName: aName, bName: bName, left: left, right: right, i: -1, j: -1,
+        aL: null, aR: null, bL: null, bR: null, cond1: null, cond2: null,
+        checks: checks, found: false, done: true, answer: null,
+        leftCells: [], rightCells: [],
+        note: `搜索区间为空仍未找到合法划分，返回 0。`
+      });
+    }
+  
+    return steps;
+  }
+  
+  function partitionView(step) {
+    const W = 620;
+    const H = 322;
+    const cw = 58;
+    const ch = 42;
+    const Ay = 74;
+    const By = 218;
+    const A = step.A;
+    const B = step.B;
+    const m = A.length;
+    const n = B.length;
+    const x0A = (W - m * cw) / 2;
+    const x0B = (W - n * cw) / 2;
+    const hasCut = step.i >= 0;
+  
+    const parts = [];
+    parts.push('<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:620px;height:auto;display:block" role="img">');
+  
+    function drawRow(arr, x0, y, cut, name, note, leftCells, rightCells) {
+      const titleY = y - 46;
+      parts.push('<text x="14" y="' + titleY +
+        '" text-anchor="start" style="fill:var(--demo-muted);font-size:12px;font-weight:700">' + name + '</text>');
+      parts.push('<text x="' + (W - 14) + '" y="' + titleY +
+        '" text-anchor="end" style="fill:var(--demo-muted);font-size:11px;font-family:var(--demo-mono)">' + note + '</text>');
+  
+      for (let k = 0; k < arr.length; k++) {
+        const x = x0 + k * cw;
+        const isLeft = cut >= 0 && k < cut;
+        let fill = isLeft ? 'var(--demo-violet-soft)' : 'var(--demo-info-soft)';
+        let stroke = isLeft ? 'var(--demo-violet)' : 'var(--demo-info)';
+        let width = 2;
+  
+        if (leftCells.indexOf(k) >= 0) { fill = 'var(--demo-ok-soft)'; stroke = 'var(--demo-ok)'; width = 3; }
+        if (rightCells.indexOf(k) >= 0) { fill = 'var(--demo-warn-soft)'; stroke = 'var(--demo-warn)'; width = 3; }
+  
+        parts.push('<rect x="' + (x + 4) + '" y="' + y + '" width="' + (cw - 8) + '" height="' + ch +
+          '" rx="7" style="fill:' + fill + ';stroke:' + stroke + ';stroke-width:' + width + '"/>');
+        parts.push('<text x="' + (x + cw / 2) + '" y="' + (y + ch / 2 + 6) +
+          '" text-anchor="middle" style="fill:var(--demo-text);font-size:17px;font-weight:700;font-family:var(--demo-mono)">' + arr[k] + '</text>');
+      }
+  
+      if (cut >= 0) {
+        const cx = x0 + cut * cw;
+        parts.push('<line x1="' + cx + '" y1="' + (y - 20) + '" x2="' + cx + '" y2="' + (y + ch + 16) +
+          '" style="stroke:var(--demo-accent);stroke-width:2.5;stroke-dasharray:6 4"/>');
+        parts.push('<text x="' + cx + '" y="' + (y - 26) +
+          '" text-anchor="middle" style="fill:var(--demo-accent);font-size:11px;font-weight:700;font-family:var(--demo-mono)">' +
+          (arr === A ? 'i = ' + step.i : 'j = ' + step.j) + '</text>');
+      }
+    }
+  
+    drawRow(A, x0A, Ay, hasCut ? step.i : -1,
+      'A = [' + A.join(', ') + ']（来自 ' + step.aName + '，较短，二分对象）',
+      '左半 ' + (hasCut ? step.i : '?') + ' 个 · 右半 ' + (hasCut ? m - step.i : '?') + ' 个',
+      step.leftCells.filter(function (c) { return c.arr === 'A'; }).map(function (c) { return c.idx; }),
+      step.rightCells.filter(function (c) { return c.arr === 'A'; }).map(function (c) { return c.idx; }));
+  
+    drawRow(B, x0B, By, hasCut ? step.j : -1,
+      'B = [' + B.join(', ') + ']（来自 ' + step.bName + '，较长）',
+      '左半 ' + (hasCut ? step.j : '?') + ' 个 · 右半 ' + (hasCut ? n - step.j : '?') + ' 个',
+      step.leftCells.filter(function (c) { return c.arr === 'B'; }).map(function (c) { return c.idx; }),
+      step.rightCells.filter(function (c) { return c.arr === 'B'; }).map(function (c) { return c.idx; }));
+  
+    if (hasCut) {
+      const cxa = x0A + step.i * cw;
+      const cxb = x0B + step.j * cw;
+      parts.push('<text x="' + (cxa - 8) + '" y="' + (Ay + ch + 30) + '" text-anchor="end" style="fill:var(--demo-violet);font-size:11px;font-weight:700;font-family:var(--demo-mono)">ALmax = ' + fmt(step.aL) + '</text>');
+      parts.push('<text x="' + (cxa + 8) + '" y="' + (Ay + ch + 30) + '" text-anchor="start" style="fill:var(--demo-info);font-size:11px;font-weight:700;font-family:var(--demo-mono)">ARmin = ' + fmt(step.aR) + '</text>');
+      parts.push('<text x="' + (cxb - 8) + '" y="' + (By + ch + 30) + '" text-anchor="end" style="fill:var(--demo-violet);font-size:11px;font-weight:700;font-family:var(--demo-mono)">BLmax = ' + fmt(step.bL) + '</text>');
+      parts.push('<text x="' + (cxb + 8) + '" y="' + (By + ch + 30) + '" text-anchor="start" style="fill:var(--demo-info);font-size:11px;font-weight:700;font-family:var(--demo-mono)">BRmin = ' + fmt(step.bR) + '</text>');
+    } else {
+      parts.push('<text x="' + (W / 2) + '" y="' + (H - 44) +
+        '" text-anchor="middle" style="fill:var(--demo-muted);font-size:12px">还没有开始划分：先把较短的数组排前面，再决定第一刀 i 切在哪里</text>');
+    }
+  
+    parts.push('<text x="' + (W / 2) + '" y="' + (H - 12) +
+      '" text-anchor="middle" style="fill:var(--demo-muted);font-size:11px">虚线是分割线：它左边的元素全部进入合并后数组的左半部分</text>');
+  
+    parts.push('</svg>');
+  
+    const box = Demo.el('div', 'col');
+    box.style.width = '100%';
+    box.innerHTML = parts.join('');
+    return box;
+  }
+  
+  function boundaryTable(step) {
+    const t = Demo.el('table', 'map-table');
+  
+    const thead = Demo.el('thead');
+    const hr = Demo.el('tr');
+    ['边界值', '来源', '数值', '检查'].forEach(function (h) { hr.appendChild(Demo.el('th', null, h)); });
+    thead.appendChild(hr);
+    t.appendChild(thead);
+  
+    const tbody = Demo.el('tbody');
+    function addRow(cells, active) {
+      const tr = Demo.el('tr');
+      if (active) tr.classList.add('is-active');
+      cells.forEach(function (c) { tr.appendChild(Demo.el('td', null, Demo.esc(c))); });
+      tbody.appendChild(tr);
+    }
+  
+    const has = step.i >= 0;
+    addRow(['ALmax（A 左半最大）', has && step.i > 0 ? 'A[' + (step.i - 1) + ']' : '空 → −∞', has ? fmt(step.aL) : '—'], has);
+    addRow(['ARmin（A 右半最小）', has && step.i < step.A.length ? 'A[' + step.i + ']' : '空 → +∞', has ? fmt(step.aR) : '—'], has);
+    addRow(['BLmax（B 左半最大）', has && step.j > 0 ? 'B[' + (step.j - 1) + ']' : '空 → −∞', has ? fmt(step.bL) : '—'], has);
+    addRow(['BRmin（B 右半最小）', has && step.j < step.B.length ? 'B[' + step.j + ']' : '空 → +∞', has ? fmt(step.bR) : '—'], has);
+    addRow(['条件① ALmax ≤ BRmin',
+      has ? fmt(step.aL) + ' ≤ ' + fmt(step.bR) : '—',
+      step.cond1 == null ? '—' : (step.cond1 ? '满足' : '不满足'),
+      step.cond1 == null ? '' : (step.cond1 ? '✓' : '✗')], has && step.cond1 != null);
+    addRow(['条件② BLmax ≤ ARmin',
+      has ? fmt(step.bL) + ' ≤ ' + fmt(step.aR) : '—',
+      step.cond2 == null ? '—' : (step.cond2 ? '满足' : '不满足'),
+      step.cond2 == null ? '' : (step.cond2 ? '✓' : '✗')], has && step.cond2 != null);
+    addRow(['中位数', '', step.answer == null ? '—' : fmt(step.answer), ''], step.done && step.answer != null);
+  
+    t.appendChild(tbody);
+    return t;
+  }
+  
+  Demo.create({
+    title: '120. 寻找两个正序数组的中位数 — 在较短数组上二分划分线',
+    info: `输入：nums1 = [${NUMS1.join(', ')}]，nums2 = [${NUMS2.join(', ')}]（示例 1）。思路：把两个数组各切成左右两半，让左半总数等于 halfLen 且左半的最大值不超过右半的最小值。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 470,
+    legend: [
+      { color: 'var(--demo-violet)', label: '分割线左侧（进入合并数组左半）' },
+      { color: 'var(--demo-info)', label: '分割线右侧（进入合并数组右半）' },
+      { color: 'var(--demo-ok)', label: '左半最大值（奇数个时就是中位数）' },
+      { color: 'var(--demo-warn)', label: '右半最小值（偶数个时参与求平均）' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const top = Demo.el('div', 'row');
+      top.style.width = '100%';
+  
+      const chartPanel = Demo.el('div', 'panel');
+      chartPanel.style.flex = '1 1 480px';
+      chartPanel.appendChild(Demo.el('div', 'panel__title',
+        step.done
+          ? `划分完成：i = ${step.i}，j = ${step.j}`
+          : (step.i < 0 ? '两个数组与要二分的 i' : `当前划分：i = ${step.i}，j = ${step.j}`)));
+      chartPanel.appendChild(partitionView(step));
+      top.appendChild(chartPanel);
+  
+      const tablePanel = Demo.el('div', 'panel');
+      tablePanel.appendChild(Demo.el('div', 'panel__title', '四个边界值与两个条件'));
+      tablePanel.appendChild(boundaryTable(step));
+      top.appendChild(tablePanel);
+  
+      ctx.stage.appendChild(top);
+  
+      const result = Demo.el('div', 'panel',
+        `已在 A（长度 ${step.A.length}）上二分 <strong>${step.checks}</strong> 次 ｜ i ∈ <code>[${step.left}, ${step.right}]</code>` +
+        (step.done
+          ? (step.answer == null
+            ? ' &nbsp;<span class="tag tag--bad">未找到划分</span>'
+            : ` &nbsp;<span class="tag tag--ok">中位数 = ${fmt(step.answer)}</span>`)
+          : ''));
+      result.style.width = '100%';
+      result.style.textAlign = 'center';
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

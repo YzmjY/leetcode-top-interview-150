@@ -1,0 +1,259 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/139-word-break-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const S = 'leetcode';
+  const DICT = ['leet', 'code'];
+  
+  /* 真实跑一遍「前缀 DP + 分割点枚举」：
+     dp[i] = s 的前 i 个字符能否被字典拼出。
+     对每个 i 枚举分割点 j，检查 dp[j] 与子串 s[j:i] 是否在字典中（短路求值同样逐步展示）。 */
+  function buildSteps() {
+    const n = S.length;
+    const dictSet = {};
+    DICT.forEach(function (w) { dictSet[w] = true; });
+  
+    const dp = new Array(n + 1).fill(null);
+    const steps = [];
+  
+    function snap(extra) {
+      steps.push(Object.assign({
+        dp: dp.slice(),
+        i: 0,
+        j: -1,
+        word: '',
+        inDict: false,
+        skip: false,
+        hit: false,
+        done: false,
+        segments: null,
+        note: ''
+      }, extra));
+    }
+  
+    snap({
+      i: 0,
+      note: '初始化：dp 的长度是 s.length + 1 = ' + (n + 1) +
+        '，dp[i] 表示「s 的前 i 个字符」（即 s[0..i-1]）能不能用字典里的单词拼出来。先令 dp[0] = true —— 空串不用任何单词就能拼成，它是全部递推的起点。'
+    });
+  
+    dp[0] = true;
+  
+    for (let i = 1; i <= n; i++) {
+      for (let j = 0; j < i; j++) {
+        if (dp[j] !== true) {
+          snap({
+            i: i, j: j, skip: true,
+            note: 'i = ' + i + '，枚举分割点 j = ' + j + '：dp[' + j + '] 是 false，说明前缀 s[0..' + (j - 1) +
+              '] 本身就没法拼出来。既然左半边不成立，右半边 s[' + j + '..' + (i - 1) + '] 再合法也没用，直接跳过这个 j。'
+          });
+          continue;
+        }
+  
+        const word = S.slice(j, i);
+        const inDict = !!dictSet[word];
+  
+        if (inDict) {
+          dp[i] = true;
+          snap({
+            i: i, j: j, word: word, inDict: true, hit: true,
+            note: 'i = ' + i + '，枚举分割点 j = ' + j + '：dp[' + j + '] = true（前缀 "' + S.slice(0, j) +
+              '" 可拼），再看右半边 s[' + j + '..' + (i - 1) + '] = "' + word + '"，它正好在字典里。' +
+              '两段都成立，于是 dp[' + i + '] = true，前缀 "' + S.slice(0, i) + '" 可以拼出，本层无需再试其它 j，break。'
+          });
+          break;
+        }
+  
+        snap({
+          i: i, j: j, word: word, inDict: false,
+          note: 'i = ' + i + '，枚举分割点 j = ' + j + '：dp[' + j + '] = true，但右半边 s[' + j + '..' + (i - 1) +
+            '] = "' + word + '" 不在字典里，这个分割点作废，继续看下一个 j。'
+        });
+      }
+  
+      if (dp[i] !== true) {
+        dp[i] = false;
+        snap({
+          i: i, j: -1,
+          note: 'i = ' + i + '：j 从 0 试到 ' + (i - 1) + ' 都没有找到可行的分割点，所以 dp[' + i + '] = false，前缀 "' +
+            S.slice(0, i) + '" 拼不出来。'
+        });
+      }
+    }
+  
+    // 拼接成功时，从 dp[n] 向前回溯出一组切分方案
+    let segments = null;
+    if (dp[n] === true) {
+      segments = [];
+      let end = n;
+      while (end > 0) {
+        for (let start = end - 1; start >= 0; start--) {
+          if (dp[start] === true && dictSet[S.slice(start, end)]) {
+            segments.unshift(S.slice(start, end));
+            end = start;
+            break;
+          }
+        }
+      }
+    }
+  
+    steps.push({
+      dp: dp.slice(),
+      i: n,
+      j: -1,
+      word: '',
+      inDict: false,
+      skip: false,
+      hit: false,
+      done: true,
+      segments: segments,
+      note: '递推结束，答案是 dp[' + n + '] = ' + (dp[n] ? 'true' : 'false') + '。' +
+        (segments
+          ? '沿 dp 从后往前回溯可以还原出切分方案：' + segments.join(' | ') + '，每个片段都在字典里，且前一段的结尾正好是后一段的起点。'
+          : '整串无法被拆成字典中的单词。')
+    });
+  
+    return steps;
+  }
+  
+  function charColumn(step, k) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell', Demo.esc(S[k]));
+  
+    const inWindow = !step.done && step.j >= 0 && k >= step.j && k <= step.i - 1;
+    if (inWindow) {
+      cell.classList.add(step.inDict ? 'is-ok' : 'is-active');
+    } else if (step.done) {
+      cell.classList.add('cell--dim');
+    }
+  
+    if (step.done && step.segments) {
+      // 按切分方案给字符染色
+      let pos = 0;
+      step.segments.forEach(function (w, si) {
+        if (k >= pos && k < pos + w.length) cell.className = 'cell ' + (si % 2 === 0 ? 'is-ok' : 'is-violet');
+        pos += w.length;
+      });
+    }
+  
+    col.appendChild(cell);
+  
+    let label = String(k);
+    let ptrClass = 'ptr ptr--dim';
+    if (!step.done && k === step.j) {
+      label = 'j';
+      ptrClass = 'ptr';
+    } else if (!step.done && k === step.i - 1 && step.i >= 1) {
+      label = 'i-1';
+      ptrClass = 'ptr ptr--info';
+    }
+    col.appendChild(Demo.el('div', ptrClass, Demo.esc(label)));
+    return col;
+  }
+  
+  function dpColumn(step, k) {
+    const col = Demo.el('div', 'col');
+    const cell = Demo.el('div', 'cell');
+    const value = step.dp[k];
+  
+    if (value === true) cell.innerHTML = '√';
+    else if (value === false) cell.innerHTML = '×';
+    else { cell.innerHTML = '?'; cell.classList.add('cell--empty'); }
+  
+    let label = 'dp[' + k + ']';
+    let ptrClass = 'ptr ptr--dim';
+  
+    if (step.done) {
+      if (k === S.length) {
+        cell.classList.add(value ? 'is-ok' : 'is-bad');
+        label = '答案';
+        ptrClass = value ? 'ptr ptr--ok' : 'ptr ptr--bad';
+      }
+    } else if (k === step.i) {
+      cell.classList.add(value === true ? 'is-ok' : 'is-active');
+      label = 'dp[i]';
+      ptrClass = value === true ? 'ptr ptr--ok' : 'ptr';
+    } else if (k === step.j) {
+      cell.classList.add('is-info');
+      label = 'dp[j]';
+      ptrClass = 'ptr ptr--info';
+    } else if (value === true) {
+      cell.classList.add('is-ok');
+    }
+  
+    col.appendChild(cell);
+    col.appendChild(Demo.el('div', ptrClass, Demo.esc(label)));
+    return col;
+  }
+  
+  Demo.create({
+    title: '139. 单词拆分 — 前缀 DP，枚举分割点 dp[i] = ∃ j: dp[j] && s[j:i] ∈ dict',
+    info: '输入：s = "' + S + '"，wordDict = [' + DICT.map(w => '"' + w + '"').join(', ') + ']（示例 1，预期输出 true）。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 380,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本次枚举的区间 s[j:i]（字典里没有）' },
+      { color: 'var(--demo-ok)', label: 'dp 为 true / 字典命中的单词' },
+      { color: 'var(--demo-info)', label: '被复用的 dp[j]' },
+      { color: 'var(--demo-violet)', label: '最终切分出的相邻单词' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const strPanel = Demo.el('div', 'panel');
+      strPanel.style.width = '100%';
+      strPanel.appendChild(Demo.el('div', 'panel__title',
+        step.done ? '字符串 s（已按切分方案上色）' : '字符串 s（高亮的是本轮检查的子串 s[j:i]）'));
+      const srow = Demo.el('div', 'row');
+      for (let k = 0; k < S.length; k++) srow.appendChild(charColumn(step, k));
+      strPanel.appendChild(srow);
+  
+      const dictRow = Demo.el('div', 'row');
+      dictRow.style.marginTop = '8px';
+      dictRow.appendChild(Demo.el('span', 'tag', '字典：'));
+      DICT.forEach(function (w) {
+        dictRow.appendChild(Demo.el('span', 'tag tag--info', Demo.esc(w)));
+      });
+      strPanel.appendChild(dictRow);
+      ctx.stage.appendChild(strPanel);
+  
+      const dpPanel = Demo.el('div', 'panel');
+      dpPanel.style.width = '100%';
+      dpPanel.appendChild(Demo.el('div', 'panel__title', '状态表 dp（√ 表示可拼出，× 表示不可拼出，? 表示尚未计算）'));
+      const drow = Demo.el('div', 'row');
+      for (let k = 0; k <= S.length; k++) drow.appendChild(dpColumn(step, k));
+      dpPanel.appendChild(drow);
+      ctx.stage.appendChild(dpPanel);
+  
+      const check = Demo.el('div', 'panel');
+      check.style.width = '100%';
+      check.style.textAlign = 'center';
+      if (step.done) {
+        check.innerHTML = '返回结果 dp[' + S.length + '] = <strong>' + (step.dp[S.length] ? 'true' : 'false') + '</strong>' +
+          (step.segments
+            ? ' &nbsp;<span class="tag tag--ok">' + step.segments.join(' + ') + ' 拼接成 "' + S + '"</span>'
+            : ' &nbsp;<span class="tag tag--bad">无法由字典单词拼接</span>');
+      } else if (step.skip) {
+        check.innerHTML = '分割点 j = ' + step.j + '：dp[' + step.j + '] = <code>false</code> ' +
+          '<span class="tag tag--bad">左半段不成立，跳过</span>' +
+          '（对应代码里的短路：<code>dp[j] &amp;&amp; wordSet[s[j:i]]</code>）';
+      } else if (step.j >= 0) {
+        check.innerHTML = '检查 s[' + step.j + ':' + step.i + '] = <code>"' + Demo.esc(step.word) + '"</code> ' +
+          (step.inDict
+            ? '<span class="tag tag--ok">在字典中，dp[' + step.i + '] = true</span>'
+            : '<span class="tag tag--bad">不在字典中</span>') +
+          ' &nbsp; 前置条件 dp[' + step.j + '] = <code>' + (step.dp[step.j] ? 'true' : 'false') + '</code>';
+      } else if (step.dp[step.i] === false) {
+        check.innerHTML = '本轮 j 全部试完仍无解 → dp[' + step.i + '] = <code>false</code> ' +
+          '<span class="tag tag--bad">前缀 "' + Demo.esc(S.slice(0, step.i)) + '" 拼不出</span>';
+      } else {
+        check.innerHTML = '还没有开始枚举，当前只有边界 dp[0] = <code>true</code>（空串视为可拼出）。';
+      }
+      ctx.stage.appendChild(check);
+    }
+  });
+  return Demo.__config
+}

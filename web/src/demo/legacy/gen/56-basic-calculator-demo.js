@@ -1,0 +1,186 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/56-basic-calculator-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const EXPR = '(1+(4+5+2)-3)+(6+8)';
+  
+  function fmtSign(v) {
+    return v > 0 ? '+1' : '-1';
+  }
+  
+  function buildSteps() {
+    const stack = [];
+    const steps = [];
+    let result = 0;
+    let num = 0;
+    let sign = 1;
+  
+    function snap(o) {
+      steps.push({
+        i: o.i,
+        ch: o.ch,
+        result: result,
+        num: num,
+        sign: sign,
+        stack: stack.slice(),
+        action: o.action,
+        phase: o.phase,
+        note: o.note
+      });
+    }
+  
+    snap({
+      i: -1, ch: null, phase: 'init', action: '初始化',
+      note: '初始状态：result = 0（当前累计结果）、num = 0（正在拼的数字）、sign = +1（下一个数字的符号），栈为空。表达式只含 +、-、括号，没有乘除，所以不需要处理运算符优先级，唯一的难点是括号和一元负号。'
+    });
+  
+    for (let i = 0; i < EXPR.length; i++) {
+      const ch = EXPR[i];
+      if (ch >= '0' && ch <= '9') {
+        num = num * 10 + (ch.charCodeAt(0) - 48);
+        snap({
+          i: i, ch: ch, phase: 'digit', action: '累积数字',
+          note: '字符 "' + ch + '" 是数字：num = 旧的 num × 10 + ' + ch + ' = ' + num + '。数字可能有多位，要一位一位拼起来，中间不能提前结算。'
+        });
+      } else if (ch === '+') {
+        const prevNum = num, prevSign = sign, prevResult = result;
+        result += sign * num;
+        num = 0;
+        sign = 1;
+        snap({
+          i: i, ch: ch, phase: 'sign', action: '结算并取正号',
+          note: '遇到 "+"：先把挂着的数字结算掉，result += sign × num = ' + prevResult + ' + (' + fmtSign(prevSign) + ') × ' + prevNum + ' = ' + result
+            + '；然后 num 归零、sign 置为 +1，表示下一个数字取正。'
+        });
+      } else if (ch === '-') {
+        const prevNum = num, prevSign = sign, prevResult = result;
+        result += sign * num;
+        num = 0;
+        sign = -1;
+        snap({
+          i: i, ch: ch, phase: 'sign', action: '结算并取负号',
+          note: '遇到 "-"：先结算前一个数字，result += sign × num = ' + prevResult + ' + (' + fmtSign(prevSign) + ') × ' + prevNum + ' = ' + result
+            + '；然后 num 归零、sign 置为 -1。把负号单独记在 sign 上（而不是立刻做减法），遇到 "-(2+3)" 这种一元负号时，负号会随括号一起压栈，效果正确。'
+        });
+      } else if (ch === '(') {
+        const prevResult = result, prevSign = sign;
+        stack.push(result);
+        stack.push(sign);
+        result = 0;
+        sign = 1;
+        snap({
+          i: i, ch: ch, phase: 'open', action: '压栈保存外层状态',
+          note: '遇到 "("：括号内的计算会覆盖 result 和 sign，所以先把外层状态压栈保存——先压当前 result = ' + prevResult + '，再压当前 sign = ' + fmtSign(prevSign)
+            + '（栈顶是符号，弹出时先取它）。然后把 result 清 0、sign 重置为 +1，开始独立计算括号内部。'
+        });
+      } else if (ch === ')') {
+        const prevNum = num, prevSign = sign;
+        result += sign * num;
+        const inner = result;
+        num = 0;
+        const outerSign = stack.pop();
+        result = result * outerSign;
+        const outerResult = stack.pop();
+        result += outerResult;
+        snap({
+          i: i, ch: ch, phase: 'close', action: '结算并弹栈',
+          note: '遇到 ")"：先结算括号内最后一个数字，result += (' + fmtSign(prevSign) + ') × ' + prevNum + '，括号内的值 = ' + inner
+            + '；再弹出栈顶保存的符号 ' + fmtSign(outerSign) + '，令括号内的值乘以它 → ' + (inner * outerSign)
+            + '；最后弹出保存的外层 result = ' + outerResult + ' 并相加 → ' + result + '。括号内的结果就这样并回外层表达式。'
+        });
+      }
+    }
+  
+    const prevNum = num, prevSign = sign;
+    result += sign * num;
+    snap({
+      i: EXPR.length, ch: null, phase: 'done', action: '处理最后的数字',
+      note: '遍历结束，表达式可能以一个数字收尾，要再补一次结算：result += (' + fmtSign(prevSign) + ') × ' + prevNum + ' = ' + result
+        + '。最终结果就是 ' + result + '，与示例 3 的输出一致。每个字符只处理一次，时间 O(n)；栈的深度等于括号嵌套层数，空间 O(n)。'
+    });
+  
+    return steps;
+  }
+  
+  function render(step, idx, ctx) {
+    ctx.stage.innerHTML = '';
+  
+    const exprPanel = Demo.el('div', 'panel');
+    exprPanel.style.width = '100%';
+    exprPanel.appendChild(Demo.el('div', 'panel__title', '表达式 s（逐字符扫描）'));
+    const row = Demo.el('div', 'row');
+    row.style.gap = '2px';
+    for (let k = 0; k < EXPR.length; k++) {
+      const ch = EXPR[k];
+      const col = Demo.el('div', 'col');
+      col.style.gap = '2px';
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(ch));
+      cell.style.minWidth = '26px';
+      cell.style.padding = '0 3px';
+      if (k === step.i) cell.classList.add('is-active');
+      else if (k < step.i || step.phase === 'done') cell.classList.add('cell--dim');
+      col.appendChild(cell);
+      const ptr = Demo.el('div', 'ptr ptr--dim', String(k));
+      ptr.style.minWidth = '26px';
+      col.appendChild(ptr);
+      row.appendChild(col);
+    }
+    exprPanel.appendChild(row);
+    ctx.stage.appendChild(exprPanel);
+  
+    const mainRow = Demo.el('div', 'row');
+    mainRow.style.width = '100%';
+    mainRow.style.alignItems = 'flex-start';
+  
+    const stackPanel = Demo.el('div', 'panel');
+    stackPanel.appendChild(Demo.el('div', 'panel__title', '状态栈（每对：外层 result、外层 sign）'));
+    const stackBox = Demo.el('div', 'stack');
+    if (step.stack.length === 0) {
+      stackBox.appendChild(Demo.el('div', 'stack__item', '（空）'));
+    } else {
+      for (let k = 0; k < step.stack.length; k += 2) {
+        const item = Demo.el('div', 'stack__item',
+          'result=' + step.stack[k] + ', sign=' + fmtSign(step.stack[k + 1]));
+        if (k >= step.stack.length - 2) item.classList.add('is-active');
+        stackBox.appendChild(item);
+      }
+    }
+    stackPanel.appendChild(stackBox);
+    mainRow.appendChild(stackPanel);
+  
+    const statePanel = Demo.el('div', 'panel');
+    statePanel.style.flex = '1';
+    statePanel.appendChild(Demo.el('div', 'panel__title', '当前状态'));
+    statePanel.appendChild(Demo.el('div', null,
+      '<span class="tag' + (step.phase === 'done' ? ' tag--ok' : ' tag--info') + '">' + Demo.esc(step.action) + '</span>'));
+    statePanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">当前字符：<code>'
+      + (step.ch == null ? '—' : Demo.esc(step.ch)) + '</code></div>'));
+    statePanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">result = <code>' + step.result
+      + '</code> &nbsp; num = <code>' + step.num + '</code> &nbsp; sign = <code>' + fmtSign(step.sign) + '</code></div>'));
+    statePanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">栈深（括号层数）：<code>'
+      + (step.stack.length / 2) + '</code></div>'));
+    if (step.phase === 'done') {
+      statePanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px"><span class="tag tag--ok">结果 ' + step.result + '</span></div>'));
+    }
+    mainRow.appendChild(statePanel);
+  
+    ctx.stage.appendChild(mainRow);
+  }
+  
+  Demo.create({
+    title: '56. 基本计算器 — 栈保存括号外的 (result, sign)',
+    info: '输入（示例 3）：s = "(1+(4+5+2)-3)+(6+8)"，期望输出 23。只有加减和括号，遇到 "(" 就把外层的 result 与 sign 压栈，遇到 ")" 结算括号内的值后弹栈合并。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 420,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前扫描的字符' },
+      { color: 'var(--demo-warn)', label: '栈顶：最近一次括号保存的状态' },
+      { color: 'var(--demo-muted)', label: '已处理过的字符' }
+    ],
+    render: render
+  });
+  return Demo.__config
+}

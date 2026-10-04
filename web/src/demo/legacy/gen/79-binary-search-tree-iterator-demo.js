@@ -1,0 +1,230 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/79-binary-search-tree-iterator-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const TREE = [7, 3, 15, null, null, 9, 20];
+  const COMMANDS = ['next', 'next', 'hasNext', 'next', 'hasNext', 'next', 'hasNext', 'next', 'hasNext'];
+  
+  const NODE_PAINT = {
+    default: ['var(--demo-subtle)', 'var(--demo-border)', 'var(--demo-text)'],
+    accent:  ['var(--demo-accent-soft)', 'var(--demo-accent)', 'var(--demo-accent-strong)'],
+    ok:      ['var(--demo-ok-soft)', 'var(--demo-ok)', 'var(--demo-ok)'],
+    violet:  ['var(--demo-violet-soft)', 'var(--demo-violet)', 'var(--demo-violet)']
+  };
+  
+  function buildTree(arr) {
+    if (!arr.length || arr[0] == null) return null;
+    let seq = 0;
+    const root = { id: seq++, val: arr[0], left: null, right: null };
+    const queue = [root];
+    let i = 1;
+    while (i < arr.length && queue.length) {
+      const node = queue.shift();
+      const lv = arr[i++];
+      if (lv != null) { node.left = { id: seq++, val: lv, left: null, right: null }; queue.push(node.left); }
+      if (i < arr.length) {
+        const rv = arr[i++];
+        if (rv != null) { node.right = { id: seq++, val: rv, left: null, right: null }; queue.push(node.right); }
+      }
+    }
+    return root;
+  }
+  
+  function snapTree(node) {
+    if (!node) return null;
+    return { id: node.id, val: node.val, left: snapTree(node.left), right: snapTree(node.right) };
+  }
+  
+  function treeSVG(root, paintOf, badgeOf) {
+    if (!root) return '<div class="panel" style="width:100%;text-align:center">（空树）</div>';
+    const pos = {};
+    let count = 0, maxDepth = 0;
+    (function walk(node, depth) {
+      if (!node) return;
+      walk(node.left, depth + 1);
+      pos[node.id] = { x: count++, y: depth };
+      if (depth > maxDepth) maxDepth = depth;
+      walk(node.right, depth + 1);
+    })(root, 0);
+  
+    const gapX = 66, gapY = 78, padX = 36, padY = 32, r = 21;
+    const W = count * gapX + padX * 2;
+    const H = (maxDepth + 1) * gapY + padY * 2;
+    const cx = id => padX + pos[id].x * gapX + gapX / 2;
+    const cy = id => padY + pos[id].y * gapY + gapY / 2;
+  
+    let edges = '';
+    (function drawEdges(node) {
+      if (!node) return;
+      [node.left, node.right].forEach(child => {
+        if (!child) return;
+        const dx = pos[child.id].x - pos[node.id].x;
+        const dy = pos[child.id].y - pos[node.id].y;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        edges += '<line x1="' + (cx(node.id) + dx / len * r).toFixed(1) + '" y1="' + (cy(node.id) + dy / len * r).toFixed(1) +
+          '" x2="' + (cx(child.id) - dx / len * r).toFixed(1) + '" y2="' + (cy(child.id) - dy / len * r).toFixed(1) +
+          '" style="stroke:var(--demo-border);stroke-width:2"/>';
+        drawEdges(child);
+      });
+    })(root);
+  
+    let nodes = '';
+    (function drawNodes(node) {
+      if (!node) return;
+      let info = paintOf ? paintOf(node) : null;
+      if (typeof info === 'string') info = { state: info };
+      info = info || {};
+      const paint = NODE_PAINT[info.state] || NODE_PAINT.default;
+      if (info.ring) {
+        nodes += '<circle cx="' + cx(node.id) + '" cy="' + cy(node.id) + '" r="' + (r + 6) + '" style="fill:none;stroke:' + info.ring + ';stroke-width:3"/>';
+      }
+      nodes += '<circle cx="' + cx(node.id) + '" cy="' + cy(node.id) + '" r="' + r + '" style="fill:' + paint[0] + ';stroke:' + paint[1] + ';stroke-width:2.5"/>';
+      nodes += '<text x="' + cx(node.id) + '" y="' + (cy(node.id) + 6) + '" text-anchor="middle" style="fill:' + paint[2] + ';font:600 16px sans-serif">' + Demo.esc(node.val) + '</text>';
+      const badge = badgeOf ? badgeOf(node) : null;
+      if (badge) {
+        nodes += '<text x="' + cx(node.id) + '" y="' + (cy(node.id) + r + 17) + '" text-anchor="middle" style="fill:var(--demo-muted);font:600 12px sans-serif">' + Demo.esc(badge) + '</text>';
+      }
+      drawNodes(node.left);
+      drawNodes(node.right);
+    })(root);
+  
+    return '<div style="width:100%"><svg viewBox="0 0 ' + W + ' ' + (H + 20) + '" style="width:100%;height:auto;display:block;max-height:400px">' + edges + nodes + '</svg></div>';
+  }
+  
+  function buildSteps() {
+    const root = buildTree(TREE);
+    const steps = [];
+    const stack = [];
+    const out = [];
+    const visited = [];
+  
+    function snap(note, extra) {
+      const step = {
+        tree: snapTree(root),
+        note: note,
+        stack: stack.map(n => ({ id: n.id, val: n.val })),
+        out: out.slice(),
+        visited: visited.slice()
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    function pushLeft(node, prefix) {
+      while (node) {
+        stack.push(node);
+        snap(prefix + '把节点 ' + node.val + ' 压入栈，再沿左指针下降到 ' +
+          (node.left ? node.left.val : 'null') + '。' + (node.left ? '' : '左孩子为空，这条左链到底了。'),
+          { active: node.id, op: 'push' });
+        node = node.left;
+      }
+    }
+  
+    snap('初始化 BSTIterator：指针指向 BST 中最小元素之前。做法是从根 7 出发，沿左指针一路压栈 —— 栈顶就是中序遍历的第一个节点。', { op: 'init' });
+    pushLeft(root, '初始化：');
+  
+    COMMANDS.forEach((cmd, ci) => {
+      if (cmd === 'next') {
+        const node = stack.pop();
+        out.push(node.val);
+        visited.push(node.id);
+        snap('命令 ' + ci + '：next()。弹出栈顶 ' + node.val + '，它就是当前最小的未输出节点，返回 ' + node.val +
+          '（中序遍历的第 ' + out.length + ' 个值）。', { active: node.id, op: 'pop', current: node.id, result: node.val, cmd: ci });
+        if (node.right) {
+          pushLeft(node.right, '命令 ' + ci + '：' + node.val + ' 有右子树 ' + node.right.val + '，中序里右子树紧跟在它后面，于是');
+        } else {
+          snap('命令 ' + ci + '：' + node.val + ' 没有右子树，不需要压入新节点，栈顶自然就是下一个中序节点。', { active: node.id, op: 'skip', cmd: ci });
+        }
+      } else {
+        const ok = stack.length > 0;
+        snap('命令 ' + ci + '：hasNext()。栈' + (ok ? '非空，还有 ' + stack.length + ' 个节点等待输出 → 返回 true。' : '已空，没有更多节点 → 返回 false。'),
+          { op: 'hasNext', result: ok, cmd: ci });
+      }
+    });
+  
+    snap('命令执行完毕，输出序列为 [' + out.join(', ') + ']，正好是这棵 BST 的中序（升序）遍历。每个节点恰好入栈、出栈一次，所以 n 次 next() 的均摊时间复杂度是 O(1)，空间为树高 O(h)。',
+      { op: 'done', done: true });
+  
+    return steps;
+  }
+  
+  Demo.create({
+    title: '79. 二叉搜索树迭代器 — 栈模拟中序遍历',
+    info: 'root = [7,3,15,null,null,9,20]，调用序列 next, next, hasNext, next, hasNext, next, hasNext, next, hasNext。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 470,
+    legend: [
+      { color: 'var(--demo-violet)', label: '在栈中（待输出）' },
+      { color: 'var(--demo-ok)', label: '已输出' },
+      { color: 'var(--demo-accent)', label: '本次 next() 弹出的节点' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const wrap = Demo.el('div');
+      wrap.style.width = '100%';
+      wrap.innerHTML = treeSVG(step.tree, node => {
+        if (step.current === node.id && !step.done) return { state: 'accent', ring: 'var(--demo-accent)' };
+        if (step.visited.indexOf(node.id) >= 0) return 'ok';
+        if (step.stack.some(e => e.id === node.id)) return 'violet';
+        return 'default';
+      });
+      ctx.stage.appendChild(wrap);
+  
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.style.alignItems = 'flex-start';
+      row.style.gap = '12px';
+  
+      const stackPanel = Demo.el('div', 'panel');
+      stackPanel.appendChild(Demo.el('div', 'panel__title', '栈（顶部为栈顶）'));
+      const stackBox = Demo.el('div', 'stack');
+      if (step.stack.length === 0) {
+        stackBox.appendChild(Demo.el('div', 'stack__item', '空'));
+      } else {
+        step.stack.forEach((entry, k) => {
+          const item = Demo.el('div', 'stack__item', Demo.esc(entry.val));
+          if (k === step.stack.length - 1) item.classList.add('is-active');
+          stackBox.appendChild(item);
+        });
+      }
+      stackPanel.appendChild(stackBox);
+  
+      const resultPanel = Demo.el('div', 'panel');
+      resultPanel.style.flex = '1';
+      resultPanel.appendChild(Demo.el('div', 'panel__title', '本步调用与返回值'));
+      const label = step.op === 'push' ? 'pushLeft()'
+        : step.op === 'pop' ? 'next()'
+        : step.op === 'skip' ? 'next()（无需压栈）'
+        : step.op === 'hasNext' ? 'hasNext()'
+        : step.op === 'done' ? '结束' : 'Constructor()';
+      resultPanel.appendChild(Demo.el('div', null,
+        '调用：<strong>' + label + '</strong><br>' +
+        '返回：<strong>' + (step.result == null ? '—' : step.result) + '</strong><br>' +
+        '输出序列：<code>[' + step.out.join(', ') + ']</code>'));
+  
+      row.appendChild(stackPanel);
+      row.appendChild(resultPanel);
+      ctx.stage.appendChild(row);
+  
+      const cmdRow = Demo.el('div', 'row');
+      cmdRow.style.width = '100%';
+      cmdRow.style.justifyContent = 'flex-start';
+      COMMANDS.forEach((cmd, k) => {
+        const tag = Demo.el('div', 'tag', cmd + '()');
+        if (step.done || (step.cmd != null && k < step.cmd)) tag.classList.add('tag--ok');
+        else if (step.cmd != null && k === step.cmd) tag.classList.add('tag--violet');
+        cmdRow.appendChild(tag);
+      });
+      const cmdPanel = Demo.el('div', 'panel');
+      cmdPanel.style.width = '100%';
+      cmdPanel.appendChild(Demo.el('div', 'panel__title', '调用序列'));
+      cmdPanel.appendChild(cmdRow);
+      ctx.stage.appendChild(cmdPanel);
+    }
+  });
+  return Demo.__config
+}

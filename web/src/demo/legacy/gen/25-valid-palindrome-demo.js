@@ -1,0 +1,165 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/25-valid-palindrome-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const S = 'A man, a plan, a canal: Panama';
+  
+  function isAlnum(ch) {
+    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9');
+  }
+  
+  function vis(ch) {
+    return ch === ' ' ? '␣' : ch;
+  }
+  
+  function buildSteps() {
+    const chars = S.split('');
+    const n = chars.length;
+    const matched = [];
+    const skipped = [];
+    for (let k = 0; k < n; k++) { matched.push(false); skipped.push(false); }
+  
+    const steps = [];
+    let left = 0;
+    let right = n - 1;
+    let result = null;
+    let lastCmp = null;
+  
+    function snap(phase, focus, note) {
+      const showCmp = phase === 'compare' || phase === 'advance' || phase === 'done';
+      return {
+        left: left,
+        right: right,
+        phase: phase,
+        focus: focus,
+        matched: matched.slice(),
+        skipped: skipped.slice(),
+        cmp: showCmp ? lastCmp : null,
+        result: result,
+        note: note
+      };
+    }
+  
+    steps.push(snap('init', -1,
+      '初始状态：left=0 指向首字符，right=' + (n - 1) + ' 指向末字符。每轮循环先让两个指针各自跳过非字母数字字符，再把两端字符统一转成小写后比较。'));
+  
+    while (left < right) {
+      while (left < right && !isAlnum(chars[left])) {
+        steps.push(snap('skip-left', left,
+          "s[" + left + "]='" + vis(chars[left]) + "' 不是字母或数字，跳过它：left 从 " + left + " 右移到 " + (left + 1) + "。"));
+        skipped[left] = true;
+        left++;
+      }
+      if (left >= right) break;
+      steps.push(snap('left-ready', left,
+        "左指针就位：left=" + left + "，s[" + left + "]='" + chars[left] + "'，小写为 '" + chars[left].toLowerCase() + "'。"));
+  
+      while (left < right && !isAlnum(chars[right])) {
+        steps.push(snap('skip-right', right,
+          "s[" + right + "]='" + vis(chars[right]) + "' 不是字母或数字，跳过它：right 从 " + right + " 左移到 " + (right - 1) + "。"));
+        skipped[right] = true;
+        right--;
+      }
+      if (left >= right) break;
+      steps.push(snap('right-ready', right,
+        "右指针就位：right=" + right + "，s[" + right + "]='" + chars[right] + "'，小写为 '" + chars[right].toLowerCase() + "'。"));
+  
+      const a = chars[left].toLowerCase();
+      const b = chars[right].toLowerCase();
+      const ok = a === b;
+      lastCmp = { li: left, ri: right, l: a, r: b, ok: ok };
+      steps.push(snap('compare', -1,
+        "比较 s[" + left + "] 与 s[" + right + "] 的小写形式：'" + a + "' " + (ok ? '==' : '!=') + " '" + b + "' → "
+        + (ok ? '相等，这一对满足回文要求，可以继续向中间看。'
+              : '不相等，回文要求两端镜像相同，后面不必再看了，直接判定不是回文串。')));
+  
+      if (!ok) {
+        result = false;
+        break;
+      }
+      matched[left] = true;
+      matched[right] = true;
+      left++;
+      right--;
+      steps.push(snap('advance', -1,
+        "这一对字符确认相等，两指针向中间收拢：left → " + left + "，right → " + right + "，继续检查下一对。"));
+    }
+  
+    if (result === null) result = true;
+    steps.push(snap('done', -1, result
+      ? 'left 与 right 相遇（或交错），所有镜像位置上的字符都相等 → 是回文串，返回 true。'
+      : '存在不相等的镜像字符对 → 不是回文串，返回 false。'));
+  
+    return steps;
+  }
+  
+  function render(step, idx, ctx) {
+    ctx.stage.innerHTML = '';
+  
+    const row = Demo.el('div', 'row');
+    row.style.gap = '4px';
+    for (let k = 0; k < S.length; k++) {
+      const col = Demo.el('div', 'col');
+      col.style.gap = '4px';
+      col.appendChild(Demo.el('div', 'ptr ptr--dim', String(k)));
+  
+      const cell = Demo.el('div', 'cell cell--sm', Demo.esc(vis(S[k])));
+      const inCmp = step.cmp && (k === step.cmp.li || k === step.cmp.ri);
+      const badEnd = step.phase === 'done' && step.result === false && inCmp;
+      if (badEnd) cell.classList.add('is-bad');
+      else if (step.phase === 'compare' && inCmp) cell.classList.add(step.cmp.ok ? 'is-active' : 'is-bad');
+      else if (step.matched[k]) cell.classList.add('is-ok');
+      else if (step.focus === k) cell.classList.add('is-warn');
+      else if (step.skipped[k]) cell.classList.add('cell--dim');
+      col.appendChild(cell);
+  
+      const hasL = k === step.left;
+      const hasR = k === step.right;
+      const labels = [];
+      if (hasL && hasR) labels.push('相遇');
+      else if (hasL) labels.push('left');
+      else if (hasR) labels.push('right');
+      const ptr = Demo.el('div', 'ptr', labels.join(' '));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (!hasL && hasR) ptr.classList.add('ptr--info');
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+    }
+    ctx.stage.appendChild(row);
+  
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.style.textAlign = 'center';
+    let html = '';
+    if (step.cmp) {
+      html += '本轮比较：<code>s[' + step.cmp.li + "]='" + Demo.esc(step.cmp.l) + "'</code> ↔ <code>s["
+        + step.cmp.ri + "]='" + Demo.esc(step.cmp.r) + "'</code> "
+        + (step.cmp.ok ? '<span class="tag tag--ok">相等</span>' : '<span class="tag tag--bad">不相等</span>');
+    } else {
+      html += '尚未开始比较：先让 left 与 right 跳过非字母数字字符';
+    }
+    if (step.result === true) html += ' &nbsp;<span class="tag tag--ok">结果 true</span>';
+    if (step.result === false) html += ' &nbsp;<span class="tag tag--bad">结果 false</span>';
+    panel.innerHTML = html;
+    ctx.stage.appendChild(panel);
+  }
+  
+  Demo.create({
+    title: '25. 验证回文串 — 对撞双指针跳过非字母数字',
+    info: '输入：s = "A man, a plan, a canal: Panama"，去掉非字母数字并转小写后是 "amanaplanacanalpanama"，共 21 个有效字符。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'left 指针（从头向右）' },
+      { color: 'var(--demo-info)', label: 'right 指针（从尾向左）' },
+      { color: 'var(--demo-ok)', label: '已确认相等的字符' },
+      { color: 'var(--demo-warn)', label: '正在跳过的非字母数字字符' },
+      { color: 'var(--demo-danger)', label: '不相等' }
+    ],
+    render: render
+  });
+  return Demo.__config
+}

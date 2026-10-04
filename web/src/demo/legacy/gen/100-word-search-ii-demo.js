@@ -1,0 +1,287 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/100-word-search-ii-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const BOARD = [
+    ['o', 'a', 'a', 'n'],
+    ['e', 't', 'a', 'e'],
+    ['i', 'h', 'k', 'r'],
+    ['i', 'f', 'l', 'v']
+  ];
+  const WORDS = ['oath', 'pea', 'eat', 'rain'];
+  const R = BOARD.length;
+  const C = BOARD[0].length;
+  const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  
+  function snapshotTrie(root) {
+    const nodes = {};
+    const order = [];
+    (function walk(n) {
+      const children = {};
+      Object.keys(n.children).sort().forEach(k => { children[k] = n.children[k].id; });
+      nodes[n.id] = {
+        id: n.id, ch: n.ch, word: n.word, isEnd: n.word !== '',
+        parent: n.parent ? n.parent.id : null, children: children
+      };
+      order.push(n.id);
+      Object.keys(n.children).sort().forEach(k => walk(n.children[k]));
+    })(root);
+    return { nodes: nodes, order: order, root: root.id };
+  }
+  
+  function layoutTrie(tree) {
+    const pos = {};
+    let leaf = 0;
+    let depth = 0;
+    (function walk(id, d) {
+      const n = tree.nodes[id];
+      depth = Math.max(depth, d);
+      const keys = Object.keys(n.children);
+      if (keys.length === 0) {
+        pos[id] = { x: d * 78 + 52, y: leaf * 62 + 42 };
+        leaf += 1;
+        return pos[id].y;
+      }
+      let sum = 0;
+      keys.forEach(k => { sum += walk(n.children[k], d + 1); });
+      pos[id] = { x: d * 78 + 52, y: sum / keys.length };
+      return pos[id].y;
+    })(tree.root, 0);
+    return { pos: pos, depth: depth, leaves: Math.max(leaf, 1) };
+  }
+  
+  function trieSvg(tree, opt) {
+    const o = opt || {};
+    const lay = layoutTrie(tree);
+    const width = lay.depth * 78 + 140;
+    const height = Math.max(lay.leaves * 62 + 90, 150);
+    let out = '';
+  
+    tree.order.forEach(id => {
+      const n = tree.nodes[id];
+      Object.keys(n.children).forEach(k => {
+        const cid = n.children[k];
+        const p = lay.pos[id];
+        const q = lay.pos[cid];
+        const onPath = o.chain && o.chain.indexOf(id) >= 0 && o.chain.indexOf(cid) >= 0;
+        out += '<line x1="' + (p.x + 25) + '" y1="' + p.y + '" x2="' + (q.x - 25) + '" y2="' + q.y +
+          '" style="stroke:' + (onPath ? 'var(--demo-accent)' : 'var(--demo-border)') + ';stroke-width:' + (onPath ? 3.5 : 2) + '"/>';
+      });
+    });
+  
+    tree.order.forEach(id => {
+      const n = tree.nodes[id];
+      const p = lay.pos[id];
+      let fill = 'var(--demo-subtle)';
+      let text = 'var(--demo-text)';
+      if (o.chain && o.chain.indexOf(id) >= 0) { fill = 'var(--demo-accent-soft)'; text = 'var(--demo-accent-strong)'; }
+      if (o.curNode === id) {
+        out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="31" style="fill:none;stroke:var(--demo-warn);stroke-width:3"/>';
+      }
+      if (n.isEnd) {
+        out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="27" style="fill:none;stroke:var(--demo-ok);stroke-width:2.5"/>';
+      }
+      out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="23" style="fill:' + fill + ';stroke:var(--demo-border);stroke-width:2"/>';
+      out += '<text x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle" style="fill:' + text +
+        ';font:600 14px monospace">' + (n.ch === '' ? '根' : n.ch) + '</text>';
+    });
+  
+    return '<div style="width:100%"><svg viewBox="0 0 ' + width + ' ' + height + '" style="width:100%;height:auto;display:block">' + out + '</svg></div>';
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    let nextId = 0;
+    function makeNode(ch, parent) {
+      return { id: nextId++, ch: ch, parent: parent, children: {}, word: '' };
+    }
+    const root = makeNode('', null);
+  
+    WORDS.forEach(w => {
+      let node = root;
+      for (let i = 0; i < w.length; i++) {
+        const ch = w[i];
+        if (!node.children[ch]) node.children[ch] = makeNode(ch, node);
+        node = node.children[ch];
+      }
+      node.word = w;
+    });
+  
+    const used = [];
+    for (let i = 0; i < R; i++) {
+      used.push([]);
+      for (let j = 0; j < C; j++) used[i].push(false);
+    }
+    const path = [];
+    const found = [];
+  
+    function chainOf(node) {
+      const out = [];
+      let n = node;
+      while (n) { out.unshift(n.id); n = n.parent; }
+      return out;
+    }
+  
+    function snap(note, extra) {
+      const step = {
+        trie: snapshotTrie(root),
+        used: used.map(row => row.slice()),
+        path: path.map(p => p.slice()),
+        found: found.slice(),
+        note: note
+      };
+      if (extra) Object.keys(extra).forEach(k => { step[k] = extra[k]; });
+      steps.push(step);
+    }
+  
+    snap('先把 ' + WORDS.length + ' 个单词全部插入 Trie（图中绿色细环表示单词结尾），然后枚举棋盘的每个格子作为起点做 DFS 回溯。' +
+      'DFS 时始终维护「当前走到 Trie 的哪个节点」，一旦某个字符在 Trie 中没有对应子节点，整条分支立刻剪掉。' +
+      '这样多个单词共享同一棵树，重复前缀只走一次。', { node: root.id, chain: [root.id] });
+  
+    function dfs(i, j, node, chars) {
+      if (used[i][j]) return;
+      const ch = BOARD[i][j];
+      const next = node.children[ch];
+  
+      if (!next) {
+        snap('从 (' + i + ',' + j + ') 的 "' + ch + '" 继续：当前 Trie 节点（前缀 "' + (chars || '根') + '"）下没有 "' + ch +
+          '" 这个子节点 → Trie 剪枝，这条分支不会再有单词，直接返回。（words 里没有以这段前缀开头的词）',
+          { cur: [i, j], prune: [i, j], node: node.id, chain: chainOf(node), failCell: [i, j] });
+        return;
+      }
+  
+      used[i][j] = true;
+      path.push([i, j]);
+      const nextChars = chars + ch;
+      snap('进入格子 (' + i + ',' + j + ')="' + ch + '"：Trie 前缀从 "' + (chars || '空') + '" 前进到 "' + nextChars +
+        '"。同时把该格标记为已用（图中显示为 #），保证同一条路径不重复使用同一个格子。',
+        { cur: [i, j], node: next.id, chain: chainOf(next) });
+  
+      if (next.word) {
+        const w = next.word;
+        snap('Trie 节点 "' + w + '" 正是某个单词的结尾 → 收集 "' + w + '"！并立刻把该节点的单词标记清空，' +
+          '避免之后从别的路径再次收集同一个词。当前结果：[' + found.concat([w]).join(', ') + ']',
+          { cur: [i, j], node: next.id, chain: chainOf(next), collected: w });
+        found.push(w);
+        next.word = '';
+      }
+  
+      for (let d = 0; d < DIRS.length; d++) {
+        const ni = i + DIRS[d][0];
+        const nj = j + DIRS[d][1];
+        if (ni < 0 || ni >= R || nj < 0 || nj >= C) continue;
+        dfs(ni, nj, next, nextChars);
+      }
+  
+      used[i][j] = false;
+      path.pop();
+      snap('回溯：格子 (' + i + ',' + j + ') 的四个方向都已经试过（或在边界外），把它从路径上撤销、还原为可用，' +
+        '这样其它走法仍然可以经过这个格子。Trie 的节点指针退回前缀 "' + (chars || '根') + '"。',
+        { cur: [i, j], node: node.id, chain: chainOf(node), backtrack: [i, j] });
+    }
+  
+    for (let i = 0; i < R; i++) {
+      for (let j = 0; j < C; j++) {
+        const ch = BOARD[i][j];
+        if (!root.children[ch]) {
+          snap('外层循环把格子 (' + i + ',' + j + ')="' + ch + '" 当作起点：Trie 根节点下没有 "' + ch +
+            '" 分支（没有任何单词以 "' + ch + '" 开头）→ 这个起点直接剪掉，不进入 DFS。',
+            { start: [i, j], prune: [i, j], node: root.id, chain: [root.id], failCell: [i, j] });
+          continue;
+        }
+        snap('外层循环选择起点 (' + i + ',' + j + ')="' + ch + '"（根节点有这个分支），从它开始 DFS 回溯。',
+          { start: [i, j], cur: [i, j], node: root.id, chain: [root.id] });
+        dfs(i, j, root, '');
+      }
+    }
+  
+    snap('枚举完 16 个起点，搜索结束。结果 [' + found.join(', ') + ']：每个单词只在被 Trie 剪枝允许的路径上出现时才会被收集；' +
+      '"pea" 没有被找到，因为棋盘上根本没有字母 "p"。找到单词后清空标记，保证同一个词只收集一次。', { done: true });
+    return steps;
+  }
+  
+  Demo.create({
+    title: '100. 单词搜索 II — Trie 剪枝 + 棋盘 DFS 回溯',
+    info: 'board 为 4×4（示例 1），words = ["oath", "pea", "eat", "rain"]，每个格子只能使用一次，期望输出 ["oath", "eat"]（顺序不限）。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 520,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前 Trie 路径 / 路径上的格子' },
+      { color: 'var(--demo-ok)', label: '单词结尾（收集后消失）' },
+      { color: 'var(--demo-warn)', label: '已用格子 # / 当前 Trie 节点' },
+      { color: 'var(--demo-danger)', label: 'Trie 剪枝的位置' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const top = Demo.el('div', 'row');
+      top.style.width = '100%';
+      top.style.alignItems = 'flex-start';
+  
+      const boardPanel = Demo.el('div', 'panel');
+      boardPanel.appendChild(Demo.el('div', 'panel__title', '棋盘（# 表示在当前路径上）'));
+      const grid = Demo.el('div', 'grid');
+      grid.style.gridTemplateColumns = 'repeat(' + C + ', 50px)';
+      for (let r = 0; r < R; r++) {
+        for (let c = 0; c < C; c++) {
+          const isCur = step.cur && step.cur[0] === r && step.cur[1] === c;
+          const isUsed = step.used[r][c];
+          const cell = Demo.el('div', 'cell', isUsed && !isCur ? '#' : Demo.esc(BOARD[r][c]));
+          if (isCur) cell.classList.add('is-active');
+          else if (isUsed) cell.classList.add('is-warn');
+          const isPrune = step.failCell && step.failCell[0] === r && step.failCell[1] === c;
+          if (isPrune) cell.classList.add('is-bad');
+          grid.appendChild(cell);
+        }
+      }
+      boardPanel.appendChild(grid);
+  
+      const foundPanel = Demo.el('div', 'panel');
+      foundPanel.style.width = '100%';
+      foundPanel.appendChild(Demo.el('div', 'panel__title', '已收集的单词'));
+      const foundRow = Demo.el('div', 'row');
+      if (step.found.length === 0) {
+        foundRow.appendChild(Demo.el('span', 'tag', '（还没有）'));
+      } else {
+        step.found.forEach(w => foundRow.appendChild(Demo.el('span', 'tag tag--ok', w)));
+      }
+      foundPanel.appendChild(foundRow);
+      boardPanel.appendChild(foundPanel);
+  
+      const triePanel = Demo.el('div', 'panel');
+      triePanel.style.flex = '1';
+      triePanel.appendChild(Demo.el('div', 'panel__title', 'words 构成的 Trie（绿色细环 = 单词结尾）'));
+      const svgWrap = Demo.el('div');
+      svgWrap.innerHTML = trieSvg(step.trie, { chain: step.chain, curNode: step.node });
+      triePanel.appendChild(svgWrap);
+  
+      const pathPanel = Demo.el('div', 'panel');
+      pathPanel.appendChild(Demo.el('div', 'panel__title', '当前 DFS 路径（先进入的在下方，最上面是当前格）'));
+      const stack = Demo.el('div', 'stack');
+      if (step.path.length === 0) {
+        stack.appendChild(Demo.el('div', 'stack__item', '（空）'));
+      } else {
+        step.path.forEach((p, k) => {
+          const item = Demo.el('div', 'stack__item', '(' + p[0] + ',' + p[1] + ') ' + BOARD[p[0]][p[1]]);
+          if (k === step.path.length - 1) item.classList.add('is-active');
+          stack.appendChild(item);
+        });
+      }
+      pathPanel.appendChild(stack);
+      pathPanel.appendChild(Demo.el('div', null, '当前前缀："' +
+        step.path.map(p => BOARD[p[0]][p[1]]).join('') + '"'));
+      pathPanel.appendChild(Demo.el('div', null, step.done
+        ? '<span class="tag tag--ok">搜索结束</span>'
+        : '<span class="tag tag--info">继续 DFS</span>'));
+      triePanel.appendChild(pathPanel);
+  
+      top.appendChild(boardPanel);
+      top.appendChild(triePanel);
+      ctx.stage.appendChild(top);
+    }
+  });
+  return Demo.__config
+}

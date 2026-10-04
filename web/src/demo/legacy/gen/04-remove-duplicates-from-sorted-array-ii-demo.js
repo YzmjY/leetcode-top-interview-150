@@ -1,0 +1,113 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/04-remove-duplicates-from-sorted-array-ii-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [0, 0, 1, 1, 1, 1, 2, 3, 3];
+  const LIMIT = 2;
+  
+  function buildSteps() {
+    const nums = NUMS.slice();
+    const n = nums.length;
+    const steps = [];
+    let slow = LIMIT;
+  
+    steps.push({
+      nums: nums.slice(), slow, fast: LIMIT, ref: slow - LIMIT, phase: 'init',
+      note: `初始化：每个值最多保留 ${LIMIT} 个，所以前 ${LIMIT} 位不用判断就保留。slow = ${slow} 指向下一个可写入的位置，fast 从下标 ${LIMIT} 开始扫描，比较基准是 nums[slow - ${LIMIT}]。`
+    });
+  
+    for (let fast = LIMIT; fast < n; fast++) {
+      const cur = nums[fast];
+      const refIdx = slow - LIMIT;
+      const ref = nums[refIdx];
+      if (cur !== ref) {
+        nums[slow] = cur;
+        slow++;
+        steps.push({
+          nums: nums.slice(), slow, fast, ref: refIdx, phase: 'keep', refValue: ref,
+          note: `比较 nums[${fast}] = ${cur} 与基准 nums[slow - ${LIMIT}] = nums[${refIdx}] = ${ref}：不相等。基准是已保留序列的倒数第二个元素，与它不同就说明 ${cur} 不会凑成第 3 个重复，可以保留。动作：写入 nums[${slow - 1}]，slow 右移到 ${slow}。`
+        });
+      } else {
+        steps.push({
+          nums: nums.slice(), slow, fast, ref: refIdx, phase: 'drop', refValue: ref,
+          note: `比较 nums[${fast}] = ${cur} 与基准 nums[${refIdx}] = ${ref}：相等。已保留序列末尾已经是 ${ref}，再收下它就会出现 3 个相同的值，违反「最多出现两次」。动作：丢弃，slow 不动，fast 继续右移。`
+        });
+      }
+    }
+  
+    steps.push({
+      nums: nums.slice(), slow, fast: n, ref: null, phase: 'done',
+      note: `fast 越界，处理结束。返回长度 k = slow = ${slow}，nums 的前 ${slow} 位就是每个值最多出现两次的结果 [${nums.slice(0, slow).join(', ')}]。`
+    });
+  
+    return steps;
+  }
+  
+  function buildRow(step) {
+    const row = Demo.el('div', 'row');
+    step.nums.forEach((value, i) => {
+      let cls = 'cell';
+      if (i === step.fast) {
+        cls += step.phase === 'drop' ? ' is-bad' : ' is-active';
+      } else if (i === step.ref) {
+        cls += ' is-warn';
+      } else if (i < step.slow) {
+        cls += ' is-ok';
+        if (step.phase === 'keep' && i === step.slow - 1) cls += ' is-violet';
+      } else {
+        cls += ' cell--dim';
+      }
+  
+      const col = Demo.el('div', 'col');
+      col.appendChild(Demo.el('div', cls, Demo.esc(value)));
+  
+      const labels = [];
+      if (step.ref != null && step.ref === i) labels.push('slow-2');
+      if (step.slow === i) labels.push('slow');
+      if (step.fast != null && step.fast === i) labels.push('fast');
+      const ptr = Demo.el('div', 'ptr', labels.join(' '));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      else if (labels.indexOf('slow-2') >= 0) ptr.classList.add('ptr--warn');
+      else if (labels.indexOf('slow') >= 0) ptr.classList.add('ptr--ok');
+      if (step.phase === 'drop' && step.fast === i) {
+        ptr.classList.remove('ptr--warn', 'ptr--ok');
+        ptr.classList.add('ptr--bad');
+      }
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  Demo.create({
+    title: '4. 删除有序数组中的重复项 II — 至多保留两个',
+    info: `nums = [${NUMS.join(', ')}]（有序），每个值最多保留 ${LIMIT} 个，返回新长度 k。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: 'fast：当前扫描元素' },
+      { color: 'var(--demo-warn)', label: '比较基准 slow-2' },
+      { color: 'var(--demo-ok)', label: '已保留区 [0, slow)' },
+      { color: 'var(--demo-danger)', label: '会出现第 3 次，丢弃' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      ctx.stage.appendChild(buildRow(step));
+  
+      const k = step.slow;
+      const panel = Demo.el('div', 'panel');
+      panel.innerHTML =
+        '<div><span class="tag tag--ok">结果长度 k = ' + k + '</span>&nbsp; [ ' +
+        Demo.esc(step.nums.slice(0, k).join(', ')) + ' ]</div>' +
+        '<div style="margin-top:6px"><span class="tag">' + (step.phase === 'done' ? '忽略区' : 'k 之后（待确定）') + '</span>&nbsp; [ ' +
+        (k < step.nums.length ? Demo.esc(step.nums.slice(k).join(', ')) : '（空）') + ' ]' +
+        '&nbsp;&nbsp;<span class="tag tag--info">规则：每个值 ≤ ' + LIMIT + ' 次</span></div>';
+      ctx.stage.appendChild(panel);
+    }
+  });
+  return Demo.__config
+}

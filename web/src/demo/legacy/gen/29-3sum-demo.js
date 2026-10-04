@@ -1,0 +1,191 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/29-3sum-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const NUMS = [-1, 0, 1, 2, -1, -4];
+  
+  function buildSteps() {
+    const nums = NUMS.slice().sort(function (a, b) { return a - b; });
+    const n = nums.length;
+    const steps = [];
+    const found = [];
+    const skipped = [];
+    for (let k = 0; k < n; k++) skipped.push(false);
+  
+    let ci = -1;
+    let cl = -1;
+    let cr = -1;
+  
+    function base(phase, note) {
+      return {
+        i: ci,
+        left: cl,
+        right: cr,
+        phase: phase,
+        note: note,
+        nums: nums.slice(),
+        sum: null,
+        found: found.slice(),
+        skipped: skipped.slice()
+      };
+    }
+  
+    steps.push(base('init',
+      '先把数组排序得到 [' + nums.join(', ') + ']。排序后重复元素相邻，既方便双指针收敛也方便去重。外层依次固定第一个数 nums[i]，内层在 i 的右边用对撞双指针寻找另外两个数，把三数之和转化为两数之和。'));
+  
+    for (let a = 0; a < n - 2; a++) {
+      if (nums[a] > 0) {
+        ci = a;
+        steps.push(base('break',
+          'nums[' + a + ']=' + nums[a] + ' 已经大于 0，排序后它右边的数都不小于它，三数之和不可能为 0 → 结束外层循环。'));
+        break;
+      }
+  
+      if (a > 0 && nums[a] === nums[a - 1]) {
+        ci = a;
+        steps.push(base('dup-i',
+          'nums[' + a + ']=' + nums[a] + ' 与 nums[' + (a - 1) + '] 相同，这个值已经作为第一个数固定过了，跳过它可以避免产生重复三元组 → i 继续右移。'));
+        continue;
+      }
+  
+      ci = a;
+      cl = a + 1;
+      cr = n - 1;
+      const target = -nums[a];
+      steps.push(base('fix-i',
+        '固定 i=' + a + '（nums[i]=' + nums[a] + '），初始化 left=' + cl + '、right=' + cr + '。问题转化为在 [left, right] 里找两个数，使它们的和等于 ' + target + '（也就是 -nums[i]），这又是有序数组上的对撞双指针。'));
+  
+      while (cl < cr) {
+        const sum = nums[ci] + nums[cl] + nums[cr];
+        const st = base('sum',
+          '三数之和 = nums[' + ci + '] + nums[' + cl + '] + nums[' + cr + '] = ' + nums[ci] + ' + ' + nums[cl] + ' + ' + nums[cr] + ' = ' + sum
+          + '，与目标 0 比较：' + (sum === 0 ? '正好为 0。' : (sum < 0 ? '偏小，需要更大的数 → left++。' : '偏大，需要更小的数 → right--。')));
+        st.sum = sum;
+        steps.push(st);
+  
+        if (sum === 0) {
+          found.push([nums[ci], nums[cl], nums[cr]]);
+          const stF = base('found',
+            '这一组和为 0，记录三元组 [' + nums[ci] + ', ' + nums[cl] + ', ' + nums[cr] + ']。记录后必须去重：left 与 right 都要跳过与自己相邻的相同元素，否则同一个三元组会被重复记录。');
+          stF.sum = sum;
+          steps.push(stF);
+  
+          while (cl < cr && nums[cl] === nums[cl + 1]) {
+            skipped[cl] = true;
+            steps.push(base('dup-left',
+              'nums[' + cl + ']=' + nums[cl] + ' 与 nums[' + (cl + 1) + '] 相同，这个值已经用过了 → left 跳过重复值，指向 ' + (cl + 1) + '。'));
+            cl++;
+          }
+          while (cl < cr && nums[cr] === nums[cr - 1]) {
+            skipped[cr] = true;
+            steps.push(base('dup-right',
+              'nums[' + cr + ']=' + nums[cr] + ' 与 nums[' + (cr - 1) + '] 相同，这个值已经用过了 → right 跳过重复值，指向 ' + (cr - 1) + '。'));
+            cr--;
+          }
+          steps.push(base('advance',
+            '这一组找完了，left 与 right 同时向中间收拢：left → ' + (cl + 1) + '，right → ' + (cr - 1) + '，在更小的区间里继续找。'));
+          cl++;
+          cr--;
+        } else if (sum < 0) {
+          steps.push(base('move-left',
+            'sum=' + sum + ' < 0：nums[right] 已是当前能与 nums[left] 配对的最大值，换成更小的 right 只会让和更小，所以 nums[left] 不可能参与答案 → left 从 ' + cl + ' 右移到 ' + (cl + 1) + '。'));
+          cl++;
+        } else {
+          steps.push(base('move-right',
+            'sum=' + sum + ' > 0：nums[left] 已是当前能与 nums[right] 配对的最小值，换成更大的 left 只会让和更大，所以 nums[right] 不可能参与答案 → right 从 ' + cr + ' 左移到 ' + (cr - 1) + '。'));
+          cr--;
+        }
+      }
+    }
+  
+    steps.push(base('done',
+      '外层循环结束，排序后的数组里每个 i 都只固定一次，内层双指针也不会记录重复结果。共找到 ' + found.length + ' 个不重复三元组：'
+      + (found.length ? found.map(function (t) { return '[' + t.join(', ') + ']'; }).join('、') : '无') + '。'));
+  
+    return steps;
+  }
+  
+  function render(step, idx, ctx) {
+    ctx.stage.innerHTML = '';
+  
+    const row = Demo.el('div', 'row');
+    for (let k = 0; k < step.nums.length; k++) {
+      const col = Demo.el('div', 'col');
+      col.appendChild(Demo.el('div', 'ptr ptr--dim', String(k)));
+  
+      const cell = Demo.el('div', 'cell', Demo.esc(step.nums[k]));
+      let cls = null;
+      if (step.phase === 'found' && (k === step.i || k === step.left || k === step.right)) cls = 'is-ok';
+      else if (k === step.i) cls = 'is-violet';
+      else if (k === step.left) cls = 'is-active';
+      else if (k === step.right) cls = 'is-info';
+      else if (step.skipped[k]) cls = 'cell--dim';
+      if (cls) cell.classList.add(cls);
+      col.appendChild(cell);
+  
+      const pairValid = step.left >= 0 && step.left < step.right;
+      let text = '';
+      let pcls = null;
+      if (k === step.i) {
+        text = 'i';
+        pcls = 'ptr--violet';
+      } else if (k === step.left && pairValid) {
+        text = 'left';
+      } else if (k === step.right && pairValid) {
+        text = 'right';
+        pcls = 'ptr--info';
+      }
+      const ptr = Demo.el('div', 'ptr', text);
+      if (pcls) ptr.classList.add(pcls);
+      if (!text) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      row.appendChild(col);
+    }
+    ctx.stage.appendChild(row);
+  
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.style.textAlign = 'center';
+    let html = '当前 nums[i] = ' + (step.i >= 0 ? step.nums[step.i] : '—');
+    if (step.sum != null) {
+      html += ' &nbsp; 三数之和：<code>' + step.nums[step.i] + ' + ' + step.nums[step.left] + ' + ' + step.nums[step.right] + ' = ' + step.sum + '</code> '
+        + (step.sum === 0
+          ? '<span class="tag tag--ok">= 0，记录并去重</span>'
+          : (step.sum < 0 ? '<span class="tag tag--warn">&lt; 0，left++</span>' : '<span class="tag tag--warn">&gt; 0，right--</span>'));
+    }
+    panel.innerHTML = html;
+    ctx.stage.appendChild(panel);
+  
+    const listBox = Demo.el('div', 'panel');
+    listBox.style.width = '100%';
+    listBox.style.textAlign = 'center';
+    let listHtml = '已找到的三元组：';
+    if (!step.found.length) {
+      listHtml += ' <span class="tag">暂无</span>';
+    } else {
+      listHtml += ' ' + step.found.map(function (t) {
+        return '<span class="tag tag--ok">[' + t.join(', ') + ']</span>';
+      }).join(' ');
+    }
+    listBox.innerHTML = listHtml;
+    ctx.stage.appendChild(listBox);
+  }
+  
+  Demo.create({
+    title: '29. 三数之和 — 排序 + 固定一个数 + 对撞双指针',
+    info: '输入：nums = [-1, 0, 1, 2, -1, -4]，排序后为 [-4, -1, -1, 0, 1, 2]，期望输出 [[-1, -1, 2], [-1, 0, 1]]。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-violet)', label: 'i：本轮固定的第一个数' },
+      { color: 'var(--demo-accent)', label: 'left 指针' },
+      { color: 'var(--demo-info)', label: 'right 指针' },
+      { color: 'var(--demo-ok)', label: '构成答案的三个数' },
+      { color: 'var(--demo-muted)', label: '已跳过的重复元素' }
+    ],
+    render: render
+  });
+  return Demo.__config
+}

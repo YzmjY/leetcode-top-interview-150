@@ -1,0 +1,136 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/07-best-time-to-buy-and-sell-stock-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const PRICES = [7, 1, 5, 3, 6, 4];
+  
+  function buildSteps() {
+    const n = PRICES.length;
+    const maxPrice = Math.max.apply(null, PRICES);
+    const steps = [];
+  
+    let minPrice = PRICES[0];
+    let minDay = 0;
+    let maxProfit = 0;
+    let sellDay = null;
+    let profit = 0;
+  
+    steps.push({
+      minPrice, minDay, maxProfit, sellDay, day: 0, profit: 0, maxPrice, phase: 'init',
+      note: `初始化：第 1 天就先当作最低价买入，minPrice = ${PRICES[0]}，maxProfit = 0。接下来只需一次向右扫描，边走边更新「历史最低价」和「最大利润」。`
+    });
+  
+    for (let i = 1; i < n; i++) {
+      profit = PRICES[i] - minPrice;
+      let note;
+      let phase;
+      if (profit > maxProfit) {
+        maxProfit = profit;
+        sellDay = i;
+        phase = 'gain';
+        note = `第 ${i + 1} 天价格 ${PRICES[i]}：若在今天卖出，利润 = ${PRICES[i]} − minPrice(${minPrice}) = ${profit}，比之前的最大利润更高，于是更新 maxProfit = ${maxProfit}，最佳卖出日 = 第 ${i + 1} 天。`;
+      } else {
+        phase = 'flat';
+        note = `第 ${i + 1} 天价格 ${PRICES[i]}：今天卖出的利润 = ${PRICES[i]} − ${minPrice} = ${profit}，没有超过已有的 maxProfit = ${maxProfit}，保持不动。`;
+      }
+      if (PRICES[i] < minPrice) {
+        minPrice = PRICES[i];
+        minDay = i;
+        note += ` 另外今天价格 ${PRICES[i]} 比历史最低价还低，更新 minPrice = ${minPrice}（第 ${i + 1} 天成为新的最早买入点）。`;
+      } else {
+        note += ` 今天价格没有低于历史最低价 ${minPrice}，买入点不变。`;
+      }
+      steps.push({
+        minPrice, minDay, maxProfit, sellDay, day: i, profit, maxPrice, phase, note
+      });
+    }
+  
+    steps.push({
+      minPrice, minDay, maxProfit, sellDay, day: null, profit, maxPrice, phase: 'done', done: true,
+      note: sellDay == null
+        ? `扫描结束：价格一路下跌或持平，没有任何一天能在更早的低价买入后获利，因此最大利润 = 0（不交易）。`
+        : `扫描结束：最大利润 = ${maxProfit}，在第 ${minDay + 1} 天（价格 ${PRICES[minDay]}）买入、第 ${sellDay + 1} 天（价格 ${PRICES[sellDay]}）卖出。为什么只需一次遍历：任何一天卖出的最优买入价，一定是它左边出现过的最低价，所以把「左边最低价」边扫边记录即可，时间 O(n)、空间 O(1)。`
+    });
+  
+    return steps;
+  }
+  
+  function renderChart(step) {
+    const row = Demo.el('div', 'row');
+    PRICES.forEach((value, idx) => {
+      const col = Demo.el('div', 'col');
+  
+      let cls = 'cell cell--sm';
+      if (step.day === idx) cls += ' is-active';
+      else if (step.minDay === idx) cls += ' is-info';
+      else if (step.sellDay === idx) cls += ' is-ok';
+      col.appendChild(Demo.el('div', cls, Demo.esc(value)));
+  
+      const track = Demo.el('div', 'bar');
+      track.style.width = '26px';
+      track.style.height = '110px';
+      const fill = Demo.el('div', 'bar__fill');
+      fill.style.inset = 'auto 0 0 0';
+      fill.style.width = '100%';
+      fill.style.height = Math.round((value / step.maxPrice) * 100) + '%';
+      fill.style.background = 'var(--demo-muted)';
+      if (step.day === idx) fill.style.background = 'var(--demo-accent)';
+      else if (step.minDay === idx) fill.style.background = 'var(--demo-info)';
+      else if (step.sellDay === idx) fill.style.background = 'var(--demo-ok)';
+      track.appendChild(fill);
+      col.appendChild(track);
+  
+      const labels = [];
+      if (step.day === idx) labels.push('今天');
+      if (step.minDay === idx) labels.push('最低');
+      if (step.sellDay === idx) labels.push('最佳卖');
+      const ptr = Demo.el('div', 'ptr', labels.join(' ') || ('第' + (idx + 1) + '天'));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  Demo.create({
+    title: '7. 买卖股票的最佳时机 — 一次遍历 + 贪心',
+    info: `prices = [${PRICES.join(', ')}]，只能买入一次、卖出一次，求最大利润（不能获利则返回 0）。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前遍历到的日子' },
+      { color: 'var(--demo-info)', label: '历史最低价（最佳买入点）' },
+      { color: 'var(--demo-ok)', label: '当前最佳卖出点' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      ctx.stage.appendChild(renderChart(step));
+  
+      const stateRow = Demo.el('div', 'row');
+      stateRow.appendChild(Demo.el('div', 'panel',
+        '<div class="panel__title">历史最低价 minPrice</div>' +
+        '<strong>' + step.minPrice + '</strong>（第 ' + (step.minDay + 1) + ' 天）'));
+      stateRow.appendChild(Demo.el('div', 'panel',
+        '<div class="panel__title">当前最大利润 maxProfit</div>' +
+        '<strong>' + step.maxProfit + '</strong>' +
+        (step.sellDay == null ? '' : '（第 ' + (step.sellDay + 1) + ' 天卖出）')));
+      if (step.day != null && step.day > 0) {
+        stateRow.appendChild(Demo.el('div', 'panel',
+          '<div class="panel__title">今天的卖出利润</div>' +
+          PRICES[step.day] + ' − ' + step.minPrice + ' = <strong>' + (PRICES[step.day] - step.minPrice) + '</strong>'));
+      }
+      ctx.stage.appendChild(stateRow);
+  
+      const result = Demo.el('div', 'panel');
+      result.innerHTML = step.phase === 'done'
+        ? '<span class="tag tag--ok">答案：最大利润 ' + step.maxProfit + '</span>&nbsp; 第 ' + (step.minDay + 1) + ' 天买入、第 ' + (step.sellDay + 1) + ' 天卖出'
+        : '价格柱状图：柱子越高代表当天价格越高；扫描过程中始终用「左边见过的最低价」作为买入价来衡量今天卖出的收益。';
+      ctx.stage.appendChild(result);
+    }
+  });
+  return Demo.__config
+}

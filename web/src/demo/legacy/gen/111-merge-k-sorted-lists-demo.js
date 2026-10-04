@@ -1,0 +1,309 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/111-merge-k-sorted-lists-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const LISTS = [[1, 4, 5], [1, 3, 4], [2, 6]];
+  
+  function buildList(values) {
+    let head = null;
+    let prev = null;
+    values.forEach(v => {
+      const node = { val: v, next: null };
+      if (prev) prev.next = node; else head = node;
+      prev = node;
+    });
+    return head;
+  }
+  
+  function nodeList(head) {
+    const out = [];
+    let cur = head;
+    let guard = 0;
+    while (cur && guard++ < 500) { out.push(cur); cur = cur.next; }
+    return out;
+  }
+  
+  function valuesOf(nodes) {
+    return nodes.map(n => n.val);
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const frames = [];
+    const lists = LISTS.map(v => buildList(v));
+  
+    function snap(extra) {
+      const s = {
+        phase: 'init', range: null, mid: null, active: null,
+        left: [], right: [], out: [], l1: null, l2: null, pickSide: '', pickIdx: -1,
+        stack: frames.slice(), result: null, note: ''
+      };
+      const e = extra || {};
+      Object.keys(e).forEach(k => { s[k] = e[k]; });
+      steps.push(s);
+      return s;
+    }
+  
+    function mergeTwo(a, b) {
+      const na = nodeList(a);
+      const nb = nodeList(b);
+      const la = valuesOf(na);
+      const lb = valuesOf(nb);
+      frames.push('mergeTwo([' + la.join(',') + '], [' + lb.join(',') + '])');
+      snap({
+        phase: 'merge-start', left: la, right: lb, out: [], l1: 0, l2: 0,
+        note: '自底向上返回了两个有序链表 [' + la.join(', ') + '] 和 [' + lb.join(', ') +
+          ']，用经典的双指针合并：各自看头节点，谁小就接到结果末尾，那一侧指针后移。'
+      });
+  
+      const out = [];
+      const dummy = { val: null, next: null };
+      let cur = dummy;
+      let i = 0;
+      let j = 0;
+  
+      while (i < na.length && j < nb.length) {
+        const lv = la[i];
+        const rv = lb[j];
+        let from;
+        let idx;
+        let val;
+        if (lv <= rv) {
+          cur.next = na[i];
+          from = 'L';
+          idx = i;
+          val = lv;
+          i++;
+        } else {
+          cur.next = nb[j];
+          from = 'R';
+          idx = j;
+          val = rv;
+          j++;
+        }
+        cur = cur.next;
+        out.push(val);
+        snap({
+          phase: 'merge-pick', left: la, right: lb, out: out.slice(),
+          l1: i, l2: j, pickSide: from, pickIdx: idx,
+          note: '比较左链头 ' + lv + ' 与右链头 ' + rv + '：' + lv + (from === 'L' ? ' ≤ ' : ' > ') + rv +
+            '，取 ' + val + ' 接到结果末尾，' + (from === 'L' ? '左' : '右') + '指针后移。结果前缀 [' +
+            out.join(', ') + ']。'
+        });
+      }
+  
+      if (i < la.length) {
+        cur.next = na[i];
+        for (let k = i; k < la.length; k++) out.push(la[k]);
+      } else if (j < lb.length) {
+        cur.next = nb[j];
+        for (let k = j; k < lb.length; k++) out.push(lb[k]);
+      }
+  
+      snap({
+        phase: 'merge-done', left: la, right: lb, out: out.slice(),
+        l1: la.length, l2: lb.length,
+        note: '有一条链已经取空，把另一条链剩下的整段直接接上（它本身有序）。本组合并结果 [' +
+          out.join(', ') + ']。'
+      });
+      frames.pop();
+      return dummy.next;
+    }
+  
+    function divide(l, r) {
+      frames.push('divide(' + l + ', ' + r + ')');
+  
+      if (l === r) {
+        snap({
+          phase: 'base', range: [l, r], active: l,
+          note: 'divide(' + l + ', ' + r + ')：l == r，区间里只剩 lists[' + l + ']，它本身就是升序的，直接把它作为结果返回，不需要合并。'
+        });
+        frames.pop();
+        return lists[l];
+      }
+  
+      const mid = l + Math.floor((r - l) / 2);
+      snap({
+        phase: 'divide', range: [l, r], mid: mid,
+        note: 'divide(' + l + ', ' + r + ')：mid = ' + mid + '，把区间切成 [' + l + ', ' + mid + '] 和 [' +
+          (mid + 1) + ', ' + r + '] 两半，分别递归合并，最后把两个结果两两合并。这样每个链表只参与 log k 轮合并。'
+      });
+  
+      const left = divide(l, mid);
+      const right = divide(mid + 1, r);
+      const merged = mergeTwo(left, right);
+      frames.pop();
+      return merged;
+    }
+  
+    snap({
+      note: '输入 3 条升序链表：' + LISTS.map((v, k) => 'L' + (k + 1) + '=[' + v.join(',') + ']').join('，') +
+        '。分治合并：把链表数组按区间一分为二，递归合并两半，再把两个有序结果合并成一条。'
+    });
+  
+    const result = divide(0, lists.length - 1);
+  
+    snap({
+      phase: 'done', result: valuesOf(nodeList(result)),
+      note: '全部合并完成：' + valuesOf(nodeList(result)).join(' → ') +
+        '。共 log₂3 ≈ 2 层合并，每层处理 N 个节点，时间复杂度 O(N log k)。'
+    });
+  
+    return steps;
+  }
+  
+  function chainRow(values, opt) {
+    opt = opt || {};
+    const row = Demo.el('div', 'row');
+    if (!values.length) {
+      row.appendChild(Demo.el('div', 'ptr ptr--dim', '∅ null'));
+      return row;
+    }
+    const labels = opt.labels || {};
+    values.forEach((v, k) => {
+      const col = Demo.el('div', 'col');
+      const node = Demo.el('div', 'll-node', Demo.esc(v));
+      if (opt.pickIdx === k || opt.activeIdx === k) node.classList.add('is-active');
+      else if (opt.okUpTo != null && k <= opt.okUpTo) node.classList.add('is-ok');
+      else if (opt.okIdx === k) node.classList.add('is-ok');
+      col.appendChild(node);
+  
+      const label = labels[k];
+      const ptr = Demo.el('div', 'ptr', label ? Demo.esc(label) : '&nbsp;');
+      if (!label) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+      if (k < values.length - 1) row.appendChild(Demo.el('div', 'arrow', '→'));
+    });
+    row.appendChild(Demo.el('div', 'arrow', '→'));
+    row.appendChild(Demo.el('div', 'ptr ptr--dim', '∅'));
+    return row;
+  }
+  
+  function stackPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', '递归调用栈'));
+    const row = Demo.el('div', 'row');
+    const stack = Demo.el('div', 'stack');
+    if (!step.stack.length) {
+      stack.appendChild(Demo.el('div', 'stack__item', '（空）'));
+    } else {
+      step.stack.forEach((f, k) => {
+        const item = Demo.el('div', 'stack__item', Demo.esc(f));
+        if (k === step.stack.length - 1) item.classList.add('is-active');
+        stack.appendChild(item);
+      });
+    }
+    row.appendChild(stack);
+    panel.appendChild(row);
+    return panel;
+  }
+  
+  function listsPanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', 'lists 输入（每条链表已升序）'));
+  
+    LISTS.forEach((vals, k) => {
+      const row = Demo.el('div', 'row');
+      row.style.width = '100%';
+      row.appendChild(Demo.el('div', 'ptr', 'L' + (k + 1)));
+  
+      const inRange = step.range && k >= step.range[0] && k <= step.range[1];
+      const isActive = step.active === k;
+      row.appendChild(chainRow(vals, { okUpTo: isActive ? vals.length - 1 : null }));
+  
+      const tag = Demo.el('div', 'ptr');
+      tag.style.minWidth = '110px';
+      if (isActive) {
+        tag.innerHTML = '<span class="tag tag--ok">直接返回该链</span>';
+      } else if (inRange) {
+        tag.innerHTML = '<span class="tag tag--info">在分治区间内</span>';
+      } else {
+        tag.innerHTML = '&nbsp;';
+      }
+      row.appendChild(tag);
+      panel.appendChild(row);
+    });
+    return panel;
+  }
+  
+  function mergePanel(step) {
+    const panel = Demo.el('div', 'panel');
+    panel.style.width = '100%';
+    panel.appendChild(Demo.el('div', 'panel__title', '本次两两合并'));
+  
+    const chain = Demo.el('div', 'col');
+    chain.style.width = '100%';
+  
+    const l1 = Demo.el('div', 'col');
+    l1.appendChild(Demo.el('div', 'ptr', '左链'));
+    const l1Labels = {};
+    if (step.l1 != null && step.l1 < step.left.length) l1Labels[step.l1] = 'l1';
+    l1.appendChild(chainRow(step.left, {
+      labels: l1Labels,
+      pickIdx: step.pickSide === 'L' ? step.pickIdx : -1,
+      okUpTo: step.pickSide === 'L' && step.phase === 'merge-pick' ? step.pickIdx : null
+    }));
+    chain.appendChild(l1);
+  
+    const l2 = Demo.el('div', 'col');
+    l2.appendChild(Demo.el('div', 'ptr', '右链'));
+    const l2Labels = {};
+    if (step.l2 != null && step.l2 < step.right.length) l2Labels[step.l2] = 'l2';
+    l2.appendChild(chainRow(step.right, {
+      labels: l2Labels,
+      pickIdx: step.pickSide === 'R' ? step.pickIdx : -1,
+      okUpTo: step.pickSide === 'R' && step.phase === 'merge-pick' ? step.pickIdx : null
+    }));
+    chain.appendChild(l2);
+  
+    const res = Demo.el('div', 'col');
+    res.appendChild(Demo.el('div', 'ptr', '结果'));
+    res.appendChild(chainRow(step.out, {
+      activeIdx: step.phase === 'merge-pick' ? step.out.length - 1 : -1,
+      okUpTo: step.phase === 'merge-pick' ? step.out.length - 2 : step.out.length - 1
+    }));
+    chain.appendChild(res);
+  
+    panel.appendChild(chain);
+    return panel;
+  }
+  
+  Demo.create({
+    title: '111. 合并 K 个升序链表 — 分治两两合并',
+    info: 'lists = [[1,4,5], [1,3,4], [2,6]]。把链表数组按区间二分，递归合并两半，再把两个有序结果合并。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 480,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前比较 / 刚接入的节点' },
+      { color: 'var(--demo-ok)', label: '已排好序的部分' },
+      { color: 'var(--demo-info)', label: '当前分治区间内的链表' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      if (step.phase === 'done') {
+        const done = Demo.el('div', 'panel');
+        done.style.width = '100%';
+        done.appendChild(Demo.el('div', 'panel__title', '合并后的链表'));
+        done.appendChild(chainRow(step.result || [], { okUpTo: (step.result || []).length - 1 }));
+        ctx.stage.appendChild(done);
+      } else {
+        ctx.stage.appendChild(listsPanel(step));
+      }
+  
+      if (step.phase.indexOf('merge') === 0) {
+        ctx.stage.appendChild(mergePanel(step));
+      }
+  
+      ctx.stage.appendChild(stackPanel(step));
+    }
+  });
+  return Demo.__config
+}

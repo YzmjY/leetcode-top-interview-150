@@ -1,0 +1,132 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/08-best-time-to-buy-and-sell-stock-ii-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const PRICES = [7, 1, 5, 3, 6, 4];
+  
+  function buildSteps() {
+    const n = PRICES.length;
+    const maxPrice = Math.max.apply(null, PRICES);
+    const best = PRICES.reduce(function (sum, p, i) {
+      return i > 0 && p > PRICES[i - 1] ? sum + (p - PRICES[i - 1]) : sum;
+    }, 0);
+  
+    const steps = [];
+    const trades = [];
+    let total = 0;
+  
+    steps.push({
+      day: 0, total, trades: [], maxPrice, best, phase: 'init',
+      note: `初始化：累计利润 totalProfit = 0。本题可以交易任意多次（同时最多持有一股），贪心策略是：只要今天比昨天高，就当作「昨天买入、今天卖出」，把这段正差价全部收下。`
+    });
+  
+    for (let i = 1; i < n; i++) {
+      const diff = PRICES[i] - PRICES[i - 1];
+      if (diff > 0) {
+        total += diff;
+        trades.push({ from: i - 1, to: i, diff: diff });
+        steps.push({
+          day: i, total, trades: trades.slice(), maxPrice, best, diff, phase: 'buy',
+          note: `第 ${i} 天（${PRICES[i - 1]}）→ 第 ${i + 1} 天（${PRICES[i]}）：价格涨了 ${diff}，做一笔「昨天买、今天卖」的交易赚 ${diff}，累计利润 totalProfit = ${total}。`
+        });
+      } else {
+        steps.push({
+          day: i, total, trades: trades.slice(), maxPrice, best, diff, phase: 'flat',
+          note: `第 ${i} 天（${PRICES[i - 1]}）→ 第 ${i + 1} 天（${PRICES[i]}）：没有上涨（差价 ${diff}），买入只会亏，所以不交易，累计利润保持 ${total}。`
+        });
+      }
+    }
+  
+    steps.push({
+      day: null, total, trades: trades.slice(), maxPrice, best, phase: 'done', done: true,
+      note: `扫描结束，最大总利润 = ${total}，由 ${trades.length} 笔交易累加得到。为什么贪心正确：一段连续上涨 a < b < c 满足 (c − a) = (b − a) + (c − b)，把一次持有拆成多次短线交易收益完全相同；而下跌区间只会带来负收益，跳过即可。因此「所有相邻正差价之和」既是答案的上界，又能被这个策略真正实现。`
+    });
+  
+    return steps;
+  }
+  
+  function renderChart(step) {
+    const row = Demo.el('div', 'row');
+    PRICES.forEach((value, idx) => {
+      const col = Demo.el('div', 'col');
+  
+      let cls = 'cell cell--sm';
+      if (step.day === idx) cls += ' is-active';
+      else if (step.day != null && idx === step.day - 1) {
+        cls += step.phase === 'buy' ? ' is-ok' : ' is-warn';
+      }
+      col.appendChild(Demo.el('div', cls, Demo.esc(value)));
+  
+      const track = Demo.el('div', 'bar');
+      track.style.width = '26px';
+      track.style.height = '110px';
+      const fill = Demo.el('div', 'bar__fill');
+      fill.style.inset = 'auto 0 0 0';
+      fill.style.width = '100%';
+      fill.style.height = Math.round((value / step.maxPrice) * 100) + '%';
+      fill.style.background = 'var(--demo-muted)';
+      if (step.day === idx) fill.style.background = 'var(--demo-accent)';
+      else if (step.day != null && idx === step.day - 1 && step.phase === 'buy') {
+        fill.style.background = 'var(--demo-ok)';
+      }
+      track.appendChild(fill);
+      col.appendChild(track);
+  
+      const labels = [];
+      if (step.day === idx) labels.push('今天');
+      if (step.day != null && idx === step.day - 1) labels.push('昨天');
+      const ptr = Demo.el('div', 'ptr', labels.join(' ') || ('第' + (idx + 1) + '天'));
+      if (!labels.length) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+  
+      row.appendChild(col);
+    });
+    return row;
+  }
+  
+  Demo.create({
+    title: '8. 买卖股票的最佳时机 II — 累加所有上涨差价',
+    info: `prices = [${PRICES.join(', ')}]，可交易任意多次（同一天也可先买后卖），求最大总利润。`,
+    steps: buildSteps(),
+    desc: s => s.note,
+    legend: [
+      { color: 'var(--demo-accent)', label: '今天（卖出/评估）' },
+      { color: 'var(--demo-ok)', label: '昨天买入，形成正收益' },
+      { color: 'var(--demo-warn)', label: '下跌：不交易' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      ctx.stage.appendChild(renderChart(step));
+  
+      const bar = Demo.el('div', 'bar');
+      bar.style.width = '300px';
+      const fill = Demo.el('div', 'bar__fill');
+      fill.style.width = (step.best ? Math.round((step.total / step.best) * 100) : 0) + '%';
+      bar.appendChild(fill);
+      bar.appendChild(Demo.el('div', 'bar__label', '累计利润 totalProfit = ' + step.total));
+      const profitPanel = Demo.el('div', 'panel');
+      profitPanel.appendChild(bar);
+      ctx.stage.appendChild(profitPanel);
+  
+      const logPanel = Demo.el('div', 'panel');
+      let log = '<span class="tag">已完成交易</span>&nbsp; ';
+      if (!step.trades.length) {
+        log += '暂无（还没有出现上涨区间）';
+      } else {
+        log += step.trades.map(function (t) {
+          return '<span class="tag tag--ok">第 ' + (t.from + 1) + ' 天买入 ' + PRICES[t.from] +
+            ' → 第 ' + (t.to + 1) + ' 天卖出 ' + PRICES[t.to] + '，赚 ' + t.diff + '</span>';
+        }).join(' ');
+      }
+      if (step.phase === 'done') {
+        log += '&nbsp;&nbsp;<span class="tag tag--violet">答案：' + step.total + '</span>';
+      }
+      logPanel.innerHTML = log;
+      ctx.stage.appendChild(logPanel);
+    }
+  });
+  return Demo.__config
+}

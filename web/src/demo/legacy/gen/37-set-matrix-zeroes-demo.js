@@ -1,0 +1,212 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/37-set-matrix-zeroes-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const MATRIX = [
+    [1, 1, 1],
+    [1, 0, 1],
+    [1, 1, 1]
+  ];
+  const M = MATRIX.length;
+  const N = MATRIX[0].length;
+  
+  function buildSteps() {
+    const grid = MATRIX.map(function (row) { return row.slice(); });
+    const steps = [];
+    const zeros = [];
+    for (let i = 0; i < M; i++) {
+      for (let j = 0; j < N; j++) if (grid[i][j] === 0) zeros.push([i, j]);
+    }
+    const rowMarked = new Array(M).fill(false);
+    const colMarked = new Array(N).fill(false);
+    let firstRowZero = false;
+    let firstColZero = false;
+  
+    function snapshot(extra) {
+      return Object.assign({
+        grid: grid.map(function (row) { return row.slice(); }),
+        zeros: zeros.map(function (p) { return p.slice(); }),
+        rowMarked: rowMarked.slice(),
+        colMarked: colMarked.slice(),
+        firstRowZero: firstRowZero,
+        firstColZero: firstColZero,
+        active: null,
+        cell: null
+      }, extra);
+    }
+  
+    steps.push(snapshot({
+      kind: 'init',
+      note: '初始状态。原地算法只用两个布尔变量 firstRowZero / firstColZero，并把第一行、第一列当作「标记数组」来记录哪些行、哪些列需要置零。'
+    }));
+  
+    for (let j = 0; j < N; j++) if (grid[0][j] === 0) firstRowZero = true;
+    steps.push(snapshot({
+      kind: 'check-first-row', active: [0, 0], row: 0,
+      note: '第 1 步：检查第一行是否有 0 —— ' + (firstRowZero ? '有 0，firstRowZero = true' : '没有 0，firstRowZero = false') +
+        '。用布尔变量而不是遍历，是为了避免提前破坏第一行里的列标记。'
+    }));
+  
+    for (let i = 0; i < M; i++) if (grid[i][0] === 0) firstColZero = true;
+    steps.push(snapshot({
+      kind: 'check-first-col', active: [0, 0], col: 0,
+      note: '第 2 步：检查第一列是否有 0 —— ' + (firstColZero ? '有 0，firstColZero = true' : '没有 0，firstColZero = false') + '。'
+    }));
+  
+    for (let i = 1; i < M; i++) {
+      for (let j = 1; j < N; j++) {
+        const v = grid[i][j];
+        if (v === 0) {
+          grid[i][0] = 0;
+          grid[0][j] = 0;
+          rowMarked[i] = true;
+          colMarked[j] = true;
+          if (!zeros.some(function (p) { return p[0] === i && p[1] === j; })) zeros.push([i, j]);
+          steps.push(snapshot({
+            kind: 'mark', cell: [i, j], active: [i, j], markRow: i, markCol: j,
+            note: '扫描内部格子发现 (' + i + ',' + j + ') = 0 → 把 matrix[' + i + '][0] 和 matrix[0][' + j + '] 置为 0 当作标记，表示「第 ' + i + ' 行、第 ' + j + ' 列都要清零」。'
+          }));
+        } else {
+          steps.push(snapshot({
+            kind: 'scan', cell: [i, j], active: [i, j],
+            note: '扫描内部格子 (' + i + ',' + j + ') = ' + v + '，不是 0，不做任何标记。'
+          }));
+        }
+      }
+    }
+  
+    steps.push(snapshot({
+      kind: 'mark-done',
+      note: '标记阶段结束。第一列里的 0 所在的行需要清零，第一行里的 0 所在的列需要清零；标记格子本身也正好是需要变 0 的格子，所以可以就地存放。'
+    }));
+  
+    for (let i = 1; i < M; i++) {
+      for (let j = 1; j < N; j++) {
+        if (grid[i][0] === 0 || grid[0][j] === 0) {
+          grid[i][j] = 0;
+          if (!zeros.some(function (p) { return p[0] === i && p[1] === j; })) zeros.push([i, j]);
+          steps.push(snapshot({
+            kind: 'apply', cell: [i, j], active: [i, j], reason: grid[i][0] === 0 ? 'row' : 'col',
+            note: '内部格子 (' + i + ',' + j + ')：' + (grid[i][0] === 0 ? '第 ' + i + ' 行被标记' : '第 ' + j + ' 列被标记') + '，置为 0。'
+          }));
+        } else {
+          steps.push(snapshot({
+            kind: 'skip', cell: [i, j], active: [i, j],
+            note: '内部格子 (' + i + ',' + j + ')：所在行与列都没有标记，保持原值。'
+          }));
+        }
+      }
+    }
+  
+    if (firstRowZero) {
+      for (let j = 0; j < N; j++) grid[0][j] = 0;
+      steps.push(snapshot({
+        kind: 'first-row', active: [0, 0],
+        note: '最后处理第一行：firstRowZero = true，把整行清零。'
+      }));
+    } else {
+      steps.push(snapshot({
+        kind: 'first-row', active: [0, 0],
+        note: '最后处理第一行：firstRowZero = false，第一行保持原样（但其中的标记格子早先已被置 0）。'
+      }));
+    }
+  
+    if (firstColZero) {
+      for (let i = 0; i < M; i++) grid[i][0] = 0;
+      steps.push(snapshot({
+        kind: 'first-col', active: [0, 0],
+        note: '最后处理第一列：firstColZero = true，把整列清零。'
+      }));
+    } else {
+      steps.push(snapshot({
+        kind: 'first-col', active: [0, 0],
+        note: '最后处理第一列：firstColZero = false，第一列保持原样。'
+      }));
+    }
+  
+    steps.push(snapshot({
+      kind: 'done', active: null,
+      note: '完成。最终矩阵为 [' + grid.map(function (r) { return '[' + r.join(',') + ']'; }).join(', ') +
+        ']。全程只用了两个布尔变量与常数个下标，额外空间 O(1)。'
+    }));
+  
+    return steps;
+  }
+  
+  function cellClass(step, r, c) {
+    if (step.active && step.active[0] === r && step.active[1] === c) return 'is-active';
+    const marking = step.kind === 'mark' || step.kind === 'mark-done';
+    if (marking && ((r >= 1 && c === 0 && step.rowMarked[r]) || (r === 0 && c >= 1 && step.colMarked[c]))) {
+      return 'is-pink';
+    }
+    for (let i = 0; i < step.zeros.length; i++) {
+      if (step.zeros[i][0] === r && step.zeros[i][1] === c) return 'is-bad';
+    }
+    if (step.grid[r][c] === 0) return 'is-bad';
+    return '';
+  }
+  
+  Demo.create({
+    title: '37. 矩阵置零 — 用第一行/第一列当标记数组',
+    info: '输入：3×3 矩阵 [[1,1,1],[1,0,1],[1,1,1]]，把所有含 0 的行和列原地置零，额外空间 O(1)。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前处理的格子' },
+      { color: 'var(--demo-danger)', label: '值为 0 / 被置零' },
+      { color: 'var(--demo-pink)', label: '充当标记的第一行/列' }
+    ],
+    render: function (step, i, ctx) {
+      ctx.stage.innerHTML = '';
+  
+      const grid = Demo.el('div', 'grid');
+      grid.style.gridTemplateColumns = 'repeat(' + N + ', 56px)';
+      for (let r = 0; r < M; r++) {
+        for (let c = 0; c < N; c++) {
+          const cls = cellClass(step, r, c);
+          const cell = Demo.el('div', 'grid-cell' + (cls ? ' ' + cls : ''), Demo.esc(step.grid[r][c]));
+          cell.style.minWidth = '56px';
+          cell.style.height = '42px';
+          cell.style.fontSize = '18px';
+          if ((r === 0 || c === 0) && !(r === 0 && c === 0)) cell.style.borderStyle = 'dashed';
+          if (r === 0 || c === 0) cell.title = '第一行/第一列，既是数据也是标记数组';
+          grid.appendChild(cell);
+        }
+      }
+      ctx.stage.appendChild(grid);
+  
+      const tags = Demo.el('div', 'row');
+      tags.appendChild(Demo.el('div', 'tag tag--info', 'firstRowZero = ' + step.firstRowZero));
+      tags.appendChild(Demo.el('div', 'tag tag--info', 'firstColZero = ' + step.firstColZero));
+      const rows = [];
+      for (let r = 1; r < M; r++) if (step.rowMarked[r]) rows.push(r);
+      const cols = [];
+      for (let c = 1; c < N; c++) if (step.colMarked[c]) cols.push(c);
+      tags.appendChild(Demo.el('div', 'tag tag--violet', '行标记：' + (rows.length ? rows.join(', ') : '无')));
+      tags.appendChild(Demo.el('div', 'tag tag--violet', '列标记：' + (cols.length ? cols.join(', ') : '无')));
+      ctx.stage.appendChild(tags);
+  
+      const phase = Demo.el('div', 'panel');
+      phase.style.textAlign = 'center';
+      const names = {
+        'init': '初始化',
+        'check-first-row': '① 检查第一行',
+        'check-first-col': '② 检查第一列',
+        'scan': '③ 扫描内部并打标记',
+        'mark': '③ 扫描内部并打标记',
+        'mark-done': '③ 标记完成',
+        'apply': '④ 按标记置零',
+        'skip': '④ 按标记置零',
+        'first-row': '⑤ 处理第一行',
+        'first-col': '⑥ 处理第一列',
+        'done': '完成'
+      };
+      phase.innerHTML = '当前阶段：<strong>' + Demo.esc(names[step.kind] || step.kind) + '</strong>' +
+        (step.cell ? ' &nbsp;·&nbsp; 当前格子 (' + step.cell[0] + ',' + step.cell[1] + ')' : '');
+      ctx.stage.appendChild(phase);
+    }
+  });
+  return Demo.__config
+}

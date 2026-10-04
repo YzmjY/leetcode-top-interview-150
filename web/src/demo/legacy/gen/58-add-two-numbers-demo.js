@@ -1,0 +1,142 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/58-add-two-numbers-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const L1 = [2, 4, 3];
+  const L2 = [5, 6, 4];
+  
+  function toNumber(digits) {
+    let value = 0;
+    for (let k = digits.length - 1; k >= 0; k--) value = value * 10 + digits[k];
+    return value;
+  }
+  
+  function buildSteps() {
+    const steps = [];
+    const result = [];
+    let i = 0;
+    let j = 0;
+    let carry = 0;
+  
+    steps.push({
+      pos: -1, consumed1: 0, consumed2: 0, carry: 0, carryIn: 0, result: result.slice(),
+      v1: null, v2: null, sum: null, digit: null, done: false,
+      note: '初始化：dummy 之后挂结果链表，carry = 0。链表是逆序存储的（个位在头节点），正好和竖式加法从低位算起一致，所以逐位对齐、直接从左往右（低位到高位）相加即可。'
+    });
+  
+    while (i < L1.length || j < L2.length || carry > 0) {
+      const pos = Math.max(i, j);
+      const has1 = i < L1.length;
+      const has2 = j < L2.length;
+      const v1 = has1 ? L1[i] : 0;
+      const v2 = has2 ? L2[j] : 0;
+      const carryIn = carry;
+      const sum = v1 + v2 + carryIn;
+      const digit = sum % 10;
+      const carryOut = Math.floor(sum / 10);
+  
+      result.push(digit);
+      i += 1;
+      j += 1;
+      carry = carryOut;
+  
+      let note = '第 ' + pos + ' 位：' + (has1 ? 'l1 的 ' + v1 : 'l1 已走完，补 0') +
+        ' + ' + (has2 ? 'l2 的 ' + v2 : 'l2 已走完，补 0') + ' + 进位 ' + carryIn + ' = ' + sum + '。';
+      note += '本位 = ' + sum + ' % 10 = ' + digit + '，接到结果链表末尾；新进位 = ' + sum + ' / 10 = ' + carryOut + '。';
+      if (carryOut > 0) note += ' 这一位超过 10，进位会带到下一位继续相加。';
+  
+      steps.push({
+        pos: pos, consumed1: i, consumed2: j, carry: carryOut, carryIn: carryIn, result: result.slice(),
+        v1: v1, v2: v2, sum: sum, digit: digit, done: false, note: note
+      });
+    }
+  
+    steps.push({
+      pos: -1, consumed1: L1.length, consumed2: L2.length, carry: carry, carryIn: 0, result: result.slice(),
+      v1: null, v2: null, sum: null, digit: null, done: true,
+      note: '两个链表都走完且进位为 ' + carry + '，循环结束。结果链表 [' + result.join(', ') + '] 即 ' +
+        toNumber(L1) + ' + ' + toNumber(L2) + ' = ' + (toNumber(L1) + toNumber(L2)) +
+        ' 的逆序表示。若循环结束时进位仍为 1，还需要在末尾补一个值为 1 的节点。'
+    });
+  
+    return steps;
+  }
+  
+  function listRow(values, total, consumed, active, done) {
+    const row = Demo.el('div', 'row');
+    for (let k = 0; k < total; k++) {
+      if (k > 0) {
+        const arrow = Demo.el('div', 'arrow', '→');
+        arrow.style.width = '26px';
+        arrow.style.textAlign = 'center';
+        row.appendChild(arrow);
+      }
+      const node = Demo.el('div', 'll-node');
+      node.style.width = '52px';
+      node.style.flex = 'none';
+      if (k < values.length) {
+        node.innerHTML = Demo.esc(values[k]);
+        if (done || k < consumed) node.classList.add('is-ok');
+        else if (k === active) node.classList.add('is-active');
+      } else {
+        node.style.borderStyle = 'dashed';
+        node.style.opacity = '0.35';
+        node.innerHTML = '·';
+      }
+      row.appendChild(node);
+    }
+    return row;
+  }
+  
+  function listBlock(title, values, total, consumed, active, done) {
+    const block = Demo.el('div', 'col');
+    block.style.width = '100%';
+    block.appendChild(Demo.el('div', 'panel__title', Demo.esc(title)));
+    block.appendChild(listRow(values, total, consumed, active, done));
+    return block;
+  }
+  
+  Demo.create({
+    title: '58. 两数相加 — 逐位相加 + 进位',
+    info: '输入：l1 = [' + L1.join(', ') + ']（逆序存 ' + toNumber(L1) + '），l2 = [' + L2.join(', ') +
+      ']（逆序存 ' + toNumber(L2) + '）。链表低位在头，模拟竖式加法从低位逐位相加并传递进位。',
+    steps: buildSteps(),
+    desc: s => s.note,
+    stageHeight: 340,
+    legend: [
+      { color: 'var(--demo-accent)', label: '本步处理的节点' },
+      { color: 'var(--demo-ok)', label: '已处理 / 已生成' },
+      { color: 'var(--demo-warn)', label: '进位 carry' }
+    ],
+    render(step, i, ctx) {
+      ctx.stage.innerHTML = '';
+      const total = Math.max(L1.length, L2.length, step.result.length || 1);
+  
+      const panel = Demo.el('div', 'panel');
+      panel.style.width = '100%';
+      panel.appendChild(Demo.el('div', 'panel__title', '三条链表按「位」对齐（左侧是低位）'));
+      panel.appendChild(listBlock('l1 = [' + L1.join(', ') + ']', L1, total, step.consumed1, step.pos, step.done));
+      panel.appendChild(listBlock('l2 = [' + L2.join(', ') + ']', L2, total, step.consumed2, step.pos, step.done));
+      panel.appendChild(listBlock('结果链表（dummy 之后依次挂本位数字）', step.result, total, step.done ? step.result.length : step.result.length - 1, step.done ? -1 : step.result.length - 1, step.done));
+      ctx.stage.appendChild(panel);
+  
+      const math = Demo.el('div', 'panel');
+      math.style.width = '100%';
+      if (step.done) {
+        math.innerHTML = '结果 [' + step.result.join(', ') + '] 读作 ' + toNumber(L1) + ' + ' + toNumber(L2) +
+          ' = ' + (toNumber(L1) + toNumber(L2)) + ' &nbsp;<span class="tag tag--ok">完成</span>';
+      } else if (step.pos < 0) {
+        math.innerHTML = 'carry = <strong>0</strong>，结果链表还是空的。';
+      } else {
+        math.innerHTML = '第 ' + step.pos + ' 位：' + step.v1 + ' + ' + step.v2 + ' + ' + step.carryIn +
+          ' = <strong>' + step.sum + '</strong>　→　本位 ' + step.digit + '，新进位 ' + step.carry +
+          ' &nbsp;<span class="tag tag--warn">carry = ' + step.carry + '</span>';
+      }
+      math.style.textAlign = 'center';
+      ctx.stage.appendChild(math);
+    }
+  });
+  return Demo.__config
+}

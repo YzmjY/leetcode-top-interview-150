@@ -1,0 +1,154 @@
+// 由 scripts/migrate-demos.mjs 自动生成，请勿手改
+// 源文件：docs/assets/interactive/55-evaluate-reverse-polish-notation-demo.html
+import { createDemoScope } from '../runtime'
+
+export default function define() {
+  const Demo = createDemoScope()
+  const TOKENS = ['4', '13', '5', '/', '+'];
+  const OPERATORS = ['+', '-', '*', '/'];
+  
+  function isNumber(token) {
+    return OPERATORS.indexOf(token) < 0;
+  }
+  
+  function calc(op, a, b) {
+    if (op === '+') return a + b;
+    if (op === '-') return a - b;
+    if (op === '*') return a * b;
+    return Math.trunc(a / b);
+  }
+  
+  function buildSteps() {
+    const stack = [];
+    const steps = [];
+  
+    function snap(o) {
+      steps.push({
+        k: o.k,
+        token: o.token,
+        stack: stack.slice(),
+        a: o.a == null ? null : o.a,
+        b: o.b == null ? null : o.b,
+        result: o.result == null ? null : o.result,
+        phase: o.phase,
+        note: o.note
+      });
+    }
+  
+    snap({
+      k: -1, token: null, phase: 'init',
+      note: '初始状态：栈为空，准备从左到右扫描 tokens。逆波兰（后缀）表达式中运算符写在两个操作数之后，所以遇到运算符时，栈顶的两个数就是它的左右操作数。'
+    });
+  
+    for (let k = 0; k < TOKENS.length; k++) {
+      const token = TOKENS[k];
+      if (isNumber(token)) {
+        const value = parseInt(token, 10);
+        stack.push(value);
+        snap({
+          k: k, token: token, phase: 'push',
+          note: 'token "' + token + '" 是数字，直接压入栈（压入 ' + value + '）。栈自下而上：' + stack.join(', ') + '。'
+        });
+      } else {
+        const a = stack[stack.length - 2];
+        const b = stack[stack.length - 1];
+        stack.length -= 2;
+        const result = calc(token, a, b);
+        stack.push(result);
+        snap({
+          k: k, token: token, a: a, b: b, result: result, phase: 'op',
+          note: 'token "' + token + '" 是运算符：弹出栈顶两个数，先弹出的是右操作数 b = ' + b + '，再弹出的是左操作数 a = ' + a + '（顺序不能反，减法和除法尤其重要）。计算 '
+            + a + ' ' + token + ' ' + b + ' = ' + result
+            + (token === '/' ? '（Go 与本题要求都是向零截断，' + a + ' / ' + b + ' 取整为 ' + result + '）' : '')
+            + '，把结果压回栈。栈自下而上：' + stack.join(', ') + '。'
+        });
+      }
+    }
+  
+    snap({
+      k: TOKENS.length, token: null, phase: 'done',
+      note: 'token 全部处理完，栈中只剩一个元素 ' + stack[stack.length - 1] + '，它就是整个表达式的值。每个 token 至多入栈、出栈各一次，时间 O(n)、空间 O(n)。'
+    });
+  
+    return steps;
+  }
+  
+  function render(step, idx, ctx) {
+    ctx.stage.innerHTML = '';
+  
+    const tokenPanel = Demo.el('div', 'panel');
+    tokenPanel.style.width = '100%';
+    tokenPanel.appendChild(Demo.el('div', 'panel__title', 'tokens（逆波兰表达式）'));
+    const tokenRow = Demo.el('div', 'row');
+    TOKENS.forEach(function (token, k) {
+      const col = Demo.el('div', 'col');
+      const cell = Demo.el('div', 'cell', Demo.esc(token));
+      if (k === step.k) cell.classList.add(isNumber(token) ? 'is-active' : 'is-violet');
+      else if (k < step.k || step.phase === 'done') cell.classList.add('cell--dim');
+      col.appendChild(cell);
+      const ptr = Demo.el('div', 'ptr', k === step.k ? 'token' : String(k));
+      if (k !== step.k) ptr.classList.add('ptr--dim');
+      col.appendChild(ptr);
+      tokenRow.appendChild(col);
+    });
+    tokenPanel.appendChild(tokenRow);
+    ctx.stage.appendChild(tokenPanel);
+  
+    const mainRow = Demo.el('div', 'row');
+    mainRow.style.width = '100%';
+    mainRow.style.alignItems = 'flex-start';
+  
+    const stackPanel = Demo.el('div', 'panel');
+    stackPanel.appendChild(Demo.el('div', 'panel__title', '操作数栈（自下而上，上方为栈顶）'));
+    const stackBox = Demo.el('div', 'stack');
+    if (step.stack.length === 0) {
+      stackBox.appendChild(Demo.el('div', 'stack__item', '（空）'));
+    } else {
+      step.stack.forEach(function (v, k) {
+        const item = Demo.el('div', 'stack__item', Demo.esc(v));
+        if (k === step.stack.length - 1) item.classList.add('is-active');
+        stackBox.appendChild(item);
+      });
+    }
+    stackPanel.appendChild(stackBox);
+    mainRow.appendChild(stackPanel);
+  
+    const infoPanel = Demo.el('div', 'panel');
+    infoPanel.style.flex = '1';
+    infoPanel.appendChild(Demo.el('div', 'panel__title', '本步计算'));
+    if (step.phase === 'op') {
+      infoPanel.appendChild(Demo.el('div', null,
+        '<span class="tag tag--violet">运算符 ' + Demo.esc(step.token) + '</span>'));
+      infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">弹出的两个操作数：左 a = <code>' + step.a
+        + '</code>，右 b = <code>' + step.b + '</code></div>'));
+      infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:6px"><code>' + step.a + ' ' + Demo.esc(step.token) + ' ' + step.b
+        + ' = ' + step.result + '</code> <span class="tag tag--ok">压回 ' + step.result + '</span></div>'));
+    } else if (step.phase === 'push') {
+      infoPanel.appendChild(Demo.el('div', null, '<span class="tag tag--info">数字入栈 ' + Demo.esc(step.token) + '</span>'));
+      infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">栈大小变为 <code>' + step.stack.length + '</code></div>'));
+    } else if (step.phase === 'done') {
+      infoPanel.appendChild(Demo.el('div', null, '<span class="tag tag--ok">表达式结果 = ' + step.stack[0] + '</span>'));
+      infoPanel.appendChild(Demo.el('div', null, '<div style="margin-top:8px">对应中缀：(4 + (13 / 5)) = 6</div>'));
+    } else {
+      infoPanel.appendChild(Demo.el('div', null, '<span class="tag tag--warn">等待处理</span>'));
+    }
+    mainRow.appendChild(infoPanel);
+  
+    ctx.stage.appendChild(mainRow);
+  }
+  
+  Demo.create({
+    title: '55. 逆波兰表达式求值 — 操作数栈一次扫描',
+    info: '输入（示例 2）：tokens = ["4","13","5","/","+"]，对应中缀 (4 + (13 / 5))。整数除法向零截断，13 / 5 = 2，最终结果 6。',
+    steps: buildSteps(),
+    desc: function (s) { return s.note; },
+    stageHeight: 340,
+    legend: [
+      { color: 'var(--demo-accent)', label: '当前 token：数字，入栈' },
+      { color: 'var(--demo-violet)', label: '当前 token：运算符，弹两个数计算' },
+      { color: 'var(--demo-ok)', label: '刚压回栈的结果' }
+    ],
+    render: render
+  });
+  return Demo.__config
+}
