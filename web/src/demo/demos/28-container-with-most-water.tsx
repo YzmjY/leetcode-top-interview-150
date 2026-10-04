@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { DemoShell } from '../DemoShell'
+import { Answer, Badges, Hint, Pointer, Stat, TONE } from './stage'
 
 /* ------------------------------------------------------------------ */
 /* 28. 盛最多水的容器 —— 双指针可视化                                    */
@@ -15,6 +16,8 @@ interface Step {
   bestL: number
   bestR: number
   moved: 'L' | 'R' | null
+  /** 两侧等高：此时不存在短板，排除任意一侧都安全 */
+  tie: boolean
   phase: 'init' | 'step' | 'done'
   note: string
 }
@@ -29,7 +32,7 @@ function buildSteps(): Step[] {
   let bestR = n - 1
 
   steps.push({
-    left, right, area: null, maxArea, bestL, bestR, moved: null, phase: 'init',
+    left, right, area: null, maxArea, bestL, bestR, moved: null, tie: false, phase: 'init',
     note: `初始化：left 指向最左（下标 0，高 ${HEIGHTS[0]}），right 指向最右（下标 ${n - 1}，高 ${HEIGHTS[n - 1]}）。此时宽度最大。水量由「短板」决定：area = 宽 × min(两板高度)。`,
   })
 
@@ -44,22 +47,25 @@ function buildSteps(): Step[] {
       bestL = left
       bestR = right
     }
+    const tie = hl === hr
     const moveLeft = hl < hr
     const shortSide = moveLeft ? '左板' : '右板'
     steps.push({
-      left, right, area, maxArea, bestL, bestR,
+      left, right, area, maxArea, bestL, bestR, tie,
       moved: moveLeft ? 'L' : 'R', phase: 'step',
       note:
         `当前容器：宽 ${right - left} × 高 min(${hl}, ${hr}) = ${h}，水量 = ${area}` +
         (isNewBest ? `，刷新历史最大水量 ${maxArea}！` : `，未超过历史最大 ${maxArea}。`) +
-        `${shortSide}（高 ${moveLeft ? hl : hr}）是短板——移动长板只会让宽度变小且高度不可能超过短板，水量必然不增，因此排除短板，${moveLeft ? 'left 右移' : 'right 左移'}。`,
+        (tie
+          ? `两侧等高（同为 ${h}），此时并不存在短板：宽度收窄后高度不可能增加，所以排除任意一侧都是安全的，按约定${moveLeft ? '移动 left' : '移动 right'}。`
+          : `${shortSide}（高 ${moveLeft ? hl : hr}）是短板——移动长板只会让宽度变小且高度不可能超过短板，水量必然不增，因此排除短板，${moveLeft ? 'left 右移' : 'right 左移'}。`),
     })
     if (moveLeft) left++
     else right--
   }
 
   steps.push({
-    left, right, area: null, maxArea, bestL, bestR, moved: null, phase: 'done',
+    left, right, area: null, maxArea, bestL, bestR, moved: null, tie: false, phase: 'done',
     note: `left 与 right 相遇，搜索结束。每一轮都安全地排除了一个「不可能更优」的端点，最优解一定被检查过。最大水量 = ${maxArea}，由下标 ${bestL}（高 ${HEIGHTS[bestL]}）与下标 ${bestR}（高 ${HEIGHTS[bestR]}）构成。`,
   })
   return steps
@@ -170,31 +176,20 @@ function Stage(step: Step) {
                 fontWeight={isL || isR || isBest ? 700 : 400}
                 className={
                   discarded
-                    ? 'fill-[hsl(var(--ink)/0.3)]'
-                    : 'fill-[hsl(var(--ink)/0.75)] font-code'
+                    ? 'font-code fill-[hsl(var(--ink)/0.3)]'
+                    : 'font-code fill-[hsl(var(--ink)/0.75)]'
                 }
               >
                 {v}
               </text>
               {/* 指针标记 */}
               {(isL || isR) && (
-                <g>
-                  <path
-                    d={`M ${x(i) + barW / 2 - 7} ${TOP - 26} h 14 l -7 9 z`}
-                    fill={isL ? 'hsl(var(--amber))' : 'hsl(var(--teal))'}
-                  />
-                  <text
-                    x={x(i) + barW / 2}
-                    y={TOP - 32}
-                    textAnchor="middle"
-                    fontSize="12"
-                    fontWeight="800"
-                    className="font-code"
-                    fill={isL ? 'hsl(var(--amber))' : 'hsl(var(--teal))'}
-                  >
-                    {isL ? 'L' : 'R'}
-                  </text>
-                </g>
+                <Pointer
+                  x={x(i) + barW / 2}
+                  y={TOP - 26}
+                  label={isL ? 'L' : 'R'}
+                  tone={isL ? 'amber' : 'teal'}
+                />
               )}
               {/* 下标 */}
               <text
@@ -222,28 +217,22 @@ function Stage(step: Step) {
       </svg>
 
       {/* 状态数值 */}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-ink-soft">
-          当前水量{' '}
-          <b className="font-code text-sm text-[hsl(var(--water))]">
-            {step.area ?? '—'}
-          </b>
-        </span>
-        <span className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-ink-soft">
-          历史最大{' '}
-          <b className="font-code text-sm text-[hsl(var(--amber))]">{step.maxArea}</b>
-        </span>
-        {step.moved && step.phase === 'step' && (
-          <span className="rounded-lg border border-[hsl(var(--teal))]/30 bg-[hsl(var(--teal-soft))] px-3 py-1.5 text-xs text-[hsl(var(--teal))]">
-            下一步：移动 {step.moved === 'L' ? '左指针 L（短板）' : '右指针 R（短板）'}
-          </span>
+      <Badges className="mt-3">
+        <Stat label="当前水量" value={step.area ?? '—'} tone="water" />
+        <Stat label="历史最大" value={step.maxArea} tone="amber" />
+        {step.phase === 'step' && step.moved && (
+          <Hint>
+            {step.tie
+              ? `两侧等高，按约定移动${step.moved === 'L' ? ' left' : ' right'}`
+              : `排除短板，移动${step.moved === 'L' ? ' left' : ' right'}`}
+          </Hint>
         )}
         {step.phase === 'done' && (
-          <span className="rounded-lg border border-[hsl(var(--easy))]/30 bg-[hsl(var(--easy-soft))] px-3 py-1.5 text-xs font-medium text-[hsl(var(--easy))]">
-            ✓ 答案 {step.maxArea} = 下标 {step.bestL} × 下标 {step.bestR}
-          </span>
+          <Answer>
+            {step.maxArea} = 下标 {step.bestL} × 下标 {step.bestR}
+          </Answer>
         )}
-      </div>
+      </Badges>
     </div>
   )
 }
@@ -255,13 +244,14 @@ export default function ContainerWithMostWaterDemo() {
       title="双指针收敛过程"
       info={`height = [${HEIGHTS.join(', ')}]，求能容纳最多水的两根柱子。`}
       steps={steps}
+      autoMs={1400}
       renderStep={(s) => <Stage {...s} />}
       describe={(s) => s.note}
       legend={[
-        { color: 'hsl(28 92% 45%)', label: '左指针 L' },
-        { color: 'hsl(178 60% 32%)', label: '右指针 R' },
-        { color: 'hsl(205 85% 55% / 0.4)', label: '当前水量' },
-        { color: 'hsl(var(--ink) / 0.12)', label: '已排除' },
+        { color: TONE.amber, label: '左指针 L' },
+        { color: TONE.teal, label: '右指针 R' },
+        { color: TONE.water, label: '当前水量' },
+        { color: TONE.muted, label: '已排除' },
       ]}
     />
   )
