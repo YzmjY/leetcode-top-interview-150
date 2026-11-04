@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {lessons,getLesson} from '../src/lessons.js';
+import {goDisplay} from '../src/go-display.js';
+import {readable,displayCode,highlightLines} from '../src/presentation.js';
+import {traceLesson} from '../src/lesson-kit.js';
+test('短数组与参数不会每个元素独占一行',()=>{assert.equal(readable({nums:[1,2,1,3,5,6,4]}),'nums = [1, 2, 1, 3, 5, 6, 4]');assert.equal(readable({k:2,nums:[2,2]}),'k = 2\nnums = [2, 2]');});
+test('矩阵只在行之间必要换行，字符串保留空白含义',()=>{const text=readable({matrix:[Array(8).fill(1),Array(8).fill(2),Array(8).fill(3),Array(8).fill(4)]});assert.ok(text.includes('[1, 1, 1, 1, 1, 1, 1, 1]'));assert.equal(readable(' a '),'" a "');});
+test('全部150份展示代码已格式化且源映射未过期',()=>{assert.equal(Object.keys(goDisplay).length,150);for(const lesson of lessons){const raw=Array.isArray(lesson.code)?lesson.code.join('\n'):lesson.code;assert.equal(goDisplay[lesson.id].sourceHash,createHash('sha256').update(raw.trim()).digest('hex'),String(lesson.id));assert.ok(displayCode(lesson).includes('func '));}});
+test('峰值二分条件、更新分支各自占行，比较只高亮条件',()=>{const lesson=getLesson(162),code=displayCode(lesson);assert.match(code,/if nums\[mid\] < nums\[mid\+1\] \{\n\s+lo = mid \+ 1\n\s+} else \{\n\s+hi = mid/);const frame=traceLesson(lesson,lesson.input).frames[0];const lines=highlightLines(lesson,frame);assert.equal(lines.length,1);assert.match(code.split('\n')[lines[0]-1],/if nums\[mid\]/);});
+test('全题所有帧的展示高亮行号存在',()=>{for(const lesson of lessons){const count=displayCode(lesson).split('\n').length;for(const frame of traceLesson(lesson,lesson.input).frames){const lines=highlightLines(lesson,frame);assert.ok(lines.length>0);assert.ok(lines.every(n=>Number.isInteger(n)&&n>=1&&n<=count),String(lesson.id));}}});

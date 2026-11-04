@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {lessons,getLesson} from '../src/lessons.js';
+import {getStrategy} from '../src/strategies.js';
+import {getReasoning} from '../src/reasoning.js';
+import {renderTeaching} from '../src/explainers.js';
+test('全部题呈现自身步骤数与对应布局',()=>{for(const lesson of lessons){const strategy=getStrategy(lesson),html=renderTeaching(lesson,strategy,getReasoning(lesson));assert.match(html,new RegExp(`data-layout="${strategy.layout}"`));assert.equal((html.match(/class="teaching-step"/g)||[]).length,strategy.steps.length);}});
+test('需要图解的九题提供有图有说明的必要关系图',()=>{for(const id of [88,42,76,200,207,72,146,124,162]){const lesson=getLesson(id),html=renderTeaching(lesson,getStrategy(lesson),getReasoning(lesson));assert.match(html,/teaching-svg/);assert.match(html,/figcaption/);assert.match(html,/role="img"/);}});
+test('最大路径和图解区分全局双链与向上单链，名称对应Go',()=>{const lesson=getLesson(124),html=renderTeaching(lesson,getStrategy(lesson),getReasoning(lesson));assert.match(html,/n.Val \+ l \+ r/);assert.match(html,/n.Val \+ max\(l, r\)/);assert.match(html,/全负/);});
+test('位计数以一个核心洞见解释，二分显式分两种条件',()=>{const bit=getLesson(191),binary=getLesson(162);assert.equal(getStrategy(bit).steps.length,1);const html=renderTeaching(binary,getStrategy(binary),getReasoning(binary));assert.match(html,/上坡/);assert.match(html,/下坡/);assert.match(html,/lo = mid \+ 1/);});
