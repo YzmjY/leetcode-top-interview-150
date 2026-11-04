@@ -6,6 +6,12 @@
 
 ## 本地运行
 
+在线站点：https://yzmjy.github.io/leetcode-top-interview-150/
+
+GitHub Pages 从 `feat/algorithm-lab` 分支通过 `.github/workflows/deploy.yml` 自动发布。推送后依次执行全部测试、语法检查和静态打包，再部署 `dist/`。发布包由实际模块依赖闭包组成，不包含开发服务、测试、文档或本地运行记录。
+
+可运行 `npm run build:pages` 在本地生成相同的静态发布包。入口使用相对资源路径，兼容 GitHub Pages 仓库子目录。
+
 需要 Node.js 22 或更新版本，无须安装依赖。
 
 ```powershell
