@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="用逆向双指针动画和逐行高亮的 Go 代码，理解合并两个有序数组。序场 · 面试经典 150 题。">
+  <meta name="theme-color" content="#3156ef">
+  <title>合并两个有序数组 · 序场算法实验室</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='m20 4 16 10-16 10L4 14Zm-16 16 16 10 16-10M4 26l16 10 16-10' fill='none' stroke='%233156ef' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/src/style.css">
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <svg class="icon-library" aria-hidden="true"><defs>
+    <symbol id="icon-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7z"/></symbol>
+    <symbol id="icon-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    <symbol id="icon-prev" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></symbol>
+    <symbol id="icon-next" viewBox="0 0 24 24"><path d="m10 6 6 6-6 6"/></symbol>
+    <symbol id="icon-reset" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/></symbol>
+    <symbol id="icon-edit" viewBox="0 0 24 24"><path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 15z"/></symbol>
+    <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="1"/><path d="M15 8V3H3v12h5"/></symbol>
+  </defs></svg>
+  <a class="skip-link" href="#walkthrough">跳至动画实验台</a>
+  <header class="site-header" id="top">
+    <div class="header-inner">
+      <a class="brand" href="#top" aria-label="序场算法实验室，返回顶部">
+        <svg viewBox="0 0 38 38" aria-hidden="true"><path d="m19 4 15 9-15 9L4 13Zm-15 15 15 9 15-9M4 25l15 9 15-9"/></svg>
+        <span>序场<span class="brand-en">ALGO FIELD</span></span>
+      </a>
+      <nav aria-label="章节"><a href="#problem">题目详情</a><a href="#method">解题思路</a><a href="#walkthrough">动画与代码</a></nav>
+      <a class="collection-link" href="https://leetcode.cn/studyplan/top-interview-150/" target="_blank" rel="noreferrer">面试经典 150 <span>↗</span></a>
+    </div>
+  </header>
+  <main>
+    <section class="hero section" id="problem" aria-labelledby="title">
+      <div class="hero-art" aria-hidden="true"><svg viewBox="0 0 400 240" fill="none">
+        <g stroke="currentColor" stroke-width=".8" opacity=".38">
+          <path d="M20 65C140 65 130 180 360 180M20 80C140 80 140 180 360 180M20 95C140 95 150 180 360 180M20 110C140 110 160 180 360 180M20 125C140 125 170 180 360 180M20 140C140 140 180 180 360 180M20 155C140 155 190 180 360 180M20 170C140 170 200 180 360 180M20 185C140 185 210 180 360 180M20 200C140 200 220 180 360 180"/>
+          <path d="M20 200C140 200 130 65 360 65M20 185C140 185 140 65 360 65M20 170C140 170 150 65 360 65M20 155C140 155 160 65 360 65M20 140C140 140 170 65 360 65M20 125C140 125 180 65 360 65M20 110C140 110 190 65 360 65M20 95C140 95 200 65 360 65M20 80C140 80 210 65 360 65M20 65C140 65 220 65 360 65"/>
+        </g><path d="M20 65C140 65 130 180 360 180M20 200C140 200 130 65 360 65" stroke="currentColor" opacity=".6"/>
+        <g fill="var(--paper)" stroke="currentColor"><circle cx="99" cy="81" r="3"/><circle cx="185" cy="116" r="3"/><circle cx="302" cy="177" r="3"/></g>
+        <g fill="currentColor" opacity=".6" font-family="monospace" font-size="10"><text x="50" y="44">i ↘</text><text x="65" y="224">j ↗</text><text x="306" y="146">→ k</text></g>
+      </svg></div>
+      <div class="eyebrow"><span></span> § 01 <b>·</b> 题目详情</div>
+      <div class="problem-meta"><span>INTERVIEW 150</span><i></i><span>001 / 150</span><span class="difficulty">简单</span></div>
+      <h1 id="title">合并两个有序数组 <span>Merge Sorted Array</span></h1>
+      <div class="problem-brief" aria-label="题目说明"><div class="brief-heading"><span>题目说明</span><span>LEETCODE 88</span></div><p class="hero-description">给你两个按<strong>非递减顺序</strong>排列的整数数组 <code>nums1</code> 和 <code>nums2</code>，以及各自的有效元素个数 <code>m</code> 和 <code>n</code>。请将 <code>nums2</code> 合并到 <code>nums1</code> 中，使合并后的数组仍然有序。</p><p class="problem-rule">你需要<strong>原地修改 <code>nums1</code></strong>，无须返回值。它的长度为 <code>m + n</code>：前 <code>m</code> 项是有效元素，后 <code>n</code> 个零是预留位置，不参与比较。</p></div>
+      <div class="example-summary">
+        <div><span>示例输入</span><code>nums1 = [1, 2, 3, 0, 0, 0]，m = 3<br>nums2 = [2, 5, 6]，n = 3</code></div>
+        <div class="example-result"><span>合并结果</span><code>[1, 2, 2, 3, 5, 6]</code></div>
+      </div>
+      <div class="hero-bottom"><div class="tags"><span>数组 / 字符串</span><span>逆向双指针</span><span>原地合并</span><span class="blue-tag">O(m + n)</span></div><a class="problem-link" href="https://leetcode.cn/problems/merge-sorted-array/" target="_blank" rel="noreferrer">LeetCode 88 <span>↗</span></a></div>
+    </section>
+    <section class="section strategy-section" id="method" aria-labelledby="method-title">
+      <div class="section-heading"><div><div class="eyebrow">§ 02 <b>·</b> STRATEGY</div><h2 id="method-title">解题思路</h2></div><span class="section-note">换一个方向，问题就简单了。</span></div>
+      <div class="strategy-grid">
+        <article class="strategy-card"><div class="card-top"><span>01.</span><svg viewBox="0 0 70 34" aria-hidden="true"><path d="M8 25V18h8v7zm15 0V13h8v12zm15 0V8h8v17zm15 0V3h8v22"/></svg></div><h3>先看空间，再定方向</h3><p><code>nums1</code> 的后面已有 <code>n</code> 个预留位置。从前往后写会覆盖未读元素；从后往前填，就能安全复用这些空间。</p></article>
+        <article class="strategy-card"><div class="card-top"><span>02.</span><svg viewBox="0 0 70 34" aria-hidden="true"><path d="M8 12h21m-6-6 6 6-6 6M62 24H41m6-6-6 6 6 6"/></svg></div><h3>比较末尾，大的先落位</h3><p><code>i</code>、<code>j</code> 分别指向两组有效元素的末尾。比较后，将较大值写入 <code>nums1[k]</code>，再把对应指针和 <code>k</code> 左移。</p></article>
+        <article class="strategy-card"><div class="card-top"><span>03.</span><svg viewBox="0 0 70 34" aria-hidden="true"><path d="M8 10h18v18H8zm6-5h18v18M39 19h10m-5-5 5 5-5 5M54 19l5 5 9-13"/></svg></div><h3>直到第二组全部归位</h3><p>当 <code>j &lt; 0</code>，合并就已完成。第一组尚未移动的前缀天然有序，无须再复制。相等时取第二组，结果依然正确。</p></article>
+      </div>
+      <div class="complexity-note"><span class="note-mark">↳</span><p>每个元素至多处理一次，时间为 <code>O(m + n)</code>；只维护三个指针，额外空间为 <code>O(1)</code>。</p><span class="invariant">k = i + j + 1</span></div>
+    </section>
+    <section class="section walkthrough-section" id="walkthrough" aria-labelledby="walk-title">
+      <div class="section-heading"><div><div class="eyebrow">§ 03 <b>·</b> WALKTHROUGH</div><h2 id="walk-title">动画与代码对照</h2></div><span class="section-note"><span class="live-dot"></span> 亲手走一遍，比记住更重要。</span></div>
+      <div class="workbench">
+        <section class="lab-panel panel" aria-labelledby="lab-title">
+          <div class="panel-heading"><div><h3 id="lab-title">指针实验台</h3><span class="micro-label">POINTER SIMULATOR</span></div><button class="subtle-button" id="edit"><svg><use href="#icon-edit"/></svg>编辑数组</button></div>
+          <div class="input-caption" id="input-caption"></div>
+          <div class="legend"><span><i class="legend-dot a-color"></i><code>i</code> 第一组</span><span><i class="legend-dot b-color"></i><code>j</code> 第二组</span><span><i class="legend-dot k-color"></i><code>k</code> 写入位置</span></div>
+          <div class="array-stage"><span class="registration top-left">+</span><span class="registration bottom-right">+</span>
+            <div class="array-row"><div class="row-label"><strong>nums1</strong><span>原地写入</span></div><div class="array-scroll" id="array-a" aria-label="nums1 数组"></div></div>
+            <div class="array-row"><div class="row-label"><strong>nums2</strong><span>读取来源</span></div><div class="array-scroll" id="array-b" aria-label="nums2 数组"></div></div>
+            <div class="array-footnote"><span class="reserved-swatch"></span>虚线格为预留空间<span class="settled-swatch"></span>浅蓝格已归位</div>
+          </div>
+          <div class="comparison-strip"><span class="micro-label">当前比较</span><div id="comparison"></div><span id="phase-badge" class="phase-badge"></span></div>
+          <div class="observation" aria-live="polite" aria-atomic="true"><div class="observation-top"><span class="micro-label">执行观察</span><span class="step-count">STEP <b id="step-number">01</b> / <span id="step-total"></span></span></div><h4 id="event-title"></h4><p id="event-description"></p></div>
+          <div class="result-strip"><div><span class="micro-label" id="result-label">已归位的后缀</span><code id="result"></code></div><span id="metrics"></span></div>
+          <div class="controls"><button class="play-button" id="play"><svg><use href="#icon-play"/></svg><span>自动播放</span></button><button class="icon-button" id="prev" aria-label="上一步" title="上一步（←）"><svg><use href="#icon-prev"/></svg></button><button class="icon-button" id="next" aria-label="下一步" title="下一步（→）"><svg><use href="#icon-next"/></svg></button><label class="speed-control"><span class="sr-only">播放速度</span><select id="speed" aria-label="播放速度"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label><button class="icon-button" id="reset" aria-label="从头演示" title="从头演示"><svg><use href="#icon-reset"/></svg></button></div>
+          <div class="timeline-row"><label for="timeline" class="sr-only">演示进度</label><input id="timeline" type="range" min="0" max="1" value="0"><output for="timeline" id="progress-count"></output></div>
+          <div class="keyboard-hint"><kbd>←</kbd><kbd>→</kbd> 单步演示 <span>·</span> <kbd>Space</kbd> 播放 / 暂停</div>
+        </section>
+        <section class="code-panel panel" aria-labelledby="code-title"><div class="panel-heading"><div><h3 id="code-title">Go 参考实现</h3><span class="micro-label" id="line-label"></span></div><button class="subtle-button" id="copy"><svg><use href="#icon-copy"/></svg><span>复制代码</span></button></div><div class="file-tab"><span class="file-dot"></span>merge_sorted_array.go<span>GO</span></div><div class="code-viewport" id="code-pane" tabindex="0" aria-label="完整 Go 代码，蓝色标记当前步骤"><pre id="source-code"></pre></div><div class="code-foot"><span><i></i>动画与高亮行同步</span><span>O(m + n) / O(1)</span></div></section>
+      </div>
+      <p class="walkthrough-note">观察一下：只要第二组还有元素，写入位置 <code>k</code> 总在 <code>i</code> 的右侧，因此不会覆盖尚未读取的数据。</p>
+    </section>
+  </main>
+  <footer><a class="footer-brand" href="#top">序场 <span>ALGO FIELD / FIELDNOTES 088</span></a><span>面试经典 150 · 第 001 篇</span><a href="#top">返回顶部 ↑</a></footer>
+  <dialog id="edit-dialog" aria-labelledby="dialog-title"><form id="edit-form" novalidate><div class="dialog-heading"><div><div class="eyebrow">YOUR OWN SEQUENCE</div><h2 id="dialog-title">换一组数组，试试看。</h2></div><button class="close-button" type="button" id="close-dialog" aria-label="关闭编辑">×</button></div><p>填写两组<strong>非递减</strong>整数。只需输入有效元素，预留空间会自动补齐。</p><label for="input-a">nums1 的有效元素 <span>m 自动计算</span></label><input id="input-a" autocomplete="off" spellcheck="false" aria-describedby="form-error" value="[1, 2, 3]"><label for="input-b">nums2 <span>n 自动计算</span></label><input id="input-b" autocomplete="off" spellcheck="false" aria-describedby="form-error" value="[2, 5, 6]"><div class="presets"><span>快速试试</span><button type="button" data-preset="normal">标准示例</button><button type="button" data-preset="empty-a">第一组为空</button><button type="button" data-preset="empty-b">第二组为空</button><button type="button" data-preset="duplicates">负数与重复</button></div><p class="form-error" id="form-error" role="alert"></p><div class="dialog-actions"><button type="button" class="subtle-button" id="cancel-edit">取消</button><button type="submit" class="play-button">应用并重置 <span>↗</span></button></div></form></dialog>
+  <div class="toast" id="toast" role="status"></div>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "algo-field-interview-150",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs",
+    "test": "node --test",
+    "check": "node --check src/main.js && node --check src/merge.js && node --check server.mjs"
+  },
+  "engines": { "node": ">=22" }
+}
