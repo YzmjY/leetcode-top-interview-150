@@ -1,7 +1,8 @@
 import {catalog} from './catalog-data.js';
 import {lessons,getLesson} from './lessons.js';
 import {traceLesson} from './lesson-kit.js';
-import {renderScene,escapeHtml as esc,display} from './scenes.js';
+import {escapeHtml as esc,display} from './scenes.js';
+import {updateScene} from './scene-player.js';
 import {readable,displayCode,highlightLines} from './presentation.js';
 import {getStrategy} from './strategies.js';
 import {renderTeaching} from './explainers.js';
@@ -86,8 +87,7 @@ function loadLesson(id,{historyMode='push',scroll=true}={}){
 
 function render(){
  const f=trace.frames[index],done=f.phase==='done';
- $('#scene-canvas').innerHTML=renderScene(f.scene);
- $('#scene-canvas').dataset.kind=f.scene.kind;
+ updateScene($('#scene-canvas'),f.scene,{key:trace,duration:Math.min(420,850/Number($('#speed').value))});
   const focus=$('#scene-canvas').querySelector('.matrix-cell.active,.node-circle.active,.array-cell.scene-active,.state-table td.active,.stack-cell.active,.bit-cell.active,.k-pointer,.j-pointer,.i-pointer');
   if(focus){for(const viewport of [focus.closest('.matrix-scroll,.node-scroll,.array-scroll,.table-scroll,.bits-scroll'),$('.scene-stage')].filter(Boolean)){const rect=focus.getBoundingClientRect(),box=viewport.getBoundingClientRect();if(rect.right>box.right-12)viewport.scrollLeft+=rect.right-box.right+20;else if(rect.left<box.left+12)viewport.scrollLeft-=box.left-rect.left+20;if(rect.bottom>box.bottom-15)viewport.scrollTop+=rect.bottom-box.bottom+25;else if(rect.top<box.top+15)viewport.scrollTop-=box.top-rect.top+25;}}
  $('#input-caption').innerHTML=`<span>实验</span><code>${esc(sceneNames[f.scene.kind]||'计算状态')}</code><span>LEETCODE ${current.id}</span>`;

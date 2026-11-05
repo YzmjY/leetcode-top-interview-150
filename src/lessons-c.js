@@ -151,7 +151,43 @@ add({id:108,summary:'将严格递增的有序数组转换为高度平衡的二�
     return build(0,len(nums)-1)
 }`,solve:({nums},e)=>{let root=null;function build(l,r,parent,side){if(l>r)return null;const m=(l+r)>>1,node={id:String(m),val:nums[m],left:null,right:null};if(parent)parent[side]=node;else root=node;e(treeView(root,{active:[node.id]}),'建立区间根节点',`索引${m}的值作为[${l},${r}]的根。`,'root := &TreeNode',{l,r,m});node.left=build(l,m-1,node,'left');node.right=build(m+1,r,node,'right');e(treeView(root,{done:[node.id]}),'子树连接完成','左右区间已经递归构建。','return root');return node;}build(0,nums.length-1,null,'');return treeToLevel(root);}});
 
-const mergeValues=(a,b,visit)=>{let i=0,j=0;const out=[];while(i<a.length&&j<b.length){out.push(a[i]<=b[j]?a[i++]:b[j++]);visit(out,a.slice(i),b.slice(j));}return out.concat(a.slice(i),b.slice(j));};
+const mutationList=(values,prefix)=>{
+  const nodes=values.map((val,i)=>({id:prefix+i,val,next:null}));
+  nodes.forEach((node,i)=>node.next=nodes[i+1]??null);
+  return nodes;
+};
+const mutationListSentinel=nodes=>{
+  const dummy={id:`dummy${nodes.filter(n=>n.sentinel).length}`,val:'dummy',next:null,sentinel:true};
+  nodes.push(dummy);return dummy;
+};
+function mutationListScene(nodes,groups,pointers={}){
+  const referenced=new Set(Object.values(pointers));
+  const visibleNodes=nodes.filter(n=>!n.sentinel||referenced.has(n)),visible=new Set(visibleNodes);
+  const placed=new Set(),chains=[];
+  const place=({label,head,tail})=>{
+    const ids=[];
+    for(let node=head;node&&visible.has(node)&&!placed.has(node);node=node.next){
+      placed.add(node);ids.push(node.id);if(node===tail)break;
+    }
+    chains.push({label,ids});
+  };
+  groups.forEach(place);
+  for(const n of visibleNodes.filter(n=>n.sentinel&&!placed.has(n)))place({label:'合并哨兵',head:n,tail:n});
+  while(placed.size<visibleNodes.length){
+    const incoming=new Set(visibleNodes.filter(n=>!placed.has(n)&&visible.has(n.next)&&!placed.has(n.next)).map(n=>n.next));
+    const head=visibleNodes.find(n=>!placed.has(n)&&!incoming.has(n))??visibleNodes.find(n=>!placed.has(n));
+    place({label:'暂存子链',head});
+  }
+  const pointerEntries=Object.entries(pointers).map(([name,n])=>{
+    invariant(n==null||typeof n.id==='string',`指针${name}必须指向有身份的节点或nil。`);
+    return [name,n==null?null:n.id];
+  });
+  return {kind:'linked',nodes:visibleNodes.map(n=>({id:n.id,label:String(n.val),...(n.sentinel?{sentinel:true}:{})})),
+    edges:visibleNodes.filter(n=>visible.has(n.next)).map(n=>({from:n.id,to:n.next.id,label:'next',directed:true})),chains,
+    pointers:Object.fromEntries(pointerEntries),
+    active:[...new Set(Object.values(pointers).filter(n=>n?.id).map(n=>n.id))]};
+}
+const mutationListValues=head=>{const values=[];for(let n=head;n;n=n.next)values.push(n.val);return values;};
 add({id:148,summary:'给定链表的值序列，按升序排序并返回排序后的链表值序列。',rule:'采用链表归并排序；演示最多40个节点。',steps:[['快慢指针分半','将链表从中间断开，缩小排序规模。'],['递归排序','分别对前后两段排序。'],['合并有序链表','反复取两段当前较小的节点，重新连接为有序链表。']],time:'O(n log n)',space:'O(log n)，递归栈',input:{head:[4,2,1,3]},expected:[1,2,3,4],cases:[{input:{head:[]},expected:[]},{input:{head:[-1,0,-1]},expected:[-1,-1,0]}],validate:({head})=>numbers(head,'head',40),code:`func sortList(head *ListNode) *ListNode {
     if head == nil || head.Next == nil { return head }
     slow,fast := head,head.Next
@@ -165,7 +201,42 @@ add({id:148,summary:'给定链表的值序列，按升序排序并返回排序�
     }
     if left != nil { tail.Next=left } else { tail.Next=right }
     return dummy.Next
-}`,solve:({head},e)=>{function sort(a){if(a.length<2)return a;const m=Math.ceil(a.length/2);e(listView(a,{active:[String(m-1),String(m)]}),'断开链表','在中间切成两段，分别排序。','right := slow.Next',{左段:a.slice(0,m),右段:a.slice(m)});const l=sort(a.slice(0,m)),r=sort(a.slice(m));const out=mergeValues(l,r,(out,left,right)=>e(listView(out),'连接较小节点','输出链逐步增长。','tail=tail.Next',{剩余左链:left,剩余右链:right}));e(listView(out),'合并完成','剩余部分可直接接到尾部。','return dummy.Next');return out;}return sort(head);}});
+}`,solve:({head:values},e)=>{
+  const nodes=mutationList(values,'n'),first=nodes[0]??null;
+  const show=(groups,title,description,needle,pointers={})=>e(mutationListScene(nodes,groups,pointers),title,description,needle);
+  show([{label:'原链表',head:first}],'读取原链表','节点身份在分治与合并过程中保持不变。','func sortList',{head:first});
+  function sort(head){
+    if(!head||!head.next){
+      show([{label:'已排序子链',head}],'子链无需再分','空链或单节点天然有序。','if head == nil',{head});
+      return head;
+    }
+    let slow=head,fast=head.next;
+    show([{label:'当前待排序子链',head}],'设置快慢指针','slow走一步，fast走两步，寻找实际断链位置。','slow,fast :=',{head,slow,fast});
+    while(fast&&fast.next){
+      slow=slow.next;fast=fast.next.next;
+      show([{label:'当前待排序子链',head}],'快慢指针前进','slow最终停在左半段尾部。','for fast != nil',{head,slow,fast});
+    }
+    let right=slow.next;slow.next=null;
+    show([{label:'左半段',head},{label:'右半段',head:right}],'断开链表','slow.Next已置空，两条子链分别排序。','right := slow.Next',{head,slow,fast,right});
+    let left=sort(head);right=sort(right);
+    show([{label:'左链待合并',head:left},{label:'右链待合并',head:right}],'准备合并有序子链','保留原节点，将两个子链重新连接。','left := sortList',{head,left,right});
+    const dummy=mutationListSentinel(nodes);let tail=dummy;
+    show([{label:'合并结果前缀',head:null},{label:'左链待合并',head:left},{label:'右链待合并',head:right}],
+      '建立合并哨兵','dummy是真实哨兵节点，tail初始指向dummy。','dummy := &ListNode{}',{head,left,right,dummy,tail});
+    while(left&&right){
+      if(left.val<=right.val){tail.next=left;left=left.next;}else{tail.next=right;right=right.next;}
+      tail=tail.next;
+      show([{label:'合并结果前缀',head:dummy.next,tail},{label:'左链待合并',head:left},{label:'右链待合并',head:right}],
+        '连接较小节点','tail.Next连接被选原节点，另一条子链与暂存子链继续保留。','tail=tail.Next',{head,left,right,dummy,tail});
+    }
+    tail.next=left??right;
+    show([{label:'当前子链合并结果',head:dummy.next}],'当前子链合并完成','剩余子链接到tail.Next，交回上一层。','return dummy.Next',{head,left,right,dummy,tail});
+    return dummy.next;
+  }
+  const result=sort(first);
+  show([{label:'排序结果',head:result}],'排序完成','全部原节点已按升序重新连接。',nodes.length<2?'if head == nil':'return dummy.Next');
+  return mutationListValues(result);
+}});
 const leaf=v=>({val:v,isLeaf:true});
 add({id:427,summary:'将0/1正方形网格压缩为四叉树；同值区域生成叶节点，否则划分为四个象限。',rule:'边长为2的幂且≤8；结果为嵌套JSON，非叶val统一取1，四个孩子依次对应四象限。',steps:[['检查区域同值','扫描当前正方形是否全部等于左上角。'],['同值直接压缩','全0或全1区域表示为一个叶节点。'],['分成四象限','否则递归构造左上、右上、左下、右下并连接。']],time:'O(n² log n)',space:'O(log n)，不计输出树',input:{grid:[[1,1],[1,0]]},expected:{val:1,isLeaf:false,topLeft:leaf(1),topRight:leaf(1),bottomLeft:leaf(1),bottomRight:leaf(0)},cases:[{input:{grid:[[0]]},expected:leaf(0)},{input:{grid:[[1,1],[1,1]]},expected:leaf(1)}],validate:({grid:g})=>{grid(g,8);invariant(g.length===g[0].length&&(g.length&(g.length-1))===0,'边长须为2的幂的正方形。');invariant(g.flat().every(v=>v===0||v===1),'网格只能包含0或1。');},code:`func construct(grid [][]int) *Node {
     var build func(int,int,int) *Node
@@ -177,7 +248,32 @@ add({id:427,summary:'将0/1正方形网格压缩为四叉树；同值区域生�
         return &Node{Val:true,IsLeaf:false,TopLeft:build(r,c,half),TopRight:build(r,c+half,half),BottomLeft:build(r+half,c,half),BottomRight:build(r+half,c+half,half)}
     }
     return build(0,0,len(grid))
-}`,solve:({grid:g},e)=>{function build(r,c,size){const cells=[];let same=true;for(let i=r;i<r+size;i++)for(let j=c;j<c+size;j++){cells.push([i,j]);if(g[i][j]!==g[r][c])same=false;}e({kind:'matrix',matrix:g,active:cells},'检查正方形区域',same?'区域同值，压缩为叶。':'包含两种值，需要继续划分。','if same',{r,c,size,same});if(same)return leaf(g[r][c]);const h=size/2,out={val:1,isLeaf:false,topLeft:build(r,c,h),topRight:build(r,c+h,h),bottomLeft:build(r+h,c,h),bottomRight:build(r+h,c+h,h)};e({kind:'matrix',matrix:g,done:cells},'连接四个子树','四象限递归结果组成非叶节点。','return &Node{Val:true',{r,c,size});return out;}return build(0,0,g.length);}});
+}`,solve:({grid:g},e)=>{
+  const nodes=[],edges=[];
+  const regionId=(r,c,size)=>`q${r}_${c}_${size}`;
+  const cellsOf=(r,c,size)=>Array.from({length:size},(_,i)=>Array.from({length:size},(_,j)=>[r+i,c+j])).flat();
+  const scene=(active,sourceActive)=>({kind:'tree',nodes,edges,active,sourceMatrix:g,sourceActive});
+  e({kind:'matrix',matrix:g},'读取输入网格','相同区域压缩为叶；不同区域递归连接四个象限。','var build func');
+  function build(r,c,size){
+    const cells=cellsOf(r,c,size),same=cells.every(([i,j])=>g[i][j]===g[r][c]);
+    e(scene([],cells),'检查正方形区域',same?'区域同值，生成一个叶节点。':'区域包含两种值，需要构建四个子树。','if same',{r,c,size,same});
+    const id=regionId(r,c,size),out=same?leaf(g[r][c]):{val:1,isLeaf:false};
+    nodes.push({id,label:same?String(out.val):'四分',val:out.val,isLeaf:out.isLeaf,region:{r,c,size}});
+    e(scene([id],cells),same?'生成同值叶节点':'生成四叉分支',same?'整个区域由一个叶节点表示。':'保留当前分支，依次递归构造四个象限。',same?'return &Node{Val:grid[r][c]':'half:=size/2',{r,c,size});
+    if(same)return out;
+    const h=size/2,quadrants=[['TL','topLeft',r,c],['TR','topRight',r,c+h],['BL','bottomLeft',r+h,c],['BR','bottomRight',r+h,c+h]];
+    for(const [label,key,row,col] of quadrants){
+      out[key]=build(row,col,h);
+      const child=regionId(row,col,h);
+      edges.push({from:id,to:child,label,role:label,directed:true});
+      e(scene([id,child],cellsOf(row,col,h)),`连接 ${label} 子树`,'递归结果连接回对应象限，已构建节点全部保留。','return &Node{Val:true',{r,c,size,quadrant:label});
+    }
+    return out;
+  }
+  const result=build(0,0,g.length);
+  e(scene([regionId(0,0,g.length)],[]),'四叉树构建完成','输出树完整保留四个象限的对应关系。','return build(0,0,len(grid))');
+  return result;
+}});
 
 add({id:23,summary:'合并k条升序链表，返回包含全部节点的升序链表值序列。',rule:'lists每项是一条升序链表；演示总节点数≤60。',steps:[['按链表区间分治','将k条链表平分为两组。'],['递归得到有序结果','每组递归合并为一条有序链表。'],['两两归并','比较两个表头，连接较小节点直到全部合并。']],time:'O(N log k)',space:'O(log k)，不计输出',input:{lists:[[1,4,5],[1,3,4],[2,6]]},expected:[1,1,2,3,4,4,5,6],cases:[{input:{lists:[]},expected:[]},{input:{lists:[[],[-2,-1],[]]},expected:[-2,-1]}],validate:({lists})=>{invariant(Array.isArray(lists)&&lists.length<=12,'最多12条链表。');lists.forEach(a=>sorted(a));invariant(lists.flat().length<=60,'总节点数最多60。');},code:`func mergeKLists(lists []*ListNode) *ListNode {
     var merge func(*ListNode,*ListNode) *ListNode
@@ -197,7 +293,35 @@ add({id:23,summary:'合并k条升序链表，返回包含全部节点的升序�
         return merge(divide(l,m),divide(m+1,r))
     }
     return divide(0,len(lists)-1)
-}`,solve:({lists},e)=>{function divide(l,r){if(l>r)return [];if(l===r)return lists[l];const m=(l+r)>>1;e({kind:'table',columns:['链表','节点值'],rows:lists.map((a,i)=>[i,a.join(' → ')]),active:[[l,1],[r,1]]},'分治链表区间','左右两组将分别合并。','m:=(l+r)/2',{l,r,m});const a=divide(l,m),b=divide(m+1,r),out=mergeValues(a,b,(out,left,right)=>e(listView(out),'接入较小表头','已连接节点构成有序前缀。','tail=tail.Next',{left,right}));e(listView(out),'当前区间合并完成','合并结果交给上一层。','return dummy.Next');return out;}return divide(0,lists.length-1);}});
+}`,solve:({lists:values},e)=>{
+  const lists=values.map((a,i)=>mutationList(a,`l${i}n`)),nodes=lists.flat(),heads=lists.map(a=>a[0]??null);
+  const show=(groups,title,description,needle,pointers={},vars={})=>e(mutationListScene(nodes,groups,pointers),title,description,needle,vars);
+  show(heads.map((head,i)=>({label:`输入链表 ${i}`,head})),'读取各条输入链','节点ID保留输入链表来源，后续归并复用这些节点。','func mergeKLists');
+  function merge(a,b){
+    const dummy=mutationListSentinel(nodes);let tail=dummy;
+    show([{label:'合并结果前缀',head:null},{label:'左链待合并',head:a},{label:'右链待合并',head:b}],
+      '比较两条有序链','a和b指向两个表头，tail初始指向真实的dummy哨兵。','dummy:=&ListNode{}',{a,b,dummy,tail});
+    while(a&&b){
+      if(a.val<=b.val){tail.next=a;a=a.next;}else{tail.next=b;b=b.next;}
+      tail=tail.next;
+      show([{label:'合并结果前缀',head:dummy.next,tail},{label:'左链待合并',head:a},{label:'右链待合并',head:b}],
+        '接入较小表头','tail.Next改接原节点；相同值仍保留各自身份。','tail=tail.Next',{a,b,dummy,tail});
+    }
+    tail.next=a??b;
+    show([{label:'当前区间合并结果',head:dummy.next}],'当前区间合并完成','剩余子链连接到tail.Next，结果交给上一层。','return dummy.Next',{a,b,dummy,tail});
+    return dummy.next;
+  }
+  function divide(l,r){
+    if(l>r)return null;if(l===r)return heads[l];
+    const m=(l+r)>>1;
+    show(heads.slice(l,r+1).map((head,j)=>({label:`${l+j<=m?'左':'右'}组：输入链表 ${l+j}`,head})),
+      '分治链表区间','当前区间分为左右两组，其他节点作为暂存子链保留。','m:=(l+r)/2',{}, {l,r,m});
+    return merge(divide(l,m),divide(m+1,r));
+  }
+  const result=divide(0,lists.length-1);
+  show([{label:'合并结果',head:result}],'全部链表合并完成','所有输入节点恰好复用一次，组成最终有序链。','return divide(0,len(lists)-1)');
+  return mutationListValues(result);
+}});
 
 add({id:53,summary:'返回非空整数数组中连续非空子数组的最大和。',rule:'允许负数；子数组必须连续且至少包含一个元素。',steps:[['定义结尾状态','end表示必须以当前位置结尾的最大子数组和。'],['延续或重开','在当前值和上一个end加当前值之间取较大值。'],['更新全局最优','每个结尾状态都有机会成为最大答案。']],time:'O(n)',space:'O(1)',input:{nums:[-2,1,-3,4,-1,2,1,-5,4]},expected:6,cases:[{input:{nums:[-5]},expected:-5},{input:{nums:[-3,-2,-7]},expected:-2}],validate:({nums})=>nonempty(nums),code:`func maxSubArray(nums []int) int {
     end,best:=nums[0],nums[0]
@@ -392,11 +516,33 @@ func findMedianSortedArrays(a []int,b []int) float64 {
 }});
 
 class Heap {
-  constructor(less=(a,b)=>a<b){this.a=[];this.less=less;}
-  push(x){const a=this.a;a.push(x);let i=a.length-1;while(i){const p=(i-1)>>1;if(!this.less(a[i],a[p]))break;[a[i],a[p]]=[a[p],a[i]];i=p;}}
-  pop(){const a=this.a,top=a[0],last=a.pop();if(a.length){a[0]=last;let i=0;while(true){let j=i,l=2*i+1,r=l+1;if(l<a.length&&this.less(a[l],a[j]))j=l;if(r<a.length&&this.less(a[r],a[j]))j=r;if(j===i)break;[a[i],a[j]]=[a[j],a[i]];i=j;}}return top;}
+  constructor(less=(a,b)=>a<b,id='heap'){this.a=[];this.less=less;this.id=id;}
+  swap(i,j,direction,emit){
+    const a=this.a;[a[i],a[j]]=[a[j],a[i]];
+    emit({type:'swap',heap:this.id,direction,slots:[i,j],ids:[a[i].id,a[j].id]});
+  }
+  push(item,emit=()=>{}){
+    const a=this.a;a.push(item);let i=a.length-1;
+    emit({type:'append',heap:this.id,item,slots:[i],ids:[item.id]});
+    while(i){const p=(i-1)>>1;if(!this.less(a[i].value,a[p].value))break;this.swap(i,p,'up',emit);i=p;}
+  }
+  pop(emit=()=>{}){
+    const a=this.a;if(!a.length)return null;const top=a[0],n=a.length-1;
+    // Go container/heap swaps the root with the final slot, restores the heap
+    // in [0,n), then invokes Pop to remove that final (original root) item.
+    if(n)this.swap(0,n,'root-tail',emit);
+    let i=0;
+    while(true){let j=i,l=2*i+1,r=l+1;if(l<n&&this.less(a[l].value,a[j].value))j=l;if(r<n&&this.less(a[r].value,a[j].value))j=r;if(j===i)break;this.swap(i,j,'down',emit);i=j;}
+    a.pop();emit({type:'remove',heap:this.id,item:top,slots:[n],ids:[top.id]});return top;
+  }
 }
-const heapScene=(h,label='堆')=>({kind:'tree',nodes:[{id:'label',label},...h.a.map((x,i)=>({id:String(i),label:Array.isArray(x)?x.join(','):String(x)}))],edges:h.a.map((_,i)=>({from:i?String((i-1)>>1):'label',to:String(i),directed:true})),active:h.a.length?['0']:[]});
+const heapNode=(item,heap,slot)=>({id:item.id,label:Array.isArray(item.value)?item.value.join(','):String(item.value),heap,slot});
+const heapScene=(h,label='堆',step=null)=>({kind:'tree',nodes:[{id:h.id,label},...h.a.map((item,i)=>heapNode(item,h.id,i))],edges:h.a.map((item,i)=>({from:i?h.a[(i-1)>>1].id:h.id,to:item.id,...(i?{role:i%2?'left':'right'}:{}),directed:true})),active:step?step.ids.filter(id=>h.a.some(item=>item.id===id)):h.a.length?[h.a[0].id]:[],...(step?{heapStep:step}:{})});
+const heapObserver=(h,e,label,scene=null)=>step=>{
+  const title=step.type==='append'?'末尾追加堆项':step.type==='remove'?'移除末尾堆项':step.direction==='up'?'上浮交换':step.direction==='down'?'下沉交换':'交换堆顶与末尾';
+  const needle=step.type==='swap'?'Swap(i,j int)':step.type==='append'?'Push(x any)':'Pop() any';
+  e(scene?scene(step):heapScene(h,label,step),title,'相同节点身份随当前堆槽位移动。',needle,{堆:h.id,槽位:step.slots});
+};
 const intHeapGo=`type IntHeap []int
 func(h IntHeap) Len() int { return len(h) }
 func(h IntHeap) Less(i,j int) bool { return h[i]<h[j] }
@@ -412,7 +558,15 @@ func findKthLargest(nums []int,k int) int {
         if h.Len()>k { heap.Pop(h) }
     }
     return (*h)[0]
-}`,solve:({nums,k},e)=>{const h=new Heap();for(const x of nums){h.push(x);e(heapScene(h,'最大k项候选的小根堆'),'加入候选','新数字先进入候选堆。','heap.Push(h,x)',{x,k});if(h.a.length>k){const removed=h.pop();e(heapScene(h),'移除最小候选','只保留目前最大的k项。','if h.Len()>k',{removed});}}return h.a[0];}});
+}`,solve:({nums,k},e)=>{
+  const h=new Heap(),label='最大k项候选的小根堆',observe=heapObserver(h,e,label);
+  for(let i=0;i<nums.length;i++){
+    const x=nums[i];h.push({id:'item:'+i,value:x},observe);
+    e(heapScene(h,label),'加入候选','新数字先进入候选堆。','heap.Push(h,x)',{x,k});
+    if(h.a.length>k){const removed=h.pop(observe);e(heapScene(h,label),'移除最小候选','只保留目前最大的k项。','if h.Len()>k',{removed:removed.value});}
+  }
+  return h.a[0].value;
+}});
 add({id:502,summary:'从若干项目中至多执行k个，项目需达到启动资本且完成后获得利润，返回最大最终资本。',rule:'每个项目最多一次，利润和启动资本非负；演示项目≤30。',steps:[['按门槛排序','资本门槛从低到高排列项目。'],['解锁可执行项目','将门槛不超过当前资本的项目加入利润大根堆。'],['贪心取最大利润','执行堆顶项目增加资本；重复直到k次或没有可做项目。']],time:'O(n log n+k log n)',space:'O(n)',input:{k:2,w:0,profits:[1,2,3],capital:[0,1,1]},expected:4,cases:[{input:{k:1,w:0,profits:[1],capital:[2]},expected:0},{input:{k:0,w:3,profits:[5],capital:[0]},expected:3}],validate:({k,w,profits,capital})=>{numbers(profits,'profits',30);numbers(capital,'capital',30);invariant(profits.length===capital.length&&[...profits,...capital].every(x=>x>=0),'项目数组等长且非负。');integer(k,0,30,'k');integer(w,0,1e9,'w');},code:`import ("container/heap"; "sort")
 ${intHeapGo}
 func findMaximizedCapital(k int,w int,profits []int,capital []int) int {
@@ -426,7 +580,15 @@ func findMaximizedCapital(k int,w int,profits []int,capital []int) int {
         w-=heap.Pop(h).(int)
     }
     return w
-}`,solve:({k,w,profits,capital},e)=>{const p=profits.map((v,i)=>[capital[i],v]).sort((a,b)=>a[0]-b[0]),h=new Heap((a,b)=>a>b);let i=0;for(let t=0;t<k;t++){while(i<p.length&&p[i][0]<=w){h.push(p[i++][1]);e(heapScene(h,'已解锁利润大根堆'),'解锁项目','资本满足启动门槛，加入可选项目。','heap.Push(h,-projects[i][1])',{w,已解锁:i});}if(!h.a.length)break;const profit=h.pop();w+=profit;e(heapScene(h),'执行最赚钱项目','增加资本后，下一轮可能解锁更多项目。','w-=heap.Pop(h)',{profit,w,已执行:t+1});}return w;}});
+}`,solve:({k,w,profits,capital},e)=>{
+  const projects=profits.map((value,i)=>({id:'project:'+i,value,capital:capital[i]})).sort((a,b)=>a.capital-b.capital),h=new Heap((a,b)=>a>b),label='已解锁利润大根堆',observe=heapObserver(h,e,label);let i=0;
+  for(let t=0;t<k;t++){
+    while(i<projects.length&&projects[i].capital<=w){h.push(projects[i++],observe);e(heapScene(h,label),'解锁项目','资本满足启动门槛，加入可选项目。','heap.Push(h,-projects[i][1])',{w,已解锁:i});}
+    if(!h.a.length)break;
+    const profit=h.pop(observe).value;w+=profit;e(heapScene(h,label),'执行最赚钱项目','增加资本后，下一轮可能解锁更多项目。','w-=heap.Pop(h)',{profit,w,已执行:t+1});
+  }
+  return w;
+}});
 add({id:373,summary:'从两个升序数组各取一项组成数对，返回和最小的前k个数对。',rule:'相同值按不同索引计数；同和数对按索引(i,j)排序以固定演示输出。',steps:[['每行首项入堆','固定nums1索引i时，数对和随nums2索引增加而不减。'],['弹出全局最小','小根堆保存各行尚未输出的最小数对。'],['推进同一行','弹出(i,j)后只需加入(i,j+1)，直到产生k项。']],time:'O(k log min(k,m))',space:'O(min(k,m))，不计结果',input:{nums1:[1,7,11],nums2:[2,4,6],k:3},expected:[[1,2],[1,4],[1,6]],cases:[{input:{nums1:[],nums2:[1],k:2},expected:[]},{input:{nums1:[1,1],nums2:[1,2],k:3},expected:[[1,1],[1,1],[1,2]]}],validate:({nums1,nums2,k})=>{sorted(nums1);sorted(nums2);integer(k,0,50,'k');},code:`import "container/heap"
 type Pair struct { Sum,I,J int }
 type PairHeap []Pair
@@ -444,7 +606,17 @@ func kSmallestPairs(a []int,b []int,k int) [][]int {
         if p.J+1<len(b) { heap.Push(h,Pair{a[p.I]+b[p.J+1],p.I,p.J+1}) }
     }
     return ans
-}`,solve:({nums1:a,nums2:b,k},e)=>{const ans=[],h=new Heap((x,y)=>x[0]!==y[0]?x[0]<y[0]:x[1]!==y[1]?x[1]<y[1]:x[2]<y[2]);if(!b.length)return ans;for(let i=0;i<a.length&&i<k;i++){h.push([a[i]+b[0],i,0]);e(heapScene(h,'节点：和,i,j'),'加入行首候选','各行的第一个数对是本行最小。','heap.Push(h,Pair{a[i]+b[0]');}while(ans.length<k&&h.a.length){const [sum,i,j]=h.pop();ans.push([a[i],b[j]]);e(heapScene(h),'弹出最小数对',`选择(${a[i]},${b[j]})，和为${sum}。`,'p:=heap.Pop(h)',{已输出:ans});if(j+1<b.length){h.push([a[i]+b[j+1],i,j+1]);e(heapScene(h),'推进这一行','同一行的下一个数对进入候选。','if p.J+1<len(b)');}}return ans;}});
+}`,solve:({nums1:a,nums2:b,k},e)=>{
+  const ans=[],h=new Heap((x,y)=>x[0]!==y[0]?x[0]<y[0]:x[1]!==y[1]?x[1]<y[1]:x[2]<y[2]),label='节点：和,i,j',observe=heapObserver(h,e,label);
+  const item=(i,j)=>({id:`pair:${i}:${j}`,value:[a[i]+b[j],i,j]});
+  if(!b.length)return ans;
+  for(let i=0;i<a.length&&i<k;i++){h.push(item(i,0),observe);e(heapScene(h,label),'加入行首候选','各行的第一个数对是本行最小。','heap.Push(h,Pair{a[i]+b[0]');}
+  while(ans.length<k&&h.a.length){
+    const [sum,i,j]=h.pop(observe).value;ans.push([a[i],b[j]]);e(heapScene(h,label),'弹出最小数对',`选择(${a[i]},${b[j]})，和为${sum}。`,'p:=heap.Pop(h)',{已输出:ans});
+    if(j+1<b.length){h.push(item(i,j+1),observe);e(heapScene(h,label),'推进这一行','同一行的下一个数对进入候选。','if p.J+1<len(b)');}
+  }
+  return ans;
+}});
 add({id:295,summary:'设计数据流中位数结构，支持添加整数及随时查询当前所有数的中位数。',rule:'JSON为operations数组，如["MedianFinder"],["addNum",1],["findMedian"]；空流不可查询。',steps:[['维护两个堆','小的一半放大根堆，大的一半放小根堆。'],['添加并平衡','先将数送入左堆，再把左堆最大值送入右堆，必要时移回使左边最多多一个。'],['读取中间边界','奇数取左堆顶，偶数取两堆顶平均。']],time:'addNum O(log n)，findMedian O(1)',space:'O(n)',input:{operations:[['MedianFinder'],['addNum',1],['addNum',2],['findMedian'],['addNum',3],['findMedian']]},expected:[null,null,null,1.5,null,2],cases:[{input:{operations:[['MedianFinder'],['addNum',-1],['findMedian']]},expected:[null,null,-1]},{input:{operations:[['MedianFinder'],['addNum',2],['addNum',2],['findMedian']]},expected:[null,null,null,2]}],validate:({operations:ops})=>{invariant(Array.isArray(ops)&&ops.length<=60&&ops[0]?.[0]==='MedianFinder','operations须从构造开始且最多60项。');let n=0;ops.forEach((op,i)=>{invariant(Array.isArray(op),'操作须为数组。');if(i===0)return;if(op[0]==='addNum'){integer(op[1],-1e9,1e9,'num');n++;}else invariant(op[0]==='findMedian'&&n>0,'仅支持addNum及非空流的findMedian。');});},code:`import "container/heap"
 ${intHeapGo}
 type MedianFinder struct { low,high IntHeap }
@@ -457,7 +629,32 @@ func(m *MedianFinder) AddNum(num int) {
 func(m *MedianFinder) FindMedian() float64 {
     if m.low.Len()>m.high.Len() { return float64(-m.low[0]) }
     return float64(-m.low[0]+m.high[0])/2
-}`,solve:({operations},e)=>{const l=new Heap((a,b)=>a>b),h=new Heap(),out=[];const scene=()=>{const a=heapScene(l,'左半大根堆'),b=heapScene(h,'右半小根堆');return {kind:'tree',nodes:a.nodes.map(n=>({...n,id:'l'+n.id})).concat(b.nodes.map(n=>({...n,id:'r'+n.id}))),edges:a.edges.map(x=>({...x,from:'l'+x.from,to:'l'+x.to})).concat(b.edges.map(x=>({...x,from:'r'+x.from,to:'r'+x.to})))};};for(const [op,x] of operations){if(op==='MedianFinder'){out.push(null);continue;}if(op==='addNum'){l.push(x);e(scene(),'添加到较小半区','暂时将新值加入左侧。','heap.Push(&m.low,-num)',{num:x});h.push(l.pop());if(h.a.length>l.a.length)l.push(h.pop());e(scene(),'平衡两堆','左堆数量等于右堆或多一个，且左堆顶不超过右堆顶。','if m.high.Len()>m.low.Len()');out.push(null);}else{const median=l.a.length>h.a.length?l.a[0]:(l.a[0]+h.a[0])/2;out.push(median);e(scene(),'读取中位数','按两堆数量关系读取边界。','if m.low.Len()>m.high.Len()',{median});}}return out;}});
+}`,solve:({operations},e)=>{
+  const l=new Heap((a,b)=>a>b,'low'),h=new Heap((a,b)=>a<b,'high'),out=[];let uid=0,inFlight=null;
+  const scene=(step=null)=>{
+    if(step?.type==='remove')inFlight=step.item;
+    if(step?.type==='append')inFlight=null;
+    const a=heapScene(l,'左半大根堆',step?.heap==='low'?step:null),b=heapScene(h,'右半小根堆',step?.heap==='high'?step:null);
+    const nodes=[...a.nodes,...b.nodes],edges=[...a.edges,...b.edges],active=[...a.active,...b.active];
+    // Keep a popped stream item visible while its Go nested expression moves
+    // it to the other heap, so its stable identity can animate across heaps.
+    if(inFlight){nodes.push({id:'transfer',label:'转移中'},heapNode(inFlight,'transfer',0));edges.push({from:'transfer',to:inFlight.id,directed:true});active.push(inFlight.id);}
+    return {kind:'tree',nodes,edges,active,...(step?{heapStep:step}:{})};
+  };
+  const lowObserve=heapObserver(l,e,'左半大根堆',scene),highObserve=heapObserver(h,e,'右半小根堆',scene);
+  for(const [op,x] of operations){
+    if(op==='MedianFinder'){out.push(null);e(scene(),'初始化两个堆','两个半区先为空。','return MedianFinder{}');continue;}
+    if(op==='addNum'){
+      l.push({id:'item:'+uid++,value:x},lowObserve);e(scene(),'添加到较小半区','暂时将新值加入左侧。','heap.Push(&m.low,-num)',{num:x});
+      h.push(l.pop(lowObserve),highObserve);
+      if(h.a.length>l.a.length)l.push(h.pop(highObserve),lowObserve);
+      e(scene(),'平衡两堆','左堆数量等于右堆或多一个，且左堆顶不超过右堆顶。','if m.high.Len()>m.low.Len()');out.push(null);
+    }else{
+      const median=l.a.length>h.a.length?l.a[0].value:(l.a[0].value+h.a[0].value)/2;out.push(median);e(scene(),'读取中位数','按两堆数量关系读取边界。','if m.low.Len()>m.high.Len()',{median});
+    }
+  }
+  return out;
+}});
 
 add({id:67,summary:'给定两个二进制非空字符串，返回它们相加后的二进制字符串。',rule:'只能含0和1；从低位开始逐位相加并携带进位。',steps:[['对齐最低位','双指针从两串末尾向前移动。'],['计算本位与进位','当前总和的模2为结果位，除2向下取整为下一位进位。'],['反转结果','低位先产生，最后反转得到正常顺序。']],time:'O(max(m,n))',space:'O(max(m,n))',input:{a:'1010',b:'1011'},expected:'10101',cases:[{input:{a:'0',b:'0'},expected:'0'},{input:{a:'111',b:'1'},expected:'1000'}],validate:({a,b})=>{for(const s of [a,b]){text(s,'二进制串',40);invariant(/^(0|1[01]*)$/.test(s),'须为无多余前导零的二进制字符串。');}},code:`func addBinary(a string,b string) string {
     i,j,carry:=len(a)-1,len(b)-1,0; out:=[]byte{}

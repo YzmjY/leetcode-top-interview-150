@@ -5,13 +5,31 @@ function add(id,summary,rule,steps,time,space,input,expected,code,solve,cases,va
  lessonsB.push({id,summary,rule,steps:steps.map(([title,body])=>({title,body})),time,space,input,expected,code,solve,cases:cases.map(([input,expected])=>({input,expected})),validate});
 }
 const grid=(m,active=[],done=[])=>({kind:'matrix',matrix:m,active,done});
-const shot=(emit,scene,title,vars={},lines=[3])=>emit(scene,title,Object.entries(vars).map(([k,v])=>`${k} = ${JSON.stringify(v)}`).join('；'),lines,vars);
+const shot=(emit,scene,title,vars={},lines=[3],anchor=null)=>emit(scene,title,Object.entries(vars).map(([k,v])=>`${k} = ${JSON.stringify(v)}`).join('；'),lines,vars,anchor);
 function numericMatrix(m,nonempty=false){matrix(m);invariant(m.every(r=>r.every(Number.isFinite)),'矩阵必须包含数字。');if(nonempty)invariant(m.length&&m[0].length,'矩阵不能为空。');}
 function binaryMatrix(m,chars=false){matrix(m);invariant(m.every(r=>r.every(x=>chars?x==='0'||x==='1':x===0||x===1)),'网格只能包含 0 和 1。');}
 function rootInput(v){array(v,'层序树',63);invariant(v.every(x=>x===null||Number.isInteger(x)&&Math.abs(x)<=1e9),'树节点须为 -10⁹ 到 10⁹ 的整数或 null。');invariant(v[0]!==null||v.every(x=>x===null),'空根节点之后不能包含没有父节点的非空节点。');treeFromLevel(v);}
 const nodesOf=root=>{const out=[];function visit(n){if(n){out.push(n);visit(n.left);visit(n.right);}}visit(root);return out;};
 function makeList(values,prefix=''){numbers(values,'链表',45);const nodes=values.map((val,i)=>({id:prefix+i,val,next:null}));nodes.forEach((n,i)=>n.next=nodes[i+1]??null);return {head:nodes[0]??null,nodes};}
-function linked(nodes,active=[]){return {kind:'linked',nodes:nodes.map(n=>({id:n.id,label:String(n.val)})),edges:nodes.flatMap(n=>[...(n.next?[{from:n.id,to:n.next.id,directed:true}]:[]),...(n.random?[{from:n.id,to:n.random.id,label:'random',directed:true}]:[])]),active:active.filter(Boolean).map(n=>typeof n==='string'?n:n.id)};}
+// Chains are disjoint layout walks over real next pointers. A walk stops when
+// it meets an already placed identity; edges still show that join or cycle.
+// Removed identities keep their actual pointers, but never enter a live walk.
+function linked(nodes,active=[],{roots=[],pointers={},removed=[]}={}){
+ const byId=new Map(nodes.map(n=>[n.id,n])),removedIds=new Set(removed.map(n=>typeof n==='string'?n:n.id)),placed=new Set(),chains=[];
+ const walk=(label,head)=>{
+  const ids=[];
+  for(let n=head;n&&byId.has(n.id)&&!placed.has(n.id)&&!removedIds.has(n.id);n=n.next){placed.add(n.id);ids.push(n.id);}
+  chains.push({label,ids});
+ };
+ for(const {label,head} of roots)walk(label,head);
+ const incoming=new Set(nodes.filter(n=>!removedIds.has(n.id)&&n.next).map(n=>n.next.id));
+ for(const n of nodes)if(!placed.has(n.id)&&!removedIds.has(n.id)&&!incoming.has(n.id))walk(n.sentinel?'哨兵':'待处理',n);
+ for(const n of nodes)if(!placed.has(n.id)&&!removedIds.has(n.id))walk(n.sentinel?'哨兵':'待处理',n);
+ return {kind:'linked',nodes:nodes.map(n=>({id:n.id,label:String(n.val),...(n.sentinel?{sentinel:true}:{}),...(removedIds.has(n.id)?{removed:true}:{})})),
+  edges:nodes.flatMap(n=>['next','random','prev'].flatMap(label=>n[label]&&byId.has(n[label].id)?[{from:n.id,to:n[label].id,label,directed:true}]:[])),
+  chains,pointers:Object.fromEntries(Object.entries(pointers).map(([name,n])=>[name,typeof n==='string'?n:n?.id??null])),removed:[...removedIds],
+  active:active.filter(Boolean).map(n=>typeof n==='string'?n:n.id)};
+}
 function listValues(head){const a=[];for(let n=head;n;n=n.next){a.push(n.val);invariant(a.length<=100,'链表意外成环。');}return a;}
 const listCheck=i=>numbers(i.head,'head',45);
 const treeCheck=i=>rootInput(i.root);
@@ -95,7 +113,7 @@ add(141,'判断链表是否含有环。','head 是节点值数组；pos 为尾�
   if slow==fast { return true }
  }
  return false
-}`,(i,e)=>{const {head,nodes}=makeList(i.head);if(nodes.length&&i.pos>=0)nodes.at(-1).next=nodes[i.pos];let slow=head,fast=head;shot(e,linked(nodes),'设置快慢指针');while(fast&&fast.next){slow=slow.next;fast=fast.next.next;shot(e,linked(nodes,[slow,fast]),'快走两步，慢走一步',{slow:slow?.id,fast:fast?.id},[4,5]);if(slow===fast)return true;}return false;},[[{head:[],pos:-1},false],[{head:[1,1],pos:-1},false]],i=>{listCheck(i);integer(i.pos,-1,i.head.length-1,'pos');});
+}`,(i,e)=>{const {head,nodes}=makeList(i.head);if(nodes.length&&i.pos>=0)nodes.at(-1).next=nodes[i.pos];let slow=head,fast=head;const scene=()=>linked(nodes,[slow,fast],{roots:[{label:'链表',head}],pointers:{head,slow,fast}});shot(e,scene(),'设置快慢指针');while(fast&&fast.next){slow=slow.next;fast=fast.next.next;shot(e,scene(),'快走两步，慢走一步',{slow:slow?.id??null,fast:fast?.id??null},[4,5]);if(slow===fast)return true;}return false;},[[{head:[],pos:-1},false],[{head:[1,1],pos:-1},false]],i=>{listCheck(i);integer(i.pos,-1,i.head.length-1,'pos');});
 
 add(2,'两个逆序链表分别表示非负整数，返回相加结果的逆序链表。','每个节点为一位数字；保留最后的进位。',[
  ['按位相加','从两个头节点出发，取当前位和上次进位。'],['新建结果节点','和的个位写入新节点，十位留作下次进位。'],['处理剩余位','任一链表未结束或仍有进位时继续。']], 'O(m+n)','O(m+n)',{l1:[2,4,3],l2:[5,6,4]},[7,0,8],
@@ -108,7 +126,14 @@ add(2,'两个逆序链表分别表示非负整数，返回相加结果的逆序�
   tail.Next=&ListNode{Val:sum%10};tail=tail.Next;carry=sum/10
  }
  return dummy.Next
-}`,(i,e)=>{const a=makeList(i.l1,'a'),b=makeList(i.l2,'b'),out=[];let p=a.head,q=b.head,tail=null,head=null,carry=0;shot(e,linked([...a.nodes,...b.nodes]),'两条输入链表');while(p||q||carry){const sum=(p?.val??0)+(q?.val??0)+carry,n={id:'s'+out.length,val:sum%10,next:null};if(tail)tail.next=n;else head=n;tail=n;out.push(n);carry=Math.floor(sum/10);p=p?.next;q=q?.next;shot(e,linked([...a.nodes,...b.nodes,...out],[n]),'追加结果位',{进位:carry},[7]);}return listValues(head);},[[{l1:[0],l2:[0]},[0]],[{l1:[9,9],l2:[1]},[0,0,1]]],i=>{for(const k of ['l1','l2']){numbers(i[k],k,40);invariant(i[k].length&&i[k].every(v=>v>=0&&v<=9),'数字链表须含 0 到 9 的数字。');}});
+}`,(i,e)=>{
+ const a=makeList(i.l1,'a'),b=makeList(i.l2,'b'),out=[],dummy={id:'dummy',val:'哨兵',sentinel:true,next:null};
+ let l1=a.head,l2=b.head,tail=dummy,carry=0;
+ const scene=()=>linked([...a.nodes,...b.nodes,dummy,...out],[tail],{roots:[{label:'结果',head:dummy.next},{label:'输入 A',head:a.head},{label:'输入 B',head:b.head}],pointers:{dummy,tail,l1,l2}});
+ shot(e,scene(),'两条输入链表');
+ while(l1||l2||carry){const sum=(l1?.val??0)+(l2?.val??0)+carry,n={id:'s'+out.length,val:sum%10,next:null};tail.next=n;tail=n;out.push(n);carry=Math.floor(sum/10);l1=l1?.next??null;l2=l2?.next??null;shot(e,scene(),'追加结果位',{carry},[7],'tail.Next=&ListNode{Val:sum%10}');}
+ return listValues(dummy.next);
+},[[{l1:[0],l2:[0]},[0]],[{l1:[9,9],l2:[1]},[0,0,1]]],i=>{for(const k of ['l1','l2']){numbers(i[k],k,40);invariant(i[k].length&&i[k].every(v=>v>=0&&v<=9),'数字链表须含 0 到 9 的数字。');}});
 
 add(21,'将两个非递减链表合并为一条非递减链表。','复用输入节点；空链表允许。',[
  ['建立哨兵','用 dummy 简化首节点接入。'],['选择较小头节点','比较两个待合并头，接到结果尾部，再移动对应指针。'],['接上剩余链','一条用完后直接接上另一条剩余部分。']], 'O(m+n)','O(1)',{list1:[1,2,4],list2:[1,3,4]},[1,1,2,3,4,4],
@@ -120,7 +145,14 @@ add(21,'将两个非递减链表合并为一条非递减链表。','复用输入
  }
  if list1!=nil { tail.Next=list1 } else { tail.Next=list2 }
  return dummy.Next
-}`,(i,e)=>{const a=makeList(i.list1,'a'),b=makeList(i.list2,'b'),all=[...a.nodes,...b.nodes];let p=a.head,q=b.head,d={next:null},tail=d;shot(e,linked(all),'两条有序链');while(p&&q){if(p.val<=q.val){tail.next=p;p=p.next;}else{tail.next=q;q=q.next;}tail=tail.next;shot(e,linked(all,[tail]),'接入较小节点',{下一个A:p?.id??null,下一个B:q?.id??null},[4,5]);}tail.next=p??q;shot(e,linked(all),'接入剩余链',{},[7]);return listValues(d.next);},[[{list1:[],list2:[0]},[0]],[{list1:[-2,2],list2:[-1,3]},[-2,-1,2,3]]],i=>{sorted(i.list1);sorted(i.list2);});
+}`,(i,e)=>{
+ const a=makeList(i.list1,'a'),b=makeList(i.list2,'b'),dummy={id:'dummy',val:'哨兵',sentinel:true,next:null},all=[dummy,...a.nodes,...b.nodes];
+ let list1=a.head,list2=b.head,tail=dummy;
+ const scene=()=>linked(all,[tail,list1,list2],{roots:[{label:'结果',head:dummy.next},{label:'待合并 A',head:list1},{label:'待合并 B',head:list2}],pointers:{dummy,tail,list1,list2}});
+ shot(e,scene(),'两条有序链');
+ while(list1&&list2){if(list1.val<=list2.val){tail.next=list1;list1=list1.next;}else{tail.next=list2;list2=list2.next;}tail=tail.next;shot(e,scene(),'接入较小节点',{list1:list1?.id??null,list2:list2?.id??null},[4,5]);}
+ tail.next=list1??list2;shot(e,scene(),'接入剩余链',{},[7],list1?'tail.Next=list1':'tail.Next=list2');return listValues(dummy.next);
+},[[{list1:[],list2:[0]},[0]],[{list1:[-2,2],list2:[-1,3]},[-2,-1,2,3]]],i=>{sorted(i.list1);sorted(i.list2);});
 
 add(138,'深拷贝带 next 和 random 指针的链表，返回副本的值与 random 下标。','nodes 每项为 [值,random下标或null]；副本不能引用原节点。',[
  ['建立身份映射','每个原节点对应一个新节点，值相同仍分别创建。'],['复制两类指针','根据映射连接 next 与 random。'],['返回副本','序列化副本，random 仍表示副本内节点下标。']], 'O(n)','O(n)',{nodes:[[7,null],[13,0],[11,4],[10,2],[1,0]]},[[7,null],[13,0],[11,4],[10,2],[1,0]],
@@ -131,7 +163,14 @@ add(138,'深拷贝带 next 和 random 指针的链表，返回副本的值与 ra
   copies[p].Next=copies[p.Next];copies[p].Random=copies[p.Random]
  }
  return copies[head]
-}`,(i,e)=>{const orig=makeList(i.nodes.map(x=>x[0]),'o');orig.nodes.forEach((n,k)=>n.random=i.nodes[k][1]===null?null:orig.nodes[i.nodes[k][1]]);const copies=[];shot(e,linked(orig.nodes),'原链表的随机边');for(const n of orig.nodes){copies.push({id:'c'+copies.length,val:n.val,next:null,random:null});shot(e,linked([...orig.nodes,...copies],[copies.at(-1)]),'创建独立副本节点',{},[3]);}for(let k=0;k<copies.length;k++){copies[k].next=copies[k+1]??null;copies[k].random=i.nodes[k][1]===null?null:copies[i.nodes[k][1]];shot(e,linked([...orig.nodes,...copies],[copies[k]]),'映射 next 和 random',{},[5]);}return copies.map(n=>[n.val,n.random?copies.indexOf(n.random):null]);},[[{nodes:[]},[]],[{nodes:[[1,1],[1,1]]},[[1,1],[1,1]]]],i=>{array(i.nodes,'nodes',40);invariant(i.nodes.every(n=>Array.isArray(n)&&n.length===2&&Number.isInteger(n[0])&&(n[1]===null||Number.isInteger(n[1])&&n[1]>=0&&n[1]<i.nodes.length)),'节点须为 [整数,合法随机下标或null]。');});
+}`,(i,e)=>{
+ const orig=makeList(i.nodes.map(x=>x[0]),'o');orig.nodes.forEach((n,k)=>n.random=i.nodes[k][1]===null?null:orig.nodes[i.nodes[k][1]]);const copies=[];let p=null;
+ const scene=()=>linked([...orig.nodes,...copies],[p],{roots:[{label:'结果',head:copies[0]},{label:'原链表',head:orig.head}],pointers:{head:orig.head,p}});
+ shot(e,scene(),'原链表的随机边');
+ for(const n of orig.nodes){p=n;copies.push({id:'c'+copies.length,val:n.val,next:null,random:null});shot(e,scene(),'创建独立副本节点',{},[3],'copies[p]=&Node{Val:p.Val}');}
+ for(let k=0;k<copies.length;k++){p=orig.nodes[k];copies[k].next=copies[k+1]??null;shot(e,scene(),'映射副本 next',{},[5],'copies[p].Next=copies[p.Next]');copies[k].random=i.nodes[k][1]===null?null:copies[i.nodes[k][1]];shot(e,scene(),'映射副本 random',{},[5],'copies[p].Random=copies[p.Random]');}
+ return copies.map(n=>[n.val,n.random?copies.indexOf(n.random):null]);
+},[[{nodes:[]},[]],[{nodes:[[1,1],[1,1]]},[[1,1],[1,1]]]],i=>{array(i.nodes,'nodes',40);invariant(i.nodes.every(n=>Array.isArray(n)&&n.length===2&&Number.isInteger(n[0])&&(n[1]===null||Number.isInteger(n[1])&&n[1]>=0&&n[1]<i.nodes.length)),'节点须为 [整数,合法随机下标或null]。');});
 
 add(92,'反转链表中第 left 到第 right 个节点，返回链表。','位置从 1 开始；只改变该区间的链接。',[
  ['找到区间前驱','哨兵保证反转从头开始时也有前驱。'],['头插反转','不断摘下区间第二个节点，插到区间最前方。'],['保留区间尾部','原区间头成为尾，始终接回尚未反转部分。']], 'O(n)','O(1)',{head:[1,2,3,4,5],left:2,right:4},[1,4,3,2,5],
@@ -143,7 +182,20 @@ add(92,'反转链表中第 left 到第 right 个节点，返回链表。','位�
   move:=cur.Next;cur.Next=move.Next;move.Next=pre.Next;pre.Next=move
  }
  return dummy.Next
-}`,(i,e)=>{const {head,nodes}=makeList(i.head),d={next:head};let pre=d;for(let j=1;j<i.left;j++)pre=pre.next;const cur=pre.next;shot(e,linked(nodes,[cur]),'定位反转区间');for(let j=0;j<i.right-i.left;j++){const move=cur.next;cur.next=move.next;move.next=pre.next;pre.next=move;shot(e,linked(nodes,[move,cur]),'摘下节点并头插',{次数:j+1},[6]);}return listValues(d.next);},[[{head:[5],left:1,right:1},[5]],[{head:[1,2,2,3],left:1,right:3},[2,2,1,3]]],i=>{listCheck(i);integer(i.left,1,i.head.length,'left');integer(i.right,i.left,i.head.length,'right');});
+}`,(i,e)=>{
+ const {head,nodes}=makeList(i.head),dummy={id:'dummy',val:'哨兵',sentinel:true,next:head};let pre=dummy;
+ for(let j=1;j<i.left;j++)pre=pre.next;
+ const cur=pre.next;let move=null;
+ const scene=()=>linked([dummy,...nodes],[pre,cur,move],{roots:[{label:'结果',head:dummy.next},{label:'反转中',head:move}],pointers:{dummy,head,pre,cur,move}});
+ shot(e,scene(),'定位反转区间',{},[4],'cur:=pre.Next');
+ for(let j=0;j<i.right-i.left;j++){
+  move=cur.next;shot(e,scene(),'记录即将头插的节点',{j},[6],'move:=cur.Next');
+  cur.next=move.next;shot(e,scene(),'摘下 move：cur 跳过该节点',{j},[6],'cur.Next=move.Next');
+  move.next=pre.next;shot(e,scene(),'move 指向区间原来的首节点',{j},[6],'move.Next=pre.Next');
+  pre.next=move;shot(e,scene(),'前驱接入 move，完成一次头插',{j},[6],'pre.Next=move');
+ }
+ return listValues(dummy.next);
+},[[{head:[5],left:1,right:1},[5]],[{head:[1,2,2,3],left:1,right:3},[2,2,1,3]]],i=>{listCheck(i);integer(i.left,1,i.head.length,'left');integer(i.right,i.left,i.head.length,'right');});
 
 add(25,'每 k 个节点一组反转链表，剩余不足 k 个的节点保持顺序。','k 为正整数；仅改变指针，不能只交换节点值。',[
  ['先确认整组','从前驱向后找第 k 个节点，不够时停止。'],['反转当前组','以组后节点为初始前驱，逐个反转组内 next。'],['接回并推进','前驱连接新组头，原组头成为下一组前驱。']], 'O(n)','O(1)',{head:[1,2,3,4,5],k:2},[2,1,4,3,5],
@@ -156,7 +208,26 @@ add(25,'每 k 个节点一组反转链表，剩余不足 k 个的节点保持顺
   pre.Next=end;pre=first
  }
  return dummy.Next
-}`,(i,e)=>{const {head,nodes}=makeList(i.head),d={next:head};let pre=d;shot(e,linked(nodes),'检查完整分组');while(true){let end=pre;for(let j=0;j<i.k&&end;j++)end=end.next;if(!end)break;const after=end.next,first=pre.next;let prev=after,cur=first;while(cur!==after){const next=cur.next;cur.next=prev;prev=cur;cur=next;shot(e,linked(nodes,[prev]),'反转组内指针',{},[6]);}pre.next=end;pre=first;shot(e,linked(nodes,[end,first]),'接回完整分组',{},[7]);}return listValues(d.next);},[[{head:[1,2],k:3},[1,2]],[{head:[1,2,3,4,5,6],k:3},[3,2,1,6,5,4]]],i=>{listCheck(i);integer(i.k,1,45,'k');});
+}`,(i,e)=>{
+ const {head,nodes}=makeList(i.head),dummy={id:'dummy',val:'哨兵',sentinel:true,next:head};
+ let pre=dummy,end=null,after=null,first=null,prev=null,cur=null,next=null;
+ const scene=(reverseHead=prev)=>linked([dummy,...nodes],[pre,end,cur,prev],{roots:[{label:'结果',head:dummy.next},{label:'反转中',head:reverseHead},{label:'待处理',head:cur}],pointers:{dummy,head,pre,end,after,first,prev,cur,next}});
+ shot(e,scene(),'检查完整分组',{},[2],'dummy:=&ListNode{Next:head}');
+ while(true){
+  end=pre;
+  for(let j=0;j<i.k&&end;j++){end=end.next;shot(e,scene(),'向后寻找本组第 k 个节点',{j:j+1,k:i.k},[4],'end=end.Next');}
+  if(!end){shot(e,scene(),'剩余不足 k 个，保留原顺序',{},[4],'end==nil');break;}
+  after=end.next;first=pre.next;prev=after;cur=first;next=null;
+  shot(e,scene(),'确定完整组与组后节点',{},[5],'after,first:=end.Next,pre.Next');
+  while(cur!==after){
+   next=cur.next;cur.next=prev;shot(e,scene(cur),'将当前节点的 next 反向',{},[6],'cur.Next=prev');
+   prev=cur;cur=next;shot(e,scene(),'推进反转指针',{},[6],'prev=cur;cur=next');
+  }
+  pre.next=end;shot(e,scene(),'前驱接入反转后的组头',{},[7],'pre.Next=end');
+  pre=first;shot(e,scene(),'原组头成为下一组前驱',{},[7],'pre=first');
+ }
+ return listValues(dummy.next);
+},[[{head:[1,2],k:3},[1,2]],[{head:[1,2,3,4,5,6],k:3},[3,2,1,6,5,4]]],i=>{listCheck(i);integer(i.k,1,45,'k');});
 
 add(19,'删除链表倒数第 n 个节点，返回新的头节点。','n 在 1 到链表长度之间；使用快慢双指针。',[
  ['拉开固定间距','快指针从哨兵先走 n 步。'],['同步前进','快指针到尾时，慢指针恰在待删节点前。'],['绕过目标','让慢指针的 next 跳过一个节点。']], 'O(n)','O(1)',{head:[1,2,3,4,5],n:2},[1,2,3,5],
@@ -166,7 +237,14 @@ add(19,'删除链表倒数第 n 个节点，返回新的头节点。','n 在 1 �
  for fast.Next!=nil { fast=fast.Next;slow=slow.Next }
  slow.Next=slow.Next.Next
  return dummy.Next
-}`,(i,e)=>{const {head,nodes}=makeList(i.head),d={id:'dummy',val:'哨兵',next:head};let fast=d,slow=d;shot(e,linked([d,...nodes]),'创建哨兵');for(let j=0;j<i.n;j++){fast=fast.next;shot(e,linked([d,...nodes],[fast,slow]),'拉开间距',{间距:j+1},[3]);}while(fast.next){fast=fast.next;slow=slow.next;shot(e,linked([d,...nodes],[fast,slow]),'同步移动',{},[4]);}const removed=slow.next;slow.next=removed.next;removed.next=null;shot(e,linked([d,...nodes],[removed]),'绕过待删节点',{},[5]);return listValues(d.next);},[[{head:[1],n:1},[]],[{head:[1,2],n:2},[2]]],i=>{listCheck(i);integer(i.n,1,i.head.length,'n');});
+}`,(i,e)=>{
+ const {head,nodes}=makeList(i.head),dummy={id:'dummy',val:'哨兵',sentinel:true,next:head},removed=[];let fast=dummy,slow=dummy;
+ const scene=()=>linked([dummy,...nodes],[fast,slow],{roots:[{label:'结果',head:dummy.next}],pointers:{head,dummy,fast,slow},removed});
+ shot(e,scene(),'创建哨兵');
+ for(let j=0;j<i.n;j++){fast=fast.next;shot(e,scene(),'拉开间距',{j:j+1},[3],'fast=fast.Next');}
+ while(fast.next){fast=fast.next;slow=slow.next;shot(e,scene(),'同步移动',{},[4],'fast=fast.Next;slow=slow.Next');}
+ const node=slow.next;slow.next=node.next;removed.push(node);shot(e,scene(),'绕过待删节点',{},[5],'slow.Next=slow.Next.Next');return listValues(dummy.next);
+},[[{head:[1],n:1},[]],[{head:[1,2],n:2},[2]]],i=>{listCheck(i);integer(i.n,1,i.head.length,'n');});
 
 add(82,'删除有序链表中所有重复值节点，仅保留出现一次的值。','输入非递减排序；重复值整段删除。',[
  ['观察相邻节点','相同值在有序链表中必连续出现。'],['跳过重复整段','遇到重复时记住该值，越过所有同值节点。'],['保留独立节点','否则前驱推进一个位置。']], 'O(n)','O(1)',{head:[1,2,3,3,4,4,5]},[1,2,5],
@@ -178,7 +256,13 @@ add(82,'删除有序链表中所有重复值节点，仅保留出现一次的值
   } else { pre=pre.Next }
  }
  return dummy.Next
-}`,(i,e)=>{const {head,nodes}=makeList(i.head),d={next:head};let pre=d;shot(e,linked(nodes),'观察有序链表');while(pre.next&&pre.next.next){if(pre.next.val===pre.next.next.val){const value=pre.next.val;while(pre.next&&pre.next.val===value){const removed=pre.next;pre.next=removed.next;removed.next=null;shot(e,linked(nodes,[removed]),'删除重复段中的节点',{重复值:value},[5]);}}else{pre=pre.next;shot(e,linked(nodes,[pre]),'保留独立节点',{},[6]);}}return listValues(d.next);},[[{head:[1,1,1]},[]],[{head:[1,2,2]},[1]]],i=>{sorted(i.head);});
+}`,(i,e)=>{
+ const {head,nodes}=makeList(i.head),dummy={id:'dummy',val:'哨兵',sentinel:true,next:head},removed=[];let pre=dummy;
+ const scene=()=>linked([dummy,...nodes],[pre],{roots:[{label:'结果',head:dummy.next}],pointers:{head,dummy,pre},removed});
+ shot(e,scene(),'观察有序链表');
+ while(pre.next&&pre.next.next){if(pre.next.val===pre.next.next.val){const value=pre.next.val;while(pre.next&&pre.next.val===value){const node=pre.next;pre.next=node.next;removed.push(node);shot(e,scene(),'删除重复段中的节点',{value},[5],'pre.Next=pre.Next.Next');}}else{pre=pre.next;shot(e,scene(),'保留独立节点',{},[6],'pre=pre.Next');}}
+ return listValues(dummy.next);
+},[[{head:[1,1,1]},[]],[{head:[1,2,2]},[1]]],i=>{sorted(i.head);});
 
 add(61,'将链表向右旋转 k 个位置，返回新的头节点。','k 为非负整数；旋转次数取模链表长度。',[
  ['计算长度','找到尾节点，将 k 对长度取模。'],['连接成环','旧尾指向旧头，循环上的任何切点都形成旋转。'],['找到新尾并断环','从旧头走 n-k-1 步；新尾的下一节点成为新头。']], 'O(n)','O(1)',{head:[1,2,3,4,5],k:2},[4,5,1,2,3],
@@ -190,7 +274,15 @@ add(61,'将链表向右旋转 k 个位置，返回新的头节点。','k 为非�
  pre:=head;for j:=0;j<n-k-1;j++ { pre=pre.Next }
  result:=pre.Next;pre.Next=nil
  return result
-}`,(i,e)=>{const {head,nodes}=makeList(i.head);shot(e,linked(nodes),'读取原链');if(nodes.length<2)return i.head;const k=i.k%nodes.length;if(!k)return i.head;nodes.at(-1).next=head;shot(e,linked(nodes),'尾部接回头部形成环',{有效旋转:k},[5]);let pre=head;for(let j=0;j<nodes.length-k-1;j++){pre=pre.next;shot(e,linked(nodes,[pre]),'寻找新尾',{},[6]);}const result=pre.next;pre.next=null;shot(e,linked(nodes,[result]),'从新尾断开环',{},[7]);return listValues(result);},[[{head:[],k:10},[]],[{head:[0,1,2],k:4},[2,0,1]]],i=>{listCheck(i);integer(i.k,0,1e9,'k');});
+}`,(i,e)=>{
+ const {head,nodes}=makeList(i.head);let tail=nodes.at(-1)??null,pre=null,result=null;
+ const scene=()=>linked(nodes,[pre,result],{roots:[{label:'结果',head:result??head}],pointers:{head,tail,pre,result}});
+ shot(e,scene(),'读取原链');if(nodes.length<2)return i.head;const k=i.k%nodes.length;if(!k)return i.head;
+ tail.next=head;shot(e,scene(),'尾部接回头部形成环',{k},[5],'tail.Next=head');
+ pre=head;for(let j=0;j<nodes.length-k-1;j++){pre=pre.next;shot(e,scene(),'寻找新尾',{},[6],'pre=pre.Next');}
+ result=pre.next;shot(e,scene(),'记录新的头节点',{},[7],'result:=pre.Next');
+ pre.next=null;shot(e,scene(),'从新尾断开环',{},[7],'pre.Next=nil');return listValues(result);
+},[[{head:[],k:10},[]],[{head:[0,1,2],k:4},[2,0,1]]],i=>{listCheck(i);integer(i.k,0,1e9,'k');});
 
 add(86,'稳定分隔链表，使所有小于 x 的节点位于大于等于 x 的节点之前。','两部分内部都保持原始相对顺序。',[
  ['建立两条结果链','分别保存小于 x 与大于等于 x 的节点。'],['按值接入','依次取出原节点，断开旧 next，接到对应链尾。'],['连接两段','小值链尾连接大值链头。']], 'O(n)','O(1)',{head:[1,4,3,2,5,2],x:3},[1,2,2,4,3,5],
@@ -203,7 +295,19 @@ add(86,'稳定分隔链表，使所有小于 x 的节点位于大于等于 x 的
  }
  a.Next=big.Next
  return small.Next
-}`,(i,e)=>{const {head,nodes}=makeList(i.head),small={next:null},big={next:null};let a=small,b=big,p=head;shot(e,linked(nodes),'准备两条稳定分区链');while(p){const next=p.next;p.next=null;if(p.val<i.x){a.next=p;a=p;}else{b.next=p;b=p;}shot(e,linked(nodes,[p]),'节点接到对应分区尾部',{阈值:i.x,分区:p.val<i.x?'小':'大'},[4,5]);p=next;}a.next=big.next;shot(e,linked(nodes),'拼接两个分区',{},[8]);return listValues(small.next);},[[{head:[],x:1},[]],[{head:[2,1,2,1],x:2},[1,1,2,2]]],i=>{listCheck(i);integer(i.x,-1e9,1e9,'x');});
+}`,(i,e)=>{
+ const list=makeList(i.head),nodes=list.nodes,small={id:'small',val:'小值哨兵',sentinel:true,next:null},big={id:'big',val:'大值哨兵',sentinel:true,next:null};
+ let a=small,b=big,head=list.head,next=null,joined=false;
+ const scene=()=>linked([small,big,...nodes],[head,a,b],{roots:joined?[{label:'结果',head:small.next}]:[{label:'小值链',head:small.next},{label:'大值链',head:big.next},{label:'待处理',head}],pointers:{small,big,a,b,head,next}});
+ shot(e,scene(),'准备两条稳定分区链');
+ while(head){
+  next=head.next;head.next=null;shot(e,scene(),'摘下当前节点，保留后继',{},[4],'head.Next=nil');
+  if(head.val<i.x){a.next=head;a=head;}else{b.next=head;b=head;}
+  shot(e,scene(),'节点接到对应分区尾部',{x:i.x,分区:head.val<i.x?'小':'大'},[5]);
+  head=next;shot(e,scene(),'推进到下一个待分区节点',{},[6],'head=next');
+ }
+ a.next=big.next;joined=true;shot(e,scene(),'拼接两个分区',{},[8],'a.Next=big.Next');return listValues(small.next);
+},[[{head:[],x:1},[]],[{head:[2,1,2,1],x:2},[1,1,2,2]]],i=>{listCheck(i);integer(i.x,-1e9,1e9,'x');});
 
 add(146,'实现容量受限的 LRU 缓存，get 命中和 put 写入都会将节点提升为最近使用。','ops 为 ["LRUCache",容量]、["put",键,值]、["get",键]；构造和写入输出 null。',[
  ['哈希表定位','键映射到双向链表节点，常数时间找到缓存项。'],['维护最近顺序','访问后移到表头，尾部代表最久未使用。'],['满容量淘汰','新增超容量时，删除尾节点并清除哈希映射。']], '每次 O(1)','O(capacity)',{ops:[['LRUCache',2],['put',1,1],['put',2,2],['get',1],['put',3,3],['get',2],['get',3]]},[null,null,null,1,null,-1,3],
@@ -222,7 +326,27 @@ add(146,'实现容量受限的 LRU 缓存，get 命中和 put 写入都会将节
   if n,ok:=c.items[key];ok { n.value=value;c.detach(n);c.front(n);return }
   n:=&entry{key:key,value:value};c.items[key]=n;c.front(n)
   if len(c.items)>c.capacity { old:=c.tail.prev;c.detach(old);delete(c.items,old.key) }
- }`,(i,e)=>{let cap=0;const map=new Map(),h={id:'h',val:'最近'},t={id:'t',val:'最旧'};h.next=t;t.prev=h;let uid=0;const result=[];const scene=()=>{const ns=[];for(let p=h;p;p=p.next)ns.push(p);const s=linked(ns);for(const n of ns)if(n.prev)s.edges.push({from:n.id,to:n.prev.id,directed:true,label:'prev'});return s;};const detach=n=>{n.prev.next=n.next;n.next.prev=n.prev;};const front=n=>{n.next=h.next;n.prev=h;h.next.prev=n;h.next=n;};shot(e,scene(),'初始化双向链表');for(const [op,k,v] of i.ops){let r=null;if(op==='LRUCache')cap=k;else if(op==='get'){const n=map.get(k);r=n?Number(n.value):-1;if(n){detach(n);front(n);}}else{let n=map.get(k);if(n){n.value=v;n.val=`${k}:${v}`;detach(n);}else{n={id:'c'+uid++,key:k,value:v,val:`${k}:${v}`};map.set(k,n);}front(n);if(map.size>cap){const old=t.prev;detach(old);map.delete(old.key);}}result.push(r);shot(e,scene(),op==='get'?'访问并提升节点':'写入并检查淘汰',{操作:op,键:k,返回:r},op==='get'?[10]:[13,14,15]);}return result;},[[{ops:[['LRUCache',1],['put',1,2],['put',1,3],['get',1]]},[null,null,null,3]],[{ops:[['LRUCache',1],['get',9],['put',2,4],['put',3,5],['get',2]]},[null,-1,null,null,-1]]],i=>{array(i.ops,'ops',80);invariant(i.ops.length&&i.ops[0][0]==='LRUCache','首个操作须构造 LRUCache。');integer(i.ops[0][1],1,20,'容量');for(let at=0;at<i.ops.length;at++){const item=i.ops[at];invariant(Array.isArray(item),'操作格式错误。');const [op,k,v]=item;invariant(['LRUCache','get','put'].includes(op),'未知缓存操作。');invariant(at===0||op!=='LRUCache','构造操作只能出现在首项。');invariant(item.length===(op==='put'?3:2),'操作格式错误。');integer(k,-1e9,1e9,'键/容量');if(op==='put')integer(v,-1e9,1e9,'值');}});
+ }`,(i,e)=>{
+ let cap=0,uid=0,n=null,old=null;
+ const map=new Map(),h={id:'h',val:'最近',sentinel:true},t={id:'t',val:'最旧',sentinel:true},nodes=[h,t],removed=[],result=[];h.next=t;t.prev=h;
+ const scene=()=>linked(nodes,[n,old],{roots:[{label:'缓存',head:h}],pointers:{'c.head':h,'c.tail':t,n,old},removed});
+ const detach=node=>{node.prev.next=node.next;node.next.prev=node.prev;};
+ const front=node=>{node.next=h.next;node.prev=h;h.next.prev=node;h.next=node;};
+ shot(e,scene(),'初始化双向链表');
+ for(const [op,k,v] of i.ops){
+  let r=null;n=null;old=null;
+  if(op==='LRUCache')cap=k;
+  else if(op==='get'){n=map.get(k)??null;r=n?Number(n.value):-1;if(n){detach(n);front(n);}}
+  else{
+   n=map.get(k)??null;
+   if(n){n.value=v;n.val=`${k}:${v}`;detach(n);}else{n={id:'c'+uid++,key:k,value:v,val:`${k}:${v}`};map.set(k,n);nodes.push(n);}
+   front(n);
+   if(map.size>cap){old=t.prev;detach(old);map.delete(old.key);removed.push(old);}
+  }
+  result.push(r);shot(e,scene(),op==='get'?'访问并提升节点':'写入并检查淘汰',{操作:op,key:k,返回:r},op==='get'?[10]:[13,14,15]);
+ }
+ return result;
+},[[{ops:[['LRUCache',1],['put',1,2],['put',1,3],['get',1]]},[null,null,null,3]],[{ops:[['LRUCache',1],['get',9],['put',2,4],['put',3,5],['get',2]]},[null,-1,null,null,-1]]],i=>{array(i.ops,'ops',80);invariant(i.ops.length&&i.ops[0][0]==='LRUCache','首个操作须构造 LRUCache。');integer(i.ops[0][1],1,20,'容量');for(let at=0;at<i.ops.length;at++){const item=i.ops[at];invariant(Array.isArray(item),'操作格式错误。');const [op,k,v]=item;invariant(['LRUCache','get','put'].includes(op),'未知缓存操作。');invariant(at===0||op!=='LRUCache','构造操作只能出现在首项。');invariant(item.length===(op==='put'?3:2),'操作格式错误。');integer(k,-1e9,1e9,'键/容量');if(op==='put')integer(v,-1e9,1e9,'值');}});
 
 add(104,'返回二叉树从根到最深叶子所经过的节点数。','空树深度为 0；root 使用紧凑层序数组，null 表示缺失子节点。',[
  ['深入左右子树','递归求出当前节点的左右子树深度。'],['合并高度','当前高度等于两侧较大值加一。'],['回到根节点','根的高度即整棵树最大深度。']], 'O(n)','O(h)',{root:[3,9,20,null,null,15,7]},3,

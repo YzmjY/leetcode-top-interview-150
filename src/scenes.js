@@ -1,3 +1,7 @@
+import {layoutLinked} from './linked-layout.js';
+import {layoutTree} from './tree-layout.js';
+import {edgeGeometry} from './scene-motion.js';
+
 export const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 export function display(value) {
   if(value === Infinity) return '∞'; if(value === -Infinity) return '−∞';
@@ -52,9 +56,9 @@ function tables(scene) {
 function nodePositions(scene) {
   const nodes=scene.nodes||[],positions=new Map();
   if(scene.kind==='linked') {
-    nodes.forEach((n,i)=>positions.set(String(n.id),{x:53+i*90,y:95}));
-    return {positions,width:Math.max(350,nodes.length*90+20),height:185};
+    return layoutLinked(scene);
   }
+  if(scene.kind==='tree')return layoutTree(scene);
   if(scene.kind==='tree'||scene.kind==='trie') {
     const children=new Map(nodes.map(n=>[String(n.id),[]])),incoming=new Set();
     for(const e of scene.edges||[]){if(e.structural===false||/^(next|random)$/i.test(e.label||''))continue;children.get(String(e.from))?.push(String(e.to));incoming.add(String(e.to));}
@@ -81,22 +85,23 @@ function nodePositions(scene) {
 
 function nodes(scene) {
   if(!scene.nodes?.length)return empty('暂无节点');
-  const {positions,width,height}=nodePositions(scene);
+  const {positions,width,height,chains=[]}=nodePositions(scene);
   const edges=(scene.edges||[]).map(edge=>{
     const a=positions.get(String(edge.from)),b=positions.get(String(edge.to));if(!a||!b)return '';
-    const directed=scene.kind==='linked'||edge.directed;
-    const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;
-    const x1=a.x+dx/d*23,y1=a.y+dy/d*23,x2=b.x-dx/d*(directed?28:23),y2=b.y-dy/d*(directed?28:23);
-    const backward=scene.kind==='linked'&&b.x<=a.x;
-    const loop=String(edge.from)===String(edge.to);
-    const path=loop?`M ${a.x-15} ${a.y-18} C ${a.x-45} ${a.y-80},${a.x+45} ${a.y-80},${a.x+15} ${a.y-18}`:backward?`M ${x1} ${y1-12} Q ${(a.x+b.x)/2} 0 ${x2} ${y2-12}`:`M ${x1} ${y1} L ${x2} ${y2}`;
-    return `<path class="scene-edge${backward?' back-edge':''}${/^(next|random)$/i.test(edge.label||'')?' auxiliary-edge':''}" d="${path}"${directed?' marker-end="url(#scene-arrow)"':''}/><text class="edge-label" x="${(a.x+b.x)/2}" y="${backward?30:(a.y+b.y)/2-7}" text-anchor="middle">${esc(edge.label||'')}</text>`;
+    const directed=scene.kind==='linked'||Boolean(edge.directed);
+    const {path,backward,labelX,labelY}=edgeGeometry(a,b,{kind:scene.kind,directed,label:edge.label,self:String(edge.from)===String(edge.to)});
+    const removed=has(scene.removed,edge.from)||has(scene.removed,edge.to);
+    return `<g data-edge-from="${esc(edge.from)}" data-edge-to="${esc(edge.to)}" data-directed="${directed}" data-label="${esc(edge.label||'')}"><path class="scene-edge${backward?' back-edge':''}${removed?' removed-edge':''}${/^(prev|random)$/i.test(edge.label||'')||scene.kind!=='linked'&&/^next$/i.test(edge.label||'')?' auxiliary-edge':''}" d="${path}"${directed?' marker-end="url(#scene-arrow)"':''}/><text class="edge-label" x="${labelX}" y="${labelY}" text-anchor="middle">${esc(scene.kind==='linked'&&edge.label==='next'?'':edge.label||'')}</text></g>`;
   }).join('');
   const circles=scene.nodes.map(node=>{
     const p=positions.get(String(node.id)),active=has(scene.active,node.id),done=has(scene.done,node.id),label=String(node.label??node.id);
-    return `<g data-node="${esc(node.id)}"><circle class="node-shadow${active?' active':''}${done?' done':''}" cx="${p.x}" cy="${p.y+3}" r="23"/><circle class="node-circle${active?' active':''}${done?' done':''}" cx="${p.x}" cy="${p.y}" r="23"/><text class="node-label${active?' active':''}" x="${p.x}" y="${p.y+5}" text-anchor="middle"${label.length>5?' style="font-size:10px"':''}>${esc(label.length>12?label.slice(0,10)+'…':label)}</text><title>${esc(label)}</title></g>`;
+    const removed=has(scene.removed,node.id)||node.removed;
+    const pointers=Object.entries(scene.pointers||{}).filter(([,id])=>id!==null&&id!==undefined&&String(id)===String(node.id)).map(([name])=>name);
+    return `<g data-node="${esc(node.id)}" data-x="${p.x}" data-y="${p.y}" class="scene-node${removed?' removed-node':''}${node.sentinel?' sentinel-node':''}"><circle class="node-shadow${active?' active':''}${done?' done':''}" cx="${p.x}" cy="${p.y+3}" r="23"/><circle class="node-circle${active?' active':''}${done?' done':''}" cx="${p.x}" cy="${p.y}" r="23"/><text class="node-label${active?' active':''}" x="${p.x}" y="${p.y+5}" text-anchor="middle"${label.length>5?' style="font-size:10px"':''}>${esc(label.length>12?label.slice(0,10)+'…':label)}</text>${scene.kind==='linked'?`<text class="node-identity" x="${p.x}" y="${p.y+43}" text-anchor="middle">${esc(node.sentinel?'哨兵':'#'+node.id)}</text>`:''}${pointers.length?`<text class="linked-pointer" x="${p.x}" y="${p.y-34}" text-anchor="middle">${esc(pointers.join(' · '))} ↓</text>`:''}<title>${esc(label)}${scene.kind==='linked'?' · 节点 '+esc(node.id):''}</title></g>`;
   }).join('');
-  return `<div class="node-scroll"><svg class="node-scene" role="img" aria-label="${esc(({tree:'树结构',trie:'字典树',linked:'链表',graph:'图结构'})[scene.kind])}，蓝色为当前节点" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><defs><marker id="scene-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#758cb1"/></marker></defs>${edges}${circles}</svg></div>`;
+  const labels=chains.map(chain=>`<text class="linked-chain-label" x="28" y="${chain.y-62}">${esc(chain.label)}</text><line class="linked-chain-rule" x1="28" x2="${width-28}" y1="${chain.y-51}" y2="${chain.y-51}"/>`).join('');
+  const nulls=Object.entries(scene.pointers||{}).filter(([,id])=>id===null).map(([name])=>name+' = nil');
+  return `<div class="node-scroll"><svg class="node-scene" role="img" aria-label="${esc(({tree:'树结构',trie:'字典树',linked:'链表',graph:'图结构'})[scene.kind])}，蓝色为当前节点" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><defs><marker id="scene-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#758cb1"/></marker></defs>${labels}${edges}${circles}${nulls.length?`<text class="linked-null" x="28" y="${height-12}">${esc(nulls.join(' · '))}</text>`:''}</svg></div>`;
 }
 
 function intervals(scene) {
@@ -123,7 +128,8 @@ export function renderScene(scene) {
     case 'text':return texts(scene);
     case 'matrix':return grids(scene);
     case 'table':return tables(scene);
-    case 'tree':case 'graph':case 'linked':case 'trie':return nodes(scene);
+    case 'tree':return scene.sourceMatrix?`<div class="construction-scene"><div class="construction-label">输入网格 · 当前递归区域</div>${grids({kind:'matrix',matrix:scene.sourceMatrix,active:scene.sourceActive||[]})}<div class="construction-label">已构建的四叉树 <span>TL 左上 · TR 右上 · BL 左下 · BR 右下</span></div>${nodes(scene)}</div>`:nodes(scene);
+    case 'graph':case 'linked':case 'trie':return nodes(scene);
     case 'intervals':return intervals(scene);
     case 'stack':return stacks(scene);
     case 'bits':return bits(scene);

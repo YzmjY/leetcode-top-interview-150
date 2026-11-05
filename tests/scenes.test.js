@@ -32,3 +32,17 @@ test('树的next边不参与父子布局，同层节点保持同高',()=>{
 });
 test('半开区间上界n显示为边界标记，不伪装为有效元素',()=>{const html=renderScene({kind:'array',values:[1,3],pointers:{lo:0,mid:1,hi:2}});assert.match(html,/boundary-marker/);assert.match(html,/hi/);assert.match(html,/2/);});
 test('矩阵中点与行列变量可对应到格子',()=>{const html=renderScene({kind:'matrix',matrix:[[1,3],[5,7]],active:[[0,1]],cellPointers:{mid:[0,1]},rowPointers:{r:0},colPointers:{c:1}});assert.match(html,/mid/);assert.match(html,/r/);assert.match(html,/c/);});
+
+test('链表按真实链顺序摆放，变量指针和删除区可见',()=>{
+ const html=renderScene({kind:'linked',nodes:[{id:'a',label:1},{id:'b',label:1},{id:'c',label:2}],edges:[{from:'b',to:'a',label:'next'}],chains:[{label:'结果',ids:['b','a']}],removed:['c'],pointers:{head:'b',cur:'a'}});
+ const x=id=>Number(html.match(new RegExp(`data-node="${id}"[^>]*data-x="([^"]+)"`))[1]);
+ assert.ok(x('b')<x('a'));assert.match(html,/linked-chain-label/);assert.match(html,/已移除/);
+ assert.match(html,/linked-pointer/);assert.match(html,/head/);assert.match(html,/cur/);
+ assert.match(html,/data-edge-from="b" data-edge-to="a"/);
+});
+
+test('构建树时同时展示源矩阵和已生成节点',()=>{
+ const html=renderScene({kind:'tree',nodes:[{id:'root',label:'分支'},{id:'tl',label:'1'}],edges:[{from:'root',to:'tl',label:'TL'}],sourceMatrix:[[1,0],[0,1]],sourceActive:[[0,0]]});
+ assert.match(html,/输入网格/);assert.equal((html.match(/matrix-cell/g)||[]).length,4);
+ assert.match(html,/data-node="root"/);assert.match(html,/data-node="tl"/);
+});
