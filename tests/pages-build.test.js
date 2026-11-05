@@ -16,7 +16,7 @@ test('项目站子目录下入口和全部模块依赖可正确解析',async()=>
  const html=await readFile(path.join(dist,'index.html'),'utf8');
  assert.ok(!html.includes('"/src/'),'资源路径不能跳到根域');
  const assets=[...html.matchAll(/(?:href|src)="(\.\/src\/[^"#]+)"/g)].map(m=>new URL(m[1],base));
- assert.equal(assets.length,3);
+ for(const name of ['style.css','collection.css','editorial.css','app.js'])assert.ok(assets.some(url=>url.pathname.endsWith(`/src/${name}`)),`发布入口缺少 ${name}`);
  const queue=[...assets],seen=new Set();
  while(queue.length){const url=queue.shift();if(seen.has(url.href))continue;seen.add(url.href);assert.ok(url.pathname.startsWith(base.pathname));const local=path.join(dist,url.pathname.slice(base.pathname.length));await access(local);if(!url.pathname.endsWith('.js'))continue;const source=await readFile(local,'utf8');for(const match of source.matchAll(/\b(?:from\s*|import\s*)['"](\.\/[^'"]+)['"]/g))queue.push(new URL(match[1],url));}
  assert.ok([...seen].some(url=>url.endsWith('/lessons-a.js')));assert.ok([...seen].some(url=>url.endsWith('/reasoning.js')));
