@@ -86,7 +86,7 @@ func combinationSum(candidates []int, target int) [][]int {
     }
     dfs(0, target)
     return ans
-}`,solve:({candidates:a,target},e)=>{a.sort((x,y)=>x-y);const p=[],ans=[];function dfs(start,rest){if(!rest){ans.push([...p]);e(btScene(p),'找到目标和','剩余目标为零，保存组合。','ans = append',{rest});return;}for(let i=start;i<a.length&&a[i]<=rest;i++){p.push(a[i]);e(btScene(p,a.slice(i)),'选择可重复候选','下层从当前索引继续搜索。','path = append',{rest:rest-a[i]});dfs(i,rest-a[i]);p.pop();e(btScene(p),'撤销候选','恢复剩余目标，尝试下一候选。','path = path[:',{rest});}}dfs(0,target);return ans;}});
+}`,solve:({candidates:a,target},e)=>{a.sort((x,y)=>x-y);const p=[],ans=[];function dfs(start,rest){if(!rest){ans.push([...p]);e(btScene(p),'找到目标和','剩余目标为零，保存组合。','ans = append',{rest});return;}for(let i=start;i<a.length&&a[i]<=rest;i++){p.push(a[i]);e(btScene(p,a.slice(i)),'选择可重复候选','rest仍是本层剩余目标；下一层传入rest减去本次候选。','path = append',{rest,'下一层rest':rest-a[i]});dfs(i,rest-a[i]);p.pop();e(btScene(p),'撤销候选','恢复剩余目标，尝试下一候选。','path = path[:',{rest});}}dfs(0,target);return ans;}});
 
 add({id:52,summary:'在n×n棋盘放置n个互不攻击的皇后，返回不同摆放方案的数量。',rule:'皇后不能同行、同列或同一对角线；演示1≤n≤6。',steps:[['逐行放置','每层递归为一行选择一列。'],['检查冲突','利用列、行列差、行列和集合排除攻击位置。'],['统计与撤销','所有行放好后计数，随后移除皇后和占用标记。']],time:'O(n!)',space:'O(n)',input:{n:4},expected:2,cases:[{input:{n:1},expected:1},{input:{n:2},expected:0}],validate:({n})=>integer(n,1,6,'n'),code:`func totalNQueens(n int) int {
     cols := map[int]bool{}; d1 := map[int]bool{}; d2 := map[int]bool{}; ans := 0
@@ -536,8 +536,8 @@ class Heap {
     a.pop();emit({type:'remove',heap:this.id,item:top,slots:[n],ids:[top.id]});return top;
   }
 }
-const heapNode=(item,heap,slot)=>({id:item.id,label:Array.isArray(item.value)?item.value.join(','):String(item.value),heap,slot});
-const heapScene=(h,label='堆',step=null)=>({kind:'tree',nodes:[{id:h.id,label},...h.a.map((item,i)=>heapNode(item,h.id,i))],edges:h.a.map((item,i)=>({from:i?h.a[(i-1)>>1].id:h.id,to:item.id,...(i?{role:i%2?'left':'right'}:{}),directed:true})),active:step?step.ids.filter(id=>h.a.some(item=>item.id===id)):h.a.length?[h.a[0].id]:[],...(step?{heapStep:step}:{})});
+const heapNode=(item,heap,slot)=>({id:item.id,label:Array.isArray(item.value)?item.value.join(','):String(item.value),...(Array.isArray(item.value)?{labelLines:[`sum=${item.value[0]}`,`i=${item.value[1]}, j=${item.value[2]}`]}:{}),heap,slot});
+const heapScene=(h,label='堆',step=null)=>({kind:'tree',nodes:[{id:h.id,label,caption:true},...h.a.map((item,i)=>heapNode(item,h.id,i))],edges:h.a.map((item,i)=>({from:i?h.a[(i-1)>>1].id:h.id,to:item.id,...(i?{role:i%2?'left':'right'}:{}),directed:true})),active:step?step.ids.filter(id=>h.a.some(item=>item.id===id)):h.a.length?[h.a[0].id]:[],...(step?{heapStep:step}:{})});
 const heapObserver=(h,e,label,scene=null)=>step=>{
   const title=step.type==='append'?'末尾追加堆项':step.type==='remove'?'移除末尾堆项':step.direction==='up'?'上浮交换':step.direction==='down'?'下沉交换':'交换堆顶与末尾';
   const needle=step.type==='swap'?'Swap(i,j int)':step.type==='append'?'Push(x any)':'Pop() any';
@@ -583,7 +583,7 @@ func findMaximizedCapital(k int,w int,profits []int,capital []int) int {
 }`,solve:({k,w,profits,capital},e)=>{
   const projects=profits.map((value,i)=>({id:'project:'+i,value,capital:capital[i]})).sort((a,b)=>a.capital-b.capital),h=new Heap((a,b)=>a>b),label='已解锁利润大根堆',observe=heapObserver(h,e,label);let i=0;
   for(let t=0;t<k;t++){
-    while(i<projects.length&&projects[i].capital<=w){h.push(projects[i++],observe);e(heapScene(h,label),'解锁项目','资本满足启动门槛，加入可选项目。','heap.Push(h,-projects[i][1])',{w,已解锁:i});}
+    while(i<projects.length&&projects[i].capital<=w){h.push(projects[i++],observe);e(heapScene(h,label),'解锁项目','资本满足启动门槛，加入可选项目。图中显示真实利润，Go小根堆存利润的相反数，堆顶对应最大利润。','heap.Push(h,-projects[i][1])',{w,已解锁:i});}
     if(!h.a.length)break;
     const profit=h.pop(observe).value;w+=profit;e(heapScene(h,label),'执行最赚钱项目','增加资本后，下一轮可能解锁更多项目。','w-=heap.Pop(h)',{profit,w,已执行:t+1});
   }
@@ -630,7 +630,8 @@ func(m *MedianFinder) FindMedian() float64 {
     if m.low.Len()>m.high.Len() { return float64(-m.low[0]) }
     return float64(-m.low[0]+m.high[0])/2
 }`,solve:({operations},e)=>{
-  const l=new Heap((a,b)=>a>b,'low'),h=new Heap((a,b)=>a<b,'high'),out=[];let uid=0,inFlight=null;
+  const l=new Heap((a,b)=>a>b,'low'),h=new Heap((a,b)=>a<b,'high'),out=[];let uid=0,inFlight=null,operation=null;
+  const emit=(view,title,description,needle,vars={})=>e(view,title,description,needle,{...vars,逐步结果:out});
   const scene=(step=null)=>{
     if(step?.type==='remove')inFlight=step.item;
     if(step?.type==='append')inFlight=null;
@@ -638,19 +639,21 @@ func(m *MedianFinder) FindMedian() float64 {
     const nodes=[...a.nodes,...b.nodes],edges=[...a.edges,...b.edges],active=[...a.active,...b.active];
     // Keep a popped stream item visible while its Go nested expression moves
     // it to the other heap, so its stable identity can animate across heaps.
-    if(inFlight){nodes.push({id:'transfer',label:'转移中'},heapNode(inFlight,'transfer',0));edges.push({from:'transfer',to:inFlight.id,directed:true});active.push(inFlight.id);}
-    return {kind:'tree',nodes,edges,active,...(step?{heapStep:step}:{})};
+    if(inFlight){nodes.push({id:'transfer',label:'转移中',caption:true},heapNode(inFlight,'transfer',0));edges.push({from:'transfer',to:inFlight.id,directed:true});active.push(inFlight.id);}
+    return {kind:'tree',nodes,edges,active,...(step?{heapStep:step}:{}),...(operation?{operation}:{})};
   };
-  const lowObserve=heapObserver(l,e,'左半大根堆',scene),highObserve=heapObserver(h,e,'右半小根堆',scene);
-  for(const [op,x] of operations){
-    if(op==='MedianFinder'){out.push(null);e(scene(),'初始化两个堆','两个半区先为空。','return MedianFinder{}');continue;}
+  const lowObserve=heapObserver(l,emit,'左半大根堆',scene),highObserve=heapObserver(h,emit,'右半小根堆',scene);
+  for(const [operationIndex,command] of operations.entries()){
+    const [op,x]=command;
+    operation={index:operationIndex,name:op,args:command.slice(1),returns:op==='findMedian',complete:false};
+    if(op==='MedianFinder'){out.push(null);operation={...operation,complete:true,value:null};emit(scene(),'初始化两个堆','两个半区先为空。图中均显示真实数值；Go的low小根堆存相反数，high堆存原值。','return MedianFinder{}');continue;}
     if(op==='addNum'){
-      l.push({id:'item:'+uid++,value:x},lowObserve);e(scene(),'添加到较小半区','暂时将新值加入左侧。','heap.Push(&m.low,-num)',{num:x});
+      l.push({id:'item:'+uid++,value:x},lowObserve);emit(scene(),'添加到较小半区','暂时将新值加入左侧。','heap.Push(&m.low,-num)',{num:x});
       h.push(l.pop(lowObserve),highObserve);
       if(h.a.length>l.a.length)l.push(h.pop(highObserve),lowObserve);
-      e(scene(),'平衡两堆','左堆数量等于右堆或多一个，且左堆顶不超过右堆顶。','if m.high.Len()>m.low.Len()');out.push(null);
+      out.push(null);operation={...operation,complete:true,value:null};emit(scene(),'平衡两堆','左堆数量等于右堆或多一个，且左堆顶不超过右堆顶。','if m.high.Len()>m.low.Len()');
     }else{
-      const median=l.a.length>h.a.length?l.a[0].value:(l.a[0].value+h.a[0].value)/2;out.push(median);e(scene(),'读取中位数','按两堆数量关系读取边界。','if m.low.Len()>m.high.Len()',{median});
+      const median=l.a.length>h.a.length?l.a[0].value:(l.a[0].value+h.a[0].value)/2;out.push(median);operation={...operation,complete:true,value:median};emit(scene(),'读取中位数','按两堆数量关系读取边界。','if m.low.Len()>m.high.Len()',{median});
     }
   }
   return out;
@@ -665,7 +668,7 @@ add({id:67,summary:'给定两个二进制非空字符串，返回它们相加后
     }
     for l,r:=0,len(out)-1;l<r;l,r=l+1,r-1 { out[l],out[r]=out[r],out[l] }
     return string(out)
-}`,solve:({a,b},e)=>{let i=a.length-1,j=b.length-1,carry=0;const out=[];while(i>=0||j>=0||carry){let sum=carry;if(i>=0)sum+=+a[i--];if(j>=0)sum+=+b[j--];out.push(String(sum%2));carry=Math.floor(sum/2);e({kind:'bits',values:[a,b,[...out].reverse().join('')],labels:['a','b','已算低位']},'逐位相加','本位取余2，向高位传递进位。','out=append(out',{i,j,sum,carry});}return out.reverse().join('');}});
+}`,solve:({a,b},e)=>{let i=a.length-1,j=b.length-1,carry=0;const out=[],width=Math.max(a.length,b.length)+1;while(i>=0||j>=0||carry){const readI=i,readJ=j;let sum=carry;if(i>=0)sum+=+a[i--];if(j>=0)sum+=+b[j--];out.push(String(sum%2));carry=Math.floor(sum/2);e({kind:'bits',values:[a,b,[...out].reverse().join('')],labels:['a · 本轮取位','b · 本轮取位','已算低位 · 本轮写入'],bitWidth:width,activeByRow:[readI>=0?[width-a.length+readI]:[],readJ>=0?[width-b.length+readJ]:[],[width-out.length]]},'逐位相加','本位取余2，向高位传递进位；i、j已向左移动，高亮仍标出本轮读取的位置。','out=append(out',{i,j,本轮读取i:readI,本轮读取j:readJ,sum,carry});}return out.reverse().join('');}});
 add({id:190,summary:'颠倒一个32位无符号整数的所有二进制位，返回新的无符号整数。',rule:'固定处理32位，输入0≤n≤2³²−1。',steps:[['读取最低位','n与1按位与得到当前最低位。'],['结果左移并追加','结果左移腾出新位置，再合入最低位。'],['输入右移','无符号右移输入，重复32轮保留前导零信息。']],time:'O(32)=O(1)',space:'O(1)',input:{n:43261596},expected:964176192,cases:[{input:{n:0},expected:0},{input:{n:4294967295},expected:4294967295}],validate:({n})=>integer(n,0,4294967295,'n'),code:`func reverseBits(num uint32) uint32 {
     var ans uint32
     for i:=0;i<32;i++ {
@@ -673,7 +676,7 @@ add({id:190,summary:'颠倒一个32位无符号整数的所有二进制位，返
         num>>=1
     }
     return ans
-}`,solve:({n},e)=>{let ans=0;for(let i=0;i<32;i++){ans=((ans<<1)|(n&1))>>>0;n>>>=1;e({kind:'bits',values:[bits(n),bits(ans)],labels:['剩余输入','反转结果'],active:[31-i]},'搬运最低位','结果向左移动一位，再追加本轮取出的位。','ans=(ans<<1)',{轮次:i+1,ans});}return ans;}});
+}`,solve:({n},e)=>{let ans=0;for(let i=0;i<32;i++){const bit=n&1;ans=((ans<<1)|bit)>>>0;e({kind:'bits',values:[bits(n),bits(ans)],labels:['num · 右移前取位','ans · 本轮追加后'],bitWidth:32,activeByRow:[[31],[31]]},'搬运最低位','读取num最右侧最低位；ans先左移，再将该位写入最右侧。随后num右移进入下一轮。','ans=(ans<<1)',{轮次:i+1,num:n,本轮最低位:bit,ans});n>>>=1;}return ans;}});
 add({id:191,summary:'统计给定32位非负整数的二进制表示中1的数量。',rule:'每轮n&(n−1)会消去最低的一个1。',steps:[['计数从零开始','n为尚未计入的二进制位。'],['消去一个1','将n与n−1按位与，恰好清除最低有效1。'],['直到全部清零','每清除一次计数加一，n为零即结束。']],time:'O(popcount(n))，最多32轮',space:'O(1)',input:{n:11},expected:3,cases:[{input:{n:0},expected:0},{input:{n:128},expected:1}],validate:({n})=>integer(n,0,4294967295,'n'),code:`func hammingWeight(n uint32) int {
     count:=0
     for n!=0 {

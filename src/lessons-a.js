@@ -3,8 +3,8 @@ import {invariant,array,numbers,integer,text,sorted} from './lesson-kit.js';
 export const lessonsA=[];
 const C=(input,expected)=>({input,expected});
 const A=(e,v,title,lines,vars={},extra={})=>e({kind:'array',values:v,...extra},title,'观察指针、已处理位置与本轮更新。',lines,vars);
-const T=(e,s,title,lines,vars={},extra={})=>e({kind:'text',text:s,...extra},title,'根据当前字符更新匹配状态。',lines,vars);
-const S=(e,v,title,lines,vars={})=>e({kind:'stack',values:v},title,'栈底在下，栈顶在上；同步观察当前操作。',lines,vars);
+const T=(e,s,title,lines,vars={},extra={})=>{const {description='观察当前字符、标记位置与变量的变化。',...options}=extra;return e({kind:'text',text:s,...options},title,description,lines,vars);};
+const S=(e,v,title,lines,vars={},extra={})=>e({kind:'stack',values:v,...extra},title,'栈底在下，栈顶在上；同步观察当前操作。',lines,vars);
 const nonneg=(v,name)=>{numbers(v,name,60);invariant(v.every(x=>x>=0),`${name}必须是非负整数。`);};
 const ascii=(s,name='字符串')=>{text(s,name,120);invariant(/^[\x20-\x7e]*$/.test(s),`${name}请使用可打印 ASCII 字符。`);};
 function bounded(v,budget={chars:0}){if(Array.isArray(v)){array(v,'输入数组',60);v.forEach(x=>bounded(x,budget));}else if(v&&typeof v==='object'){Object.values(v).forEach(x=>bounded(x,budget));}else if(typeof v==='string'){ascii(v);budget.chars+=v.length;invariant(budget.chars<=1200,'输入字符总量不能超过 1200，请缩小演示规模。');}else if(typeof v==='number'){invariant(Number.isSafeInteger(v)&&Math.abs(v)<=1e9,'输入数字须为绝对值不超过 10⁹ 的整数。');}}
@@ -25,8 +25,20 @@ const traceNames={
   56:{i:'读取位置',merged:'result',processed:'已处理区间数'},452:{count:'arrows'},
   20:{char:'c'},71:{path:'当前规范路径'},155:{result:'操作返回',output:'逐步结果'},224:{char:'c'}
 };
+const rangeAnnotations={
+  55:{rangeLabel:'已确认可达下标',rangeNote:'范围外尚未被当前 far 覆盖，后续可能继续扩张；far 超过末尾时只高亮实际下标。'},
+  45:{rangeLabel:'当前跳跃次数可覆盖下标',rangeNote:'范围右端由 end 决定；far 用于计算下一层能到达的最远位置。'},
+  28:{rangeLabel:'已匹配字符下标',rangeNote:'这段字符已与 needle 的前缀匹配；start 是起点，matched 是已匹配长度。'},
+  68:{rangeLabel:'当前行已装入单词下标',rangeNote:'本行使用 [left,right)；right 指向下一待检查单词，不包含在当前行内。'},
+  11:{rangeLabel:'当前容器左右边界下标',rangeNote:'以 left 和 right 为两边计算容量；已移出的边界不再参与后续容器。'},
+  209:{rangeLabel:'当前求和窗口下标',rangeNote:'闭区间 [left,right] 内的元素参与 sum；尚未扫描的右侧元素可在后续进入窗口。'},
+  3:{rangeLabel:'当前无重复窗口下标',rangeNote:'闭区间 [left,right] 内的字符互不重复；窗口随扫描继续移动。'},
+  30:{rangeLabel:'当前有效单词窗口下标',rangeNote:'高亮完整单词覆盖的字符；right 指向本轮单词起点，窗口包含该单词的全部字符。'},
+  76:{rangeLabel:'当前覆盖窗口下标',rangeNote:'闭区间 [left,right] 是当前窗口；remaining 为 0 时已覆盖 t 的全部字符及其次数。'},
+  228:{rangeLabel:'当前连续整数段下标',rangeNote:'高亮本次压缩的连续整数段；此前的段已写入 result，后面的段仍待处理。'}
+};
 function alignTrace(id,input,emit){
-  let operation=0,magazineAt=0,noteAt=0,tokenAt=0;
+  let magazineAt=0,noteAt=0,tokenAt=0;
   let previousValues=[];
   return (scene,title,description,lines,vars={},anchor=null)=>{
     const view={...scene},v={};
@@ -35,6 +47,17 @@ function alignTrace(id,input,emit){
     const at=(bindings,name,value=v[name])=>{if(Number.isInteger(value)){bindings[name]=value;v[name]=value;}};
     const p=(name,value)=>at(pointers,name,value),q=(name,value)=>at(secondaryPointers,name,value),r=(name,value)=>at(rowPointers,name,value);
     const active=scene.active??[],range=scene.range;
+    if((id===242||id===383)&&view.kind==='array'){
+      view.indexLabels=[...'abcdefghijklmnopqrstuvwxyz'];
+      view.indexNote='字母桶：下标 0 对应 a，依次递增至下标 25 对应 z；格内数字表示该字母的计数。';
+    }
+    if(range){
+      Object.assign(view,rangeAnnotations[id]);
+      if(id===30&&title==='非法单词重置窗口'){
+        view.rangeLabel='本轮非法单词下标';
+        view.rangeNote='该单词使窗口重置为空；left 指向它之后的下一段扫描起点。';
+      }
+    }
     const arrayLabel={27:'nums',26:'nums',80:'nums',169:'nums',189:'nums',121:'prices',122:'prices',55:'nums',45:'nums',274:'citations',380:'s.values',238:'nums',134:'gas',135:'ratings',42:'height',151:'words',6:'rows',68:'words',167:'numbers',11:'height',15:'nums',209:'nums',383:'count',290:'words',242:'counts',49:'strs',1:'nums',219:'nums',128:'nums',228:'nums'};
     if(view.kind==='array'&&arrayLabel[id])view.label=arrayLabel[id];
     switch(id){
@@ -59,7 +82,7 @@ function alignTrace(id,input,emit){
         if(active.length){p('i',active[0]);v.count=scene.values[active[0]];}
         break;
       case 380:{
-        const [op,val]=input.operations[operation++];
+        const {name:op,args:[val]}=scene.operation;
         if(op==='insert'||op==='remove')v.val=val;
         if(op==='insert'&&v['操作返回'])p('追加位置',scene.values.length-1);
         if(op==='remove'&&v['操作返回']){p('i',previousValues.indexOf(val));v.last=previousValues.at(-1);}
@@ -183,7 +206,7 @@ function alignTrace(id,input,emit){
       case 20:case 224:q('i');break;
       case 71:break;
       case 155:{
-        const [op,val]=input.operations[operation++];
+        const {name:op,args:[val]}=scene.operation;
         if(op==='push'){v.val=val;v.low=Number(scene.values.at(-1).split('min=')[1]);}
         break;
       }
@@ -336,7 +359,7 @@ func (s *RandomizedSet) Remove(val int) bool {
 }
 func (s *RandomizedSet) GetRandom() int {
     return s.values[rand.Intn(len(s.values))]
-}`,({operations},e)=>{let values=[],pos=new Map();const out=[];for(const [op,v]of operations){let r=null;if(op==='RandomizedSet'){values=[];pos=new Map();}else if(op==='insert'){r=!pos.has(v);if(r){pos.set(v,values.length);values.push(v);}}else if(op==='remove'){r=pos.has(v);if(r){const i=pos.get(v),last=values.at(-1);values[i]=last;pos.set(last,i);values.pop();pos.delete(v);}}else{invariant(values.length>0,'getRandom 需要非空集合。');r=values[Math.min(values.length-1,Math.floor((v===undefined?Math.random():v/1000)*values.length))];}out.push(r);A(e,values,`执行 ${op}`,[op==='insert'?12:op==='remove'?19:op==='getRandom'?27:8],{result:r,index:Object.fromEntries(pos),output:out});}return out;},v=>{array(v.operations,'operations',40);invariant(v.operations.length&&Array.isArray(v.operations[0])&&v.operations[0][0]==='RandomizedSet','首个操作必须构造 RandomizedSet。');for(const a of v.operations){invariant(Array.isArray(a)&&['RandomizedSet','insert','remove','getRandom'].includes(a[0]),'操作名称无效。');if(a[0]==='getRandom'&&a[1]!==undefined)integer(a[1],0,999,'ticket');if(['insert','remove'].includes(a[0]))integer(a[1],-1e9,1e9,'值');}});
+}`,({operations},e)=>{let values=[],pos=new Map();const out=[];for(const [operationIndex,command]of operations.entries()){const [op,v]=command;let r=null;if(op==='RandomizedSet'){values=[];pos=new Map();}else if(op==='insert'){r=!pos.has(v);if(r){pos.set(v,values.length);values.push(v);}}else if(op==='remove'){r=pos.has(v);if(r){const i=pos.get(v),last=values.at(-1);values[i]=last;pos.set(last,i);values.pop();pos.delete(v);}}else{invariant(values.length>0,'getRandom 需要非空集合。');r=values[Math.min(values.length-1,Math.floor((v===undefined?Math.random():v/1000)*values.length))];}out.push(r);A(e,values,`执行 ${op}`,[op==='insert'?12:op==='remove'?19:op==='getRandom'?27:8],{result:r,index:Object.fromEntries(pos),output:out},{operation:{index:operationIndex,name:op,args:command.slice(1),returns:op!=='RandomizedSet',complete:true,value:r}});}return out;},v=>{array(v.operations,'operations',40);invariant(v.operations.length&&Array.isArray(v.operations[0])&&v.operations[0][0]==='RandomizedSet','首个操作必须构造 RandomizedSet。');for(const a of v.operations){invariant(Array.isArray(a)&&['RandomizedSet','insert','remove','getRandom'].includes(a[0]),'操作名称无效。');if(a[0]==='getRandom'&&a[1]!==undefined)integer(a[1],0,999,'ticket');if(['insert','remove'].includes(a[0]))integer(a[1],-1e9,1e9,'值');}});
 add(238,'给定整数数组 nums，返回新数组 answer，其中 answer[i] 等于 nums 中除 nums[i] 以外所有元素的乘积。','不使用除法；前缀与后缀乘积应在安全整数范围内。',[['写入左侧乘积','从左到右，answer[i] 保存 i 左边全部数字的乘积。'],['维护右侧乘积','从右到左维护一个滚动的后缀乘积。'],['组合左右两侧','answer[i] 乘上后缀乘积，得到排除自己的结果。']],'O(n)','O(1)，不计输出',{nums:[1,2,3,4]},[24,12,8,6],[C({nums:[0,1,2]},[2,0,0]),C({nums:[0,0]},[0,0])],`
 func productExceptSelf(nums []int) []int {
     answer := make([]int, len(nums))
@@ -568,7 +591,7 @@ func threeSum(nums []int) [][]int {
         }
     }
     return result
-}`,({nums},e)=>{A(e,nums,'排序前的数组',[4]);nums.sort((a,b)=>a-b);const out=[];A(e,nums,'排序后固定第一个数',[4]);for(let i=0;i+2<nums.length;i++){if(i&&nums[i]===nums[i-1])continue;let l=i+1,r=nums.length-1;while(l<r){const sum=nums[i]+nums[l]+nums[r];A(e,nums,'比较三数之和',[10,11],{i,l,r,sum,found:out},{active:[i,l,r],pointers:{fixed:i,left:l,right:r}});if(sum<0)l++;else if(sum>0)r--;else{out.push([nums[i],nums[l],nums[r]]);const a=nums[l],b=nums[r];while(l<r&&nums[l]===a)l++;while(l<r&&nums[r]===b)r--;}}}return out;},v=>numbers(v.nums,'nums',40));
+}`,({nums},e)=>{A(e,nums,'排序前的数组',[4]);nums.sort((a,b)=>a-b);const out=[];A(e,nums,'排序后固定第一个数',[4]);for(let i=0;i+2<nums.length;i++){if(i&&nums[i]===nums[i-1])continue;let l=i+1,r=nums.length-1;while(l<r){const sum=nums[i]+nums[l]+nums[r];A(e,nums,'比较三数之和',[10,11],{i,l,r,sum,found:out},{active:[i,l,r],pointers:{fixed:i,left:l,right:r}});if(sum<0)l++;else if(sum>0)r--;else{out.push([nums[i],nums[l],nums[r]]);A(e,nums,'记录不重复的三元组',[12],{i,l,r,sum,found:out},{active:[i,l,r]});const a=nums[l],b=nums[r];while(l<r&&nums[l]===a)l++;while(l<r&&nums[r]===b)r--;}}}return out;},v=>numbers(v.nums,'nums',40));
 add(209,'给定正整数数组 nums 和正整数 target，返回总和大于等于 target 的最短连续子数组长度；不存在时返回 0。','所有数组元素必须严格大于零，因此扩大窗口会增加总和。',[['右端扩张窗口','把新元素加入窗口总和。'],['满足条件时收缩','总和达到目标后更新最短长度，并不断删除左端元素。'],['返回最小长度','遍历过程中保留最短可行窗口，没有找到时返回零。']],'O(n)','O(1)',{target:7,nums:[2,3,1,2,4,3]},2,[C({target:4,nums:[1,4,4]},1),C({target:11,nums:[1,1,1,1]},0)],`
 func minSubArrayLen(target int, nums []int) int {
     left, sum, best := 0, 0, len(nums)+1
@@ -843,7 +866,7 @@ func (s *MinStack) Push(val int) {
 func (s *MinStack) Pop() { s.values = s.values[:len(s.values)-1] }
 func (s *MinStack) Top() int { return s.values[len(s.values)-1][0] }
 func (s *MinStack) GetMin() int { return s.values[len(s.values)-1][1] }
-`,({operations},e)=>{let stack=[];const out=[];for(const [op,v]of operations){let r=null;if(op==='MinStack')stack=[];else if(op==='push')stack.push([v,Math.min(v,stack.at(-1)?.[1]??v)]);else{invariant(stack.length>0,'栈为空，无法执行此操作。');if(op==='pop')stack.pop();else if(op==='top')r=stack.at(-1)[0];else r=stack.at(-1)[1];}out.push(r);S(e,stack.map(([v,m])=>`${v} / min=${m}`),`执行 ${op}`,[op==='push'?6:op==='pop'?8:op==='top'?9:op==='getMin'?10:2],{result:r,output:out});}return out;},v=>{array(v.operations,'operations',50);invariant(v.operations.length&&Array.isArray(v.operations[0])&&v.operations[0][0]==='MinStack','首项必须构造 MinStack。');for(const p of v.operations){invariant(Array.isArray(p)&&['MinStack','push','pop','top','getMin'].includes(p[0]),'未知栈操作。');if(p[0]==='push')integer(p[1],-1e9,1e9,'入栈值');}});
+`,({operations},e)=>{let stack=[];const out=[];for(const [operationIndex,command]of operations.entries()){const [op,v]=command;let r=null;if(op==='MinStack')stack=[];else if(op==='push')stack.push([v,Math.min(v,stack.at(-1)?.[1]??v)]);else{invariant(stack.length>0,'栈为空，无法执行此操作。');if(op==='pop')stack.pop();else if(op==='top')r=stack.at(-1)[0];else r=stack.at(-1)[1];}out.push(r);S(e,stack.map(([v,m])=>`${v} / min=${m}`),`执行 ${op}`,[op==='push'?6:op==='pop'?8:op==='top'?9:op==='getMin'?10:2],{result:r,output:out},{operation:{index:operationIndex,name:op,args:command.slice(1),returns:op==='top'||op==='getMin',complete:true,value:r}});}return out;},v=>{array(v.operations,'operations',50);invariant(v.operations.length&&Array.isArray(v.operations[0])&&v.operations[0][0]==='MinStack','首项必须构造 MinStack。');for(const p of v.operations){invariant(Array.isArray(p)&&['MinStack','push','pop','top','getMin'].includes(p[0]),'未知栈操作。');if(p[0]==='push')integer(p[1],-1e9,1e9,'入栈值');}});
 add(150,'给定逆波兰表达式 tokens，按后缀表达式规则计算并返回整数结果，支持加减乘除四种运算。','操作数是整数；除法向零截断，除数不能为零；表达式必须合法且结果在 32 位整数范围内。',[['数字入栈','扫描到整数时压入操作数栈。'],['运算符弹出两个数','先弹出的为右操作数，再弹出的为左操作数，顺序不能反。'],['计算后压回结果','所有符号处理结束时栈内唯一的值就是结果。']],'O(n)','O(n)',{tokens:['2','1','+','3','*']},9,[C({tokens:['4','13','5','/','+']},6),C({tokens:['-7','3','/']},-2)],`
 import "strconv"
 

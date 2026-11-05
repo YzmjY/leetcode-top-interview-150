@@ -3,6 +3,9 @@ import {lessons,getLesson} from './lessons.js';
 import {traceLesson} from './lesson-kit.js';
 import {escapeHtml as esc,display} from './scenes.js';
 import {updateScene} from './scene-player.js';
+import {labelsForTrace} from './annotations.js';
+import {renderExperimentContext} from './experiment-context.js';
+import {renderHeroArt} from './hero-art.js';
 import {readable,displayCode,highlightLines} from './presentation.js';
 import {getStrategy} from './strategies.js';
 import {renderTeaching} from './explainers.js';
@@ -21,6 +24,8 @@ document.body.insertAdjacentHTML('beforeend',`<dialog id="catalog-dialog" class=
 
 $('.array-stage').innerHTML='<div id="scene-canvas"></div>';
 $('.array-stage').classList.add('scene-stage');
+$('.lab-panel>.panel-heading').insertAdjacentHTML('afterend','<div id="experiment-context"></div>');
+$('#lab-title').nextElementSibling.textContent='运行当前示例';
 $('.legend').innerHTML='<span><i class="legend-dot a-color"></i>正在处理</span><span><i class="legend-dot b-color"></i>辅助状态</span><span><i class="legend-dot k-color"></i>目标 / 指针</span>';
 $('.comparison-strip>.micro-label').textContent='当前状态';
 $('#lab-title').textContent='算法实验台';
@@ -55,6 +60,7 @@ function loadLesson(id,{historyMode='push',scroll=true}={}){
  const nextInput=structuredClone(lesson.input),nextTrace=traceLesson(lesson,nextInput);
  setPlaying(false);current=lesson;input=nextInput;trace=nextTrace;index=0;
  $('#title').innerHTML=`${esc(lesson.title)} <span>${esc(lesson.en)}</span>`;
+ $('.hero-art').innerHTML=renderHeroArt(lesson);
  document.title=`${lesson.title} · 序场算法实验室`;
  $('.problem-meta').innerHTML=`<span>INTERVIEW 150</span><i></i><span>${String(lesson.ordinal).padStart(3,'0')} / 150</span><span class="difficulty difficulty-${lesson.difficulty==='简单'?'easy':lesson.difficulty==='中等'?'medium':'hard'}">${lesson.difficulty}</span>`;
  $('.brief-heading').innerHTML=`<span>题目说明</span><span>LEETCODE ${lesson.id}</span>`;
@@ -87,12 +93,14 @@ function loadLesson(id,{historyMode='push',scroll=true}={}){
 
 function render(){
  const f=trace.frames[index],done=f.phase==='done';
- updateScene($('#scene-canvas'),f.scene,{key:trace,duration:Math.min(420,850/Number($('#speed').value))});
+ $('#experiment-context').innerHTML=renderExperimentContext(input,trace.result,f.scene);
+ updateScene($('#scene-canvas'),f.scene,{key:trace,duration:Math.min(420,850/Number($('#speed').value)),presentation:{lessonId:current.id,nodeLabels:labelsForTrace(trace)}});
+ $('.scene-stage').classList.toggle('annotation-stage',Boolean(f.scene.kind==='linked'||f.scene.pointers&&f.scene.nodes));
   const focus=$('#scene-canvas').querySelector('.matrix-cell.active,.node-circle.active,.array-cell.scene-active,.state-table td.active,.stack-cell.active,.bit-cell.active,.k-pointer,.j-pointer,.i-pointer');
   if(focus){for(const viewport of [focus.closest('.matrix-scroll,.node-scroll,.array-scroll,.table-scroll,.bits-scroll'),$('.scene-stage')].filter(Boolean)){const rect=focus.getBoundingClientRect(),box=viewport.getBoundingClientRect();if(rect.right>box.right-12)viewport.scrollLeft+=rect.right-box.right+20;else if(rect.left<box.left+12)viewport.scrollLeft-=box.left-rect.left+20;if(rect.bottom>box.bottom-15)viewport.scrollTop+=rect.bottom-box.bottom+25;else if(rect.top<box.top+15)viewport.scrollTop-=box.top-rect.top+25;}}
  $('#input-caption').innerHTML=`<span>实验</span><code>${esc(sceneNames[f.scene.kind]||'计算状态')}</code><span>LEETCODE ${current.id}</span>`;
  const variables=Object.entries(f.vars||{});
- $('#comparison').innerHTML=variables.length?variables.slice(0,8).map(([key,value])=>`<span class="variable-chip"><small>${esc(key)}</small><b>${esc(display(value))}</b></span>`).join(''):`<span class="scene-type-label">${esc(sceneNames[f.scene.kind]||'观察结构变化')}</span>`;
+ $('#comparison').innerHTML=variables.length?variables.map(([key,value])=>`<span class="variable-chip"><small>${esc(key)}</small><b>${esc(display(value))}</b></span>`).join(''):`<span class="scene-type-label">${esc(sceneNames[f.scene.kind]||'观察结构变化')}</span>`;
  $('#phase-badge').textContent=done?'✓ 已完成':'执行中';$('#phase-badge').classList.toggle('complete',done);
  $('#step-number').textContent=String(index+1).padStart(2,'0');$('#step-total').textContent=trace.frames.length;
  $('#event-title').textContent=f.title;$('#event-description').textContent=f.description;

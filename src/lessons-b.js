@@ -113,7 +113,7 @@ add(141,'判断链表是否含有环。','head 是节点值数组；pos 为尾�
   if slow==fast { return true }
  }
  return false
-}`,(i,e)=>{const {head,nodes}=makeList(i.head);if(nodes.length&&i.pos>=0)nodes.at(-1).next=nodes[i.pos];let slow=head,fast=head;const scene=()=>linked(nodes,[slow,fast],{roots:[{label:'链表',head}],pointers:{head,slow,fast}});shot(e,scene(),'设置快慢指针');while(fast&&fast.next){slow=slow.next;fast=fast.next.next;shot(e,scene(),'快走两步，慢走一步',{slow:slow?.id??null,fast:fast?.id??null},[4,5]);if(slow===fast)return true;}return false;},[[{head:[],pos:-1},false],[{head:[1,1],pos:-1},false]],i=>{listCheck(i);integer(i.pos,-1,i.head.length-1,'pos');});
+}`,(i,e)=>{const {head,nodes}=makeList(i.head);if(nodes.length&&i.pos>=0)nodes.at(-1).next=nodes[i.pos];let slow=head,fast=head;const scene=()=>linked(nodes,[slow,fast],{roots:[{label:'链表',head}],pointers:{head,slow,fast}});shot(e,scene(),'设置快慢指针');while(fast&&fast.next){slow=slow.next;fast=fast.next.next;shot(e,scene(),'快走两步，慢走一步',{'slow 的节点值':slow?.val??null,'fast 的节点值':fast?.val??null},[4,5]);if(slow===fast)return true;}return false;},[[{head:[],pos:-1},false],[{head:[1,1],pos:-1},false]],i=>{listCheck(i);integer(i.pos,-1,i.head.length-1,'pos');});
 
 add(2,'两个逆序链表分别表示非负整数，返回相加结果的逆序链表。','每个节点为一位数字；保留最后的进位。',[
  ['按位相加','从两个头节点出发，取当前位和上次进位。'],['新建结果节点','和的个位写入新节点，十位留作下次进位。'],['处理剩余位','任一链表未结束或仍有进位时继续。']], 'O(m+n)','O(m+n)',{l1:[2,4,3],l2:[5,6,4]},[7,0,8],
@@ -150,7 +150,7 @@ add(21,'将两个非递减链表合并为一条非递减链表。','复用输入
  let list1=a.head,list2=b.head,tail=dummy;
  const scene=()=>linked(all,[tail,list1,list2],{roots:[{label:'结果',head:dummy.next},{label:'待合并 A',head:list1},{label:'待合并 B',head:list2}],pointers:{dummy,tail,list1,list2}});
  shot(e,scene(),'两条有序链');
- while(list1&&list2){if(list1.val<=list2.val){tail.next=list1;list1=list1.next;}else{tail.next=list2;list2=list2.next;}tail=tail.next;shot(e,scene(),'接入较小节点',{list1:list1?.id??null,list2:list2?.id??null},[4,5]);}
+ while(list1&&list2){if(list1.val<=list2.val){tail.next=list1;list1=list1.next;}else{tail.next=list2;list2=list2.next;}tail=tail.next;shot(e,scene(),'接入较小节点',{'list1 的节点值':list1?.val??null,'list2 的节点值':list2?.val??null},[4,5]);}
  tail.next=list1??list2;shot(e,scene(),'接入剩余链',{},[7],list1?'tail.Next=list1':'tail.Next=list2');return listValues(dummy.next);
 },[[{list1:[],list2:[0]},[0]],[{list1:[-2,2],list2:[-1,3]},[-2,-1,2,3]]],i=>{sorted(i.list1);sorted(i.list2);});
 
@@ -329,11 +329,12 @@ add(146,'实现容量受限的 LRU 缓存，get 命中和 put 写入都会将节
  }`,(i,e)=>{
  let cap=0,uid=0,n=null,old=null;
  const map=new Map(),h={id:'h',val:'最近',sentinel:true},t={id:'t',val:'最旧',sentinel:true},nodes=[h,t],removed=[],result=[];h.next=t;t.prev=h;
- const scene=()=>linked(nodes,[n,old],{roots:[{label:'缓存',head:h}],pointers:{'c.head':h,'c.tail':t,n,old},removed});
+ const scene=(operation=null)=>({...linked(nodes,[n,old],{roots:[{label:'缓存',head:h}],pointers:{'c.head':h,'c.tail':t,n,old},removed}),...(operation?{operation}:{})});
  const detach=node=>{node.prev.next=node.next;node.next.prev=node.prev;};
  const front=node=>{node.next=h.next;node.prev=h;h.next.prev=node;h.next=node;};
  shot(e,scene(),'初始化双向链表');
- for(const [op,k,v] of i.ops){
+ for(const [operationIndex,command] of i.ops.entries()){
+  const [op,k,v]=command;
   let r=null;n=null;old=null;
   if(op==='LRUCache')cap=k;
   else if(op==='get'){n=map.get(k)??null;r=n?Number(n.value):-1;if(n){detach(n);front(n);}}
@@ -343,7 +344,7 @@ add(146,'实现容量受限的 LRU 缓存，get 命中和 put 写入都会将节
    front(n);
    if(map.size>cap){old=t.prev;detach(old);map.delete(old.key);removed.push(old);}
   }
-  result.push(r);shot(e,scene(),op==='get'?'访问并提升节点':'写入并检查淘汰',{操作:op,key:k,返回:r},op==='get'?[10]:[13,14,15]);
+  result.push(r);shot(e,scene({index:operationIndex,name:op,args:command.slice(1),returns:op==='get',complete:true,value:r}),op==='get'?'访问并提升节点':op==='LRUCache'?'构造 LRU 缓存':'写入并检查淘汰',{操作:op,...(op==='LRUCache'?{capacity:k}:{key:k}),返回:r,逐步结果:result},op==='get'?[10]:op==='LRUCache'?[3,4,5]:[13,14,15]);
  }
  return result;
 },[[{ops:[['LRUCache',1],['put',1,2],['put',1,3],['get',1]]},[null,null,null,3]],[{ops:[['LRUCache',1],['get',9],['put',2,4],['put',3,5],['get',2]]},[null,-1,null,null,-1]]],i=>{array(i.ops,'ops',80);invariant(i.ops.length&&i.ops[0][0]==='LRUCache','首个操作须构造 LRUCache。');integer(i.ops[0][1],1,20,'容量');for(let at=0;at<i.ops.length;at++){const item=i.ops[at];invariant(Array.isArray(item),'操作格式错误。');const [op,k,v]=item;invariant(['LRUCache','get','put'].includes(op),'未知缓存操作。');invariant(at===0||op!=='LRUCache','构造操作只能出现在首项。');invariant(item.length===(op==='put'?3:2),'操作格式错误。');integer(k,-1e9,1e9,'键/容量');if(op==='put')integer(v,-1e9,1e9,'值');}});
@@ -356,7 +357,7 @@ add(104,'返回二叉树从根到最深叶子所经过的节点数。','空树�
  if left>right { return left+1 };return right+1
 }`,(i,e)=>{const root=treeFromLevel(i.root);shot(e,treeView(root),'从根开始');function dfs(n){if(!n)return 0;const l=dfs(n.left),r=dfs(n.right),depth=Math.max(l,r)+1;shot(e,treeView(root,{active:[n.id]}),'回传子树高度',{左:l,右:r,高度:depth},[3,4]);return depth;}return dfs(root);},[[{root:[]},0],[{root:[1,null,2,3]},3]],treeCheck);
 
-function forest(roots,active=[]){const scenes=roots.map(r=>treeView(r));return {kind:'tree',nodes:scenes.flatMap(s=>s.nodes),edges:scenes.flatMap(s=>s.edges),active:active.filter(Boolean).map(n=>n.id)};}
+function forest(roots,active=[]){const scenes=roots.map((r,i)=>{const s=treeView(r);s.nodes=s.nodes.map(n=>({...n,group:i===0?'第一棵树 p':'第二棵树 q'}));return s;});return {kind:'tree',nodes:scenes.flatMap(s=>s.nodes),edges:scenes.flatMap(s=>s.edges),active:active.filter(Boolean).map(n=>n.id)};}
 function prefixedRoot(level,prefix){const r=treeFromLevel(level);for(const n of nodesOf(r))n.id=prefix+n.id;return r;}
 add(100,'判断两棵二叉树结构和值是否完全相同。','两个空节点相同；单侧为空或节点值不同均不相同。',[
  ['比较空结构','双空返回 true，单空立即失败。'],['比较当前值','节点值必须相等，重复值仍是不同节点。'],['递归比较两侧','对应左右子树都相同才通过。']], 'O(min(m,n))','O(h)',{p:[1,2,3],q:[1,2,4]},false,
@@ -479,7 +480,19 @@ add(173,'实现二叉搜索树中序迭代器，next 返回下一个最小值，
  func (it *BSTIterator) Next() int {
   k:=len(it.stack)-1;n:=it.stack[k];it.stack=it.stack[:k];it.pushLeft(n.Right);return n.Val
  }
- func (it *BSTIterator) HasNext() bool { return len(it.stack)>0 }`,(i,e)=>{const root=treeFromLevel(i.root),stack=[],out=[],done=[];const push=n=>{for(;n;n=n.left){stack.push(n);shot(e,treeView(root,{active:[n.id],done}), '压入左链节点',{栈:stack.map(n=>n.val)},[3]);}};shot(e,treeView(root),'初始化中序迭代器');push(root);for(const op of i.ops){if(op==='next'){invariant(stack.length,'next 调用时已经没有节点。');const n=stack.pop();done.push(n.id);push(n.right);out.push(n.val);}else out.push(stack.length>0);shot(e,treeView(root,{active:stack.map(n=>n.id),done}), '执行迭代器操作',{操作:op,返回:out.at(-1)},op==='next'?[5]:[7]);}return out;},[[{root:[],ops:['hasNext']},[false]],[{root:[2,1,3],ops:['next','next','next','hasNext']},[1,2,3,false]]],i=>{treeCheck(i);array(i.ops,'ops',90);invariant(i.ops.every(x=>['next','hasNext'].includes(x)),'未知迭代器操作。');validateBSTInput(i.root);});
+ func (it *BSTIterator) HasNext() bool { return len(it.stack)>0 }`,(i,e)=>{
+ const root=treeFromLevel(i.root),stack=[],out=[],done=[];let operation=null;
+ const scene=(options={})=>({...treeView(root,options),...(operation?{operation}:{})});
+ const push=n=>{for(;n;n=n.left){stack.push(n);shot(e,scene({active:[n.id],done}),'压入左链节点',{栈:stack.map(n=>n.val),逐步结果:out},[3]);}};
+ shot(e,scene(),'初始化中序迭代器');push(root);
+ for(const [operationIndex,op] of i.ops.entries()){
+  operation={index:operationIndex,name:op,args:[],returns:true,complete:false};
+  if(op==='next'){invariant(stack.length,'next 调用时已经没有节点。');const n=stack.pop();done.push(n.id);push(n.right);out.push(n.val);}else out.push(stack.length>0);
+  operation={...operation,complete:true,value:out.at(-1)};
+  shot(e,scene({active:stack.map(n=>n.id),done}),'执行迭代器操作',{操作:op,返回:out.at(-1),逐步结果:out},op==='next'?[5]:[7]);
+ }
+ return out;
+},[[{root:[],ops:['hasNext']},[false]],[{root:[2,1,3],ops:['next','next','next','hasNext']},[1,2,3,false]]],i=>{treeCheck(i);array(i.ops,'ops',90);invariant(i.ops.every(x=>['next','hasNext'].includes(x)),'未知迭代器操作。');validateBSTInput(i.root);});
 
 add(222,'统计完全二叉树的节点个数。','最后一层向左连续填充，其余层全满；输入会检查完全性。',[
  ['比较左右边界高度','沿最左和最右路径计算高度。'],['满树直接求和','高度相同说明该子树全满，节点数为 2^h-1。'],['递归不满子树','否则分别统计左右子树，再加根节点。']], 'O(log² n)','O(log n)',{root:[1,2,3,4,5,6]},6,
@@ -498,7 +511,7 @@ add(236,'找出二叉树中两个指定节点的最近公共祖先，返回该�
  left:=lowestCommonAncestor(root.Left,p,q);right:=lowestCommonAncestor(root.Right,p,q)
  if left!=nil && right!=nil { return root }
  if left!=nil { return left };return right
-}`,(i,e)=>{const root=treeFromLevel(i.root),ns=nodesOf(root),p=ns.find(n=>n.id===String(i.p)),q=ns.find(n=>n.id===String(i.q));shot(e,treeView(root,{done:[p.id,q.id]}),'标记两个目标身份');function dfs(n){if(!n||n===p||n===q)return n;const l=dfs(n.left),r=dfs(n.right),answer=l&&r?n:l??r;shot(e,treeView(root,{active:[n.id],done:[p.id,q.id]}),'合并两侧搜索结果',{左:l?.id??null,右:r?.id??null,返回:answer?.id??null},[3,4,5]);return answer;}return dfs(root).val;},[[{root:[1,1,2],p:1,q:2},1],[{root:[1,null,2,3],p:2,q:3},2]],i=>{treeCheck(i);const ids=new Set(nodesOf(treeFromLevel(i.root)).map(n=>Number(n.id)));invariant(ids.has(i.p)&&ids.has(i.q),'p 和 q 须为存在节点的层序位置 ID。');});
+}`,(i,e)=>{const root=treeFromLevel(i.root),ns=nodesOf(root),p=ns.find(n=>n.id===String(i.p)),q=ns.find(n=>n.id===String(i.q));const targets={p:p.id,q:q.id},pointerLabels={p:'目标节点p',q:'目标节点q',left:'左子树返回',right:'右子树返回',返回:'本层返回节点'};shot(e,treeView(root,{done:[p.id,q.id],pointers:targets,pointerLabels}),'标记两个目标身份');function dfs(n){if(!n||n===p||n===q)return n;const l=dfs(n.left),r=dfs(n.right),answer=l&&r?n:l??r;shot(e,treeView(root,{active:[n.id],done:[p.id,q.id],pointers:{...targets,left:l?.id??null,right:r?.id??null,返回:answer?.id??null},pointerLabels}),'合并两侧搜索结果',{'left.Val':l?.val??null,'right.Val':r?.val??null,返回节点值:answer?.val??null},[3,4,5]);return answer;}return dfs(root).val;},[[{root:[1,1,2],p:1,q:2},1],[{root:[1,null,2,3],p:2,q:3},2]],i=>{treeCheck(i);const ids=new Set(nodesOf(treeFromLevel(i.root)).map(n=>Number(n.id)));invariant(ids.has(i.p)&&ids.has(i.q),'p 和 q 须为存在节点的层序位置 ID。');});
 
 function levelTraverse(i,e,mode){const root=treeFromLevel(i.root),out=[],done=[];let queue=root?[root]:[],depth=0;shot(e,treeView(root),'从根层开始');while(queue.length){const next=[],values=[];for(const n of queue){values.push(n.val);done.push(n.id);if(n.left)next.push(n.left);if(n.right)next.push(n.right);shot(e,treeView(root,{active:[n.id],done}), '访问当前层节点',{层:depth,当前层:values},[5]);}if(mode==='right')out.push(values.at(-1));else if(mode==='average')out.push(values.reduce((a,b)=>a+b,0)/values.length);else out.push(mode==='zigzag'&&depth%2?values.reverse():values);queue=next;depth++;shot(e,treeView(root,{active:queue.map(n=>n.id),done}),'推进下一层',{已完成:out},[7]);}return out;}
 add(199,'从右侧观察二叉树，返回每一层最右节点的值。','按从上到下顺序输出；空树返回空数组。',[
@@ -629,7 +642,7 @@ add(133,'返回无向连通图的深拷贝，用邻接表表示副本。','adj �
   return c
  }
  return copyNode(node)
-}`,(i,e)=>{const copied=new Map(),base=graphView(i.adj);base.nodes=base.nodes.map(n=>({...n,id:'o'+n.id}));base.edges=base.edges.map(x=>({...x,from:'o'+x.from,to:'o'+x.to}));const scene=active=>({kind:'graph',nodes:[...base.nodes,...[...copied.keys()].map(k=>({id:'c'+k,label:String(k+1)}))],edges:[...base.edges,...[...copied.entries()].flatMap(([k,ns])=>ns.map(v=>({from:'c'+k,to:'c'+v,label:'副本',directed:true})))],active});shot(e,scene([]),'原图与尚未建立的副本');function copy(k){if(copied.has(k))return;copied.set(k,[]);shot(e,scene(['c'+k]),'创建副本节点',{},[6]);for(const v of i.adj[k]){copy(v-1);copied.get(k).push(v-1);shot(e,scene(['c'+k,'c'+(v-1)]),'追加副本邻边',{},[7]);}}if(i.adj.length)copy(0);return i.adj.map((_,k)=>copied.get(k).map(v=>v+1));},[[{adj:[]},[]],[{adj:[[]]},[[]]]],i=>{array(i.adj,'adj',30);i.adj.forEach((row,k)=>{array(row,'邻居',30);invariant(row.every(v=>Number.isInteger(v)&&v>=1&&v<=i.adj.length&&v!==k+1)&&new Set(row).size===row.length,'邻居编号无效或重复。');});for(let k=0;k<i.adj.length;k++)for(const v of i.adj[k])invariant(i.adj[v-1].includes(k+1),'无向图的边须双向给出。');if(i.adj.length){const seen=new Set([0]),q=[0];for(let j=0;j<q.length;j++)for(const v of i.adj[q[j]])if(!seen.has(v-1)){seen.add(v-1);q.push(v-1);}invariant(seen.size===i.adj.length,'输入图须连通。');}});
+}`,(i,e)=>{const copied=new Map(),base=graphView(i.adj);base.nodes=base.nodes.map(n=>({...n,id:'o'+n.id,group:'原图'}));base.edges=base.edges.map(x=>({...x,from:'o'+x.from,to:'o'+x.to}));const scene=active=>({kind:'graph',nodes:[...base.nodes,...[...copied.keys()].map(k=>({id:'c'+k,label:String(k+1),group:'副本'}))],edges:[...base.edges,...[...copied.entries()].flatMap(([k,ns])=>ns.map(v=>({from:'c'+k,to:'c'+v,label:'副本',directed:true})))],active});shot(e,scene([]),'原图与尚未建立的副本');function copy(k){if(copied.has(k))return;copied.set(k,[]);shot(e,scene(['c'+k]),'创建副本节点',{},[6]);for(const v of i.adj[k]){copy(v-1);copied.get(k).push(v-1);shot(e,scene(['c'+k,'c'+(v-1)]),'追加副本邻边',{},[7]);}}if(i.adj.length)copy(0);return i.adj.map((_,k)=>copied.get(k).map(v=>v+1));},[[{adj:[]},[]],[{adj:[[]]},[[]]]],i=>{array(i.adj,'adj',30);i.adj.forEach((row,k)=>{array(row,'邻居',30);invariant(row.every(v=>Number.isInteger(v)&&v>=1&&v<=i.adj.length&&v!==k+1)&&new Set(row).size===row.length,'邻居编号无效或重复。');});for(let k=0;k<i.adj.length;k++)for(const v of i.adj[k])invariant(i.adj[v-1].includes(k+1),'无向图的边须双向给出。');if(i.adj.length){const seen=new Set([0]),q=[0];for(let j=0;j<q.length;j++)for(const v of i.adj[q[j]])if(!seen.has(v-1)){seen.add(v-1);q.push(v-1);}invariant(seen.size===i.adj.length,'输入图须连通。');}});
 
 add(399,'给定变量间的除法等式，计算每个查询的比值；无法确定时返回 -1。','equations 与 values 一一对应；值为正且等式一致；未出现的变量不可用于自除。',[
  ['建立带权双向图','a/b=v 对应 a→b 权重 v，以及 b→a 权重 1/v。'],['搜索查询路径','从分子出发，沿途乘边权。'],['判定可达','到达分母返回累计乘积，未知或不连通返回 -1。']], 'O(E+Q(V+E))','O(V+E)',{equations:[['a','b'],['b','c']],values:[2,3],queries:[['a','c'],['b','a'],['a','e'],['a','a'],['x','x']]},[6,0.5,-1,1,-1],
@@ -687,7 +700,7 @@ add(909,'在蛇梯棋棋盘上，从编号 1 出发掷骰前进，返回到终�
   }
  }
  return -1
-}`,(i,e)=>{const b=i.board,n=b.length,target=n*n,dist=Array(target+1).fill(-1),q=[1],done=[];dist[1]=0;const cell=v=>{const r=Math.floor((v-1)/n),c=(v-1)%n;return [n-1-r,r%2?n-1-c:c];};shot(e,grid(b,[cell(1)]),'从编号 1 开始掷骰');for(let h=0;h<q.length;h++){const u=q[h];if(u===target)return dist[u];for(let landing=u+1;landing<=Math.min(u+6,target);landing++){const [r,c]=cell(landing),v=b[r][c]===-1?landing:b[r][c];if(dist[v]!==-1)continue;dist[v]=dist[u]+1;q.push(v);done.push(cell(v));shot(e,grid(b,[cell(landing),cell(v)],done),landing===v?'掷骰到达新位置':'落点触发一次蛇梯跳转',{起点:u,掷骰:landing-u,终点:v,次数:dist[v]},[6,7,8]);}}return -1;},[[{board:[[-1,-1],[-1,-1]]},1],[{board:[[-1,1],[-1,-1]]},1]],i=>{numericMatrix(i.board,true);const n=i.board.length;invariant(n>=2&&n<=10&&i.board.every(r=>r.length===n&&r.every(v=>Number.isInteger(v)&&(v===-1||v>=1&&v<=n*n))),'棋盘须为 2 到 10 阶正方形，跳转编号合法。');const endCol=n%2? n-1:0;invariant(i.board[n-1][0]===-1&&i.board[0][endCol]===-1,'起点与终点不能有蛇梯。');});
+}`,(i,e)=>{const b=i.board,n=b.length,target=n*n,dist=Array(target+1).fill(-1),q=[1],done=[];dist[1]=0;const cell=v=>{const r=Math.floor((v-1)/n),c=(v-1)%n;return [n-1-r,r%2?n-1-c:c];};const cellLabels=b.map(row=>row.map(()=>''));for(let v=1;v<=target;v++){const [r,c]=cell(v);cellLabels[r][c]=`编号 ${v}`;}const scene=(active=[],settled=[])=>({...grid(b,active,settled),cellLabels});shot(e,scene([cell(1)]),'从编号 1 开始掷骰');for(let h=0;h<q.length;h++){const u=q[h];if(u===target)return dist[u];for(let landing=u+1;landing<=Math.min(u+6,target);landing++){const [r,c]=cell(landing),v=b[r][c]===-1?landing:b[r][c];if(dist[v]!==-1)continue;dist[v]=dist[u]+1;q.push(v);done.push(cell(v));shot(e,scene([cell(landing),cell(v)],done),landing===v?'掷骰到达新位置':'落点触发一次蛇梯跳转',{起点:u,掷骰:landing-u,落点:landing,终点:v,次数:dist[v]},[6,7,8]);}}return -1;},[[{board:[[-1,-1],[-1,-1]]},1],[{board:[[-1,1],[-1,-1]]},1]],i=>{numericMatrix(i.board,true);const n=i.board.length;invariant(n>=2&&n<=10&&i.board.every(r=>r.length===n&&r.every(v=>Number.isInteger(v)&&(v===-1||v>=1&&v<=n*n))),'棋盘须为 2 到 10 阶正方形，跳转编号合法。');const endCol=n%2? n-1:0;invariant(i.board[n-1][0]===-1&&i.board[0][endCol]===-1,'起点与终点不能有蛇梯。');});
 
 function wordGraphSolve(start,end,words,e,gene){const all=[...new Set([start,...words])],adj=all.map(()=>[]),edges=[];for(let a=0;a<all.length;a++)for(let b=a+1;b<all.length;b++){let diff=0;for(let j=0;j<start.length;j++)if(all[a][j]!==all[b][j])diff++;if(diff===1){adj[a].push(b);adj[b].push(a);edges.push({from:String(a),to:String(b)});}}const dist=all.map(()=>-1),q=[0],done=[];dist[0]=0;const scene=active=>({kind:'graph',nodes:all.map((label,k)=>({id:String(k),label})),edges,active:active.map(String),done:done.map(String)});shot(e,scene([0]),'连接只差一个字符的状态');if(start===end)return gene?0:1;if(!words.includes(end)){shot(e,scene([]),'目标不在允许字典中',{},[3]);return gene?-1:0;}for(let h=0;h<q.length;h++){const u=q[h];done.push(u);shot(e,scene([u]),'取出最短距离状态',{当前:all[u],距离:dist[u]},[8]);if(all[u]===end)return dist[u]+(gene?0:1);for(const v of adj[u])if(dist[v]===-1){dist[v]=dist[u]+1;q.push(v);shot(e,scene([u,v]),'发现一个字符变化的邻居',{新状态:all[v],距离:dist[v]},[9]);}}return gene?-1:0;}
 function wordGraphCheck(i,gene){const start=gene?i.startGene:i.beginWord,end=gene?i.endGene:i.endWord,words=gene?i.bank:i.wordList;text(start,'起点',10);text(end,'终点',10);array(words,'字典',40);invariant(start.length>0&&start.length===end.length&&(!gene||start.length===8),'起终点长度须一致，基因长度须为 8。');const pattern=gene?/^[ACGT]+$/:/^[a-z]+$/;invariant([start,end,...words].every(s=>typeof s==='string'&&s.length===start.length&&pattern.test(s)),'所有状态须同长且字符合法。');}
@@ -722,7 +735,26 @@ add(127,'将 beginWord 转成 endWord，每次只改一个字母，返回最短�
 function makeTrie(){return {id:'t0',char:'根',end:false,children:new Map()};}
 function trieScene(root,active=[]){const nodes=[],edges=[];function visit(n){nodes.push({id:n.id,label:n.char+(n.end?' ●':'')});for(const [ch,c]of n.children){edges.push({from:n.id,to:c.id,label:ch,directed:true});visit(c);}}visit(root);return {kind:'trie',nodes,edges,active};}
 function trieOpsCheck(i,wild=false){array(i.ops,'ops',50);invariant(i.ops.length&&i.ops[0][0]===(wild?'WordDictionary':'Trie'),'首个操作须构造字典树。');let total=0;for(let k=0;k<i.ops.length;k++){const op=i.ops[k];invariant(Array.isArray(op)&&((k===0&&op.length===1)||(k>0&&op.length===2)),'操作格式错误。');if(!k)continue;invariant((wild?['addWord','search']:['insert','search','startsWith']).includes(op[0]),'未知字典树操作。');text(op[1],'单词',12);invariant((wild&&op[0]==='search'?/^[a-z.]+$/:/^[a-z]+$/).test(op[1]),'单词须为非空小写字母，通配搜索可含点。');total+=op[1].length;}invariant(total<=240,'操作总字符数最多 240。');}
-function trieOpsSolve(i,e,wild){const root=makeTrie(),out=[];let uid=1;shot(e,trieScene(root),'空字典树');for(const [op,word]of i.ops){if(op==='Trie'||op==='WordDictionary'){out.push(null);continue;}if(op==='insert'||op==='addWord'){let n=root;for(const ch of word){if(!n.children.has(ch))n.children.set(ch,{id:'t'+uid++,char:ch,end:false,children:new Map()});n=n.children.get(ch);shot(e,trieScene(root,[n.id]),'沿字符建立前缀节点',{字符:ch},[4]);}n.end=true;out.push(null);shot(e,trieScene(root,[n.id]),'标记单词结束',{单词:word},[5]);}else{function search(n,k){shot(e,trieScene(root,[n.id]),'匹配当前前缀',{模式:word,已匹配:k},wild?[9]:[8]);if(k===word.length)return op==='startsWith'||n.end;if(wild&&word[k]==='.')return [...n.children.values()].some(c=>search(c,k+1));const child=n.children.get(word[k]);return !!child&&search(child,k+1);}out.push(search(root,0));shot(e,trieScene(root),'完成查询',{操作:op,返回:out.at(-1)},wild?[11]:[9]);}}return out;}
+function trieOpsSolve(i,e,wild){
+ const root=makeTrie(),out=[];let uid=1,operation=null;
+ const scene=(active=[])=>({...trieScene(root,active),...(operation?{operation}:{})});
+ const complete=value=>{out.push(value);operation={...operation,complete:true,value};};
+ shot(e,scene(),'空字典树');
+ for(const [operationIndex,command] of i.ops.entries()){
+  const [op,word]=command;
+  operation={index:operationIndex,name:op,args:command.slice(1),returns:op==='search'||op==='startsWith',complete:false};
+  if(op==='Trie'||op==='WordDictionary'){complete(null);shot(e,scene(),'构造字典树完成',{逐步结果:out},[2]);continue;}
+  if(op==='insert'||op==='addWord'){
+   let n=root;
+   for(const ch of word){if(!n.children.has(ch))n.children.set(ch,{id:'t'+uid++,char:ch,end:false,children:new Map()});n=n.children.get(ch);shot(e,scene([n.id]),'沿字符建立前缀节点',{字符:ch,逐步结果:out},[4]);}
+   n.end=true;complete(null);shot(e,scene([n.id]),'标记单词结束',{单词:word,逐步结果:out},[5]);
+  }else{
+   function search(n,k){shot(e,scene([n.id]),'匹配当前前缀',{模式:word,已匹配:k,逐步结果:out},wild?[9]:[8]);if(k===word.length)return op==='startsWith'||n.end;if(wild&&word[k]==='.')return [...n.children.values()].some(c=>search(c,k+1));const child=n.children.get(word[k]);return !!child&&search(child,k+1);}
+   complete(search(root,0));shot(e,scene(),'完成查询',{操作:op,返回:out.at(-1),逐步结果:out},wild?[11]:[9]);
+  }
+ }
+ return out;
+}
 add(208,'实现前缀树的插入、完整单词查询和前缀查询。','ops 首项为 ["Trie"]，后续为 [操作,小写单词]；构造、插入返回 null。',[
  ['按字符建树','共享前缀复用同一路径，每条边标记一个字母。'],['记录完整单词','插入完最后字母后设置结束标志。'],['区分两种查询','search 必须命中结束标志，startsWith 只需路径存在。']], '每次 O(L)','O(总插入字符数)',{ops:[['Trie'],['insert','apple'],['search','apple'],['search','app'],['startsWith','app'],['insert','app'],['search','app']]},[null,null,true,false,true,null,true],
 `type Trie struct { children [26]*Trie; end bool }
@@ -768,4 +800,4 @@ add(212,'在字母棋盘中找出 words 中所有可由相邻格路径拼成的�
    board[r][c]=ch
   }
   for r:=0;r<m;r++ { for c:=0;c<n;c++ { dfs(r,c,root) } };sort.Strings(ans);return ans
- }`,(i,e)=>{const root=makeTrie();let uid=1;for(const w of i.words){let n=root;for(const ch of w){if(!n.children.has(ch))n.children.set(ch,{id:'t'+uid++,char:ch,end:false,children:new Map()});n=n.children.get(ch);}n.word=w;n.end=true;}const b=i.board,R=b.length,C=b[0]?.length??0,found=[],path=[];let explored=0;shot(e,grid(b),'在棋盘上寻找前缀');shot(e,trieScene(root),'词表共享前缀树');function dfs(r,c,p){if(r<0||r>=R||c<0||c>=C||b[r][c]==='#')return;const ch=b[r][c],next=p.children.get(ch);if(!next)return;invariant(++explored<=700,'搜索步骤过多，请减少棋盘或词表规模。');if(next.word){found.push(next.word);next.word='';next.end=false;}b[r][c]='#';path.push([r,c]);shot(e,grid(b,[[r,c]],path),'匹配前缀并占用路径格',{前缀节点:next.id,已找到:found},[7,8]);for(const [dr,dc]of directions)dfs(r+dr,c+dc,next);path.pop();b[r][c]=ch;shot(e,grid(b,path.at(-1)?[path.at(-1)]:[],path),'回溯并释放格子',{已找到:found},[10]);}for(let r=0;r<R;r++)for(let c=0;c<C;c++)dfs(r,c,root);return found.sort();},[[{board:[['a','b']],words:['ab','aba','b']},['ab','b']],[{board:[],words:['a']},[]]],i=>{matrix(i.board,'棋盘',6);invariant(i.board.every(r=>r.every(ch=>typeof ch==='string'&&/^[a-z]$/.test(ch))),'棋盘须包含小写字母。');array(i.words,'words',20);invariant(i.words.every(s=>typeof s==='string'&&/^[a-z]{1,8}$/.test(s))&&i.words.reduce((n,s)=>n+s.length,0)<=100,'单词须为 1 到 8 个小写字母，总长度最多 100。');});
+ }`,(i,e)=>{const root=makeTrie();let uid=1;for(const w of i.words){let n=root;for(const ch of w){if(!n.children.has(ch))n.children.set(ch,{id:'t'+uid++,char:ch,end:false,children:new Map()});n=n.children.get(ch);}n.word=w;n.end=true;}const b=i.board,R=b.length,C=b[0]?.length??0,found=[],path=[],prefix=[];let explored=0;shot(e,grid(b),'在棋盘上寻找前缀');shot(e,trieScene(root),'词表共享前缀树');function dfs(r,c,p){if(r<0||r>=R||c<0||c>=C||b[r][c]==='#')return;const ch=b[r][c],next=p.children.get(ch);if(!next)return;invariant(++explored<=700,'搜索步骤过多，请减少棋盘或词表规模。');if(next.word){found.push(next.word);next.word='';next.end=false;}b[r][c]='#';path.push([r,c]);prefix.push(ch);shot(e,grid(b,[[r,c]],path),'匹配前缀并占用路径格',{已匹配前缀:prefix.join(''),已找到:found},[7,8]);for(const [dr,dc]of directions)dfs(r+dr,c+dc,next);path.pop();prefix.pop();b[r][c]=ch;shot(e,grid(b,path.at(-1)?[path.at(-1)]:[],path),'回溯并释放格子',{已找到:found},[10]);}for(let r=0;r<R;r++)for(let c=0;c<C;c++)dfs(r,c,root);return found.sort();},[[{board:[['a','b']],words:['ab','aba','b']},['ab','b']],[{board:[],words:['a']},[]]],i=>{matrix(i.board,'棋盘',6);invariant(i.board.every(r=>r.every(ch=>typeof ch==='string'&&/^[a-z]$/.test(ch))),'棋盘须包含小写字母。');array(i.words,'words',20);invariant(i.words.every(s=>typeof s==='string'&&/^[a-z]{1,8}$/.test(s))&&i.words.reduce((n,s)=>n+s.length,0)<=100,'单词须为 1 到 8 个小写字母，总长度最多 100。');});

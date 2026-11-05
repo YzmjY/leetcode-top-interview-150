@@ -16,8 +16,8 @@ const mergeLesson={
   numbers(nums1,'nums1',100);numbers(nums2,'nums2',100);
   const frames=buildMergeTrace([...nums1,...nums2.map(()=>0)],nums1.length,nums2,nums2.length);
   for(const f of frames){
-   const pointers={};if(f.i>=0)pointers.i=f.i;if(f.k>=0&&f.phase!=='done')pointers.k=f.k;
-   const scene={kind:'array',values:f.a,label:'nums1',pointers,done:f.a.map((_,i)=>i).filter(i=>i>=f.sortedFrom),reserved:f.a.map((_,i)=>i).filter(i=>i>=nums1.length&&i<f.sortedFrom),active:f.writeIndex===null?[]:[f.writeIndex],secondary:f.b,secondaryLabel:'nums2',secondaryPointers:f.j>=0?{j:f.j}:{},secondaryConsumed:f.b.map((_,i)=>i).filter(i=>i>f.j)};
+   const pointers={i:f.i,k:f.k};
+   const scene={kind:'array',values:f.a,label:'nums1',pointers,done:f.a.map((_,i)=>i).filter(i=>i>=f.sortedFrom),reserved:f.a.map((_,i)=>i).filter(i=>i>=nums1.length&&i<f.sortedFrom),active:f.writeIndex===null?[]:[f.writeIndex],secondary:f.b,secondaryLabel:'nums2',secondaryPointers:{j:f.j},secondaryConsumed:f.b.map((_,i)=>i).filter(i=>i>f.j)};
    emit(scene,f.title,f.description,f.lines,{i:f.i,j:f.j,k:f.k,比较:f.comparisons,写入:f.writes});
   }
   return frames.at(-1).a;

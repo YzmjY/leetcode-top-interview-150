@@ -5,18 +5,19 @@ const states=new WeakMap();
 
 // Keep node elements keyed by entity id. Reordering a list moves the existing
 // node; neither its value nor its identity is replaced by a different node.
-export function updateScene(container,scene,{key,duration=420}={}) {
+export function updateScene(container,scene,{key,duration=420,presentation={}}={}) {
  const previous=states.get(container);
  if(previous?.request)cancelAnimationFrame(previous.request);
  const oldNodes=new Map([...container.querySelectorAll('[data-node]')].map(el=>[el.dataset.node,el]));
  const oldScroll=container.querySelector('.node-scroll');
  const scroll=previous?.key===key&&oldScroll?{left:oldScroll.scrollLeft,top:oldScroll.scrollTop}:null;
  const template=container.ownerDocument.createElement('template');
- template.innerHTML=renderScene(scene);
- const targets=new Map();
+ template.innerHTML=renderScene(scene,presentation);
+ const targets=new Map(),nodeSizes=new Map();
  for(const fresh of template.content.querySelectorAll('[data-node]')){
   const id=fresh.dataset.node;
   targets.set(id,{x:Number(fresh.dataset.x),y:Number(fresh.dataset.y)});
+  nodeSizes.set(id,{width:Number(fresh.dataset.width)||46,height:Number(fresh.dataset.height)||46,shape:fresh.dataset.shape||'ellipse'});
   const old=previous?.key===key&&previous.kind===scene.kind?oldNodes.get(id):null;
   if(old){
    for(const attr of [...old.attributes])old.removeAttribute(attr.name);
@@ -44,7 +45,7 @@ export function updateScene(container,scene,{key,duration=420}={}) {
  const edges=[...container.querySelectorAll('[data-edge-from]')];
  let start;
  function paint(t){
-  const positions=interpolatePositions(from,targets,t,bounds);
+  const positions=interpolatePositions(from,targets,t,bounds,nodeSizes);
   state.positions=positions;
   for(const group of groups){
    const target=targets.get(group.dataset.node),p=positions.get(group.dataset.node);
@@ -53,7 +54,8 @@ export function updateScene(container,scene,{key,duration=420}={}) {
   for(const edge of edges){
    const a=positions.get(edge.dataset.edgeFrom),b=positions.get(edge.dataset.edgeTo);
    if(!a||!b)continue;
-   const g=edgeGeometry(a,b,{kind:scene.kind,directed:edge.dataset.directed==='true',label:edge.dataset.label,self:edge.dataset.edgeFrom===edge.dataset.edgeTo});
+   const g=edgeGeometry(a,b,{kind:scene.kind,directed:edge.dataset.directed==='true',label:edge.dataset.label,self:edge.dataset.edgeFrom===edge.dataset.edgeTo,
+    fromSize:nodeSizes.get(edge.dataset.edgeFrom),toSize:nodeSizes.get(edge.dataset.edgeTo),reciprocal:edge.dataset.reciprocal==='true'});
    edge.querySelector('path').setAttribute('d',g.path);
    const label=edge.querySelector('text');label.setAttribute('x',g.labelX);label.setAttribute('y',g.labelY);
   }

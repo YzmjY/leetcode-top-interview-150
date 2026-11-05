@@ -1,3 +1,5 @@
+import {nodeMetrics} from './node-metrics.js';
+
 const SIBLING_GAP = 72;
 const SINGLE_OFFSET = 48;
 const LEVEL_GAP = 90;
@@ -19,6 +21,15 @@ function childOrder(role, index) {
  */
 export function layoutTree(scene = {}) {
   const ids = [...new Set((scene.nodes || []).map((node) => String(node.id)))];
+  const sizes = new Map((scene.nodes || []).map((node) => [String(node.id), nodeMetrics(node)]));
+  const nodeWidth = Math.max(46, ...[...sizes.values()].filter((size) => !size.caption).map((size) => size.width));
+  const nodeHeight = Math.max(46, ...[...sizes.values()].map((size) => size.height));
+  const siblingGap = Math.max(SIBLING_GAP, nodeWidth + 24);
+  const singleOffset = Math.max(SINGLE_OFFSET, (nodeWidth + 24) / 2);
+  const levelGap = Math.max(LEVEL_GAP, nodeHeight + 32);
+  const padding = Math.max(PADDING, nodeWidth / 2 + 21);
+  const firstY = Math.max(56, nodeHeight / 2 + 22);
+  const verticalPadding = Math.max(56, nodeHeight / 2 + 22);
   const children = new Map(ids.map((id) => [id, []]));
   const incoming = new Set();
   for (const edge of scene.edges || []) {
@@ -44,21 +55,24 @@ export function layoutTree(scene = {}) {
     if (branches.length === 1) {
       const branch = branches[0];
       const slots = { L: -1, R: 1, TL: -3, TR: -1, BL: 1, BR: 3 };
-      branch.offset = (slots[branch.role] ?? 0) * SINGLE_OFFSET;
+      branch.offset = (slots[branch.role] ?? 0) * singleOffset;
     } else if (branches.length > 1) {
       let cursor = 0;
       for (const branch of branches) {
         branch.offset = cursor - branch.tree.min;
-        cursor += branch.tree.max - branch.tree.min + SIBLING_GAP;
+        cursor += branch.tree.max - branch.tree.min + siblingGap;
       }
       const centre = (branches[0].offset + branches.at(-1).offset) / 2;
       for (const branch of branches) branch.offset -= centre;
     }
+    // Ordinary nodes share the global spacing. A wider caption reserves its
+    // extra half-width locally, so unrelated subtrees do not all spread out.
+    const overflow = Math.max(0, (sizes.get(id).width - nodeWidth) / 2);
     return {
       id,
       branches,
-      min: Math.min(0, ...branches.map((branch) => branch.offset + branch.tree.min)),
-      max: Math.max(0, ...branches.map((branch) => branch.offset + branch.tree.max)),
+      min: Math.min(-overflow, ...branches.map((branch) => branch.offset + branch.tree.min)),
+      max: Math.max(overflow, ...branches.map((branch) => branch.offset + branch.tree.max)),
     };
   }
 
@@ -70,19 +84,19 @@ export function layoutTree(scene = {}) {
   const roots = forest.map((tree) => {
     const radius = Math.max(-tree.min, tree.max);
     const x = occupiedWidth + radius;
-    occupiedWidth += radius * 2 + SIBLING_GAP;
+    occupiedWidth += radius * 2 + siblingGap;
     return { tree, x };
   });
-  if (roots.length) occupiedWidth -= SIBLING_GAP;
-  const width = Math.max(350, occupiedWidth + PADDING * 2);
+  if (roots.length) occupiedWidth -= siblingGap;
+  const width = Math.max(350, occupiedWidth + padding * 2);
   const margin = (width - occupiedWidth) / 2;
   const positions = new Map();
   let maxDepth = 0;
   function place(tree, x, depth) {
-    positions.set(tree.id, { x: x + margin, y: 56 + depth * LEVEL_GAP });
+    positions.set(tree.id, { x: x + margin, y: firstY + depth * levelGap });
     maxDepth = Math.max(maxDepth, depth);
     for (const branch of tree.branches) place(branch.tree, x + branch.offset, depth + 1);
   }
   for (const { tree, x } of roots) place(tree, x, 0);
-  return { positions, width, height: Math.max(180, 112 + maxDepth * LEVEL_GAP) };
+  return { positions, width, height: Math.max(180, firstY + verticalPadding + maxDepth * levelGap) };
 }

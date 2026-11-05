@@ -1,7 +1,9 @@
+import {nodeMetrics} from './node-metrics.js';
+
 const NODES_PER_ROW = 7;
-const COLUMN_GAP = 84;
+const NODE_GAP = 38;
+const HORIZONTAL_PADDING = 29;
 const ROW_GAP = 144;
-const FIRST_X = 52;
 const FIRST_Y = 104;
 
 function isNextEdge(edge) {
@@ -45,6 +47,10 @@ function inferChains(ids, edges) {
  */
 export function layoutLinked(scene = {}) {
   const ids = [...new Set((scene.nodes || []).map((node) => String(node.id)))];
+  const sizes = new Map((scene.nodes || []).map((node) => [String(node.id), nodeMetrics(node)]));
+  const nodeHeight = Math.max(46, ...[...sizes.values()].map((size) => size.height));
+  const rowGap = Math.max(ROW_GAP, nodeHeight + 98);
+  const firstY = Math.max(FIRST_Y, nodeHeight / 2 + 81);
   const available = new Set(ids);
   const removed = [...new Set((scene.removed || []).map(String))].filter((id) => available.has(id));
   const removedSet = new Set(removed);
@@ -76,20 +82,27 @@ export function layoutLinked(scene = {}) {
 
   const positions = new Map();
   const chains = [];
+  let width = 350;
   for (const group of groups) {
     for (let offset = 0; offset < group.ids.length; offset += NODES_PER_ROW) {
       const rowIds = group.ids.slice(offset, offset + NODES_PER_ROW);
-      const y = FIRST_Y + chains.length * ROW_GAP;
+      const y = firstY + chains.length * rowGap;
       const label = offset ? `${group.label}（续）` : group.label;
       chains.push({ label, ids: rowIds, y });
-      rowIds.forEach((id, column) => positions.set(id, { x: FIRST_X + column * COLUMN_GAP, y }));
+      let cursor = HORIZONTAL_PADDING;
+      for (const id of rowIds) {
+        const {width: nodeWidth} = sizes.get(id);
+        positions.set(id, {x: cursor + nodeWidth / 2, y});
+        cursor += nodeWidth + NODE_GAP;
+      }
+      width = Math.max(width, cursor - NODE_GAP + HORIZONTAL_PADDING);
     }
   }
 
   return {
     positions,
-    width: 620,
-    height: Math.max(190, FIRST_Y + Math.max(0, chains.length - 1) * ROW_GAP + 60),
+    width,
+    height: Math.max(190, firstY + Math.max(0, chains.length - 1) * rowGap + Math.max(60, nodeHeight / 2 + 37)),
     chains,
     removed,
   };
